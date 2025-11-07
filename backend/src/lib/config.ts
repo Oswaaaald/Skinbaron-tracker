@@ -11,10 +11,10 @@ const ConfigSchema = z.object({
   PORT: z.coerce.number().default(8080),
   
   // SkinBaron API
-  SB_API_KEY: z.string().min(1, 'SkinBaron API key is required'),
+  SB_API_KEY: z.string().optional(),
   
   // Discord
-  DISCORD_WEBHOOK: z.string().url('Valid Discord webhook URL is required'),
+  DISCORD_WEBHOOK: z.string().url().optional().or(z.literal('')),
   
   // Database
   SQLITE_PATH: z.string().default('./data/alerts.db'),

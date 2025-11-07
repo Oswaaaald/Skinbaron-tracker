@@ -265,6 +265,12 @@ export class AlertScheduler {
       let newAlerts = 0;
       const globalWebhook = appConfig.DISCORD_WEBHOOK;
 
+      // Skip if no global webhook configured
+      if (!globalWebhook) {
+        console.log('⚠️  No global Discord webhook configured for best deals');
+        return 0;
+      }
+
       for (const item of response.items) {
         if (this.store.isProcessed(item.saleId)) {
           continue;
@@ -335,6 +341,12 @@ export class AlertScheduler {
 
       let newAlerts = 0;
       const globalWebhook = appConfig.DISCORD_WEBHOOK;
+
+      // Skip if no global webhook configured
+      if (!globalWebhook) {
+        console.log('⚠️  No global Discord webhook configured for newest items');
+        return 0;
+      }
 
       for (const item of response.items) {
         if (this.store.isProcessed(item.saleId)) {

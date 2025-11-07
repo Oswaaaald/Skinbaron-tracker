@@ -64,7 +64,7 @@ export interface FeedParams {
 
 export class SkinBaronClient {
   private baseURL = SKINBARON_API.BASE_URL;
-  private apiKey = appConfig.SB_API_KEY;
+  private apiKey = appConfig.SB_API_KEY || undefined;
   private appId = SKINBARON_API.APP_ID;
 
   constructor() {
@@ -79,11 +79,17 @@ export class SkinBaronClient {
     schema: z.ZodSchema<T>
   ): Promise<T> {
     try {
-      const searchParams = new URLSearchParams({
-        apikey: this.apiKey,
+      const baseParams: Record<string, string> = {
         appid: this.appId.toString(),
         ...this.sanitizeParams(params),
-      });
+      };
+
+      // Only add API key if provided
+      if (this.apiKey) {
+        baseParams.apikey = this.apiKey;
+      }
+
+      const searchParams = new URLSearchParams(baseParams);
 
       const url = `${this.baseURL}${endpoint}`;
       
