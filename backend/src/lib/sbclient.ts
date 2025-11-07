@@ -231,17 +231,10 @@ export class SkinBaronClient {
    * Test API connection
    */
   async testConnection(): Promise<boolean> {
-    try {
-      // Try a simple search to test the connection
-      const result = await this.search({ 
-        search_item: 'AK-47', 
-        limit: 1 
-      });
-      return result.success === true;
-    } catch (error) {
-      console.error('SkinBaron API connection test failed:', error);
-      return false;
-    }
+    // Temporarily skip the API test due to 415 errors
+    // The API might need different authentication or the endpoint may have changed
+    console.log('⚠️  SkinBaron API test skipped - endpoint needs verification');
+    return false; // Mark as unhealthy but don't crash the application
   }
 
   /**
