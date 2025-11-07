@@ -120,58 +120,58 @@ class ApiClient {
         memory: NodeJS.MemoryUsage;
         version: string;
       };
-    }>('/health');
+    }>('/api/health');
   }
 
   async getSystemStatus() {
-    return this.request<SystemStats>('/status');
+    return this.request<SystemStats>('/api/system/status');
   }
 
   // Scheduler endpoints
   async startScheduler() {
-    return this.request<{ message: string }>('/scheduler/start', {
+    return this.request<{ message: string }>('/api/system/scheduler/start', {
       method: 'POST',
     });
   }
 
   async stopScheduler() {
-    return this.request<{ message: string }>('/scheduler/stop', {
+    return this.request<{ message: string }>('/api/system/scheduler/stop', {
       method: 'POST',
     });
   }
 
   async runScheduler() {
-    return this.request<{ message: string }>('/scheduler/run', {
+    return this.request<{ message: string }>('/api/system/scheduler/run', {
       method: 'POST',
     });
   }
 
   // Rules endpoints
   async getRules(): Promise<ApiResponse<Rule[]>> {
-    const response = await this.request<Rule[]>('/rules');
+    const response = await this.request<Rule[]>('/api/rules');
     return response;
   }
 
   async getRule(id: number): Promise<ApiResponse<Rule>> {
-    return this.request<Rule>(`/rules/${id}`);
+    return this.request<Rule>(`/api/rules/${id}`);
   }
 
   async createRule(rule: Omit<Rule, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Rule>> {
-    return this.request<Rule>('/rules', {
+    return this.request<Rule>('/api/rules', {
       method: 'POST',
       body: JSON.stringify(rule),
     });
   }
 
   async updateRule(id: number, updates: Partial<Rule>): Promise<ApiResponse<Rule>> {
-    return this.request<Rule>(`/rules/${id}`, {
+    return this.request<Rule>(`/api/rules/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   }
 
   async deleteRule(id: number): Promise<ApiResponse<{ message: string }>> {
-    return this.request<{ message: string }>(`/rules/${id}`, {
+    return this.request<{ message: string }>(`/api/rules/${id}`, {
       method: 'DELETE',
     });
   }
@@ -185,7 +185,7 @@ class ApiClient {
       matches: any[];
       matchCount: number;
       webhookTest: boolean | null;
-    }>(`/rules/${id}/test`, {
+    }>(`/api/rules/${id}/test`, {
       method: 'POST',
       body: JSON.stringify({ webhook_test: webhookTest }),
     });
@@ -205,12 +205,12 @@ class ApiClient {
     if (params.rule_id) searchParams.append('rule_id', params.rule_id.toString());
     if (params.alert_type) searchParams.append('alert_type', params.alert_type);
 
-    const endpoint = `/alerts${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const endpoint = `/api/alerts${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     return this.request<Alert[]>(endpoint) as Promise<PaginatedResponse<Alert>>;
   }
 
   async getAlert(id: number): Promise<ApiResponse<Alert>> {
-    return this.request<Alert>(`/alerts/${id}`);
+    return this.request<Alert>(`/api/alerts/${id}`);
   }
 
   async getAlertStats(): Promise<ApiResponse<{
@@ -224,11 +224,11 @@ class ApiClient {
       new_item: number;
     };
   }>> {
-    return this.request('/alerts/stats');
+    return this.request('/api/alerts/stats');
   }
 
   async getRecentAlerts(limit: number = 20): Promise<ApiResponse<Alert[]>> {
-    return this.request<Alert[]>(`/alerts/recent?limit=${limit}`);
+    return this.request<Alert[]>(`/api/alerts/recent?limit=${limit}`);
   }
 
   async getAlertsByRule(ruleId: number, params: {
@@ -240,7 +240,7 @@ class ApiClient {
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.offset) searchParams.append('offset', params.offset.toString());
 
-    const endpoint = `/alerts/by-rule/${ruleId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    const endpoint = `/api/alerts/by-rule/${ruleId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     return this.request<Alert[]>(endpoint);
   }
 
@@ -248,7 +248,7 @@ class ApiClient {
     deletedCount: number;
     message: string;
   }>> {
-    return this.request('/alerts/cleanup', {
+    return this.request('/api/alerts/cleanup', {
       method: 'POST',
     });
   }
