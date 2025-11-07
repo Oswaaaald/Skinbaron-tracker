@@ -90,7 +90,7 @@ async function registerPlugins() {
 
 // Health check endpoint
 async function setupHealthCheck() {
-  fastify.get('/health', {
+  fastify.get('/api/health', {
     schema: {
       description: 'Health check endpoint',
       tags: ['System'],
@@ -186,7 +186,7 @@ async function setupHealthCheck() {
 
 // System status endpoint
 async function setupSystemStatus() {
-  fastify.get('/status', {
+  fastify.get('/api/system/status', {
     schema: {
       description: 'System status and statistics',
       tags: ['System'],
@@ -244,7 +244,7 @@ async function setupSystemStatus() {
 // Scheduler control endpoints
 async function setupSchedulerControls() {
   // Start scheduler
-  fastify.post('/scheduler/start', {
+  fastify.post('/api/system/scheduler/start', {
     schema: {
       description: 'Start the alert scheduler',
       tags: ['Scheduler'],
@@ -278,7 +278,7 @@ async function setupSchedulerControls() {
   });
 
   // Stop scheduler
-  fastify.post('/scheduler/stop', {
+  fastify.post('/api/system/scheduler/stop', {
     schema: {
       description: 'Stop the alert scheduler',
       tags: ['Scheduler'],
@@ -312,7 +312,7 @@ async function setupSchedulerControls() {
   });
 
   // Force run scheduler
-  fastify.post('/scheduler/run', {
+  fastify.post('/api/system/scheduler/run', {
     schema: {
       description: 'Force run a scheduler cycle',
       tags: ['Scheduler'],
@@ -349,8 +349,8 @@ async function setupSchedulerControls() {
 // Register API routes
 async function setupRoutes() {
   // API routes
-  await fastify.register(rulesRoutes, { prefix: '/rules' });
-  await fastify.register(alertsRoutes, { prefix: '/alerts' });
+  await fastify.register(rulesRoutes, { prefix: '/api/rules' });
+  await fastify.register(alertsRoutes, { prefix: '/api/alerts' });
   
   // System endpoints
   await setupHealthCheck();
