@@ -1,9 +1,13 @@
 # Configuration Dokploy pour SkinBaron Alerts
 
+⚠️ **RÉSOLUTION DU CONFLIT DE PORT 8080**
+
+Ce guide inclut la solution au problème "port is already allocated" sur Dokploy.
+
 ## 📋 Prérequis Dokploy
 
 1. **Repository Git** configuré avec ce projet
-2. **Variables d'environnement** configurées dans Dokploy
+2. **Variables d'environnement** configurées dans Dokploy (voir section ports)
 3. **Docker Compose** activé pour le déploiement
 
 ## 🔧 Configuration Dokploy
@@ -15,8 +19,15 @@
 
 ### 2. Variables d'environnement requises
 
-#### Backend
+⚠️ **SOLUTION CONFLIT DE PORT** : Configurez ces variables pour éviter le conflit sur le port 8080
+
+#### Variables essentielles (copier dans Dokploy)
 ```bash
+# === RÉSOLUTION CONFLIT PORTS ===
+BACKEND_PORT=3001
+FRONTEND_PORT=3002
+
+# === CONFIGURATION PRODUCTION ===
 NODE_ENV=production
 PORT=8080
 DATABASE_PATH=./data/skinbaron-alerts.db
