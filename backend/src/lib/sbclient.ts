@@ -68,9 +68,8 @@ export class SkinBaronClient {
   private appId = SKINBARON_API.APP_ID;
 
   constructor() {
-    if (!this.apiKey) {
-      throw new Error('SkinBaron API key is required');
-    }
+    // API key is optional - SkinBaron API is public for search
+    console.log('🔍 SkinBaron client initialized', { hasApiKey: !!this.apiKey });
   }
 
   private async makeRequest<T>(
