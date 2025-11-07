@@ -1,0 +1,18 @@
+# Variables d'environnement MISES À JOUR pour Dokploy
+# Avec vos vrais domaines
+
+BACKEND_PORT=3001
+FRONTEND_PORT=3002
+NODE_ENV=production
+PORT=8080
+SQLITE_PATH=/app/data/alerts.db
+ENABLE_BEST_DEALS=false
+ENABLE_NEWEST_ITEMS=false
+CORS_ORIGIN=https://app.skinbaron-tracker.oswaaaald.be
+NEXT_PUBLIC_API_URL=https://api.skinbaron-tracker.oswaaaald.be
+POLL_CRON=*/5 * * * *
+FEEDS_MAX_PRICE=200
+FEEDS_MAX_WEAR=0.20
+RATE_LIMIT_MAX=100
+RATE_LIMIT_WINDOW=60000
+LOG_LEVEL=info

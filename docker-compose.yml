@@ -8,6 +8,8 @@ services:
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-8080}:8080"
+    labels:
+      - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
     environment:
       - NODE_ENV=production
       - PORT=8080
@@ -45,6 +47,8 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    labels:
+      - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8080}
