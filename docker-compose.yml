@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skinbaron-alerts-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - SB_API_KEY=${SB_API_KEY}
+      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
+      - SQLITE_PATH=/app/data/alerts.db
+      - POLL_CRON=${POLL_CRON:-*/2 * * * *}
+      - ENABLE_BEST_DEALS=${ENABLE_BEST_DEALS:-true}
+      - ENABLE_NEWEST_ITEMS=${ENABLE_NEWEST_ITEMS:-true}
+      - FEEDS_MAX_PRICE=${FEEDS_MAX_PRICE:-200}
+      - FEEDS_MAX_WEAR=${FEEDS_MAX_WEAR:-0.20}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - backend_data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - skinbaron_network
+
+  # Frontend Web Interface
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    container_name: skinbaron-alerts-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8080}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - skinbaron_network
+
+volumes:
+  backend_data:
+    driver: local
+
+networks:
+  skinbaron_network:
+    driver: bridge

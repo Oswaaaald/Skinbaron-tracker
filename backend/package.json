@@ -1,0 +1,40 @@
+{
+  "name": "skinbaron-alerts-backend",
+  "version": "1.0.0",
+  "description": "Backend API for SkinBaron Alerts - CS2 skin monitoring and alerting system",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit",
+    "dev:docker": "docker build -f Dockerfile.dev -t skinbaron-backend-dev . && docker run -p 8080:8080 -v $(pwd):/app skinbaron-backend-dev",
+    "docker:build": "docker build -t skinbaron-backend .",
+    "docker:run": "docker run -p 8080:8080 skinbaron-backend"
+  },
+  "keywords": ["skinbaron", "cs2", "alerts", "discord", "fastify", "typescript"],
+  "author": "SkinBaron Alerts",
+  "license": "MIT",
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "@fastify/cors": "^8.4.0",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/rate-limit": "^9.1.0",
+    "better-sqlite3": "^9.2.2",
+    "cron": "^3.1.6",
+    "dotenv": "^16.3.1",
+    "undici": "^5.28.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/cron": "^2.4.0",
+    "@types/node": "^20.10.5",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

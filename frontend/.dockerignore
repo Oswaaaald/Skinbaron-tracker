@@ -1,0 +1,20 @@
+# Frontend .dockerignore for SkinBaron Alerts
+node_modules
+npm-debug.log
+.next
+out
+*.log
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.git
+.gitignore
+README.md
+Dockerfile
+Dockerfile.*
+.dockerignore
+coverage
+.cache
+*.tar.gz

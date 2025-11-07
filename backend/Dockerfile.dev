@@ -1,0 +1,25 @@
+# Backend Development Dockerfile for SkinBaron Alerts
+FROM node:20-alpine AS base
+
+# Install dependencies
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Development stage
+FROM base AS development
+
+# Install all dependencies (including dev)
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Expose port
+EXPOSE 8080
+
+# Start development server with hot reload
+CMD ["npm", "run", "dev"]

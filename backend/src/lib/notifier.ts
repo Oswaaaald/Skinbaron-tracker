@@ -1,0 +1,376 @@
+import { request } from 'undici';
+import { z } from 'zod';
+import { DISCORD_COLORS } from './config.js';
+import type { Rule, Alert } from './store.js';
+import type { SkinBaronItem } from './sbclient.js';
+
+// Discord Webhook Schemas
+export const DiscordEmbedSchema = z.object({
+  title: z.string().max(256),
+  description: z.string().max(4096).optional(),
+  url: z.string().url().optional(),
+  color: z.number().optional(),
+  timestamp: z.string().optional(),
+  footer: z.object({
+    text: z.string().max(2048),
+    icon_url: z.string().url().optional(),
+  }).optional(),
+  thumbnail: z.object({
+    url: z.string().url(),
+  }).optional(),
+  fields: z.array(z.object({
+    name: z.string().max(256),
+    value: z.string().max(1024),
+    inline: z.boolean().optional(),
+  })).max(25).optional(),
+});
+
+export const DiscordWebhookPayloadSchema = z.object({
+  username: z.string().max(80).optional(),
+  avatar_url: z.string().url().optional(),
+  content: z.string().max(2000).optional(),
+  embeds: z.array(DiscordEmbedSchema).max(10).optional(),
+});
+
+export type DiscordEmbed = z.infer<typeof DiscordEmbedSchema>;
+export type DiscordWebhookPayload = z.infer<typeof DiscordWebhookPayloadSchema>;
+
+export interface NotificationOptions {
+  alertType: 'match' | 'best_deal' | 'new_item';
+  item: SkinBaronItem;
+  rule?: Rule;
+  skinUrl: string;
+}
+
+export class NotificationService {
+  private readonly botName = '🔔 SkinBaron Alerts';
+  private readonly botAvatar = 'https://skinbaron.de/favicon.ico';
+
+  constructor() {
+    console.log('✅ Notification service initialized');
+  }
+
+  /**
+   * Send notification to Discord webhook
+   */
+  async sendNotification(
+    webhookUrl: string, 
+    options: NotificationOptions
+  ): Promise<boolean> {
+    try {
+      const embed = this.createEmbed(options);
+      const payload = this.createWebhookPayload(embed, options.alertType);
+
+      // Validate payload
+      const validatedPayload = DiscordWebhookPayloadSchema.parse(payload);
+
+      console.log(`🔔 Sending ${options.alertType} notification:`, {
+        item: options.item.itemName,
+        price: options.item.price,
+        webhook: this.maskWebhook(webhookUrl),
+      });
+
+      const { statusCode } = await request(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'SkinBaron-Alerts/1.0',
+        },
+        body: JSON.stringify(validatedPayload),
+      });
+
+      if (statusCode === 204) {
+        console.log(`✅ Notification sent successfully (${options.alertType})`);
+        return true;
+      } else {
+        console.error(`❌ Discord webhook error: ${statusCode}`);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Failed to send Discord notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Create Discord embed for the notification
+   */
+  private createEmbed(options: NotificationOptions): DiscordEmbed {
+    const { alertType, item, rule, skinUrl } = options;
+
+    // Base embed structure
+    const embed: DiscordEmbed = {
+      title: this.getEmbedTitle(alertType, item),
+      url: skinUrl,
+      color: this.getEmbedColor(alertType),
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'SkinBaron Alerts • CS2 Skin Monitoring',
+        icon_url: this.botAvatar,
+      },
+      fields: [],
+    };
+
+    // Add item details
+    if (embed.fields) {
+      embed.fields.push({
+        name: '💰 Price',
+        value: `**${item.price} ${item.currency}**`,
+        inline: true,
+      });
+
+      if (item.wearValue !== undefined) {
+        embed.fields.push({
+          name: '🔍 Wear Value',
+          value: `\`${item.wearValue.toFixed(6)}\``,
+          inline: true,
+        });
+      }
+
+      // StatTrak and Souvenir indicators
+      const badges: string[] = [];
+      if (item.statTrak) badges.push('🔥 **StatTrak™**');
+      if (item.souvenir) badges.push('🏆 **Souvenir**');
+
+      if (badges.length > 0) {
+        embed.fields.push({
+          name: '🏷️ Special',
+          value: badges.join('\n'),
+          inline: true,
+        });
+      }
+
+      // Add seller info if available
+      if (item.sellerName) {
+        embed.fields.push({
+          name: '👤 Seller',
+          value: item.sellerName,
+          inline: true,
+        });
+      }
+
+      // Add rule context for matches
+      if (alertType === 'match' && rule) {
+        const ruleDetails: string[] = [];
+        
+        if (rule.min_price !== undefined || rule.max_price !== undefined) {
+          const min = rule.min_price ? `${rule.min_price}€` : '0€';
+          const max = rule.max_price ? `${rule.max_price}€` : '∞';
+          ruleDetails.push(`💰 Price: ${min} - ${max}`);
+        }
+
+        if (rule.min_wear !== undefined || rule.max_wear !== undefined) {
+          const min = rule.min_wear ? rule.min_wear.toFixed(3) : '0.000';
+          const max = rule.max_wear ? rule.max_wear.toFixed(3) : '1.000';
+          ruleDetails.push(`🔍 Wear: ${min} - ${max}`);
+        }
+
+        if (rule.stattrak) ruleDetails.push('🔥 StatTrak™');
+        if (rule.souvenir) ruleDetails.push('🏆 Souvenir');
+
+        if (ruleDetails.length > 0) {
+          embed.fields.push({
+            name: '⚙️ Rule Filters',
+            value: ruleDetails.join('\n'),
+            inline: false,
+          });
+        }
+      }
+
+      // Add action button
+      embed.fields.push({
+        name: '🚀 Actions',
+        value: `[🛒 **View on SkinBaron**](${skinUrl})`,
+        inline: false,
+      });
+    }
+
+    return embed;
+  }
+
+  /**
+   * Create complete webhook payload
+   */
+  private createWebhookPayload(
+    embed: DiscordEmbed, 
+    alertType: 'match' | 'best_deal' | 'new_item'
+  ): DiscordWebhookPayload {
+    return {
+      username: this.botName,
+      avatar_url: this.botAvatar,
+      content: this.getAlertMessage(alertType),
+      embeds: [embed],
+    };
+  }
+
+  /**
+   * Get embed title based on alert type
+   */
+  private getEmbedTitle(alertType: 'match' | 'best_deal' | 'new_item', item: SkinBaronItem): string {
+    const baseTitle = item.itemName;
+    
+    switch (alertType) {
+      case 'match':
+        return `🎯 Rule Match • ${baseTitle}`;
+      case 'best_deal':
+        return `💎 Best Deal • ${baseTitle}`;
+      case 'new_item':
+        return `🆕 New Item • ${baseTitle}`;
+      default:
+        return `🔔 Alert • ${baseTitle}`;
+    }
+  }
+
+  /**
+   * Get embed color based on alert type
+   */
+  private getEmbedColor(alertType: 'match' | 'best_deal' | 'new_item'): number {
+    switch (alertType) {
+      case 'match':
+        return DISCORD_COLORS.MATCH;
+      case 'best_deal':
+        return DISCORD_COLORS.BEST_DEAL;
+      case 'new_item':
+        return DISCORD_COLORS.NEW_ITEM;
+      default:
+        return DISCORD_COLORS.MATCH;
+    }
+  }
+
+  /**
+   * Get alert message for content field
+   */
+  private getAlertMessage(alertType: 'match' | 'best_deal' | 'new_item'): string {
+    switch (alertType) {
+      case 'match':
+        return '🎯 **Your alert rule matched a new item!**';
+      case 'best_deal':
+        return '💎 **New best deal available!**';
+      case 'new_item':
+        return '🆕 **Fresh item just listed!**';
+      default:
+        return '🔔 **New item alert!**';
+    }
+  }
+
+  /**
+   * Test webhook connection
+   */
+  async testWebhook(webhookUrl: string): Promise<boolean> {
+    try {
+      const testEmbed: DiscordEmbed = {
+        title: '🧪 Test Notification',
+        description: 'SkinBaron Alerts is working correctly!',
+        color: DISCORD_COLORS.MATCH,
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'Test completed successfully',
+        },
+      };
+
+      const payload: DiscordWebhookPayload = {
+        username: this.botName,
+        avatar_url: this.botAvatar,
+        content: '✅ **Test notification from SkinBaron Alerts**',
+        embeds: [testEmbed],
+      };
+
+      const { statusCode } = await request(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'SkinBaron-Alerts/1.0',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      return statusCode === 204;
+    } catch (error) {
+      console.error('❌ Webhook test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send error notification
+   */
+  async sendErrorNotification(webhookUrl: string, error: string): Promise<boolean> {
+    try {
+      const errorEmbed: DiscordEmbed = {
+        title: '⚠️ SkinBaron Alerts Error',
+        description: `An error occurred while monitoring:\n\`\`\`${error}\`\`\``,
+        color: DISCORD_COLORS.ERROR,
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: 'Error notification',
+        },
+      };
+
+      const payload: DiscordWebhookPayload = {
+        username: this.botName,
+        avatar_url: this.botAvatar,
+        content: '⚠️ **System Alert**',
+        embeds: [errorEmbed],
+      };
+
+      const { statusCode } = await request(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'SkinBaron-Alerts/1.0',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      return statusCode === 204;
+    } catch (sendError) {
+      console.error('❌ Failed to send error notification:', sendError);
+      return false;
+    }
+  }
+
+  /**
+   * Format item for plain text display
+   */
+  formatItemText(item: SkinBaronItem): string {
+    const parts = [item.itemName];
+    
+    if (item.statTrak) parts.push('StatTrak™');
+    if (item.souvenir) parts.push('Souvenir');
+    if (item.wearValue) parts.push(`Wear: ${item.wearValue.toFixed(6)}`);
+    
+    parts.push(`${item.price} ${item.currency}`);
+    
+    return parts.join(' | ');
+  }
+
+  /**
+   * Mask sensitive webhook URL for logging
+   */
+  private maskWebhook(webhookUrl: string): string {
+    try {
+      const url = new URL(webhookUrl);
+      const pathParts = url.pathname.split('/');
+      if (pathParts.length >= 3) {
+        // Mask the webhook token (last part)
+        pathParts[pathParts.length - 1] = '***';
+        url.pathname = pathParts.join('/');
+      }
+      return url.toString();
+    } catch {
+      return 'invalid-webhook';
+    }
+  }
+}
+
+// Singleton instance
+let notificationInstance: NotificationService | null = null;
+
+export const getNotificationService = (): NotificationService => {
+  if (!notificationInstance) {
+    notificationInstance = new NotificationService();
+  }
+  return notificationInstance;
+};
+
+export default getNotificationService;
