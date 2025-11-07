@@ -10,6 +10,8 @@ services:
       - "${BACKEND_PORT:-8080}:8080"
     labels:
       - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
+      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-28-web.loadbalancer.server.port=8080"
+      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-28-websecure.loadbalancer.server.port=8080"
     environment:
       - NODE_ENV=production
       - PORT=8080
@@ -49,6 +51,8 @@ services:
       - "${FRONTEND_PORT:-3000}:3000"
     labels:
       - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
+      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-29-web.loadbalancer.server.port=3000"
+      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-29-websecure.loadbalancer.server.port=3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8080}
