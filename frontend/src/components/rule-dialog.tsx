@@ -145,7 +145,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   })
 
   const updateRuleMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<RuleFormData> }) =>
+    mutationFn: ({ id, data }: { id: number; data: CreateRuleData }) =>
       apiClient.updateRule(id, data),
     onSuccess: (result) => {
       if (result.success) {
@@ -168,10 +168,23 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     setIsSubmitting(true)
 
     try {
+      // Convert RuleFormData to CreateRuleData (they have the same structure)
+      const createData: CreateRuleData = {
+        search_item: data.search_item,
+        min_price: data.min_price || undefined,
+        max_price: data.max_price || undefined,
+        min_wear: data.min_wear,
+        max_wear: data.max_wear,
+        stattrak: data.stattrak,
+        souvenir: data.souvenir,
+        webhook_ids: data.webhook_ids,
+        enabled: data.enabled ?? true,
+      }
+
       if (isEditing && rule?.id) {
-        updateRuleMutation.mutate({ id: rule.id, data })
+        updateRuleMutation.mutate({ id: rule.id, data: createData })
       } else {
-        createRuleMutation.mutate(data)
+        createRuleMutation.mutate(createData)
       }
     } catch (error) {
       toast.error(`Failed to submit rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
