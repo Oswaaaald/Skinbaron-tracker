@@ -62,7 +62,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
                   max_wear: { type: 'number', nullable: true },
                   stattrak: { type: 'boolean', nullable: true },
                   souvenir: { type: 'boolean', nullable: true },
-                  discord_webhook: { type: 'string' },
+                  discord_webhook: { type: 'string', nullable: true },
+                  webhook_ids: { type: 'array', items: { type: 'number' }, nullable: true },
                   enabled: { type: 'boolean' },
                   created_at: { type: 'string' },
                   updated_at: { type: 'string' },
@@ -105,7 +106,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
-        required: ['search_item', 'discord_webhook'],
+        required: ['search_item'],
         properties: {
           search_item: { type: 'string', minLength: 1 },
           min_price: { type: 'number', minimum: 0 },
@@ -115,6 +116,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
           stattrak: { type: 'boolean' },
           souvenir: { type: 'boolean' },
           discord_webhook: { type: 'string', format: 'uri' },
+          webhook_ids: { type: 'array', items: { type: 'number' } },
           enabled: { type: 'boolean', default: true },
         },
       },
@@ -149,6 +151,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       // Parse body but add user_id from authenticated user
       const bodyData = request.body as any;
+      
+      // Validate that at least one webhook method is provided
+      if (!bodyData.discord_webhook && (!bodyData.webhook_ids || bodyData.webhook_ids.length === 0)) {
+        return reply.code(400).send({
+          success: false,
+          error: 'Webhook required',
+          message: 'Either discord_webhook or webhook_ids must be provided',
+        });
+      }
+      
       const ruleData = CreateRuleRequestSchema.parse({
         ...bodyData,
         user_id: request.user!.id.toString(), // Convert to string for compatibility
