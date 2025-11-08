@@ -99,15 +99,20 @@ export function RulesTable() {
         throw new Error('Rule ID is required');
       }
       
-      // Send complete rule data with updated enabled status (like create)
+      // Ensure webhook_ids has at least one item (required by backend validation)
+      if (!rule.webhook_ids || rule.webhook_ids.length === 0) {
+        throw new Error('Rule must have at least one webhook configured');
+      }
+      
+      // Send complete rule data with updated enabled status, ensuring all fields are properly set
       const updateData = {
         search_item: rule.search_item,
-        min_price: rule.min_price,
-        max_price: rule.max_price,
-        min_wear: rule.min_wear,
-        max_wear: rule.max_wear,
-        stattrak: rule.stattrak,
-        souvenir: rule.souvenir,
+        min_price: rule.min_price ?? undefined,
+        max_price: rule.max_price ?? undefined,
+        min_wear: rule.min_wear ?? undefined,
+        max_wear: rule.max_wear ?? undefined,
+        stattrak: rule.stattrak ?? false,
+        souvenir: rule.souvenir ?? false,
         webhook_ids: rule.webhook_ids,
         enabled: enabled,
       };
