@@ -177,21 +177,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       return
     }
 
-    console.log('Form data on submit:', data)
-    console.log('useDirectWebhook:', useDirectWebhook)
-    console.log('Form validation errors:', form.formState.errors)
-
-    // Check validation manually
-    const hasWebhookIds = data.webhook_ids && data.webhook_ids.length > 0
-    const hasDiscordWebhook = data.discord_webhook && data.discord_webhook.trim().length > 0
-    console.log('Validation check - hasWebhookIds:', hasWebhookIds, 'hasDiscordWebhook:', hasDiscordWebhook)
-
-    if (!hasWebhookIds && !hasDiscordWebhook) {
-      toast.error('Please select at least one webhook or provide a direct URL')
-      setIsSubmitting(false)
-      return
-    }
-
     setIsSubmitting(true)
     
     // Convert empty numbers to undefined and clean webhook data
