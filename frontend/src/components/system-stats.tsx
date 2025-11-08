@@ -11,8 +11,6 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Database,
-  Server,
   Settings,
   Trash2,
   RotateCcw
@@ -97,13 +95,16 @@ export function SystemStats() {
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      {/* Health Status */}
+      {/* System Health */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             System Health
           </CardTitle>
+          <CardDescription>
+            Overall system status and availability
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {health ? (
@@ -126,16 +127,6 @@ export function SystemStats() {
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Memory Usage</span>
-                <span className="text-sm font-mono">
-                  {health.stats?.memory && (health.stats.memory.heapUsed || health.stats.memory.heapTotal) ? 
-                    `${formatMemory(health.stats.memory.heapUsed)} / ${formatMemory(health.stats.memory.heapTotal)}` :
-                    'Loading...'
-                  }
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Version</span>
                 <span className="text-sm font-mono">{health.stats?.version || 'N/A'}</span>
               </div>
@@ -143,13 +134,13 @@ export function SystemStats() {
               <Separator />
               
               <div>
-                <h4 className="text-sm font-medium mb-2">Services</h4>
+                <h4 className="text-sm font-medium mb-2">Services Status</h4>
                 <div className="space-y-2">
                   {health.services && Object.entries(health.services).map(([service, serviceStatus]) => (
                     <div key={service} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{service}</span>
-                      <Badge variant={serviceStatus === 'healthy' ? 'default' : 'destructive'} className="text-xs">
-                        {String(serviceStatus)}
+                      <span className="text-sm capitalize">{service === 'scheduler' ? 'Alert Monitoring' : service}</span>
+                      <Badge variant={serviceStatus === 'healthy' || serviceStatus === 'running' ? 'default' : 'destructive'} className="text-xs">
+                        {serviceStatus === 'healthy' || serviceStatus === 'running' ? 'Online' : 'Offline'}
                       </Badge>
                     </div>
                   ))}
@@ -164,13 +155,16 @@ export function SystemStats() {
         </CardContent>
       </Card>
 
-      {/* Scheduler Status */}
+      {/* Alert Monitoring Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Scheduler Status
+            Alert Monitoring
           </CardTitle>
+          <CardDescription>
+            Automatic scanning for new items matching your rules
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {status?.scheduler && Object.keys(status.scheduler).length > 0 ? (
@@ -178,51 +172,54 @@ export function SystemStats() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
                 <Badge variant={status.scheduler.isRunning ? 'default' : 'secondary'}>
-                  {status.scheduler.isRunning ? 'Running' : 'Stopped'}
+                  {status.scheduler.isRunning ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Inactive
+                    </>
+                  )}
                 </Badge>
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Total Runs</span>
+                <span className="text-sm font-medium">Scans Completed</span>
                 <span className="text-sm">{status.scheduler.totalRuns || 0}</span>
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Total Alerts</span>
+                <span className="text-sm font-medium">Alerts Sent</span>
                 <span className="text-sm">{status.scheduler.totalAlerts || 0}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Error Count</span>
-                <Badge variant={(status.scheduler.errorCount || 0) > 0 ? 'destructive' : 'default'}>
-                  {status.scheduler.errorCount || 0}
-                </Badge>
               </div>
               
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Last Run</span>
+                  <span className="text-sm font-medium">Last Scan</span>
                   <span className="text-xs text-muted-foreground">
                     {formatDate(status.scheduler.lastRunTime)}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Next Run</span>
+                  <span className="text-sm font-medium">Next Scan</span>
                   <span className="text-xs text-muted-foreground">
                     {formatDate(status.scheduler.nextRunTime)}
                   </span>
                 </div>
               </div>
               
-              {status.scheduler.lastError && (
+              {(status.scheduler.errorCount || 0) > 0 && (
                 <>
                   <Separator />
-                  <div>
-                    <h4 className="text-sm font-medium text-red-600 mb-1">Last Error</h4>
-                    <p className="text-xs text-muted-foreground break-all">
-                      {status.scheduler.lastError}
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Recent Issues</span>
+                    <Badge variant="destructive">
+                      {status.scheduler.errorCount} errors
+                    </Badge>
                   </div>
                 </>
               )}
@@ -232,223 +229,38 @@ export function SystemStats() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
                 <Badge variant={health.services.scheduler === 'running' ? 'default' : 'secondary'}>
-                  {health.services.scheduler === 'running' ? 'Running' : 'Stopped'}
+                  {health.services.scheduler === 'running' ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
               <div className="text-center text-sm text-muted-foreground mt-4">
-                Detailed scheduler information unavailable
+                System is monitoring your rules automatically
+                <br />
+                <span className="text-xs">Scans happen every few minutes</span>
               </div>
             </>
           ) : (
             <div className="text-center text-muted-foreground">
-              Unable to load scheduler information
+              Unable to load monitoring information
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Database Statistics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Database Statistics
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {status?.database && Object.keys(status.database).length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{status.database.totalRules || 0}</div>
-                  <div className="text-xs text-muted-foreground">Total Rules</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{status.database.enabledRules || 0}</div>
-                  <div className="text-xs text-muted-foreground">Enabled Rules</div>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{status.database.totalAlerts || 0}</div>
-                  <div className="text-xs text-muted-foreground">Total Alerts</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{status.database.todayAlerts || 0}</div>
-                  <div className="text-xs text-muted-foreground">Today&apos;s Alerts</div>
-                </div>
-              </div>
-
-              {alertStats && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Alert Types</h4>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="text-center">
-                        <div className="font-mono">{alertStats.alertsByType?.match || 0}</div>
-                        <div className="text-muted-foreground">Matches</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-mono">{alertStats.alertsByType?.best_deal || 0}</div>
-                        <div className="text-muted-foreground">Best Deals</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-mono">{alertStats.alertsByType?.new_item || 0}</div>
-                        <div className="text-muted-foreground">New Items</div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </>
-          ) : alertStats ? (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{alertStats.totalRules || 0}</div>
-                  <div className="text-xs text-muted-foreground">Total Rules</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{alertStats.enabledRules || 0}</div>
-                  <div className="text-xs text-muted-foreground">Enabled Rules</div>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{alertStats.totalAlerts || 0}</div>
-                  <div className="text-xs text-muted-foreground">Total Alerts</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{alertStats.todayAlerts || 0}</div>
-                  <div className="text-xs text-muted-foreground">Today&apos;s Alerts</div>
-                </div>
-              </div>
-              
-              <Separator />
-              <div>
-                <h4 className="text-sm font-medium mb-2">Alert Types</h4>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="text-center">
-                    <div className="font-mono">{alertStats.alertsByType?.match || 0}</div>
-                    <div className="text-muted-foreground">Matches</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-mono">{alertStats.alertsByType?.best_deal || 0}</div>
-                    <div className="text-muted-foreground">Best Deals</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-mono">{alertStats.alertsByType?.new_item || 0}</div>
-                    <div className="text-muted-foreground">New Items</div>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-muted-foreground">
-              Unable to load database information
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Configuration */}
-      <Card>
+      {/* System Actions */}
+      <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Configuration
+            System Actions
           </CardTitle>
+          <CardDescription>
+            Maintenance and refresh options
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {status?.config && Object.keys(status.config).length > 0 ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Environment</span>
-                <Badge variant={status.config.nodeEnv === 'production' ? 'default' : 'secondary'}>
-                  {status.config.nodeEnv || 'unknown'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Poll Schedule</span>
-                <span className="text-sm font-mono">{status.config.pollCron || 'N/A'}</span>
-              </div>
-              
-              <div className="text-center text-sm text-muted-foreground mt-4">
-                System monitors your custom rules every 5 minutes
-              </div>
-            </>
-          ) : health ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Environment</span>
-                <Badge variant="secondary">
-                  Production (inferred)
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">System Status</span>
-                <Badge variant={health.status === 'healthy' ? 'default' : 'secondary'}>
-                  {health.status === 'healthy' ? 'Optimal' : 'Operational'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Scheduler</span>
-                <Badge variant={health.services?.scheduler === 'running' ? 'default' : 'secondary'}>
-                  {health.services?.scheduler === 'running' ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-              
-              <div className="text-center text-sm text-muted-foreground mt-4">
-                Detailed configuration loading...
-                <br />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    queryClient.invalidateQueries({ queryKey: ['system-status'] })
-                  }}
-                  className="mt-1 text-xs"
-                >
-                  Refresh
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-muted-foreground">
-              <div className="space-y-2">
-                <div>Loading configuration...</div>
-                <div className="text-xs">System is running normally</div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    queryClient.invalidateQueries({ queryKey: ['system-status'] })
-                  }}
-                  className="mt-2"
-                >
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Retry
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          <Separator />
-          
-          <div className="flex gap-2">
+        <CardContent>
+          <div className="flex gap-2 justify-center">
             <Button
               variant="outline"
-              size="sm"
               onClick={() => {
                 queryClient.invalidateQueries({ queryKey: ['health'] })
                 queryClient.invalidateQueries({ queryKey: ['system-status'] })
@@ -456,18 +268,23 @@ export function SystemStats() {
               }}
             >
               <RotateCcw className="h-4 w-4 mr-2" />
-              Refresh
+              Refresh Status
             </Button>
             
             <Button
               variant="outline"
-              size="sm"
               onClick={handleCleanupAlerts}
               disabled={cleanupAlertsMutation.isPending}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Cleanup Alerts
+              Cleanup Old Alerts
             </Button>
+          </div>
+          
+          <div className="text-center text-sm text-muted-foreground mt-4">
+            System automatically monitors your rules and sends alerts when matches are found.
+            <br />
+            Scans typically occur every few minutes.
           </div>
         </CardContent>
       </Card>
