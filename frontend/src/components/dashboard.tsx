@@ -24,6 +24,7 @@ import { RulesTable } from "@/components/rules-table"
 import { AlertsTable } from "@/components/alerts-table"
 import { RuleDialog } from "@/components/rule-dialog"
 import { SystemStats } from "@/components/system-stats"
+import { UserNav } from "@/components/user-nav"
 import { apiClient } from "@/lib/api"
 
 export function Dashboard() {
@@ -85,6 +86,9 @@ export function Dashboard() {
           <p className="text-muted-foreground">
             Monitor CS2 skins with custom alerts and Discord notifications
           </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <UserNav />
         </div>
         <div className="flex items-center gap-2">
           <Button

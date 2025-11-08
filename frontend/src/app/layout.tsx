@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/query-provider";
+import { AuthProvider } from "@/contexts/auth-context";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,12 +27,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <main className="min-h-screen bg-background">
-              {children}
-            </main>
-            <Toaster position="bottom-right" />
-          </QueryProvider>
+          <AuthProvider>
+            <QueryProvider>
+              <main className="min-h-screen bg-background">
+                {children}
+              </main>
+              <Toaster position="bottom-right" />
+            </QueryProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

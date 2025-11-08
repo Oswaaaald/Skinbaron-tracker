@@ -33,6 +33,17 @@ export interface Alert {
   sent_at?: string;
 }
 
+export interface Webhook {
+  id?: number;
+  user_id: number;
+  name: string;
+  webhook_url?: string; // Only present when decrypt=true
+  webhook_type: 'discord' | 'slack' | 'teams' | 'generic';
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -77,9 +88,15 @@ export interface SystemStats {
 
 class ApiClient {
   private baseURL: string;
+  private getAuthToken: (() => string | null) | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
+  }
+
+  // Method to set the auth token getter (will be called from auth context)
+  setAuthTokenGetter(getter: () => string | null) {
+    this.getAuthToken = getter;
   }
 
   private async request<T>(
@@ -89,10 +106,20 @@ class ApiClient {
     try {
       const url = `${this.baseURL}${endpoint}`;
       
-      // Only add Content-Type header if there's a body
+      // Build headers
       const headers: Record<string, string> = {};
+      
+      // Add Content-Type header if there's a body
       if (options.body) {
         headers['Content-Type'] = 'application/json';
+      }
+      
+      // Add Authorization header if we have a token
+      if (this.getAuthToken) {
+        const token = this.getAuthToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
       }
       
       const response = await fetch(url, {
@@ -257,6 +284,84 @@ class ApiClient {
   }>> {
     return this.request('/api/alerts/cleanup', {
       method: 'POST',
+    });
+  }
+
+  // Webhook endpoints
+  async getWebhooks(decrypt: boolean = false): Promise<ApiResponse<Webhook[]>> {
+    const query = decrypt ? '?decrypt=true' : '';
+    return this.request<Webhook[]>(`/api/webhooks${query}`);
+  }
+
+  async getWebhook(id: number, decrypt: boolean = false): Promise<ApiResponse<Webhook>> {
+    const query = decrypt ? '?decrypt=true' : '';
+    return this.request<Webhook>(`/api/webhooks/${id}${query}`);
+  }
+
+  async createWebhook(webhook: Omit<Webhook, 'id' | 'user_id' | 'created_at' | 'updated_at'> & { webhook_url: string }): Promise<ApiResponse<Webhook>> {
+    return this.request<Webhook>('/api/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(webhook),
+    });
+  }
+
+  async updateWebhook(id: number, updates: Partial<Webhook>): Promise<ApiResponse<Webhook>> {
+    return this.request<Webhook>(`/api/webhooks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteWebhook(id: number): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(`/api/webhooks/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getActiveWebhooks(): Promise<ApiResponse<Webhook[]>> {
+    return this.request<Webhook[]>('/api/webhooks/active');
+  }
+
+  // Authentication endpoints
+  async login(email: string, password: string): Promise<ApiResponse<{
+    id: number;
+    username: string;
+    email: string;
+    token: string;
+  }>> {
+    return this.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async register(username: string, email: string, password: string): Promise<ApiResponse<{
+    id: number;
+    username: string;
+    email: string;
+    token: string;
+  }>> {
+    return this.request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password }),
+    });
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
+
+  async updateProfile(updates: { username?: string; email?: string }): Promise<ApiResponse<{
+    id: number;
+    username: string;
+    email: string;
+  }>> {
+    return this.request('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
     });
   }
 }
