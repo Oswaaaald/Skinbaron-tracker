@@ -211,18 +211,7 @@ export function SystemStats() {
                   </span>
                 </div>
               </div>
-              
-              {(status.scheduler.errorCount || 0) > 0 && (
-                <>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Recent Issues</span>
-                    <Badge variant="destructive">
-                      {status.scheduler.errorCount} errors
-                    </Badge>
-                  </div>
-                </>
-              )}
+
             </>
           ) : health?.services?.scheduler ? (
             <>
