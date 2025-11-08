@@ -2,47 +2,43 @@ import { request } from 'undici';
 import { z } from 'zod';
 import { appConfig, SKINBARON_API } from './config.js';
 
-// SkinBaron API Response Schemas
-export const SkinBaronItemSchema = z.object({
-  saleId: z.string(),
-  itemName: z.string(),
+// SkinBaron API Response Schemas (matching official API)
+export const SkinBaronSaleSchema = z.object({
+  id: z.string(), // SkinBaron sale ID
   price: z.number(),
-  wearValue: z.number().optional(),
-  statTrak: z.boolean().optional(),
-  souvenir: z.boolean().optional(),
-  sellerName: z.string().optional(),
-  currency: z.string().optional(),
+  img: z.string().optional(), // Steam image URL
+  market_name: z.string(), // Steam market hash name
   // Additional fields that might be returned
+  wear: z.number().optional(),
+  stattrak: z.boolean().optional(),
+  souvenir: z.boolean().optional(),
+  seller: z.string().optional(),
+  currency: z.string().optional(),
   quality: z.string().optional(),
   rarity: z.string().optional(),
-  weapon: z.string().optional(),
-  category: z.string().optional(),
 });
 
 export const SearchResponseSchema = z.object({
-  success: z.boolean(),
-  items: z.array(SkinBaronItemSchema).optional(),
-  totalItems: z.number().optional(),
-  message: z.string().optional(),
+  sales: z.array(SkinBaronSaleSchema).optional(),
 });
 
-export const BestDealsResponseSchema = z.object({
-  success: z.boolean(),
-  items: z.array(SkinBaronItemSchema).optional(),
-  message: z.string().optional(),
-});
-
-export const NewestItemsResponseSchema = z.object({
-  success: z.boolean(),
-  items: z.array(SkinBaronItemSchema).optional(),
-  message: z.string().optional(),
-});
-
-// Types
-export type SkinBaronItem = z.infer<typeof SkinBaronItemSchema>;
+// Types for the actual API response structure
+export type SkinBaronSale = z.infer<typeof SkinBaronSaleSchema>;
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
-export type BestDealsResponse = z.infer<typeof BestDealsResponseSchema>;
-export type NewestItemsResponse = z.infer<typeof NewestItemsResponseSchema>;
+
+// Legacy type for backward compatibility - we'll adapt sales to items
+export interface SkinBaronItem {
+  saleId: string;
+  itemName: string;
+  price: number;
+  wearValue?: number;
+  statTrak?: boolean;
+  souvenir?: boolean;
+  sellerName?: string;
+  currency?: string;
+  quality?: string;
+  rarity?: string;
+}
 
 // Search parameters
 export interface SearchParams {
@@ -56,11 +52,7 @@ export interface SearchParams {
   limit?: number;
 }
 
-export interface FeedParams {
-  limit?: number;
-  maxPrice?: number;
-  maxWear?: number;
-}
+
 
 export class SkinBaronClient {
   private baseURL = SKINBARON_API.BASE_URL;
@@ -77,29 +69,28 @@ export class SkinBaronClient {
     schema: z.ZodSchema<T>
   ): Promise<T> {
     try {
-      const baseParams: Record<string, string> = {
-        appid: this.appId.toString(),
-        ...this.sanitizeParams(params),
+      const requestBody: Record<string, any> = {
+        appid: this.appId,
+        ...params,
       };
 
       // Only add API key if provided
       if (this.apiKey) {
-        baseParams.apikey = this.apiKey;
+        requestBody.apikey = this.apiKey;
       }
-
-      const searchParams = new URLSearchParams(baseParams);
 
       const url = `${this.baseURL}${endpoint}`;
       
-      
+      console.log(`🔍 SkinBaron API Request to ${endpoint}:`, requestBody);
 
       const { statusCode, body } = await request(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
+          'x-requested-with': 'XMLHttpRequest',
           'User-Agent': 'SkinBaron-Alerts/1.0',
         },
-        body: searchParams.toString(),
+        body: JSON.stringify(requestBody),
       });
 
       if (statusCode !== 200) {
@@ -107,6 +98,8 @@ export class SkinBaronClient {
       }
 
       const rawData = await body.text();
+      console.log(`📡 SkinBaron API Response from ${endpoint}:`, rawData.substring(0, 500));
+      
       let jsonData;
       
       try {
@@ -126,35 +119,18 @@ export class SkinBaronClient {
     }
   }
 
-  private sanitizeParams(params: Record<string, any>): Record<string, string> {
-    const sanitized: Record<string, string> = {};
-    
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null) {
-        if (typeof value === 'boolean') {
-          sanitized[key] = value ? '1' : '0';
-        } else {
-          sanitized[key] = String(value);
-        }
-      }
-    }
-    
-    return sanitized;
-  }
+
 
   /**
    * Search for items on SkinBaron
    */
-  async search(params: SearchParams): Promise<SearchResponse> {
+  async search(params: SearchParams): Promise<{ items: SkinBaronItem[] }> {
     const searchData = {
       search_item: params.search_item,
       ...(params.min !== undefined && { min: params.min }),
       ...(params.max !== undefined && { max: params.max }),
-      ...(params.minWear !== undefined && { minWear: params.minWear }),
-      ...(params.maxWear !== undefined && { maxWear: params.maxWear }),
-      ...(params.statTrak !== undefined && { statTrak: params.statTrak }),
-      ...(params.souvenir !== undefined && { souvenir: params.souvenir }),
-      ...(params.limit !== undefined && { limit: params.limit }),
+      ...(params.statTrak !== undefined && { stattrak: params.statTrak }),
+      ...(params.limit !== undefined && { items_per_page: params.limit }),
     };
 
     const result = await this.makeRequest(
@@ -163,79 +139,48 @@ export class SkinBaronClient {
       SearchResponseSchema
     );
 
-    // Normalize items
-    if (result.items) {
-      result.items = result.items.map(item => this.normalizeItem(item));
-    }
+    // Convert sales to items format for backward compatibility
+    const items: SkinBaronItem[] = (result.sales || []).map(sale => ({
+      saleId: sale.id,
+      itemName: sale.market_name,
+      price: sale.price,
+      wearValue: sale.wear,
+      statTrak: sale.stattrak,
+      souvenir: sale.souvenir,
+      sellerName: sale.seller,
+      currency: sale.currency || 'EUR',
+      quality: sale.quality,
+      rarity: sale.rarity,
+    }));
 
-    return result;
+    return { items };
   }
 
-  /**
-   * Get best deals from SkinBaron
-   */
-  async getBestDeals(params: FeedParams = {}): Promise<BestDealsResponse> {
-    const feedData = {
-      ...(params.limit !== undefined && { limit: params.limit }),
-      ...(params.maxPrice !== undefined && { maxPrice: params.maxPrice }),
-      ...(params.maxWear !== undefined && { maxWear: params.maxWear }),
-    };
 
-    const result = await this.makeRequest(
-      SKINBARON_API.ENDPOINTS.BEST_DEALS,
-      feedData,
-      BestDealsResponseSchema
-    );
-
-    // Normalize items
-    if (result.items) {
-      result.items = result.items.map(item => this.normalizeItem(item));
-    }
-
-    return result;
-  }
-
-  /**
-   * Get newest items from SkinBaron
-   */
-  async getNewestItems(params: FeedParams = {}): Promise<NewestItemsResponse> {
-    const feedData = {
-      ...(params.limit !== undefined && { limit: params.limit }),
-      ...(params.maxPrice !== undefined && { maxPrice: params.maxPrice }),
-      ...(params.maxWear !== undefined && { maxWear: params.maxWear }),
-    };
-
-    const result = await this.makeRequest(
-      SKINBARON_API.ENDPOINTS.NEWEST_ITEMS,
-      feedData,
-      NewestItemsResponseSchema
-    );
-
-    // Normalize items
-    if (result.items) {
-      result.items = result.items.map(item => this.normalizeItem(item));
-    }
-
-    return result;
-  }
 
   /**
    * Test API connection
    */
   async testConnection(): Promise<boolean> {
-    // Temporarily skip the API test due to 415 errors
-    // The API might need different authentication or the endpoint may have changed
-    return false; // Mark as unhealthy but don't crash the application
+    try {
+      // Simple search to test API connectivity
+      await this.search({ 
+        search_item: 'ak-47',
+        limit: 1
+      });
+      return true;
+    } catch (error) {
+      console.error('❌ SkinBaron API connection test failed:', error);
+      return false;
+    }
   }
 
   /**
    * Generate SkinBaron listing URL
    */
   getSkinUrl(saleId: string): string {
-    return `https://skinbaron.de/listing/${saleId}`;
+    return `https://skinbaron.de/offers/show/${saleId}`;
   }
-
-
 
   /**
    * Check if an item matches the given filters

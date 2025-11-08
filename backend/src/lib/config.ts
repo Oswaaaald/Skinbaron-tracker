@@ -58,8 +58,6 @@ export const SKINBARON_API = {
   APP_ID: 730, // CS2/CS:GO Steam App ID
   ENDPOINTS: {
     SEARCH: '/Search',
-    BEST_DEALS: '/BestDeals',
-    NEWEST_ITEMS: '/NewestItems',
   },
 } as const;
 
