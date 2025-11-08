@@ -592,14 +592,52 @@ export class Store {
 
   // Webhook encryption utilities
   private encryptWebhookUrl(url: string): string {
-    const secretKey = appConfig.JWT_SECRET; // Use existing secret for encryption
-    return CryptoJS.AES.encrypt(url, secretKey).toString();
+    const secretKey = appConfig.JWT_SECRET;
+    
+    try {
+      // Use a more explicit encoding approach
+      const encrypted = CryptoJS.AES.encrypt(url, secretKey);
+      return encrypted.toString();
+    } catch (error) {
+      console.error('Webhook encryption failed:', error instanceof Error ? error.message : error);
+      throw new Error('Failed to encrypt webhook URL');
+    }
   }
 
   private decryptWebhookUrl(encryptedUrl: string): string {
     const secretKey = appConfig.JWT_SECRET;
-    const bytes = CryptoJS.AES.decrypt(encryptedUrl, secretKey);
-    return bytes.toString(CryptoJS.enc.Utf8);
+    
+    if (!encryptedUrl || !secretKey) {
+      console.warn('Missing encrypted URL or secret key');
+      return '';
+    }
+    
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedUrl, secretKey);
+      
+      if (!bytes || bytes.words.length === 0) {
+        console.warn('Decryption returned empty bytes - wrong key or corrupted data');
+        return '';
+      }
+      
+      const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+      
+      // Validate that we got a proper URL back
+      if (!decrypted || decrypted.length === 0) {
+        console.warn('Decrypted string is empty');
+        return '';
+      }
+      
+      if (!decrypted.startsWith('http')) {
+        console.warn('Decrypted string is not a valid URL:', decrypted.substring(0, 20));
+        return '';
+      }
+      
+      return decrypted;
+    } catch (error) {
+      console.error('Webhook decryption failed:', error instanceof Error ? error.message : error);
+      return '';
+    }
   }
 
   // User webhook CRUD operations
@@ -737,11 +775,13 @@ export class Store {
       `);
       const rows = stmt.all(...rule.webhook_ids) as any[];
       
-      return rows.map(row => ({
-        ...row,
-        is_active: Boolean(row.is_active),
-        webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
-      }));
+      return rows
+        .map(row => ({
+          ...row,
+          is_active: Boolean(row.is_active),
+          webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
+        }))
+        .filter(webhook => webhook.webhook_url && webhook.webhook_url.length > 0); // Filter out failed decryptions
     }
 
     // Fallback to legacy discord_webhook
