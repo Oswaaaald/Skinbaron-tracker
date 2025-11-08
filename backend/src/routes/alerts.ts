@@ -260,7 +260,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * POST /alerts/cleanup - Cleanup user's old alerts (older than 30 days)
+   * POST /alerts/cleanup - Cleanup user's old alerts (older than 7 days)
    */
   fastify.post('/cleanup', {
     preHandler: [fastify.authenticate],
@@ -275,7 +275,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         success: true,
         data: {
           deletedCount,
-          message: `Successfully deleted ${deletedCount} of your old alerts (30+ days)`,
+          message: `Successfully deleted ${deletedCount} of your old alerts (7+ days)`,
         },
       });
     } catch (error) {
@@ -283,6 +283,35 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(500).send({
         success: false,
         error: 'Failed to cleanup alerts',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /alerts/clear-all - Delete all user alerts
+   */
+  fastify.post('/clear-all', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
+    try {
+      const userId = (request as any).user.id;
+      const deletedCount = store.deleteAllUserAlerts(userId);
+      
+      request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);
+      
+      return reply.code(200).send({
+        success: true,
+        data: {
+          deletedCount,
+          message: `Successfully deleted all ${deletedCount} of your alerts`,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to clear all user alerts');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to clear alerts',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
     }

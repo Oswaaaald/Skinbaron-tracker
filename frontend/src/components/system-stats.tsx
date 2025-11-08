@@ -1,25 +1,20 @@
 "use client"
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { 
   Activity,
   AlertCircle,
   CheckCircle,
-  Clock,
-  Settings,
-  Trash2,
-  RotateCcw
+  Clock
 } from "lucide-react"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
 
 export function SystemStats() {
-  const queryClient = useQueryClient()
 
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
@@ -39,28 +34,7 @@ export function SystemStats() {
     refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes
   })
 
-  const cleanupAlertsMutation = useMutation({
-    mutationFn: () => apiClient.cleanupAlerts(),
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(`Cleanup completed: ${data.data?.deletedCount || 0} alerts deleted`)
-        queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        queryClient.invalidateQueries({ queryKey: ['alert-stats'] })
-        queryClient.invalidateQueries({ queryKey: ['system-status'] })
-      } else {
-        toast.error(data.error || 'Cleanup failed')
-      }
-    },
-    onError: (error) => {
-      toast.error(`Cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    },
-  })
 
-  const handleCleanupAlerts = () => {
-    if (confirm('Are you sure you want to clean up your old alerts? This will remove YOUR alerts older than 30 days. This action cannot be undone.')) {
-      cleanupAlertsMutation.mutate()
-    }
-  }
 
   if (isLoadingHealth || isLoadingStatus) {
     return <LoadingSpinner />
@@ -235,36 +209,7 @@ export function SystemStats() {
         </CardContent>
       </Card>
 
-      {/* System Actions */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            System Maintenance
-          </CardTitle>
-          <CardDescription>
-            Cleanup and maintenance options
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2 justify-center">
-            <Button
-              variant="outline"
-              onClick={handleCleanupAlerts}
-              disabled={cleanupAlertsMutation.isPending}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Cleanup My Old Alerts
-            </Button>
-          </div>
-          
-          <div className="text-center text-sm text-muted-foreground mt-4">
-            System automatically monitors your rules and sends alerts when matches are found.
-            <br />
-            Data refreshes automatically - no manual refresh needed.
-          </div>
-        </CardContent>
-      </Card>
+
     </div>
   )
 }

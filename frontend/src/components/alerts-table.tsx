@@ -35,27 +35,30 @@ export function AlertsTable() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
-  const [isCleaningUp, setIsCleaningUp] = useState(false)
+  const [isClearingAll, setIsClearingAll] = useState(false)
   const limit = 20
   const queryClient = useQueryClient()
 
-  const handleCleanupAlerts = async () => {
-    if (isCleaningUp) return
+  const handleClearAllAlerts = async () => {
+    if (isClearingAll) return
     
-    setIsCleaningUp(true)
+    if (!confirm('⚠️ Are you sure you want to delete ALL your alerts? This cannot be undone.')) {
+      return
+    }
+    
+    setIsClearingAll(true)
     try {
-      const response = await apiClient.cleanupAlerts()
+      const response = await apiClient.clearAllAlerts()
       if (response.success) {
         // Refresh the alerts list
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        // Show success message (you might want to add a toast notification here)
-        console.log(`Successfully deleted ${response.data?.deletedCount} old alerts`)
+        alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
       }
     } catch (error) {
-      console.error('Failed to cleanup alerts:', error)
-      // Show error message (you might want to add a toast notification here)
+      console.error('Failed to clear all alerts:', error)
+      alert('❌ Failed to clear alerts')
     } finally {
-      setIsCleaningUp(false)
+      setIsClearingAll(false)
     }
   }
 
@@ -165,17 +168,17 @@ export function AlertsTable() {
           </label>
           <Button
             variant="outline"
-            onClick={handleCleanupAlerts}
-            disabled={isCleaningUp}
+            onClick={handleClearAllAlerts}
+            disabled={isClearingAll}
             className="w-[180px]"
           >
-            {isCleaningUp ? (
+            {isClearingAll ? (
               <>
                 <LoadingSpinner />
-                Cleaning...
+                Clearing...
               </>
             ) : (
-              'Clean My Old Alerts'
+              'Clear All Alerts'
             )}
           </Button>
         </div>

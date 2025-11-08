@@ -283,6 +283,15 @@ class ApiClient {
     });
   }
 
+  async clearAllAlerts(): Promise<ApiResponse<{
+    deletedCount: number;
+    message: string;
+  }>> {
+    return this.request('/api/alerts/clear-all', {
+      method: 'POST',
+    });
+  }
+
   // Webhook endpoints
   async getWebhooks(decrypt: boolean = false): Promise<ApiResponse<Webhook[]>> {
     const query = decrypt ? '?decrypt=true' : '';
