@@ -30,9 +30,9 @@ import { toast } from "sonner"
 import { apiClient, type Rule, type Webhook } from "@/lib/api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
+import { useAuth } from "@/contexts/auth-context"
 
 const ruleFormSchema = z.object({
-  user_id: z.string().min(1, "User ID is required"),
   search_item: z.string().min(1, "Search item is required"),
   min_price: z.number().positive().optional().or(z.literal(0)),
   max_price: z.number().positive().optional().or(z.literal(0)),
@@ -63,6 +63,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [useDirectWebhook, setUseDirectWebhook] = useState(false)
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   const isEditing = !!rule
 
   // Fetch user's webhooks
@@ -79,7 +80,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const form = useForm<RuleFormData>({
     resolver: zodResolver(ruleFormSchema),
     defaultValues: {
-      user_id: "",
       search_item: "",
       min_price: 0,
       max_price: 0,
@@ -102,7 +102,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         setUseDirectWebhook(hasDirectWebhook)
         
         form.reset({
-          user_id: rule.user_id,
           search_item: rule.search_item,
           min_price: rule.min_price || 0,
           max_price: rule.max_price || 0,
@@ -119,7 +118,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         setUseDirectWebhook(false)
         
         form.reset({
-          user_id: "",
           search_item: "",
           min_price: 0,
           max_price: 0,
@@ -168,11 +166,17 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   })
 
   const onSubmit = async (data: RuleFormData) => {
+    if (!user) {
+      toast.error('User not authenticated')
+      return
+    }
+
     setIsSubmitting(true)
     
     // Convert empty numbers to undefined and clean webhook data
     const processedData: any = {
       ...data,
+      user_id: user.id, // Automatically use authenticated user's ID
       min_price: data.min_price === 0 ? undefined : data.min_price,
       max_price: data.max_price === 0 ? undefined : data.max_price,
     }
@@ -209,23 +213,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="user_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>User ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., user123" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Unique identifier for this rule owner
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <FormField
                 control={form.control}
                 name="search_item"
