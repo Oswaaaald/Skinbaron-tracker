@@ -109,8 +109,8 @@ export default async function testRoutes(fastify: FastifyInstance) {
       }
 
       // Import the notifier
-      const notifierModule = await import('../lib/notifier.js');
-      const notifier = notifierModule.default;
+      const { getNotificationService } = await import('../lib/notifier.js');
+      const notifier = getNotificationService();
 
       // Create a test item
       const mockItem = testItem || {
@@ -125,18 +125,23 @@ export default async function testRoutes(fastify: FastifyInstance) {
       };
 
       const mockRule = {
-        id: 'test',
+        user_id: 'test-user',
         name: 'Test Rule',
-        webhookUrl,
         search_item: 'AK-47',
         max_price: 30,
+        discord_webhook: webhookUrl,
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
       // Send test notification
-      await notifier.sendAlert(mockRule, mockItem, 'https://skinbaron.de/listing/test-123');
+      await notifier.sendNotification(webhookUrl, {
+        item: mockItem,
+        skinUrl: 'https://skinbaron.de/listing/test-123',
+        alertType: 'match',
+        rule: mockRule
+      });
 
       return reply.send({
         success: true,
@@ -201,8 +206,8 @@ export default async function testRoutes(fastify: FastifyInstance) {
       }
 
       // Step 2: Test webhook with real item
-      const notifierModule = await import('../lib/notifier.js');
-      const notifier = notifierModule.default;
+      const { getNotificationService } = await import('../lib/notifier.js');
+      const notifier = getNotificationService();
 
       const testItem = searchResult.items[0];
       if (!testItem) {
@@ -213,21 +218,22 @@ export default async function testRoutes(fastify: FastifyInstance) {
       }
 
       const mockRule = {
-        id: 'workflow-test',
+        user_id: 'workflow-test',
         name: `Test: ${searchItem}`,
-        webhookUrl,
         search_item: searchItem,
         max_price: maxPrice,
+        discord_webhook: webhookUrl,
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
-      await notifier.sendAlert(
-        mockRule, 
-        testItem, 
-        client.getSkinUrl(testItem.saleId)
-      );
+      await notifier.sendNotification(webhookUrl, {
+        item: testItem, 
+        skinUrl: client.getSkinUrl(testItem.saleId),
+        alertType: 'match',
+        rule: mockRule
+      });
 
       return reply.send({
         success: true,

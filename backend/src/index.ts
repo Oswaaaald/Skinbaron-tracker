@@ -375,7 +375,10 @@ async function initializeApp() {
 
     // Register plugins and routes
     await registerPlugins();
-    await setupRoutes();
+    await setupHealthCheck();
+    await setupSystemStatus();
+    await setupSchedulerControls();
+    await registerRoutes();
 
     // Start server
     const address = await fastify.listen({
