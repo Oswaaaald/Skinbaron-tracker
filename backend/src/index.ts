@@ -109,18 +109,28 @@ async function setupHealthCheck() {
     }
     
     // Check scheduler health
-    let schedulerHealth = 'stopped';
+    let schedulerHealth = 'unhealthy';
     try {
-      const schedulerStats = scheduler.getStats();
+      const schedulerStats = getScheduler().getStats();
       schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
     } catch (error) {
       schedulerHealth = 'unhealthy';
+    }
+
+    // Check SkinBaron API health
+    let skinbaronHealth = 'unhealthy';
+    try {
+      const skinbaronClient = getSkinBaronClient();
+      const isConnected = await skinbaronClient.testConnection();
+      skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
+    } catch (error) {
+      skinbaronHealth = 'unhealthy';
     }
     
     // Determine overall status
     const services = {
       database: dbHealth,
-      skinbaron_api: 'unhealthy', // Always unhealthy without API key
+      skinbaron_api: skinbaronHealth,
       scheduler: schedulerHealth
     };
     
