@@ -61,6 +61,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const { user } = useAuth()
   const isEditing = !!rule
 
+  // Local state for display values (separate from form values)
+  const [minPriceDisplay, setMinPriceDisplay] = useState('')
+  const [maxPriceDisplay, setMaxPriceDisplay] = useState('')
+  const [minWearDisplay, setMinWearDisplay] = useState('')
+  const [maxWearDisplay, setMaxWearDisplay] = useState('')
+
   // Fetch user's webhooks
   const { data: webhooks = [] } = useQuery({
     queryKey: ['webhooks'],
@@ -104,6 +110,11 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           enabled: rule.enabled ?? true,
         })
         setSelectedWebhooks(rule.webhook_ids || [])
+        // Sync display values
+        setMinPriceDisplay(rule.min_price?.toString() || '')
+        setMaxPriceDisplay(rule.max_price?.toString() || '')
+        setMinWearDisplay(rule.min_wear !== undefined ? wearToPercentage(rule.min_wear).toString() : '')
+        setMaxWearDisplay(rule.max_wear !== undefined ? wearToPercentage(rule.max_wear).toString() : '')
       } else {
         // Creating new rule
         form.reset({
@@ -118,6 +129,11 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           enabled: true,
         })
         setSelectedWebhooks([])
+        // Reset display values
+        setMinPriceDisplay('')
+        setMaxPriceDisplay('')
+        setMinWearDisplay('')
+        setMaxWearDisplay('')
       }
     }
   }, [open, rule, form])
@@ -253,103 +269,91 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Min Price (€)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="ex: 10.50"
-                        value={field.value?.toString() || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            // Allow any text during typing, validate only on blur
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0) {
-                              field.onChange(num)
-                            } else if (val.match(/^\d*\.?\d*$/)) {
-                              // Allow partial numbers like "4", "4.", "4.5" during typing
-                              field.onChange(val as any)
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          // Clean up on blur - ensure it's a valid number
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0) {
-                              field.onChange(num)
-                            } else {
+                render={({ field }) => {
+                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Min Price (€)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="ex: 10.50"
+                          value={displayValue}
+                          onChange={(e) => {
+                            setDisplayValue(e.target.value)
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim()
+                            if (val === '') {
                               field.onChange(undefined)
+                              setDisplayValue('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0) {
+                                field.onChange(num)
+                                setDisplayValue(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setDisplayValue('')
+                              }
                             }
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Prix minimum en euros. Laissez vide pour ignorer.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Prix minimum en euros. Laissez vide pour ignorer.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="max_price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Price (€)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="ex: 50"
-                        value={field.value?.toString() || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            // Allow any text during typing, validate only on blur
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0) {
-                              field.onChange(num)
-                            } else if (val.match(/^\d*\.?\d*$/)) {
-                              // Allow partial numbers like "4", "4.", "4.5" during typing
-                              field.onChange(val as any)
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          // Clean up on blur - ensure it's a valid number
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0) {
-                              field.onChange(num)
-                            } else {
+                render={({ field }) => {
+                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Max Price (€)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="ex: 50"
+                          value={displayValue}
+                          onChange={(e) => {
+                            setDisplayValue(e.target.value)
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim()
+                            if (val === '') {
                               field.onChange(undefined)
+                              setDisplayValue('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0) {
+                                field.onChange(num)
+                                setDisplayValue(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setDisplayValue('')
+                              }
                             }
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Prix maximum en euros. Laissez vide pour ignorer.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Prix maximum en euros. Laissez vide pour ignorer.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
             </div>
 
@@ -358,103 +362,91 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_wear"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Min Wear (0-100%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="ex: 15"
-                        value={field.value?.toString() || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            // Allow any text during typing, validate only on blur
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              field.onChange(num)
-                            } else if (val.match(/^\d*\.?\d*$/)) {
-                              // Allow partial numbers like "1", "15", "15." during typing
-                              field.onChange(val as any)
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          // Clean up on blur - ensure it's a valid number between 0-100
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              field.onChange(num)
-                            } else {
+                render={({ field }) => {
+                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Min Wear (0-100%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="ex: 15"
+                          value={displayValue}
+                          onChange={(e) => {
+                            setDisplayValue(e.target.value)
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim()
+                            if (val === '') {
                               field.onChange(undefined)
+                              setDisplayValue('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0 && num <= 100) {
+                                field.onChange(num)
+                                setDisplayValue(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setDisplayValue('')
+                              }
                             }
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Entre 0 et 100. Laissez vide pour ignorer.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Entre 0 et 100. Laissez vide pour ignorer.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="max_wear"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Wear (0-100%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="ex: 85"
-                        value={field.value?.toString() || ''}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            // Allow any text during typing, validate only on blur
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              field.onChange(num)
-                            } else if (val.match(/^\d*\.?\d*$/)) {
-                              // Allow partial numbers like "8", "85", "85." during typing
-                              field.onChange(val as any)
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          // Clean up on blur - ensure it's a valid number between 0-100
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              field.onChange(num)
-                            } else {
+                render={({ field }) => {
+                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Max Wear (0-100%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="ex: 85"
+                          value={displayValue}
+                          onChange={(e) => {
+                            setDisplayValue(e.target.value)
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value.trim()
+                            if (val === '') {
                               field.onChange(undefined)
+                              setDisplayValue('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0 && num <= 100) {
+                                field.onChange(num)
+                                setDisplayValue(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setDisplayValue('')
+                              }
                             }
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Entre 0 et 100. Laissez vide pour ignorer.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Entre 0 et 100. Laissez vide pour ignorer.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
             </div>
 
