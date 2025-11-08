@@ -9,7 +9,6 @@ import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
 import rulesRoutes from './routes/rules.js';
 import alertsRoutes from './routes/alerts.js';
-import testRoutes from './routes/test.js';
 
 // Create Fastify instance
 const fastify = Fastify({
@@ -258,7 +257,6 @@ async function registerRoutes() {
   // Rules CRUD
   await fastify.register(rulesRoutes, { prefix: '/api/rules' });
   await fastify.register(alertsRoutes, { prefix: '/api/alerts' });
-  await fastify.register(testRoutes);
 }
 
 // Initialize application

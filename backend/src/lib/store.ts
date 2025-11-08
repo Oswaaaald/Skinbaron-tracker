@@ -16,21 +16,13 @@ export const RuleSchema = z.object({
   max_wear: z.number().min(0).max(1).optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
-  webhook_ids: z.array(z.number()).optional(), // Array of webhook IDs for this rule
-  discord_webhook: z.string().url('Valid Discord webhook URL required').optional(), // Keep for backward compatibility
+  webhook_ids: z.array(z.number()).min(1, 'At least one webhook ID is required'),
   enabled: z.boolean().default(true),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
 
-// Flexible rule creation - can use either webhook_ids or direct discord_webhook
-export const CreateRuleSchema = RuleSchema.omit({ id: true, created_at: true, updated_at: true }).refine(
-  (data) => data.webhook_ids?.length || data.discord_webhook,
-  {
-    message: "Either webhook_ids or discord_webhook must be provided",
-    path: ["webhooks"],
-  }
-);
+export const CreateRuleSchema = RuleSchema.omit({ id: true, created_at: true, updated_at: true });
 
 export const AlertSchema = z.object({
   id: z.number().optional(),
@@ -129,7 +121,6 @@ export class Store {
         max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
         stattrak BOOLEAN DEFAULT 0,
         souvenir BOOLEAN DEFAULT 0,
-        discord_webhook TEXT, -- Made optional for backward compatibility
         webhook_ids TEXT, -- JSON array of webhook IDs
         enabled BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -196,24 +187,13 @@ export class Store {
       )
     `);
 
-    // Create rule-webhook junction table (many-to-many relationship)
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS rule_webhooks (
-        rule_id INTEGER NOT NULL,
-        webhook_id INTEGER NOT NULL,
-        PRIMARY KEY (rule_id, webhook_id),
-        FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE,
-        FOREIGN KEY (webhook_id) REFERENCES user_webhooks (id) ON DELETE CASCADE
-      )
-    `);
+
 
     // Add indexes for users
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
-      CREATE INDEX IF NOT EXISTS idx_rule_webhooks_rule ON rule_webhooks(rule_id);
-      CREATE INDEX IF NOT EXISTS idx_rule_webhooks_webhook ON rule_webhooks(webhook_id);
     `);
 
     console.log('✅ User tables initialized');
@@ -225,8 +205,8 @@ export class Store {
     
     const stmt = this.db.prepare(`
       INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                        stattrak, souvenir, discord_webhook, webhook_ids, enabled)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        stattrak, souvenir, webhook_ids, enabled)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -238,8 +218,7 @@ export class Store {
       validated.max_wear ?? null,
       validated.stattrak ? 1 : 0,
       validated.souvenir ? 1 : 0,
-      validated.discord_webhook ?? null,
-      validated.webhook_ids ? JSON.stringify(validated.webhook_ids) : null,
+      JSON.stringify(validated.webhook_ids),
       validated.enabled ? 1 : 0
     );
 
@@ -366,7 +345,7 @@ export class Store {
     const stmt = this.db.prepare(`
       UPDATE rules 
       SET user_id = ?, search_item = ?, min_price = ?, max_price = ?, min_wear = ?, max_wear = ?, 
-          stattrak = ?, souvenir = ?, discord_webhook = ?, webhook_ids = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+          stattrak = ?, souvenir = ?, webhook_ids = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
@@ -379,8 +358,7 @@ export class Store {
       validated.max_wear ?? null,
       validated.stattrak ? 1 : 0,
       validated.souvenir ? 1 : 0,
-      validated.discord_webhook ?? null,
-      validated.webhook_ids ? JSON.stringify(validated.webhook_ids) : null,
+      JSON.stringify(validated.webhook_ids),
       validated.enabled ? 1 : 0,
       id
     );
@@ -823,42 +801,22 @@ export class Store {
   // Get rule webhooks with decrypted URLs (for notifications)
   getRuleWebhooksForNotification(ruleId: number): UserWebhook[] {
     const rule = this.getRuleById(ruleId);
-    if (!rule) return [];
+    if (!rule || !rule.webhook_ids?.length) return [];
 
-    // If using new webhook system
-    if (rule.webhook_ids?.length) {
-      const placeholders = rule.webhook_ids.map(() => '?').join(',');
-      const stmt = this.db.prepare(`
-        SELECT * FROM user_webhooks 
-        WHERE id IN (${placeholders}) AND is_active = 1
-      `);
-      const rows = stmt.all(...rule.webhook_ids) as any[];
-      
-      return rows
-        .map(row => ({
-          ...row,
-          is_active: Boolean(row.is_active),
-          webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
-        }))
-        .filter(webhook => webhook.webhook_url && webhook.webhook_url.length > 0); // Filter out failed decryptions
-    }
-
-    // Fallback to legacy discord_webhook
-    if (rule.discord_webhook) {
-      return [{
-        id: -1, // Fake ID for legacy webhook
-        user_id: parseInt(rule.user_id),
-        name: 'Legacy Discord Webhook',
-        webhook_url_encrypted: '',
-        webhook_url: rule.discord_webhook,
-        webhook_type: 'discord' as const,
-        is_active: true,
-        created_at: rule.created_at || '',
-        updated_at: rule.updated_at || '',
-      }];
-    }
-
-    return [];
+    const placeholders = rule.webhook_ids.map(() => '?').join(',');
+    const stmt = this.db.prepare(`
+      SELECT * FROM user_webhooks 
+      WHERE id IN (${placeholders}) AND is_active = 1
+    `);
+    const rows = stmt.all(...rule.webhook_ids) as any[];
+    
+    return rows
+      .map(row => ({
+        ...row,
+        is_active: Boolean(row.is_active),
+        webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
+      }))
+      .filter(webhook => webhook.webhook_url && webhook.webhook_url.length > 0); // Filter out failed decryptions
   }
 
   close() {
