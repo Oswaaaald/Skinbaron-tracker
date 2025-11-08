@@ -25,6 +25,7 @@ import { AlertsTable } from "@/components/alerts-table"
 import { RuleDialog } from "@/components/rule-dialog"
 import { SystemStats } from "@/components/system-stats"
 import { UserNav } from "@/components/user-nav"
+import { WebhooksTable } from "@/components/webhooks-table"
 import { apiClient } from "@/lib/api"
 
 export function Dashboard() {
@@ -193,6 +194,7 @@ export function Dashboard() {
       <Tabs defaultValue="rules" className="space-y-4">
         <TabsList>
           <TabsTrigger value="rules">Rules</TabsTrigger>
+          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
         </TabsList>
@@ -210,6 +212,10 @@ export function Dashboard() {
             </Button>
           </div>
           <RulesTable />
+        </TabsContent>
+
+        <TabsContent value="webhooks" className="space-y-4">
+          <WebhooksTable />
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">
