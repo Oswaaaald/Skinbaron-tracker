@@ -39,6 +39,13 @@ export function Dashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 
+  // Fetch user statistics
+  const { data: userStats, isLoading: isLoadingUserStats } = useQuery({
+    queryKey: ['user-stats'],
+    queryFn: () => apiClient.getUserStats(),
+    refetchInterval: 30000,
+  })
+
   // Fetch health status
   const { data: health, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
@@ -73,10 +80,11 @@ export function Dashboard() {
   }
 
   const isSchedulerRunning = systemStatus?.data?.scheduler.isRunning
-  const totalRules = systemStatus?.data?.database.totalRules || 0
-  const enabledRules = systemStatus?.data?.database.enabledRules || 0
-  const totalAlerts = systemStatus?.data?.database.totalAlerts || 0
-  const todayAlerts = systemStatus?.data?.database.todayAlerts || 0
+  // Use user stats instead of global stats
+  const totalRules = userStats?.data?.totalRules || 0
+  const enabledRules = userStats?.data?.enabledRules || 0
+  const totalAlerts = userStats?.data?.totalAlerts || 0
+  const todayAlerts = userStats?.data?.todayAlerts || 0
 
   return (
     <div className="space-y-6">

@@ -261,6 +261,20 @@ class ApiClient {
     return this.request('/api/alerts/stats');
   }
 
+  async getUserStats(): Promise<ApiResponse<{
+    totalRules: number;
+    enabledRules: number;
+    totalAlerts: number;
+    todayAlerts: number;
+    alertsByType: {
+      match: number;
+      best_deal: number;
+      new_item: number;
+    };
+  }>> {
+    return this.request('/api/alerts/stats');
+  }
+
   async getRecentAlerts(limit: number = 20): Promise<ApiResponse<Alert[]>> {
     return this.request<Alert[]>(`/api/alerts/recent?limit=${limit}`);
   }
