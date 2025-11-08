@@ -542,7 +542,18 @@ export class Store {
     };
   }
 
-  // Cleanup old alerts (keep last 30 days)
+  // Cleanup old alerts for a specific user (keep last 30 days)
+  cleanupUserOldAlerts(userId: number): number {
+    const stmt = this.db.prepare(`
+      DELETE FROM alerts 
+      WHERE sent_at < DATE('now', '-30 days')
+        AND rule_id IN (SELECT id FROM rules WHERE user_id = ?)
+    `);
+    const result = stmt.run(userId.toString());
+    return result.changes;
+  }
+
+  // Cleanup old alerts globally (admin only - keep last 30 days)
   cleanupOldAlerts(): number {
     const stmt = this.db.prepare(`
       DELETE FROM alerts 

@@ -57,7 +57,7 @@ export function SystemStats() {
   })
 
   const handleCleanupAlerts = () => {
-    if (confirm('Are you sure you want to clean up old alerts? This will remove alerts older than the configured retention period.')) {
+    if (confirm('Are you sure you want to clean up your old alerts? This will remove YOUR alerts older than 30 days. This action cannot be undone.')) {
       cleanupAlertsMutation.mutate()
     }
   }
@@ -254,7 +254,7 @@ export function SystemStats() {
               disabled={cleanupAlertsMutation.isPending}
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Cleanup Old Alerts
+              Cleanup My Old Alerts
             </Button>
           </div>
           

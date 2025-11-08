@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { User, LogOut, Settings, Shield } from 'lucide-react'
+import { User, LogOut, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface UserNavProps {
@@ -54,15 +54,6 @@ export function UserNav({ onTabChange }: UserNavProps) {
           }}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {
-            if (onTabChange) {
-              onTabChange('webhooks')
-              toast.success('Switched to Webhooks tab')
-            }
-          }}>
-            <Shield className="mr-2 h-4 w-4" />
-            <span>Webhooks</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
