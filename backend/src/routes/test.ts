@@ -38,22 +38,18 @@ export default async function testRoutes(fastify: FastifyInstance) {
 
       try {
         // Test 1: Basic search
-        console.log('🔍 Testing search...');
         tests.search = await client.search({
           search_item: testSearch,
           limit: 3
         });
 
         // Test 2: Best deals
-        console.log('🔍 Testing best deals...');
         tests.bestDeals = await client.getBestDeals({ limit: 3 });
 
         // Test 3: Newest items
-        console.log('🔍 Testing newest items...');
         tests.newest = await client.getNewestItems({ limit: 3 });
 
         // Test 4: Connection test
-        console.log('🔍 Testing connection...');
         tests.connection = await client.testConnection();
 
         return reply.send({
@@ -129,7 +125,8 @@ export default async function testRoutes(fastify: FastifyInstance) {
         name: 'Test Rule',
         search_item: 'AK-47',
         max_price: 30,
-        discord_webhook: webhookUrl,
+        // discord_webhook: webhookUrl, // Removed - using secured webhook system
+        webhook_ids: [], // Empty for test
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -222,7 +219,8 @@ export default async function testRoutes(fastify: FastifyInstance) {
         name: `Test: ${searchItem}`,
         search_item: searchItem,
         max_price: maxPrice,
-        discord_webhook: webhookUrl,
+        // discord_webhook: webhookUrl, // Removed - using secured webhook system
+        webhook_ids: [], // Empty for test
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

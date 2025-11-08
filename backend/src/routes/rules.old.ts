@@ -106,7 +106,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
-        required: ['search_item', 'webhook_ids'],
+        required: ['search_item'],
         properties: {
           search_item: { type: 'string', minLength: 1 },
           min_price: { type: 'number', minimum: 0 },
@@ -115,7 +115,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
           max_wear: { type: 'number', minimum: 0, maximum: 1 },
           stattrak: { type: 'boolean' },
           souvenir: { type: 'boolean' },
-          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 1, maxItems: 10 },
+          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 1 },
           enabled: { type: 'boolean', default: true },
         },
       },
@@ -136,7 +136,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
                 max_wear: { type: 'number', nullable: true },
                 stattrak: { type: 'boolean', nullable: true },
                 souvenir: { type: 'boolean', nullable: true },
-                webhook_ids: { type: 'array', items: { type: 'number' } },
+                discord_webhook: { type: 'string' },
+                webhook_ids: { type: 'array', items: { type: 'number' }, nullable: true },
                 enabled: { type: 'boolean' },
                 created_at: { type: 'string' },
                 updated_at: { type: 'string' },
@@ -151,22 +152,45 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       // Parse body but add user_id from authenticated user
       const bodyData = request.body as any;
       
+      // Validate that at least one webhook method is provided
+      if (!bodyData.discord_webhook && (!bodyData.webhook_ids || bodyData.webhook_ids.length === 0)) {
+        return reply.code(400).send({
+          success: false,
+          error: 'Webhook required',
+          message: 'Either discord_webhook or webhook_ids must be provided',
+        });
+      }
+      
       const ruleData = CreateRuleRequestSchema.parse({
         ...bodyData,
         user_id: request.user!.id.toString(), // Convert to string for compatibility
       });
       
-      // Validate webhook_ids - must belong to user
-      const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
-      const userWebhookIds = userWebhooks.map(w => w.id);
+      // Validate webhook URL if using legacy discord_webhook
+      if (ruleData.discord_webhook) {
+        const webhookValid = await notificationService.testWebhook(ruleData.discord_webhook);
+        if (!webhookValid) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Invalid Discord webhook',
+            message: 'The provided Discord webhook URL is invalid or unreachable',
+          });
+        }
+      }
       
-      const invalidWebhooks = ruleData.webhook_ids?.filter(id => !userWebhookIds.includes(id)) || [];
-      if (invalidWebhooks.length > 0) {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid webhook IDs',
-          message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
-        });
+      // Validate webhook_ids if using new system
+      if (ruleData.webhook_ids?.length) {
+        const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
+        const userWebhookIds = userWebhooks.map(w => w.id);
+        
+        const invalidWebhooks = ruleData.webhook_ids.filter(id => !userWebhookIds.includes(id));
+        if (invalidWebhooks.length > 0) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Invalid webhook IDs',
+            message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
+          });
+        }
       }
 
       const rule = store.createRule(ruleData);
@@ -228,7 +252,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
                 max_wear: { type: 'number', nullable: true },
                 stattrak: { type: 'boolean', nullable: true },
                 souvenir: { type: 'boolean', nullable: true },
-                webhook_ids: { type: 'array', items: { type: 'number' } },
+                discord_webhook: { type: 'string' },
+                webhook_ids: { type: 'array', items: { type: 'number' }, nullable: true },
                 enabled: { type: 'boolean' },
                 created_at: { type: 'string' },
                 updated_at: { type: 'string' },
@@ -305,7 +330,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
           max_wear: { type: 'number', minimum: 0, maximum: 1 },
           stattrak: { type: 'boolean' },
           souvenir: { type: 'boolean' },
-          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 1, maxItems: 10 },
+          discord_webhook: { type: 'string', format: 'uri', nullable: true },
           enabled: { type: 'boolean' },
         },
       },
@@ -326,7 +351,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
                 max_wear: { type: 'number', nullable: true },
                 stattrak: { type: 'boolean', nullable: true },
                 souvenir: { type: 'boolean', nullable: true },
-                webhook_ids: { type: 'array', items: { type: 'number' } },
+                discord_webhook: { type: 'string' },
+                webhook_ids: { type: 'array', items: { type: 'number' }, nullable: true },
                 enabled: { type: 'boolean' },
                 created_at: { type: 'string' },
                 updated_at: { type: 'string' },
@@ -366,17 +392,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
 
       const updates = UpdateRuleRequestSchema.parse(request.body);
       
-      // Validate webhook_ids if provided
-      if (updates.webhook_ids?.length) {
-        const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
-        const userWebhookIds = userWebhooks.map(w => w.id);
-        
-        const invalidWebhooks = updates.webhook_ids.filter(id => !userWebhookIds.includes(id));
-        if (invalidWebhooks.length > 0) {
+      // Test webhook if it's being updated
+      if (updates.discord_webhook) {
+        const webhookValid = await notificationService.testWebhook(updates.discord_webhook);
+        if (!webhookValid) {
           return reply.code(400).send({
             success: false,
-            error: 'Invalid webhook IDs',
-            message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
+            error: 'Invalid Discord webhook',
+            message: 'The provided Discord webhook URL is invalid or unreachable',
           });
         }
       }
@@ -557,12 +580,17 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         // Only test webhooks, skip SkinBaron API
         request.log.info(`Testing webhooks only for rule ${id}`);
         
-        const webhooks = store.getRuleWebhooksForNotification(rule.id!);
-        if (webhooks.length > 0) {
-          const testResults = await Promise.all(
-            webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
-          );
-          webhookTestResult = testResults.every(result => result); // All must pass
+        if (rule.discord_webhook) {
+          webhookTestResult = await notificationService.testWebhook(rule.discord_webhook);
+        } else {
+          // Test new webhook system
+          const webhooks = store.getRuleWebhooksForNotification(rule.id!);
+          if (webhooks.length > 0) {
+            const testResults = await Promise.all(
+              webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
+            );
+            webhookTestResult = testResults.every(result => result); // All must pass
+          }
         }
         
         // Return empty matches array for webhook-only test
@@ -572,12 +600,17 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         matches = await scheduler.testRule(rule);
         
         if (webhook_test) {
-          const webhooks = store.getRuleWebhooksForNotification(rule.id!);
-          if (webhooks.length > 0) {
-            const testResults = await Promise.all(
-              webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
-            );
-            webhookTestResult = testResults.every(result => result); // All must pass
+          if (rule.discord_webhook) {
+            webhookTestResult = await notificationService.testWebhook(rule.discord_webhook);
+          } else {
+            // Test new webhook system
+            const webhooks = store.getRuleWebhooksForNotification(rule.id!);
+            if (webhooks.length > 0) {
+              const testResults = await Promise.all(
+                webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
+              );
+              webhookTestResult = testResults.every(result => result); // All must pass
+            }
           }
         }
       }

@@ -27,10 +27,11 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { apiClient, type Rule, type Webhook } from "@/lib/api"
+import { apiClient, type Rule, type Webhook, type CreateRuleData } from "@/lib/api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
+import { X } from "lucide-react"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
@@ -40,38 +41,9 @@ const ruleFormSchema = z.object({
   max_wear: z.number().min(0).max(1).optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
-  webhook_ids: z.array(z.number()).optional(), // New: array of webhook IDs
-  discord_webhook: z.string().optional(), // Keep for backward compatibility - validate URL only if provided
+  webhook_ids: z.array(z.number()).min(1, "At least one webhook must be selected").max(10, "Maximum 10 webhooks allowed"),
   enabled: z.boolean().optional(),
-}).refine(
-  (data) => {
-    // Must have either webhook_ids with at least one element OR discord_webhook with valid URL
-    const hasWebhookIds = data.webhook_ids && data.webhook_ids.length > 0
-    const hasDiscordWebhook = data.discord_webhook && data.discord_webhook.trim().length > 0
-    return hasWebhookIds || hasDiscordWebhook
-  },
-  {
-    message: "At least one webhook must be selected or configured",
-    path: ["webhook_ids"],
-  }
-).refine(
-  (data) => {
-    // If discord_webhook is provided, it must be a valid URL
-    if (data.discord_webhook && data.discord_webhook.trim().length > 0) {
-      try {
-        new URL(data.discord_webhook)
-        return true
-      } catch {
-        return false
-      }
-    }
-    return true
-  },
-  {
-    message: "Discord webhook must be a valid URL",
-    path: ["discord_webhook"],
-  }
-)
+})
 
 type RuleFormData = z.infer<typeof ruleFormSchema>
 
@@ -83,7 +55,7 @@ interface RuleDialogProps {
 
 export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [useDirectWebhook, setUseDirectWebhook] = useState(false)
+  const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const isEditing = !!rule
@@ -103,14 +75,13 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     resolver: zodResolver(ruleFormSchema),
     defaultValues: {
       search_item: "",
-      min_price: 0,
-      max_price: 0,
+      min_price: undefined,
+      max_price: undefined,
       min_wear: undefined,
       max_wear: undefined,
       stattrak: false,
       souvenir: false,
       webhook_ids: [],
-      discord_webhook: "",
       enabled: true,
     },
   })
@@ -119,400 +90,385 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   useEffect(() => {
     if (open) {
       if (rule) {
-        // Editing existing rule - determine which webhook method was used
-        const hasDirectWebhook = !!rule.discord_webhook && (!rule.webhook_ids || rule.webhook_ids.length === 0)
-        const hasWebhookIds = !!rule.webhook_ids && rule.webhook_ids.length > 0
-        setUseDirectWebhook(hasDirectWebhook)
-        
+        // Editing existing rule
         form.reset({
-          search_item: rule.search_item,
-          min_price: rule.min_price || 0,
-          max_price: rule.max_price || 0,
-          min_wear: rule.min_wear,
-          max_wear: rule.max_wear,
+          search_item: rule.search_item || "",
+          min_price: rule.min_price || undefined,
+          max_price: rule.max_price || undefined,
+          min_wear: rule.min_wear || undefined,
+          max_wear: rule.max_wear || undefined,
           stattrak: rule.stattrak || false,
           souvenir: rule.souvenir || false,
-          webhook_ids: rule.webhook_ids || [], // Load existing webhook_ids
-          discord_webhook: rule.discord_webhook || "",
+          webhook_ids: rule.webhook_ids || [],
           enabled: rule.enabled ?? true,
         })
+        setSelectedWebhooks(rule.webhook_ids || [])
       } else {
         // Creating new rule
-        setUseDirectWebhook(false)
-        
         form.reset({
           search_item: "",
-          min_price: 0,
-          max_price: 0,
+          min_price: undefined,
+          max_price: undefined,
           min_wear: undefined,
           max_wear: undefined,
           stattrak: false,
           souvenir: false,
           webhook_ids: [],
-          discord_webhook: "",
           enabled: true,
         })
+        setSelectedWebhooks([])
       }
     }
   }, [open, rule, form])
 
-  // Clear webhook fields when switching between direct URL and saved webhooks
+  // Update form when selectedWebhooks changes
   useEffect(() => {
-    if (useDirectWebhook) {
-      form.setValue('webhook_ids', [])
-    } else {
-      form.setValue('discord_webhook', '')
-    }
-  }, [useDirectWebhook, form])
+    form.setValue('webhook_ids', selectedWebhooks)
+  }, [selectedWebhooks, form])
 
   const createRuleMutation = useMutation({
-    mutationFn: (data: Omit<Rule, 'id' | 'created_at' | 'updated_at'>) =>
-      apiClient.createRule(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rules'] })
-      toast.success('Rule created successfully')
-      onOpenChange(false)
+    mutationFn: (data: CreateRuleData) => apiClient.createRule(data),
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success("Rule created successfully!")
+        queryClient.invalidateQueries({ queryKey: ['rules'] })
+        onOpenChange(false)
+      } else {
+        toast.error(result.error || "Failed to create rule")
+      }
+      setIsSubmitting(false)
     },
     onError: (error) => {
       toast.error(`Failed to create rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    },
-    onSettled: () => {
       setIsSubmitting(false)
     },
   })
 
   const updateRuleMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Rule> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<RuleFormData> }) =>
       apiClient.updateRule(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rules'] })
-      toast.success('Rule updated successfully')
-      onOpenChange(false)
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success("Rule updated successfully!")
+        queryClient.invalidateQueries({ queryKey: ['rules'] })
+        onOpenChange(false)
+      } else {
+        toast.error(result.error || "Failed to update rule")
+      }
+      setIsSubmitting(false)
     },
     onError: (error) => {
       toast.error(`Failed to update rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    },
-    onSettled: () => {
       setIsSubmitting(false)
     },
   })
 
   const onSubmit = async (data: RuleFormData) => {
-    if (!user) {
-      toast.error('User not authenticated')
-      return
-    }
-
+    if (isSubmitting) return
     setIsSubmitting(true)
-    
-    // Convert empty numbers to undefined and clean webhook data
-    const processedData: any = {
-      ...data,
-      user_id: user.id, // Automatically use authenticated user's ID
-      min_price: data.min_price === 0 ? undefined : data.min_price,
-      max_price: data.max_price === 0 ? undefined : data.max_price,
-    }
 
-    // Clean webhook data based on selection
-    if (useDirectWebhook) {
-      // Using direct webhook URL - clear webhook_ids and ensure we have discord_webhook
-      processedData.webhook_ids = []
-      // Keep discord_webhook as is
-    } else {
-      // Using saved webhooks - completely remove discord_webhook and ensure we have webhook_ids
-      delete processedData.discord_webhook
-      // Keep webhook_ids as is
+    try {
+      if (isEditing && rule?.id) {
+        updateRuleMutation.mutate({ id: rule.id, data })
+      } else {
+        createRuleMutation.mutate(data)
+      }
+    } catch (error) {
+      toast.error(`Failed to submit rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setIsSubmitting(false)
     }
+  }
 
-    // Remove empty discord_webhook to avoid validation errors
-    if (processedData.discord_webhook === "") {
-      delete processedData.discord_webhook
-    }
+  const handleWebhookToggle = (webhookId: number) => {
+    setSelectedWebhooks(prev => 
+      prev.includes(webhookId)
+        ? prev.filter(id => id !== webhookId)
+        : [...prev, webhookId]
+    )
+  }
 
-    if (isEditing && rule?.id) {
-      updateRuleMutation.mutate({ id: rule.id, data: processedData })
-    } else {
-      createRuleMutation.mutate(processedData)
-    }
+  const getSelectedWebhookNames = () => {
+    return webhooks
+      .filter(webhook => selectedWebhooks.includes(webhook.id!))
+      .map(webhook => webhook.name)
+      .join(', ')
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Rule' : 'Create New Rule'}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Edit Rule" : "Create New Rule"}
+          </DialogTitle>
           <DialogDescription>
             {isEditing 
-              ? 'Update your skin monitoring rule settings.'
-              : 'Configure a new rule to monitor CS2 skins on SkinBaron.'
+              ? "Update your alert rule configuration"
+              : "Create a new alert rule to monitor SkinBaron listings"
             }
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="search_item"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Search Item</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., AK-47 | Redline" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      The skin name to search for
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Search Item */}
+            <FormField
+              control={form.control}
+              name="search_item"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Search Item *</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., AK-47 Redline, AWP Dragon Lore" 
+                      {...field}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Item name or pattern to search for
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
+            {/* Price Range */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="min_price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Min Price ($)</FormLabel>
+                    <FormLabel>Min Price (€)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0" 
+                      <Input
+                        type="number"
+                        min="0"
                         step="0.01"
+                        placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        disabled={isSubmitting}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Minimum price filter (leave 0 for no minimum)
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="max_price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Price ($)</FormLabel>
+                    <FormLabel>Max Price (€)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0" 
+                      <Input
+                        type="number"
+                        min="0"
                         step="0.01"
+                        placeholder="No limit"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        disabled={isSubmitting}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Maximum price filter (leave 0 for no maximum)
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
+            {/* Wear Range */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="min_wear"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Min Wear Value</FormLabel>
+                    <FormLabel>Min Wear (0-1)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0.00" 
-                        step="0.01"
+                      <Input
+                        type="number"
                         min="0"
                         max="1"
+                        step="0.001"
+                        placeholder="0"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        disabled={isSubmitting}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Minimum wear value (0.00 - 1.00)
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="max_wear"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Wear Value</FormLabel>
+                    <FormLabel>Max Wear (0-1)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="1.00" 
-                        step="0.01"
+                      <Input
+                        type="number"
                         min="0"
                         max="1"
+                        step="0.001"
+                        placeholder="1"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        disabled={isSubmitting}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Maximum wear value (0.00 - 1.00)
-                    </FormDescription>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* StatTrak and Souvenir */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="stattrak"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>StatTrak™</FormLabel>
+                      <FormDescription className="text-sm">
+                        Only StatTrak™ items
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="souvenir"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>Souvenir</FormLabel>
+                      <FormDescription className="text-sm">
+                        Only Souvenir items
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
             </div>
 
             {/* Webhook Selection */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <FormLabel>Notification Settings</FormLabel>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="use-direct"
-                    checked={useDirectWebhook}
-                    onCheckedChange={setUseDirectWebhook}
-                  />
-                  <Label htmlFor="use-direct" className="text-sm">Use direct URL</Label>
-                </div>
-              </div>
-
-              {!useDirectWebhook ? (
-                <FormField
-                  control={form.control}
-                  name="webhook_ids"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Webhooks</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value?.[0]?.toString() || ""}
-                          onValueChange={(value) => field.onChange(value ? [Number(value)] : [])}
+            <FormField
+              control={form.control}
+              name="webhook_ids"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Notification Webhooks * (Max 10)</FormLabel>
+                  <FormDescription className="mb-3">
+                    Select which webhooks should receive notifications for this rule
+                  </FormDescription>
+                  
+                  {webhooks.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground">
+                      No webhooks configured. Create webhooks first in the Webhooks section.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                      {webhooks.map(webhook => (
+                        <div
+                          key={webhook.id}
+                          className="flex items-center space-x-2 p-2 rounded border hover:bg-muted cursor-pointer"
+                          onClick={() => handleWebhookToggle(webhook.id!)}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose a webhook..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {webhooks
-                              .filter(w => w.is_active)
-                              .map((webhook) => (
-                                <SelectItem key={webhook.id} value={webhook.id!.toString()}>
-                                  {webhook.name} ({webhook.webhook_type.toUpperCase()})
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        Choose from your saved encrypted webhooks
-                        {webhooks.filter(w => w.is_active).length === 0 && (
-                          <span className="text-orange-500"> - No active webhooks found. Create one in the Webhooks tab.</span>
-                        )}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                          <input
+                            type="checkbox"
+                            checked={selectedWebhooks.includes(webhook.id!)}
+                            onChange={() => handleWebhookToggle(webhook.id!)}
+                            className="h-4 w-4"
+                          />
+                          <span className="flex-1 text-sm">{webhook.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {webhook.webhook_type === 'discord' ? '🎮 Discord' : '🔗 Other'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                />
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="discord_webhook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Discord Webhook URL</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://discord.com/api/webhooks/..." {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Direct webhook URL (not encrypted)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="stattrak"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">StatTrak™</FormLabel>
-                      <FormDescription>
-                        Only StatTrak™ versions
-                      </FormDescription>
+                  {selectedWebhooks.length > 0 && (
+                    <div className="mt-2 p-2 bg-muted rounded text-sm">
+                      <strong>Selected:</strong> {getSelectedWebhookNames()}
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="souvenir"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Souvenir</FormLabel>
-                      <FormDescription>
-                        Only souvenir versions
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="enabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Enabled</FormLabel>
-                      <FormDescription>
-                        Rule is active
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
+                  )}
+
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Enabled */}
+            <FormField
+              control={form.control}
+              name="enabled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Enable Rule</FormLabel>
+                    <FormDescription>
+                      Rule will be active and send notifications
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : isEditing ? 'Update Rule' : 'Create Rule'}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || selectedWebhooks.length === 0}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {isEditing ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  isEditing ? "Update Rule" : "Create Rule"
+                )}
               </Button>
             </DialogFooter>
           </form>

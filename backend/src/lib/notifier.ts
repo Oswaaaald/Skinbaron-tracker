@@ -47,7 +47,6 @@ export class NotificationService {
   private readonly botAvatar = 'https://skinbaron.de/favicon.png';
 
   constructor() {
-    console.log('✅ Notification service initialized');
   }
 
   /**
@@ -64,26 +63,18 @@ export class NotificationService {
       // Validate payload
       const validatedPayload = DiscordWebhookPayloadSchema.parse(payload);
 
-      console.log(`🔔 Sending ${options.alertType} notification:`, {
-        item: options.item.itemName,
-        price: options.item.price,
-        webhook: this.maskWebhook(webhookUrl),
-      });
-
-      const { statusCode } = await request(webhookUrl, {
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'SkinBaron-Alerts/1.0',
         },
-        body: JSON.stringify(validatedPayload),
+        body: JSON.stringify(embed),
       });
 
-      if (statusCode === 204) {
-        console.log(`✅ Notification sent successfully (${options.alertType})`);
+      if (response.ok) {
         return true;
       } else {
-        console.error(`❌ Discord webhook error: ${statusCode}`);
+        console.error(`❌ Discord webhook error: ${response.status}`);
         return false;
       }
     } catch (error) {

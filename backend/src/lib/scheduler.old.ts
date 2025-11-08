@@ -54,6 +54,7 @@ export class AlertScheduler {
       this.stats.isRunning = true;
       this.stats.nextRunTime = this.cronJob.nextDate().toJSDate();
     } catch (error) {
+      console.error('❌ Failed to start scheduler:', error);
       this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
     }
   }
@@ -67,6 +68,7 @@ export class AlertScheduler {
       this.cronJob = null;
       this.stats.isRunning = false;
       this.stats.nextRunTime = null;
+      console.log('🛑 Scheduler stopped');
     }
   }
 
@@ -78,12 +80,17 @@ export class AlertScheduler {
     this.stats.lastRunTime = new Date();
     this.stats.totalRuns++;
 
+    console.log(`🔄 Starting polling cycle #${this.stats.totalRuns}...`);
+
     try {
       // Get all enabled rules
       const rules = this.store.getEnabledRules();
       if (rules.length === 0) {
+        console.log('ℹ️  No enabled rules found, skipping poll');
         return;
       }
+
+      console.log(`📋 Processing ${rules.length} active rules`);
 
       // Process each rule
       let newAlerts = 0;
@@ -92,12 +99,19 @@ export class AlertScheduler {
           const ruleAlerts = await this.processRule(rule);
           newAlerts += ruleAlerts;
         } catch (error) {
+          console.error(`❌ Error processing rule ${rule.id}:`, error);
           this.stats.errorCount++;
           this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
         }
       }
 
+      // Only process user-defined rules (no automatic feeds)
+
       this.stats.totalAlerts += newAlerts;
+      const duration = Date.now() - startTime;
+
+      console.log(`✅ Polling cycle completed in ${duration}ms`);
+      console.log(`📊 New alerts: ${newAlerts} | Total alerts: ${this.stats.totalAlerts}`);
 
       // Update next run time
       if (this.cronJob) {
@@ -105,6 +119,7 @@ export class AlertScheduler {
       }
 
     } catch (error) {
+      console.error('❌ Polling cycle failed:', error);
       this.stats.errorCount++;
       this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
     }
@@ -114,6 +129,8 @@ export class AlertScheduler {
    * Process a single rule
    */
   private async processRule(rule: Rule): Promise<number> {
+    console.log(`🎯 Processing rule: "${rule.search_item}" (ID: ${rule.id})`);
+
     try {
       // Search for items matching the rule
       const response = await this.skinBaronClient.search({
@@ -128,6 +145,7 @@ export class AlertScheduler {
       });
 
       if (!response.success || !response.items) {
+        console.log(`⚠️  No items found for rule ${rule.id}`);
         return 0;
       }
 
@@ -167,11 +185,19 @@ export class AlertScheduler {
 
           const createdAlert = this.store.createAlert(alert);
 
-          // Get rule webhooks (secured webhook system)
+          // Get rule webhooks (new system)
           const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
           
+          console.log(`🔔 Rule ${rule.id} notification debug:`, {
+            ruleId: rule.id,
+            ruleWebhookIds: rule.webhook_ids,
+            foundWebhooks: webhooks.length,
+            webhookDetails: webhooks.map(w => ({ id: w.id, name: w.name, hasUrl: !!w.webhook_url }))
+          });
+          
           // Send notifications to all rule webhooks
-          const notificationPromises = webhooks.map(async (webhook: any) => {
+          const notificationPromises = webhooks.map(async (webhook) => {
+            console.log(`📤 Sending notification via webhook ${webhook.id} (${webhook.name})`);
             return this.notificationService.sendNotification(
               webhook.webhook_url!,
               {
@@ -187,14 +213,20 @@ export class AlertScheduler {
           const results = await Promise.allSettled(notificationPromises);
           
           let successCount = 0;
-          results.forEach((result: any) => {
+          results.forEach((result, index) => {
             if (result.status === 'fulfilled' && result.value) {
               successCount++;
+            } else {
+              console.error(`❌ Failed to send notification to webhook ${webhooks[index]?.name || 'unknown'}:`, 
+                result.status === 'rejected' ? result.reason : 'Unknown error');
             }
           });
 
           if (successCount > 0) {
             newAlerts++;
+            console.log(`✅ Alert sent for: ${item.itemName} (${item.price} EUR) to ${successCount}/${webhooks.length} webhooks`);
+          } else {
+            console.error(`❌ Failed to send notification for alert ${createdAlert.id} to any webhook`);
           }
 
         } catch (error) {
@@ -209,9 +241,12 @@ export class AlertScheduler {
       return newAlerts;
 
     } catch (error) {
+      console.error(`❌ Failed to process rule ${rule.id}:`, error);
       throw error;
     }
   }
+
+
 
   /**
    * Get scheduler statistics
@@ -228,6 +263,7 @@ export class AlertScheduler {
    */
   async forceRun(): Promise<void> {
     if (this.stats.isRunning && this.cronJob) {
+      console.log('🔄 Force running polling cycle...');
       await this.executePoll();
     } else {
       throw new Error('Scheduler is not running');
@@ -238,6 +274,8 @@ export class AlertScheduler {
    * Test a specific rule without creating alerts
    */
   async testRule(rule: Rule): Promise<SkinBaronItem[]> {
+    console.log(`🧪 Testing rule: "${rule.search_item}"`);
+
     const response = await this.skinBaronClient.search({
       search_item: rule.search_item,
       min: rule.min_price,
@@ -279,6 +317,7 @@ export class AlertScheduler {
       errorCount: 0,
       lastError: null,
     };
+    console.log('📊 Scheduler statistics reset');
   }
 }
 

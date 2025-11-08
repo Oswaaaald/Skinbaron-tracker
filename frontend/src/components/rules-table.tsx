@@ -59,19 +59,6 @@ export function RulesTable() {
 
   // Helper function to get webhook display text
   const getWebhookDisplay = (rule: Rule) => {
-    // Debug logging
-    console.log('getWebhookDisplay called for rule:', rule.id)
-    console.log('rule.webhook_ids:', rule.webhook_ids)
-    console.log('rule.discord_webhook:', rule.discord_webhook)
-    console.log('available webhooks:', webhooks)
-    
-    if (rule.discord_webhook) {
-      return (
-        <Badge variant="outline" className="text-xs">
-          Direct URL
-        </Badge>
-      )
-    }
     
     if (rule.webhook_ids && rule.webhook_ids.length > 0) {
       const webhookNames = rule.webhook_ids

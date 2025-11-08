@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 // Types matching backend schemas
 export interface Rule {
   id?: number;
-  user_id: string;
+  user_id?: string;
   search_item: string;
   min_price?: number;
   max_price?: number;
@@ -13,11 +13,22 @@ export interface Rule {
   max_wear?: number;
   stattrak?: boolean;
   souvenir?: boolean;
-  discord_webhook?: string; // Make optional since we can use webhook_ids instead
-  webhook_ids?: number[]; // New: array of webhook IDs
+  webhook_ids: number[]; // Array of webhook IDs (required)
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CreateRuleData {
+  search_item: string;
+  min_price?: number;
+  max_price?: number;
+  min_wear?: number;
+  max_wear?: number;
+  stattrak?: boolean;
+  souvenir?: boolean;
+  webhook_ids: number[];
+  enabled?: boolean;
 }
 
 export interface Alert {
@@ -191,7 +202,7 @@ class ApiClient {
     return this.request<Rule>(`/api/rules/${id}`);
   }
 
-  async createRule(rule: Omit<Rule, 'id' | 'created_at' | 'updated_at'>): Promise<ApiResponse<Rule>> {
+  async createRule(rule: CreateRuleData): Promise<ApiResponse<Rule>> {
     return this.request<Rule>('/api/rules', {
       method: 'POST',
       body: JSON.stringify(rule),

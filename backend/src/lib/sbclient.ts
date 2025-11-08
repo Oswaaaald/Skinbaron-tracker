@@ -69,7 +69,6 @@ export class SkinBaronClient {
 
   constructor() {
     // API key is optional - SkinBaron API is public for search
-    console.log('🔍 SkinBaron client initialized', { hasApiKey: !!this.apiKey });
   }
 
   private async makeRequest<T>(
@@ -92,9 +91,7 @@ export class SkinBaronClient {
 
       const url = `${this.baseURL}${endpoint}`;
       
-      console.log(`🔍 SkinBaron API Request: ${endpoint}`, {
-        params: Object.fromEntries(searchParams.entries()),
-      });
+      
 
       const { statusCode, body } = await request(url, {
         method: 'POST',
@@ -122,11 +119,6 @@ export class SkinBaronClient {
       // Validate response with schema
       const validatedData = schema.parse(jsonData);
       
-      console.log(`✅ SkinBaron API Response: ${endpoint}`, {
-        success: jsonData.success,
-        itemCount: jsonData.items?.length || 0,
-      });
-
       return validatedData;
     } catch (error) {
       console.error(`❌ SkinBaron API Error (${endpoint}):`, error);
@@ -233,7 +225,6 @@ export class SkinBaronClient {
   async testConnection(): Promise<boolean> {
     // Temporarily skip the API test due to 415 errors
     // The API might need different authentication or the endpoint may have changed
-    console.log('⚠️  SkinBaron API test skipped - endpoint needs verification');
     return false; // Mark as unhealthy but don't crash the application
   }
 
