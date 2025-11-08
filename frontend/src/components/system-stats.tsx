@@ -128,7 +128,10 @@ export function SystemStats() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Memory Usage</span>
                 <span className="text-sm font-mono">
-                  {formatMemory(health.stats?.memory?.heapUsed)} / {formatMemory(health.stats?.memory?.heapTotal)}
+                  {health.stats?.memory && (health.stats.memory.heapUsed || health.stats.memory.heapTotal) ? 
+                    `${formatMemory(health.stats.memory.heapUsed)} / ${formatMemory(health.stats.memory.heapTotal)}` :
+                    'Loading...'
+                  }
                 </span>
               </div>
               
@@ -402,11 +405,61 @@ export function SystemStats() {
                 <span className="text-sm">{status.config.feedsMaxWear || 'N/A'}</span>
               </div>
             </>
+          ) : health ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Environment</span>
+                <Badge variant="secondary">
+                  Production (inferred)
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">System Status</span>
+                <Badge variant={health.status === 'healthy' ? 'default' : 'secondary'}>
+                  {health.status === 'healthy' ? 'Optimal' : 'Operational'}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Scheduler</span>
+                <Badge variant={health.services?.scheduler === 'running' ? 'default' : 'secondary'}>
+                  {health.services?.scheduler === 'running' ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
+              
+              <div className="text-center text-sm text-muted-foreground mt-4">
+                Detailed configuration loading...
+                <br />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['system-status'] })
+                  }}
+                  className="mt-1 text-xs"
+                >
+                  Refresh
+                </Button>
+              </div>
+            </>
           ) : (
             <div className="text-center text-muted-foreground">
-              Configuration information temporarily unavailable
-              <br />
-              <span className="text-xs">System is running normally</span>
+              <div className="space-y-2">
+                <div>Loading configuration...</div>
+                <div className="text-xs">System is running normally</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['system-status'] })
+                  }}
+                  className="mt-2"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Retry
+                </Button>
+              </div>
             </div>
           )}
           
