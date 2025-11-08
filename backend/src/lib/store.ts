@@ -257,7 +257,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
     };
   }
 
@@ -270,7 +270,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
     }));
   }
 
@@ -286,7 +286,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
     }));
   }
 
@@ -299,7 +299,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
     }));
   }
 
