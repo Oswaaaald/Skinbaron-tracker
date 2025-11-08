@@ -68,7 +68,13 @@ export function SystemStats() {
     return <LoadingSpinner />
   }
 
-  const health = healthResponse?.data
+  const healthData = healthResponse?.success ? (healthResponse as any) : null
+  const health = healthData ? {
+    status: healthData.status,
+    services: healthData.services,
+    stats: healthData.stats,
+    timestamp: healthData.timestamp
+  } : null
   const status = statusResponse?.data
   const alertStats = alertStatsResponse?.data
 
@@ -136,11 +142,11 @@ export function SystemStats() {
               <div>
                 <h4 className="text-sm font-medium mb-2">Services</h4>
                 <div className="space-y-2">
-                  {health.services && Object.entries(health.services).map(([service, status]) => (
+                  {health.services && Object.entries(health.services).map(([service, serviceStatus]) => (
                     <div key={service} className="flex items-center justify-between">
                       <span className="text-sm capitalize">{service}</span>
-                      <Badge variant={status === 'healthy' ? 'default' : 'destructive'} className="text-xs">
-                        {status}
+                      <Badge variant={serviceStatus === 'healthy' ? 'default' : 'destructive'} className="text-xs">
+                        {String(serviceStatus)}
                       </Badge>
                     </div>
                   ))}

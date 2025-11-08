@@ -163,6 +163,8 @@ async function setupHealthCheck() {
         status === 'healthy' || status === 'running'
       ) ? 'healthy' : 'degraded';
 
+      const memUsage = process.memoryUsage();
+      
       return reply.code(200).send({
         success: true,
         status: healthStatus,
@@ -170,7 +172,11 @@ async function setupHealthCheck() {
         services,
         stats: {
           uptime: process.uptime(),
-          memory: process.memoryUsage(),
+          memory: {
+            heapUsed: memUsage.heapUsed,
+            heapTotal: memUsage.heapTotal,
+            rss: memUsage.rss
+          },
           version: process.env.npm_package_version || '1.0.0',
         },
       });
