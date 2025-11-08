@@ -8,6 +8,7 @@ export const SkinBaronSaleSchema = z.object({
   price: z.number(),
   img: z.string().optional(), // Steam image URL
   market_name: z.string(), // Steam market hash name
+  sbinspect: z.string().optional(), // SkinBaron offer URL
   // Additional fields that might be returned
   wear: z.number().optional(),
   stattrak: z.boolean().optional(),
@@ -38,6 +39,7 @@ export interface SkinBaronItem {
   currency?: string;
   quality?: string;
   rarity?: string;
+  skinUrl?: string; // URL vers l'offre SkinBaron
 }
 
 // Search parameters
@@ -151,6 +153,7 @@ export class SkinBaronClient {
       currency: sale.currency || 'EUR',
       quality: sale.quality,
       rarity: sale.rarity,
+      skinUrl: sale.sbinspect || this.getSkinUrl(sale.id), // Utiliser sbinspect si disponible
     }));
 
     return { items };
@@ -176,10 +179,16 @@ export class SkinBaronClient {
   }
 
   /**
-   * Generate SkinBaron listing URL
+   * Generate SkinBaron listing URL (fallback si sbinspect non disponible)
    */
-  getSkinUrl(saleId: string): string {
-    return `https://skinbaron.de/offers/show/${saleId}`;
+  getSkinUrl(saleId: string, itemName?: string): string {
+    if (itemName) {
+      // Extraire les infos du nom pour construire l'URL
+      const productName = itemName.replace(/StatTrak™\s+/, '').replace(/Souvenir\s+/, '');
+      const encodedProductName = encodeURIComponent(productName);
+      return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodedProductName}`;
+    }
+    return `https://skinbaron.de/offers/show?offerUuid=${saleId}`;
   }
 
   /**
