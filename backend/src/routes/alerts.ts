@@ -19,11 +19,12 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   const store = getStore();
 
   /**
-   * GET /alerts - Get all alerts with pagination
+   * GET /alerts - Get user's alerts with pagination
    */
   fastify.get('/', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Get all alerts with pagination and filtering',
+      description: 'Get user alerts with pagination and filtering',
       tags: ['Alerts'],
       querystring: {
         type: 'object',
@@ -74,11 +75,20 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const query = AlertsQuerySchema.parse(request.query);
       
-      // Get alerts with pagination
-      let alerts = store.getAlerts(query.limit, query.offset);
+      // Get user's alerts with pagination
+      let alerts = store.getAlertsByUserId(request.user!.id, query.limit, query.offset);
       
       // Apply filters if provided
       if (query.rule_id !== undefined) {
+        // Ensure the rule belongs to the user
+        const rule = store.getRuleById(query.rule_id);
+        if (!rule || rule.user_id !== request.user!.id.toString()) {
+          return reply.code(403).send({
+            success: false,
+            error: 'Access denied',
+            message: 'You can only access alerts for your own rules',
+          });
+        }
         alerts = alerts.filter(alert => alert.rule_id === query.rule_id);
       }
       
@@ -115,9 +125,10 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * GET /alerts/:id - Get a specific alert
+   * GET /alerts/:id - Get a specific alert (user-owned only)
    */
   fastify.get('/:id', {
+    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get a specific alert by ID',
       tags: ['Alerts'],
@@ -162,7 +173,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { id } = AlertParamsSchema.parse(request.params);
-      const alert = store.getAlertById(id);
+      const alert = store.getAlertByIdForUser(id, request.user!.id);
       
       if (!alert) {
         return reply.code(404).send({
@@ -186,11 +197,12 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * GET /alerts/stats - Get alert statistics
+   * GET /alerts/stats - Get user alert statistics
    */
   fastify.get('/stats', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Get alert statistics',
+      description: 'Get user alert statistics',
       tags: ['Alerts'],
       response: {
         200: {
@@ -220,14 +232,14 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const stats = store.getStats();
+      const stats = store.getUserStats(request.user!.id);
       
-      // Get alerts by type
-      const allAlerts = store.getAlerts(1000, 0); // Get a large batch for stats
+      // Get user alerts by type
+      const userAlerts = store.getAlertsByUserId(request.user!.id, 1000, 0); // Get a large batch for stats
       const alertsByType = {
-        match: allAlerts.filter(alert => alert.alert_type === 'match').length,
-        best_deal: allAlerts.filter(alert => alert.alert_type === 'best_deal').length,
-        new_item: allAlerts.filter(alert => alert.alert_type === 'new_item').length,
+        match: userAlerts.filter(alert => alert.alert_type === 'match').length,
+        best_deal: userAlerts.filter(alert => alert.alert_type === 'best_deal').length,
+        new_item: userAlerts.filter(alert => alert.alert_type === 'new_item').length,
       };
       
       return reply.code(200).send({
@@ -248,9 +260,11 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * POST /alerts/cleanup - Cleanup old alerts
+   * POST /alerts/cleanup - Cleanup old alerts (admin only - for now we'll keep it global)
    */
-  fastify.post('/cleanup', async (request, reply) => {
+  fastify.post('/cleanup', {
+    preHandler: [fastify.authenticate],
+  }, async (request, reply) => {
     try {
       const deletedCount = store.cleanupOldAlerts();
       
@@ -274,11 +288,12 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * GET /alerts/recent - Get recent alerts (last 24h)
+   * GET /alerts/recent - Get user's recent alerts (last 24h)
    */
   fastify.get('/recent', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Get alerts from the last 24 hours',
+      description: 'Get user alerts from the last 24 hours',
       tags: ['Alerts'],
       querystring: {
         type: 'object',
@@ -321,11 +336,11 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         limit: z.string().transform(val => parseInt(val, 10)).default('20'),
       }).parse(request.query);
       
-      // Get all alerts and filter for last 24h
-      const allAlerts = store.getAlerts(1000, 0);
+      // Get user's alerts and filter for last 24h
+      const userAlerts = store.getAlertsByUserId(request.user!.id, 1000, 0);
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       
-      const recentAlerts = allAlerts
+      const recentAlerts = userAlerts
         .filter(alert => new Date(alert.sent_at!) > oneDayAgo)
         .slice(0, query.limit);
       
@@ -354,11 +369,12 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * GET /alerts/by-rule/:ruleId - Get alerts for a specific rule
+   * GET /alerts/by-rule/:ruleId - Get alerts for a specific user rule
    */
   fastify.get('/by-rule/:ruleId', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Get all alerts for a specific rule',
+      description: 'Get all alerts for a specific user rule',
       tags: ['Alerts'],
       params: {
         type: 'object',
@@ -413,11 +429,25 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         offset: z.string().transform(val => parseInt(val, 10)).default('0'),
       }).parse(request.query);
       
-      // Get all alerts and filter by rule ID
-      const allAlerts = store.getAlerts(1000, 0);
-      const ruleAlerts = allAlerts
-        .filter(alert => alert.rule_id === ruleId)
-        .slice(offset, offset + limit);
+      // Ensure rule belongs to the user before getting alerts
+      const rule = store.getRuleById(ruleId);
+      if (!rule) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Rule not found',
+        });
+      }
+
+      if (rule.user_id !== request.user!.id.toString()) {
+        return reply.code(403).send({
+          success: false,
+          error: 'Access denied',
+          message: 'You can only access alerts for your own rules',
+        });
+      }
+      
+      // Get alerts for user's rule
+      const ruleAlerts = store.getAlertsByRuleIdForUser(ruleId, request.user!.id, limit, offset);
       
       return reply.code(200).send({
         success: true,

@@ -4,6 +4,13 @@ import { getStore, RuleSchema, type Rule, type CreateRule } from '../lib/store.j
 import { getScheduler } from '../lib/scheduler.js';
 import { getNotificationService } from '../lib/notifier.js';
 
+// Extend FastifyInstance type for authenticate
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: (request: any, reply: any) => Promise<void>;
+  }
+}
+
 // Request/Response schemas
 const CreateRuleRequestSchema = RuleSchema.omit({ 
   id: true, 
@@ -28,12 +35,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   const notificationService = getNotificationService();
 
   /**
-   * GET /rules - Get all rules
+   * GET /rules - Get all rules for authenticated user
    */
   fastify.get('/', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Get all alert rules',
+      description: 'Get all alert rules for authenticated user',
       tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -67,7 +76,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const rules = store.getAllRules();
+      // Get rules only for the authenticated user
+      const rules = store.getRulesByUserId(request.user!.id);
       
       return reply.code(200).send({
         success: true,
@@ -88,14 +98,15 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /rules - Create a new rule
    */
   fastify.post('/', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Create a new alert rule',
+      description: 'Create a new alert rule for authenticated user',
       tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
-        required: ['user_id', 'search_item', 'discord_webhook'],
+        required: ['search_item', 'discord_webhook'],
         properties: {
-          user_id: { type: 'string', minLength: 1 },
           search_item: { type: 'string', minLength: 1 },
           min_price: { type: 'number', minimum: 0 },
           max_price: { type: 'number', minimum: 0 },
@@ -136,7 +147,12 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const ruleData = CreateRuleRequestSchema.parse(request.body);
+      // Parse body but add user_id from authenticated user
+      const bodyData = request.body as any;
+      const ruleData = CreateRuleRequestSchema.parse({
+        ...bodyData,
+        user_id: request.user!.id.toString(), // Convert to string for compatibility
+      });
       
       // Validate webhook URL by testing it
       const webhookValid = await notificationService.testWebhook(ruleData.discord_webhook);
@@ -179,9 +195,11 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /rules/:id - Get a specific rule
    */
   fastify.get('/:id', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Get a specific rule by ID',
+      description: 'Get a specific rule by ID (user-owned)',
       tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -233,6 +251,15 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
           error: 'Rule not found',
         });
       }
+
+      // Verify user owns this rule
+      if (rule.user_id !== request.user!.id.toString()) {
+        return reply.code(403).send({
+          success: false,
+          error: 'Access denied',
+          message: 'You can only access your own rules',
+        });
+      }
       
       return reply.code(200).send({
         success: true,
@@ -252,9 +279,11 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * PUT /rules/:id - Update a rule
    */
   fastify.put('/:id', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Update an existing rule',
+      description: 'Update an existing rule (user-owned)',
       tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -312,6 +341,24 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { id } = RuleParamsSchema.parse(request.params);
+      
+      // Check if rule exists and user owns it
+      const existingRule = store.getRuleById(id);
+      if (!existingRule) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Rule not found',
+        });
+      }
+
+      if (existingRule.user_id !== request.user!.id.toString()) {
+        return reply.code(403).send({
+          success: false,
+          error: 'Access denied',
+          message: 'You can only update your own rules',
+        });
+      }
+
       const updates = UpdateRuleRequestSchema.parse(request.body);
       
       // Test webhook if it's being updated
@@ -364,8 +411,10 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * DELETE /rules/:id - Delete a rule
    */
   fastify.delete('/:id', {
+    preHandler: [fastify.authenticate],
     schema: {
-      description: 'Delete a rule',
+      description: 'Delete a rule (user-owned)',
+      security: [{ bearerAuth: [] }],
       tags: ['Rules'],
       params: {
         type: 'object',
@@ -393,6 +442,24 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { id } = RuleParamsSchema.parse(request.params);
+      
+      // Check if rule exists and user owns it
+      const existingRule = store.getRuleById(id);
+      if (!existingRule) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Rule not found',
+        });
+      }
+
+      if (existingRule.user_id !== request.user!.id.toString()) {
+        return reply.code(403).send({
+          success: false,
+          error: 'Access denied',
+          message: 'You can only delete your own rules',
+        });
+      }
+
       const deleted = store.deleteRule(id);
       
       if (!deleted) {

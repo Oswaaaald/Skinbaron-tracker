@@ -219,6 +219,21 @@ export class Store {
     }));
   }
 
+  // Get rules for a specific user (for multi-user support)
+  getRulesByUserId(userId: number): Rule[] {
+    // Handle both old format (TEXT user_id) and new format (INTEGER user_id)
+    const stmt = this.db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY created_at DESC');
+    const rows = stmt.all(userId.toString()) as any[];
+    
+    return rows.map(row => ({
+      ...row,
+      user_id: row.user_id, // Keep original format for now
+      stattrak: Boolean(row.stattrak),
+      souvenir: Boolean(row.souvenir),
+      enabled: Boolean(row.enabled),
+    }));
+  }
+
   getEnabledRules(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE enabled = 1 ORDER BY created_at DESC');
     const rows = stmt.all() as any[];
@@ -334,6 +349,79 @@ export class Store {
       ...row,
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
+    };
+  }
+
+  getAlertsByUserId(userId: number, limit: number = 50, offset: number = 0): Alert[] {
+    const stmt = this.db.prepare(`
+      SELECT a.* FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE r.user_id = ? 
+      ORDER BY a.sent_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    const rows = stmt.all(userId.toString(), limit, offset) as any[];
+    
+    return rows.map(row => ({
+      ...row,
+      stattrak: Boolean(row.stattrak),
+      souvenir: Boolean(row.souvenir),
+    }));
+  }
+
+  getAlertByIdForUser(alertId: number, userId: number): Alert | null {
+    const stmt = this.db.prepare(`
+      SELECT a.* FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE a.id = ? AND r.user_id = ?
+    `);
+    const row = stmt.get(alertId, userId.toString()) as any;
+    
+    if (!row) return null;
+
+    return {
+      ...row,
+      stattrak: Boolean(row.stattrak),
+      souvenir: Boolean(row.souvenir),
+    };
+  }
+
+  getAlertsByRuleIdForUser(ruleId: number, userId: number, limit: number = 50, offset: number = 0): Alert[] {
+    const stmt = this.db.prepare(`
+      SELECT a.* FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE a.rule_id = ? AND r.user_id = ? 
+      ORDER BY a.sent_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    const rows = stmt.all(ruleId, userId.toString(), limit, offset) as any[];
+    
+    return rows.map(row => ({
+      ...row,
+      stattrak: Boolean(row.stattrak),
+      souvenir: Boolean(row.souvenir),
+    }));
+  }
+
+  getUserStats(userId: number) {
+    const userRulesCount = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE user_id = ?').get(userId.toString()) as { count: number };
+    const enabledRulesCount = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE user_id = ? AND enabled = 1').get(userId.toString()) as { count: number };
+    const userAlertsCount = this.db.prepare(`
+      SELECT COUNT(*) as count FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE r.user_id = ?
+    `).get(userId.toString()) as { count: number };
+    const todayUserAlerts = this.db.prepare(`
+      SELECT COUNT(*) as count FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE r.user_id = ? AND DATE(a.sent_at) = DATE('now')
+    `).get(userId.toString()) as { count: number };
+
+    return {
+      totalRules: userRulesCount.count,
+      enabledRules: enabledRulesCount.count,
+      totalAlerts: userAlertsCount.count,
+      todayAlerts: todayUserAlerts.count,
     };
   }
 
