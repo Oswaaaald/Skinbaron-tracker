@@ -17,6 +17,7 @@ services:
       - PORT=8080
       - SB_API_KEY=${SB_API_KEY}
       - DISCORD_WEBHOOK=${DISCORD_WEBHOOK}
+      - JWT_SECRET=${JWT_SECRET}
       - SQLITE_PATH=/app/data/alerts.db
       - POLL_CRON=${POLL_CRON:-*/2 * * * *}
       - ENABLE_BEST_DEALS=${ENABLE_BEST_DEALS:-true}
