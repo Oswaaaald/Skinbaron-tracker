@@ -52,15 +52,10 @@ export function AlertsTable() {
     try {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
-        console.log('Alerts cleared, refreshing data...')
-        // Refresh the alerts list immediately
+        console.log('Alerts cleared, invalidating cache...')
+        // Invalidate alerts and stats cache - let auto-refresh handle the rest
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        
-        // Small delay to ensure backend has processed the deletion
-        setTimeout(async () => {
-          await syncStats()
-          console.log('Data refresh completed')
-        }, 100)
+        syncStats()
         
         alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
       }
