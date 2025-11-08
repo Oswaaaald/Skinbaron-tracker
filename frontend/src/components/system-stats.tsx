@@ -31,7 +31,8 @@ export function SystemStats() {
   const { data: alertStatsResponse } = useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    refetchInterval: 30 * 1000, // Refresh every 30 seconds for real-time stats
+    refetchInterval: 15 * 1000, // Refresh every 15 seconds for real-time stats
+    refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   })
 
 

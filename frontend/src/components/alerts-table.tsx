@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient, type Alert } from "@/lib/api"
+import { useSyncStats } from "@/hooks/use-sync-stats"
 
 const ALERT_TYPE_LABELS = {
   match: 'Rule Match',
@@ -38,6 +39,7 @@ export function AlertsTable() {
   const [isClearingAll, setIsClearingAll] = useState(false)
   const limit = 20
   const queryClient = useQueryClient()
+  const { syncStats } = useSyncStats()
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
@@ -50,9 +52,9 @@ export function AlertsTable() {
     try {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
-        // Refresh the alerts list and stats
+        // Refresh the alerts list and sync all stats immediately
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        queryClient.invalidateQueries({ queryKey: ['alert-stats'] })
+        syncStats()
         alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
       }
     } catch (error) {
@@ -74,12 +76,12 @@ export function AlertsTable() {
     refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   })
 
-  // Invalidate alert stats when alerts data changes
+  // Sync stats when alerts data changes
   useEffect(() => {
     if (alertsResponse) {
-      queryClient.invalidateQueries({ queryKey: ['alert-stats'] })
+      syncStats()
     }
-  }, [alertsResponse, queryClient])
+  }, [alertsResponse, syncStats])
 
   if (isLoading) {
     return <LoadingSpinner />
