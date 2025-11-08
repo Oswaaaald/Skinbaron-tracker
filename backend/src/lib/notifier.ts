@@ -68,7 +68,7 @@ export class NotificationService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(embed),
+        body: JSON.stringify(validatedPayload),
       });
 
       if (response.ok) {
