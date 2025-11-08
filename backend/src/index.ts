@@ -304,42 +304,35 @@ async function setupSystemStatus() {
       }
 
       // FORCE TEST VALUES - Always return test data temporarily
-      return reply.code(200).send({
-        success: true,
-        data: {
-          scheduler: {
-            isRunning: true,
-            lastRunTime: new Date().toISOString(),
-            nextRunTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-            totalRuns: 42,
-            totalAlerts: 15,
-            errorCount: 0,
-            lastError: null,
-          },
-          database: {
-            totalRules: 5,
-            enabledRules: 3,
-            totalAlerts: 15,
-            todayAlerts: 2,
-          },
-          config: {
-            nodeEnv: "production",
-            pollCron: "*/5 * * * *",
-            enableBestDeals: true,
-            enableNewestItems: false,
-            feedsMaxPrice: 100,
-            feedsMaxWear: 0.8,
-          },
+      const testData = {
+        scheduler: {
+          isRunning: true,
+          lastRunTime: new Date().toISOString(),
+          nextRunTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+          totalRuns: 42,
+          totalAlerts: 15,
+          errorCount: 0,
+          lastError: null,
         },
-      });
+        database: {
+          totalRules: 5,
+          enabledRules: 3,
+          totalAlerts: 15,
+          todayAlerts: 2,
+        },
+        config: {
+          nodeEnv: "production",
+          pollCron: "*/5 * * * *",
+          enableBestDeals: true,
+          enableNewestItems: false,
+          feedsMaxPrice: 100,
+          feedsMaxWear: 0.8,
+        },
+      };
 
       return reply.code(200).send({
         success: true,
-        data: {
-          scheduler: schedulerStats,
-          database: databaseStats,
-          config: configData,
-        },
+        data: testData,
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get system status');
