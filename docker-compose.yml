@@ -23,7 +23,7 @@ services:
       - ENABLE_NEWEST_ITEMS=${ENABLE_NEWEST_ITEMS:-true}
       - FEEDS_MAX_PRICE=${FEEDS_MAX_PRICE:-200}
       - FEEDS_MAX_WEAR=${FEEDS_MAX_WEAR:-0.20}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://skinbaron-tracker-app.oswaaaald.be}
       - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60000}
       - LOG_LEVEL=${LOG_LEVEL:-info}
@@ -44,7 +44,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://skinbaron-tracker-api.oswaaaald.be}
     container_name: skinbaron-alerts-frontend
     restart: unless-stopped
     ports:
