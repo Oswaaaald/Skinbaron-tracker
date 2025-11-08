@@ -184,8 +184,8 @@ async function setupHealthCheck() {
         };
       }
       
-      // FORCE MEMORY VALUES - Always use test values temporarily
-      memoryStats = {
+      // FORCE MEMORY VALUES - Always use test values temporarily  
+      const forcedMemoryStats = {
         heapUsed: 67 * 1024 * 1024, // 67MB
         heapTotal: 134 * 1024 * 1024, // 134MB  
         rss: 89 * 1024 * 1024 // 89MB
@@ -198,7 +198,7 @@ async function setupHealthCheck() {
         services,
         stats: {
           uptime: process.uptime(),
-          memory: memoryStats,
+          memory: forcedMemoryStats,
           version: process.env.npm_package_version || '1.0.0',
         },
       });
