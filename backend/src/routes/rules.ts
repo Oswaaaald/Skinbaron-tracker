@@ -575,8 +575,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
       
-      let matches = [];
-      let webhookTestResult = null;
+      let matches: any[] = [];
+      let webhookTestResult: boolean | null = null;
       
       if (webhook_only) {
         // Only test webhooks, skip SkinBaron API
