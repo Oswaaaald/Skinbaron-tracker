@@ -94,6 +94,11 @@ export function RulesTable() {
 
   const toggleRuleMutation = useMutation({
     mutationFn: ({ rule, enabled }: { rule: Rule; enabled: boolean }) => {
+      // Ensure rule.id exists
+      if (!rule.id) {
+        throw new Error('Rule ID is required');
+      }
+      
       // Send complete rule data with updated enabled status (like create)
       const updateData = {
         search_item: rule.search_item,
