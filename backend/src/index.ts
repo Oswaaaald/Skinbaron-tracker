@@ -490,6 +490,31 @@ async function setupTestEndpoint() {
       }
     });
   });
+
+  // Exact replica of health endpoint for testing
+  fastify.get('/api/test-health', async (request, reply) => {
+    let memoryStats = {
+      heapUsed: 67 * 1024 * 1024, // 67MB
+      heapTotal: 134 * 1024 * 1024, // 134MB  
+      rss: 89 * 1024 * 1024 // 89MB
+    };
+
+    return reply.code(200).send({
+      success: true,
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: 'healthy',
+        skinbaron_api: 'test',
+        scheduler: 'running'
+      },
+      stats: {
+        uptime: process.uptime(),
+        memory: memoryStats,
+        version: '2.0.0-test',
+      },
+    });
+  });
 }
 
 // Register API routes
