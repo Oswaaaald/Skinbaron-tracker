@@ -227,11 +227,11 @@ export class SkinBaronClient {
     }
 
     // Check wear range
-    if (params.minWear !== undefined && item.wearValue && item.wearValue < params.minWear) {
+    if (params.minWear !== undefined && params.minWear !== null && item.wearValue && item.wearValue < params.minWear) {
       return false;
     }
 
-    if (params.maxWear !== undefined && item.wearValue && item.wearValue > params.maxWear) {
+    if (params.maxWear !== undefined && params.maxWear !== null && item.wearValue && item.wearValue > params.maxWear) {
       return false;
     }
 
