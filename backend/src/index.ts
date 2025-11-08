@@ -213,8 +213,24 @@ async function setupSystemStatus() {
       const store = getStore();
       const scheduler = getScheduler();
 
-      const schedulerStats = scheduler.getStats();
-      const databaseStats = store.getStats();
+      let schedulerStats = {};
+      let databaseStats = {};
+
+      // Get scheduler stats with error handling
+      try {
+        schedulerStats = scheduler.getStats();
+      } catch (error) {
+        request.log.error({ error }, 'Failed to get scheduler stats');
+        schedulerStats = { error: 'Failed to load scheduler stats' };
+      }
+
+      // Get database stats with error handling
+      try {
+        databaseStats = store.getStats();
+      } catch (error) {
+        request.log.error({ error }, 'Failed to get database stats');
+        databaseStats = { error: 'Failed to load database stats' };
+      }
 
       return reply.code(200).send({
         success: true,

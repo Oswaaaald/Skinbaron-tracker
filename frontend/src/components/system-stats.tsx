@@ -164,7 +164,7 @@ export function SystemStats() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status?.scheduler ? (
+          {status?.scheduler && Object.keys(status.scheduler).length > 0 ? (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
@@ -175,18 +175,18 @@ export function SystemStats() {
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Total Runs</span>
-                <span className="text-sm">{status.scheduler.totalRuns}</span>
+                <span className="text-sm">{status.scheduler.totalRuns || 0}</span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Total Alerts</span>
-                <span className="text-sm">{status.scheduler.totalAlerts}</span>
+                <span className="text-sm">{status.scheduler.totalAlerts || 0}</span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Error Count</span>
-                <Badge variant={status.scheduler.errorCount > 0 ? 'destructive' : 'default'}>
-                  {status.scheduler.errorCount}
+                <Badge variant={(status.scheduler.errorCount || 0) > 0 ? 'destructive' : 'default'}>
+                  {status.scheduler.errorCount || 0}
                 </Badge>
               </div>
               
@@ -218,6 +218,18 @@ export function SystemStats() {
                 </>
               )}
             </>
+          ) : health?.services?.scheduler ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Status</span>
+                <Badge variant={health.services.scheduler === 'running' ? 'default' : 'secondary'}>
+                  {health.services.scheduler === 'running' ? 'Running' : 'Stopped'}
+                </Badge>
+              </div>
+              <div className="text-center text-sm text-muted-foreground mt-4">
+                Detailed scheduler information unavailable
+              </div>
+            </>
           ) : (
             <div className="text-center text-muted-foreground">
               Unable to load scheduler information
@@ -235,15 +247,15 @@ export function SystemStats() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status?.database ? (
+          {status?.database && Object.keys(status.database).length > 0 ? (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{status.database.totalRules}</div>
+                  <div className="text-2xl font-bold">{status.database.totalRules || 0}</div>
                   <div className="text-xs text-muted-foreground">Total Rules</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{status.database.enabledRules}</div>
+                  <div className="text-2xl font-bold text-green-600">{status.database.enabledRules || 0}</div>
                   <div className="text-xs text-muted-foreground">Enabled Rules</div>
                 </div>
               </div>
@@ -252,11 +264,11 @@ export function SystemStats() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{status.database.totalAlerts}</div>
+                  <div className="text-2xl font-bold">{status.database.totalAlerts || 0}</div>
                   <div className="text-xs text-muted-foreground">Total Alerts</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{status.database.todayAlerts}</div>
+                  <div className="text-2xl font-bold text-blue-600">{status.database.todayAlerts || 0}</div>
                   <div className="text-xs text-muted-foreground">Today&apos;s Alerts</div>
                 </div>
               </div>
@@ -284,6 +296,51 @@ export function SystemStats() {
                 </>
               )}
             </>
+          ) : alertStats ? (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{alertStats.totalRules || 0}</div>
+                  <div className="text-xs text-muted-foreground">Total Rules</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{alertStats.enabledRules || 0}</div>
+                  <div className="text-xs text-muted-foreground">Enabled Rules</div>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{alertStats.totalAlerts || 0}</div>
+                  <div className="text-xs text-muted-foreground">Total Alerts</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{alertStats.todayAlerts || 0}</div>
+                  <div className="text-xs text-muted-foreground">Today&apos;s Alerts</div>
+                </div>
+              </div>
+              
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2">Alert Types</h4>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="text-center">
+                    <div className="font-mono">{alertStats.alertsByType?.match || 0}</div>
+                    <div className="text-muted-foreground">Matches</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-mono">{alertStats.alertsByType?.best_deal || 0}</div>
+                    <div className="text-muted-foreground">Best Deals</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-mono">{alertStats.alertsByType?.new_item || 0}</div>
+                    <div className="text-muted-foreground">New Items</div>
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="text-center text-muted-foreground">
               Unable to load database information
@@ -301,18 +358,18 @@ export function SystemStats() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status?.config ? (
+          {status?.config && Object.keys(status.config).length > 0 ? (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Environment</span>
                 <Badge variant={status.config.nodeEnv === 'production' ? 'default' : 'secondary'}>
-                  {status.config.nodeEnv}
+                  {status.config.nodeEnv || 'unknown'}
                 </Badge>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Poll Schedule</span>
-                <span className="text-sm font-mono">{status.config.pollCron}</span>
+                <span className="text-sm font-mono">{status.config.pollCron || 'N/A'}</span>
               </div>
               
               <div className="flex items-center justify-between">
@@ -331,17 +388,19 @@ export function SystemStats() {
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Max Feed Price</span>
-                <span className="text-sm">${status.config.feedsMaxPrice}</span>
+                <span className="text-sm">${status.config.feedsMaxPrice || 'N/A'}</span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Max Feed Wear</span>
-                <span className="text-sm">{status.config.feedsMaxWear}</span>
+                <span className="text-sm">{status.config.feedsMaxWear || 'N/A'}</span>
               </div>
             </>
           ) : (
             <div className="text-center text-muted-foreground">
-              Unable to load configuration
+              Configuration information temporarily unavailable
+              <br />
+              <span className="text-xs">System is running normally</span>
             </div>
           )}
           
