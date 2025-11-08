@@ -254,6 +254,10 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Cleanup old alerts (older than 30 days)',
       tags: ['Alerts'],
+      body: {
+        type: ['object', 'null'],
+        additionalProperties: true
+      },
       response: {
         200: {
           type: 'object',

@@ -163,8 +163,12 @@ async function setupSchedulerControls() {
   // Start scheduler
   fastify.post('/api/system/scheduler/start', {
     schema: {
-      description: 'Start the alert scheduler',
+      description: 'Start the scheduler',
       tags: ['Scheduler'],
+      body: {
+        type: ['object', 'null'],
+        additionalProperties: true
+      },
       response: {
         200: {
           type: 'object',
@@ -197,8 +201,12 @@ async function setupSchedulerControls() {
   // Stop scheduler
   fastify.post('/api/system/scheduler/stop', {
     schema: {
-      description: 'Stop the alert scheduler',
+      description: 'Stop the scheduler',
       tags: ['Scheduler'],
+      body: {
+        type: ['object', 'null'],
+        additionalProperties: true
+      },
       response: {
         200: {
           type: 'object',
@@ -233,6 +241,10 @@ async function setupSchedulerControls() {
     schema: {
       description: 'Force run a scheduler cycle',
       tags: ['Scheduler'],
+      body: {
+        type: ['object', 'null'],
+        additionalProperties: true
+      },
       response: {
         200: {
           type: 'object',
