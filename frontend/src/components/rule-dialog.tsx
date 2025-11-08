@@ -44,7 +44,12 @@ const ruleFormSchema = z.object({
   discord_webhook: z.string().url("Invalid webhook URL").optional(), // Keep for backward compatibility
   enabled: z.boolean().optional(),
 }).refine(
-  (data) => data.webhook_ids?.length || data.discord_webhook,
+  (data) => {
+    // Must have either webhook_ids with at least one element OR discord_webhook with valid URL
+    const hasWebhookIds = data.webhook_ids && data.webhook_ids.length > 0
+    const hasDiscordWebhook = data.discord_webhook && data.discord_webhook.trim().length > 0
+    return hasWebhookIds || hasDiscordWebhook
+  },
   {
     message: "At least one webhook must be selected",
     path: ["webhook_ids"],
@@ -171,6 +176,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       return
     }
 
+    console.log('Form submission data:', data)
+    console.log('useDirectWebhook:', useDirectWebhook)
+
     setIsSubmitting(true)
     
     // Convert empty numbers to undefined and clean webhook data
@@ -189,6 +197,8 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       // Using saved webhooks - clear discord_webhook
       delete processedData.discord_webhook
     }
+
+    console.log('Processed data for submission:', processedData)
 
     if (isEditing && rule?.id) {
       updateRuleMutation.mutate({ id: rule.id, data: processedData })
@@ -357,7 +367,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <FormControl>
                         <Select
                           value={field.value?.[0]?.toString() || ""}
-                          onValueChange={(value) => field.onChange(value ? [Number(value)] : [])}
+                          onValueChange={(value) => {
+                            console.log('Webhook selection changed:', value)
+                            const newValue = value ? [Number(value)] : []
+                            console.log('Setting webhook_ids to:', newValue)
+                            field.onChange(newValue)
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Choose a webhook..." />
