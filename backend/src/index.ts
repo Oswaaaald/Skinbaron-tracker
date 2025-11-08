@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -86,6 +86,12 @@ async function registerPlugins() {
       error: 'Rate limit exceeded',
       message: `Too many requests, please try again in ${Math.ceil(context.ttl / 1000)} seconds`,
     }),
+  });
+
+  // Authentication hook
+  fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { authMiddleware } = await import('./lib/middleware.js');
+    await authMiddleware(request, reply);
   });
 }
 
@@ -239,6 +245,12 @@ async function setupSchedulerControls() {
 
 // Register API routes
 async function registerRoutes() {
+  // Import auth routes
+  const { default: authRoutes } = await import('./routes/auth.js');
+  
+  // Authentication
+  await fastify.register(authRoutes, { prefix: '/api/auth' });
+  
   // Rules CRUD
   await fastify.register(rulesRoutes, { prefix: '/api/rules' });
   await fastify.register(alertsRoutes, { prefix: '/api/alerts' });

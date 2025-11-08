@@ -35,11 +35,23 @@ export const AlertSchema = z.object({
   sent_at: z.string().optional(),
 });
 
+// User schema (for multi-user support)
+export const UserSchema = z.object({
+  id: z.number().optional(),
+  username: z.string().min(3).max(20),
+  email: z.string().email(),
+  password_hash: z.string(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
 // Types inferred from schemas
 export type Rule = z.infer<typeof RuleSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
+export type User = z.infer<typeof UserSchema>;
 export type CreateRule = Omit<Rule, 'id' | 'created_at' | 'updated_at'>;
 export type CreateAlert = Omit<Alert, 'id' | 'sent_at'>;
+export type CreateUser = Omit<User, 'id' | 'created_at' | 'updated_at'>;
 
 export class Store {
   private db: Database.Database;
@@ -59,6 +71,7 @@ export class Store {
     this.db.pragma('foreign_keys = ON');
     
     this.initializeTables();
+    this.initializeUserTables(); // Add multi-user support
     console.log(`✅ SQLite database initialized at: ${dbPath}`);
   }
 
@@ -110,6 +123,42 @@ export class Store {
     `);
 
     console.log('✅ Database tables initialized');
+  }
+
+  private initializeUserTables() {
+    // Create users table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL CHECK(length(username) >= 3 AND length(username) <= 20),
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create user webhooks table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS user_webhooks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL CHECK(length(name) >= 1 AND length(name) <= 50),
+        webhook_url TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(user_id, name)
+      )
+    `);
+
+    // Add indexes for users
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+      CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
+    `);
+
+    console.log('✅ User tables initialized');
   }
 
   // Rules CRUD operations
@@ -313,6 +362,81 @@ export class Store {
     `);
     const result = stmt.run();
     return result.changes;
+  }
+
+  // User management methods
+  createUser(user: CreateUser): User {
+    const validated = UserSchema.omit({ id: true, created_at: true, updated_at: true }).parse(user);
+    
+    const stmt = this.db.prepare(`
+      INSERT INTO users (username, email, password_hash)
+      VALUES (?, ?, ?)
+    `);
+
+    try {
+      const result = stmt.run(validated.username, validated.email, validated.password_hash);
+      return this.getUserById(result.lastInsertRowid as number)!;
+    } catch (error: any) {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.message.includes('users.email')) {
+          throw new Error('Email already exists');
+        }
+        if (error.message.includes('users.username')) {
+          throw new Error('Username already taken');
+        }
+      }
+      throw error;
+    }
+  }
+
+  getUserById(id: number): User | null {
+    const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
+    const row = stmt.get(id) as any;
+    return row ? UserSchema.parse(row) : null;
+  }
+
+  getUserByEmail(email: string): User | null {
+    const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
+    const row = stmt.get(email) as any;
+    return row ? UserSchema.parse(row) : null;
+  }
+
+  getUserByUsername(username: string): User | null {
+    const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
+    const row = stmt.get(username) as any;
+    return row ? UserSchema.parse(row) : null;
+  }
+
+  updateUser(id: number, updates: Partial<CreateUser>): User {
+    const currentUser = this.getUserById(id);
+    if (!currentUser) {
+      throw new Error('User not found');
+    }
+
+    const validatedUpdates = UserSchema.omit({ id: true, created_at: true }).partial().parse(updates);
+    
+    const fields = Object.keys(validatedUpdates).filter(key => key !== 'updated_at');
+    if (fields.length === 0) {
+      return currentUser;
+    }
+
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const values = fields.map(field => (validatedUpdates as any)[field]);
+    
+    const stmt = this.db.prepare(`
+      UPDATE users 
+      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+
+    stmt.run(...values, id);
+    return this.getUserById(id)!;
+  }
+
+  deleteUser(id: number): boolean {
+    const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
   }
 
   close() {

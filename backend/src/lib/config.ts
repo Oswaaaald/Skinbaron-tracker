@@ -19,6 +19,9 @@ const ConfigSchema = z.object({
   // Database
   SQLITE_PATH: z.string().default('./data/alerts.db'),
   
+  // Authentication
+  JWT_SECRET: z.string().default('change-this-in-production-' + Math.random().toString(36)),
+  
   // Polling
   POLL_CRON: z.string().default('*/5 * * * *'),
   

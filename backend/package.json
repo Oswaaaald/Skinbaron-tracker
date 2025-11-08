@@ -13,17 +13,28 @@
     "docker:build": "docker build -t skinbaron-backend .",
     "docker:run": "docker run -p 8080:8080 skinbaron-backend"
   },
-  "keywords": ["skinbaron", "cs2", "alerts", "discord", "fastify", "typescript"],
+  "keywords": [
+    "skinbaron",
+    "cs2",
+    "alerts",
+    "discord",
+    "fastify",
+    "typescript"
+  ],
   "author": "SkinBaron Alerts",
   "license": "MIT",
   "dependencies": {
-    "fastify": "^4.24.3",
     "@fastify/cors": "^8.4.0",
     "@fastify/helmet": "^11.1.1",
     "@fastify/rate-limit": "^9.1.0",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^9.2.2",
     "cron": "^3.1.6",
     "dotenv": "^16.3.1",
+    "fastify": "^4.24.3",
+    "jsonwebtoken": "^9.0.2",
     "undici": "^5.28.2",
     "zod": "^3.22.4"
   },
