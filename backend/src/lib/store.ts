@@ -251,27 +251,51 @@ export class Store {
     const row = stmt.get(id) as any;
     
     if (!row) return null;
-
+    
+    let webhookIds: number[] = [];
+    if (row.webhook_ids) {
+      try {
+        const parsed = JSON.parse(row.webhook_ids);
+        if (Array.isArray(parsed)) {
+          webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
+        }
+      } catch (error) {
+        console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
+      }
+    }
+    
     return {
       ...row,
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
+      webhook_ids: webhookIds,
     };
-  }
-
-  getAllRules(): Rule[] {
+  }  getAllRules(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules ORDER BY created_at DESC');
     const rows = stmt.all() as any[];
     
-    return rows.map(row => ({
-      ...row,
-      stattrak: Boolean(row.stattrak),
-      souvenir: Boolean(row.souvenir),
-      enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
-    }));
+    return rows.map(row => {
+      let webhookIds: number[] = [];
+      if (row.webhook_ids) {
+        try {
+          const parsed = JSON.parse(row.webhook_ids);
+          if (Array.isArray(parsed)) {
+            webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
+          }
+        } catch (error) {
+          console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
+        }
+      }
+      
+      return {
+        ...row,
+        stattrak: Boolean(row.stattrak),
+        souvenir: Boolean(row.souvenir),
+        enabled: Boolean(row.enabled),
+        webhook_ids: webhookIds,
+      };
+    });
   }
 
   // Get rules for a specific user (for multi-user support)
@@ -280,27 +304,57 @@ export class Store {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY created_at DESC');
     const rows = stmt.all(userId.toString()) as any[];
     
-    return rows.map(row => ({
-      ...row,
-      user_id: row.user_id, // Keep original format for now
-      stattrak: Boolean(row.stattrak),
-      souvenir: Boolean(row.souvenir),
-      enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
-    }));
+    return rows.map(row => {
+      let webhookIds: number[] = [];
+      
+      if (row.webhook_ids) {
+        try {
+          const parsed = JSON.parse(row.webhook_ids);
+          // Ensure it's an array of numbers
+          if (Array.isArray(parsed)) {
+            webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
+          }
+        } catch (error) {
+          console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
+        }
+      }
+      
+      return {
+        ...row,
+        user_id: row.user_id, // Keep original format for now
+        stattrak: Boolean(row.stattrak),
+        souvenir: Boolean(row.souvenir),
+        enabled: Boolean(row.enabled),
+        webhook_ids: webhookIds,
+      };
+    });
   }
 
   getEnabledRules(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE enabled = 1 ORDER BY created_at DESC');
     const rows = stmt.all() as any[];
     
-    return rows.map(row => ({
-      ...row,
-      stattrak: Boolean(row.stattrak),
-      souvenir: Boolean(row.souvenir),
-      enabled: Boolean(row.enabled),
-      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
-    }));
+    return rows.map(row => {
+      let webhookIds: number[] = [];
+      if (row.webhook_ids) {
+        try {
+          const parsed = JSON.parse(row.webhook_ids);
+          if (Array.isArray(parsed)) {
+            webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
+          }
+        } catch (error) {
+          console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
+        }
+      }
+      
+      return {
+        ...row,
+        stattrak: Boolean(row.stattrak),
+        souvenir: Boolean(row.souvenir),
+        enabled: Boolean(row.enabled),
+        webhook_ids: webhookIds,
+      };
+    });
   }
 
   updateRule(id: number, updates: Partial<CreateRule>): Rule | null {
