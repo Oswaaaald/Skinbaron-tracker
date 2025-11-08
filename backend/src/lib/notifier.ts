@@ -44,7 +44,7 @@ export interface NotificationOptions {
 
 export class NotificationService {
   private readonly botName = '🔔 SkinBaron Alerts';
-  private readonly botAvatar = 'https://skinbaron.de/favicon.ico';
+  private readonly botAvatar = 'https://skinbaron.de/favicon.png';
 
   constructor() {
     console.log('✅ Notification service initialized');
