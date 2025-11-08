@@ -20,13 +20,7 @@ const ConfigSchema = z.object({
   SQLITE_PATH: z.string().default('./data/alerts.db'),
   
   // Polling
-  POLL_CRON: z.string().default('*/2 * * * *'),
-  ENABLE_BEST_DEALS: z.coerce.boolean().default(true),
-  ENABLE_NEWEST_ITEMS: z.coerce.boolean().default(true),
-  
-  // Feed filters
-  FEEDS_MAX_PRICE: z.coerce.number().default(200),
-  FEEDS_MAX_WEAR: z.coerce.number().min(0).max(1).default(0.20),
+  POLL_CRON: z.string().default('*/5 * * * *'),
   
   // API
   CORS_ORIGIN: z.string().default('http://localhost:3000'),

@@ -381,28 +381,8 @@ export function SystemStats() {
                 <span className="text-sm font-mono">{status.config.pollCron || 'N/A'}</span>
               </div>
               
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Best Deals Feed</span>
-                <Badge variant={status.config.enableBestDeals ? 'default' : 'secondary'}>
-                  {status.config.enableBestDeals ? 'Enabled' : 'Disabled'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Newest Items Feed</span>
-                <Badge variant={status.config.enableNewestItems ? 'default' : 'secondary'}>
-                  {status.config.enableNewestItems ? 'Enabled' : 'Disabled'}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Max Feed Price</span>
-                <span className="text-sm">${status.config.feedsMaxPrice || 'N/A'}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Max Feed Wear</span>
-                <span className="text-sm">{status.config.feedsMaxWear || 'N/A'}</span>
+              <div className="text-center text-sm text-muted-foreground mt-4">
+                System monitors your custom rules every 5 minutes
               </div>
             </>
           ) : health ? (

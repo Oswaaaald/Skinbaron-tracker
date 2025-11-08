@@ -148,14 +148,10 @@ async function setupSystemStatus() {
       // Get real database stats  
       const databaseStats = store.getStats();
       
-      // Get real config data
+      // Get real config data (only relevant system settings)
       const configData = {
         nodeEnv: appConfig.NODE_ENV,
         pollCron: appConfig.POLL_CRON,
-        enableBestDeals: appConfig.ENABLE_BEST_DEALS,
-        enableNewestItems: appConfig.ENABLE_NEWEST_ITEMS,
-        feedsMaxPrice: appConfig.FEEDS_MAX_PRICE,
-        feedsMaxWear: appConfig.FEEDS_MAX_WEAR,
       };
 
       return reply.code(200).send({
