@@ -25,8 +25,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { apiClient, type Rule } from "@/lib/api"
+import { apiClient, type Rule, type Webhook } from "@/lib/api"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useQuery } from "@tanstack/react-query"
 
 const ruleFormSchema = z.object({
   user_id: z.string().min(1, "User ID is required"),
@@ -37,9 +40,16 @@ const ruleFormSchema = z.object({
   max_wear: z.number().min(0).max(1).optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
-  discord_webhook: z.string().url("Invalid webhook URL"),
+  webhook_ids: z.array(z.number()).optional(), // New: array of webhook IDs
+  discord_webhook: z.string().url("Invalid webhook URL").optional(), // Keep for backward compatibility
   enabled: z.boolean().optional(),
-})
+}).refine(
+  (data) => data.webhook_ids?.length || data.discord_webhook,
+  {
+    message: "At least one webhook must be selected",
+    path: ["webhook_ids"],
+  }
+)
 
 type RuleFormData = z.infer<typeof ruleFormSchema>
 
@@ -51,8 +61,20 @@ interface RuleDialogProps {
 
 export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [useDirectWebhook, setUseDirectWebhook] = useState(false)
   const queryClient = useQueryClient()
   const isEditing = !!rule
+
+  // Fetch user's webhooks
+  const { data: webhooks = [] } = useQuery({
+    queryKey: ['webhooks'],
+    queryFn: async () => {
+      const result = await apiClient.getWebhooks(false)
+      if (!result.success) throw new Error(result.error)
+      return result.data || []
+    },
+    enabled: open, // Only fetch when dialog is open
+  })
 
   const form = useForm<RuleFormData>({
     resolver: zodResolver(ruleFormSchema),
@@ -65,6 +87,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       max_wear: undefined,
       stattrak: false,
       souvenir: false,
+      webhook_ids: [],
       discord_webhook: "",
       enabled: true,
     },
@@ -75,6 +98,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     if (open) {
       if (rule) {
         // Editing existing rule
+        const hasDirectWebhook = !!rule.discord_webhook
+        setUseDirectWebhook(hasDirectWebhook)
+        
         form.reset({
           user_id: rule.user_id,
           search_item: rule.search_item,
@@ -84,11 +110,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           max_wear: rule.max_wear,
           stattrak: rule.stattrak || false,
           souvenir: rule.souvenir || false,
-          discord_webhook: rule.discord_webhook,
+          webhook_ids: [], // TODO: Parse from rule if using new system
+          discord_webhook: rule.discord_webhook || "",
           enabled: rule.enabled ?? true,
         })
       } else {
         // Creating new rule
+        setUseDirectWebhook(false)
+        
         form.reset({
           user_id: "",
           search_item: "",
@@ -98,6 +127,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           max_wear: undefined,
           stattrak: false,
           souvenir: false,
+          webhook_ids: [],
           discord_webhook: "",
           enabled: true,
         })
@@ -140,11 +170,20 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const onSubmit = async (data: RuleFormData) => {
     setIsSubmitting(true)
     
-    // Convert empty numbers to undefined
-    const processedData = {
+    // Convert empty numbers to undefined and clean webhook data
+    const processedData: any = {
       ...data,
       min_price: data.min_price === 0 ? undefined : data.min_price,
       max_price: data.max_price === 0 ? undefined : data.max_price,
+    }
+
+    // Clean webhook data based on selection
+    if (useDirectWebhook) {
+      // Using direct webhook URL - clear webhook_ids
+      delete processedData.webhook_ids
+    } else {
+      // Using saved webhooks - clear discord_webhook
+      delete processedData.discord_webhook
     }
 
     if (isEditing && rule?.id) {
@@ -307,22 +346,75 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="discord_webhook"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Discord Webhook URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://discord.com/api/webhooks/..." {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Discord webhook URL where alerts will be sent
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+            {/* Webhook Selection */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel>Notification Settings</FormLabel>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="use-direct"
+                    checked={useDirectWebhook}
+                    onCheckedChange={setUseDirectWebhook}
+                  />
+                  <Label htmlFor="use-direct" className="text-sm">Use direct URL</Label>
+                </div>
+              </div>
+
+              {!useDirectWebhook ? (
+                <FormField
+                  control={form.control}
+                  name="webhook_ids"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Webhooks</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value?.[0]?.toString() || ""}
+                          onValueChange={(value) => field.onChange(value ? [Number(value)] : [])}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a webhook..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {webhooks
+                              .filter(w => w.is_active)
+                              .map((webhook) => (
+                                <SelectItem key={webhook.id} value={webhook.id!.toString()}>
+                                  {webhook.name} ({webhook.webhook_type.toUpperCase()})
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Choose from your saved encrypted webhooks
+                        {webhooks.filter(w => w.is_active).length === 0 && (
+                          <span className="text-orange-500"> - No active webhooks found. Create one in the Webhooks tab.</span>
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="discord_webhook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Discord Webhook URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://discord.com/api/webhooks/..." {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Direct webhook URL (not encrypted)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
+            </div>
 
             <div className="grid grid-cols-3 gap-4">
               <FormField
