@@ -260,9 +260,24 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <Input
                         type="text"
                         placeholder="ex: 10.50"
-                        {...field}
                         value={field.value?.toString() || ''}
                         onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            // Allow any text during typing, validate only on blur
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0) {
+                              field.onChange(num)
+                            } else if (val.match(/^\d*\.?\d*$/)) {
+                              // Allow partial numbers like "4", "4.", "4.5" during typing
+                              field.onChange(val as any)
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Clean up on blur - ensure it's a valid number
                           const val = e.target.value.trim()
                           if (val === '') {
                             field.onChange(undefined)
@@ -270,6 +285,8 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             const num = parseFloat(val)
                             if (!isNaN(num) && num >= 0) {
                               field.onChange(num)
+                            } else {
+                              field.onChange(undefined)
                             }
                           }
                         }}
@@ -294,9 +311,24 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <Input
                         type="text"
                         placeholder="ex: 50"
-                        {...field}
                         value={field.value?.toString() || ''}
                         onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            // Allow any text during typing, validate only on blur
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0) {
+                              field.onChange(num)
+                            } else if (val.match(/^\d*\.?\d*$/)) {
+                              // Allow partial numbers like "4", "4.", "4.5" during typing
+                              field.onChange(val as any)
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Clean up on blur - ensure it's a valid number
                           const val = e.target.value.trim()
                           if (val === '') {
                             field.onChange(undefined)
@@ -304,6 +336,8 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             const num = parseFloat(val)
                             if (!isNaN(num) && num >= 0) {
                               field.onChange(num)
+                            } else {
+                              field.onChange(undefined)
                             }
                           }
                         }}
@@ -331,16 +365,33 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <Input
                         type="text"
                         placeholder="ex: 15"
-                        {...field}
                         value={field.value?.toString() || ''}
                         onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            // Allow any text during typing, validate only on blur
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
+                              field.onChange(num)
+                            } else if (val.match(/^\d*\.?\d*$/)) {
+                              // Allow partial numbers like "1", "15", "15." during typing
+                              field.onChange(val as any)
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Clean up on blur - ensure it's a valid number between 0-100
                           const val = e.target.value.trim()
                           if (val === '') {
                             field.onChange(undefined)
                           } else {
                             const num = parseFloat(val)
-                            if (!isNaN(num)) {
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
                               field.onChange(num)
+                            } else {
+                              field.onChange(undefined)
                             }
                           }
                         }}
@@ -365,16 +416,33 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <Input
                         type="text"
                         placeholder="ex: 85"
-                        {...field}
                         value={field.value?.toString() || ''}
                         onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            // Allow any text during typing, validate only on blur
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
+                              field.onChange(num)
+                            } else if (val.match(/^\d*\.?\d*$/)) {
+                              // Allow partial numbers like "8", "85", "85." during typing
+                              field.onChange(val as any)
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Clean up on blur - ensure it's a valid number between 0-100
                           const val = e.target.value.trim()
                           if (val === '') {
                             field.onChange(undefined)
                           } else {
                             const num = parseFloat(val)
-                            if (!isNaN(num)) {
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
                               field.onChange(num)
+                            } else {
+                              field.onChange(undefined)
                             }
                           }
                         }}
