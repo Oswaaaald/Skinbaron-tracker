@@ -120,10 +120,10 @@ export class AlertScheduler {
       // Search for items matching the rule
       const response = await client.search({
         search_item: rule.search_item,
-        min: rule.min_price,
-        max: rule.max_price,
-        minWear: rule.min_wear,
-        maxWear: rule.max_wear,
+        min: rule.min_price || undefined,
+        max: rule.max_price || undefined,
+        minWear: rule.min_wear || undefined,
+        maxWear: rule.max_wear || undefined,
         statTrak: rule.stattrak,
         souvenir: rule.souvenir,
         limit: 20, // Limit to prevent API overload
@@ -244,10 +244,10 @@ export class AlertScheduler {
     
     const response = await client.search({
       search_item: rule.search_item,
-      min: rule.min_price,
-      max: rule.max_price,
-      minWear: rule.min_wear,
-      maxWear: rule.max_wear,
+      min: rule.min_price || undefined,
+      max: rule.max_price || undefined,
+      minWear: rule.min_wear || undefined,
+      maxWear: rule.max_wear || undefined,
       statTrak: rule.stattrak,
       souvenir: rule.souvenir,
       limit: 10,
@@ -260,10 +260,10 @@ export class AlertScheduler {
     return response.items.filter((item: SkinBaronItem) => 
       client.matchesFilters(item, {
         search_item: rule.search_item,
-        min: rule.min_price,
-        max: rule.max_price,
-        minWear: rule.min_wear,
-        maxWear: rule.max_wear,
+        min: rule.min_price || undefined,
+        max: rule.max_price || undefined,
+        minWear: rule.min_wear || undefined,
+        maxWear: rule.max_wear || undefined,
         statTrak: rule.stattrak,
         souvenir: rule.souvenir,
       })
