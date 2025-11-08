@@ -117,40 +117,44 @@ async function setupHealthCheck() {
   });
 }
 
-// System status endpoint - SIMPLIFIED VERSION WITH FORCED VALUES
+// System status endpoint - REAL DATA VERSION
 async function setupSystemStatus() {
   fastify.get('/api/system/status', async (request, reply) => {
-    // ALWAYS return forced test values
-    const testData = {
-      scheduler: {
-        isRunning: true,
-        lastRunTime: new Date().toISOString(),
-        nextRunTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        totalRuns: 42,
-        totalAlerts: 15,
-        errorCount: 0,
-        lastError: null,
-      },
-      database: {
-        totalRules: 5,
-        enabledRules: 3,
-        totalAlerts: 15,
-        todayAlerts: 2,
-      },
-      config: {
-        nodeEnv: "production",
-        pollCron: "*/5 * * * *",
-        enableBestDeals: true,
-        enableNewestItems: false,
-        feedsMaxPrice: 100,
-        feedsMaxWear: 0.8,
-      },
-    };
+    try {
+      const store = getStore();
+      const scheduler = getScheduler();
 
-    return reply.code(200).send({
-      success: true,
-      data: testData,
-    });
+      // Get real scheduler stats
+      const schedulerStats = scheduler.getStats();
+      
+      // Get real database stats  
+      const databaseStats = store.getStats();
+      
+      // Get real config data
+      const configData = {
+        nodeEnv: appConfig.NODE_ENV,
+        pollCron: appConfig.POLL_CRON,
+        enableBestDeals: appConfig.ENABLE_BEST_DEALS,
+        enableNewestItems: appConfig.ENABLE_NEWEST_ITEMS,
+        feedsMaxPrice: appConfig.FEEDS_MAX_PRICE,
+        feedsMaxWear: appConfig.FEEDS_MAX_WEAR,
+      };
+
+      return reply.code(200).send({
+        success: true,
+        data: {
+          scheduler: schedulerStats,
+          database: databaseStats,
+          config: configData,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get system status');
+      return reply.code(500).send({
+        success: false,
+        error: 'Failed to retrieve system status',
+      });
+    }
   });
 }
 
