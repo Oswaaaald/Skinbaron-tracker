@@ -357,29 +357,34 @@ export class Store {
     });
   }
 
-  updateRule(id: number, updates: Partial<CreateRule>): Rule | null {
+  updateRule(id: number, updates: CreateRule): Rule | null {
     const current = this.getRuleById(id);
     if (!current) return null;
 
-    const validated = RuleSchema.omit({ id: true, created_at: true, updated_at: true }).partial().parse(updates);
+    const validated = CreateRuleSchema.parse(updates);
     
-    const fields = Object.keys(validated).filter(key => validated[key as keyof typeof validated] !== undefined);
-    if (fields.length === 0) return current;
-
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const values = fields.map(field => {
-      const value = validated[field as keyof typeof validated];
-      if (typeof value === 'boolean') return value ? 1 : 0;
-      return value;
-    });
-
     const stmt = this.db.prepare(`
       UPDATE rules 
-      SET ${setClause}, updated_at = CURRENT_TIMESTAMP 
+      SET user_id = ?, search_item = ?, min_price = ?, max_price = ?, min_wear = ?, max_wear = ?, 
+          stattrak = ?, souvenir = ?, discord_webhook = ?, webhook_ids = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
-    stmt.run(...values, id);
+    stmt.run(
+      validated.user_id,
+      validated.search_item,
+      validated.min_price ?? null,
+      validated.max_price ?? null,
+      validated.min_wear ?? null,
+      validated.max_wear ?? null,
+      validated.stattrak ? 1 : 0,
+      validated.souvenir ? 1 : 0,
+      validated.discord_webhook ?? null,
+      validated.webhook_ids ? JSON.stringify(validated.webhook_ids) : null,
+      validated.enabled ? 1 : 0,
+      id
+    );
+
     return this.getRuleById(id);
   }
 
