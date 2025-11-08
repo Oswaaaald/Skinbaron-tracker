@@ -247,11 +247,9 @@ async function initializeApp() {
 
     fastify.log.info(`🌐 Server listening on ${address}`);
     
-    // Auto-start scheduler in production
-    if (appConfig.NODE_ENV === 'production') {
-      scheduler.start();
-      fastify.log.info('⏰ Scheduler auto-started in production mode');
-    }
+    // Auto-start scheduler in all environments
+    scheduler.start();
+    fastify.log.info('⏰ Scheduler auto-started');
 
     fastify.log.info('✅ SkinBaron Alerts API initialized successfully!');
     
