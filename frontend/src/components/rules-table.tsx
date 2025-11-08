@@ -38,12 +38,21 @@ export function RulesTable() {
   })
 
   // Fetch user's webhooks to display webhook names in rules table
-  const { data: webhooksResponse } = useQuery({
+  const { data: webhooksResponse, isLoading: webhooksLoading, error: webhooksError } = useQuery({
     queryKey: ['webhooks'],
-    queryFn: () => apiClient.getWebhooks(),
+    queryFn: async () => {
+      console.log('Fetching webhooks...')
+      const result = await apiClient.getWebhooks()
+      console.log('Webhooks API response:', result)
+      return result
+    },
+    retry: 2,
   })
 
   const webhooks = webhooksResponse?.data || []
+  
+  // Debug webhooks loading
+  console.log('Webhooks loading state:', { webhooksLoading, webhooksError, webhooksResponse, webhooks })
 
   // Helper function to get webhook display text
   const getWebhookDisplay = (rule: Rule) => {
