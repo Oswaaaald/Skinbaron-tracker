@@ -190,22 +190,40 @@ export class AlertScheduler {
 
           const createdAlert = this.store.createAlert(alert);
 
-          // Send notification
-          const success = await this.notificationService.sendNotification(
-            rule.discord_webhook,
-            {
-              alertType: 'match',
-              item,
-              rule,
-              skinUrl: alert.skin_url,
-            }
-          );
+          // Get rule webhooks (new system)
+          const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
+          
+          // Send notifications to all rule webhooks
+          const notificationPromises = webhooks.map(async (webhook) => {
+            return this.notificationService.sendNotification(
+              webhook.webhook_url!,
+              {
+                alertType: 'match',
+                item,
+                rule,
+                skinUrl: alert.skin_url,
+              }
+            );
+          });
 
-          if (success) {
+          // Wait for all notifications to complete
+          const results = await Promise.allSettled(notificationPromises);
+          
+          let successCount = 0;
+          results.forEach((result, index) => {
+            if (result.status === 'fulfilled' && result.value) {
+              successCount++;
+            } else {
+              console.error(`❌ Failed to send notification to webhook ${webhooks[index]?.name || 'unknown'}:`, 
+                result.status === 'rejected' ? result.reason : 'Unknown error');
+            }
+          });
+
+          if (successCount > 0) {
             newAlerts++;
-            console.log(`✅ Alert sent for: ${item.itemName} (${item.price} EUR)`);
+            console.log(`✅ Alert sent for: ${item.itemName} (${item.price} EUR) to ${successCount}/${webhooks.length} webhooks`);
           } else {
-            console.error(`❌ Failed to send notification for alert ${createdAlert.id}`);
+            console.error(`❌ Failed to send notification for alert ${createdAlert.id} to any webhook`);
           }
 
         } catch (error) {

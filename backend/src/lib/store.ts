@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { appConfig } from './config.js';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
+import CryptoJS from 'crypto-js';
 
 // Schema validation with Zod
 export const RuleSchema = z.object({
@@ -15,11 +16,21 @@ export const RuleSchema = z.object({
   max_wear: z.number().min(0).max(1).optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
-  discord_webhook: z.string().url('Valid Discord webhook URL required'),
+  webhook_ids: z.array(z.number()).optional(), // Array of webhook IDs for this rule
+  discord_webhook: z.string().url('Valid Discord webhook URL required').optional(), // Keep for backward compatibility
   enabled: z.boolean().default(true),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
+
+// Flexible rule creation - can use either webhook_ids or direct discord_webhook
+export const CreateRuleSchema = RuleSchema.omit({ id: true, created_at: true, updated_at: true }).refine(
+  (data) => data.webhook_ids?.length || data.discord_webhook,
+  {
+    message: "Either webhook_ids or discord_webhook must be provided",
+    path: ["webhooks"],
+  }
+);
 
 export const AlertSchema = z.object({
   id: z.number().optional(),
@@ -51,6 +62,25 @@ export const UserSchema = z.object({
   updated_at: z.string(),
 });
 
+// User webhook schemas (encrypted storage)
+export const CreateUserWebhookSchema = z.object({
+  name: z.string().min(1).max(50),
+  webhook_url: z.string().url('Valid webhook URL required'),
+  webhook_type: z.enum(['discord', 'slack', 'teams', 'generic']).default('discord'),
+  is_active: z.boolean().default(true),
+});
+
+export const UserWebhookSchema = z.object({
+  id: z.number(),
+  user_id: z.number(),
+  name: z.string().min(1).max(50),
+  webhook_url_encrypted: z.string(), // Encrypted storage
+  webhook_type: z.enum(['discord', 'slack', 'teams', 'generic']),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 // Types inferred from schemas
 export type Rule = z.infer<typeof RuleSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
@@ -58,6 +88,11 @@ export type User = z.infer<typeof UserSchema>;
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 export type CreateRule = Omit<Rule, 'id' | 'created_at' | 'updated_at'>;
 export type CreateAlert = Omit<Alert, 'id' | 'sent_at'>;
+
+export type UserWebhook = z.infer<typeof UserWebhookSchema> & {
+  webhook_url?: string; // Decrypted URL (not stored)
+};
+export type CreateUserWebhook = z.infer<typeof CreateUserWebhookSchema>;
 
 export class Store {
   private db: Database.Database;
@@ -90,11 +125,12 @@ export class Store {
         search_item TEXT NOT NULL,
         min_price REAL,
         max_price REAL,
-        min_wear REAL,
-        max_wear REAL,
+        min_wear REAL CHECK (min_wear >= 0 AND min_wear <= 1),
+        max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
         stattrak BOOLEAN DEFAULT 0,
         souvenir BOOLEAN DEFAULT 0,
-        discord_webhook TEXT NOT NULL,
+        discord_webhook TEXT, -- Made optional for backward compatibility
+        webhook_ids TEXT, -- JSON array of webhook IDs
         enabled BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -150,10 +186,24 @@ export class Store {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         name TEXT NOT NULL CHECK(length(name) >= 1 AND length(name) <= 50),
-        webhook_url TEXT NOT NULL,
+        webhook_url_encrypted TEXT NOT NULL,
+        webhook_type TEXT DEFAULT 'discord' CHECK(webhook_type IN ('discord', 'slack', 'teams', 'generic')),
+        is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(user_id, name)
+      )
+    `);
+
+    // Create rule-webhook junction table (many-to-many relationship)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS rule_webhooks (
+        rule_id INTEGER NOT NULL,
+        webhook_id INTEGER NOT NULL,
+        PRIMARY KEY (rule_id, webhook_id),
+        FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE,
+        FOREIGN KEY (webhook_id) REFERENCES user_webhooks (id) ON DELETE CASCADE
       )
     `);
 
@@ -162,6 +212,8 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
+      CREATE INDEX IF NOT EXISTS idx_rule_webhooks_rule ON rule_webhooks(rule_id);
+      CREATE INDEX IF NOT EXISTS idx_rule_webhooks_webhook ON rule_webhooks(webhook_id);
     `);
 
     console.log('✅ User tables initialized');
@@ -169,12 +221,12 @@ export class Store {
 
   // Rules CRUD operations
   createRule(rule: CreateRule): Rule {
-    const validated = RuleSchema.omit({ id: true, created_at: true, updated_at: true }).parse(rule);
+    const validated = CreateRuleSchema.parse(rule);
     
     const stmt = this.db.prepare(`
       INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                        stattrak, souvenir, discord_webhook, enabled)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        stattrak, souvenir, discord_webhook, webhook_ids, enabled)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -186,7 +238,8 @@ export class Store {
       validated.max_wear ?? null,
       validated.stattrak ? 1 : 0,
       validated.souvenir ? 1 : 0,
-      validated.discord_webhook,
+      validated.discord_webhook ?? null,
+      validated.webhook_ids ? JSON.stringify(validated.webhook_ids) : null,
       validated.enabled ? 1 : 0
     );
 
@@ -204,6 +257,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
     };
   }
 
@@ -216,6 +270,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
     }));
   }
 
@@ -231,6 +286,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
     }));
   }
 
@@ -243,6 +299,7 @@ export class Store {
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
       enabled: Boolean(row.enabled),
+      webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : undefined,
     }));
   }
 
@@ -531,6 +588,178 @@ export class Store {
     const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;
+  }
+
+  // Webhook encryption utilities
+  private encryptWebhookUrl(url: string): string {
+    const secretKey = appConfig.JWT_SECRET; // Use existing secret for encryption
+    return CryptoJS.AES.encrypt(url, secretKey).toString();
+  }
+
+  private decryptWebhookUrl(encryptedUrl: string): string {
+    const secretKey = appConfig.JWT_SECRET;
+    const bytes = CryptoJS.AES.decrypt(encryptedUrl, secretKey);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  }
+
+  // User webhook CRUD operations
+  createUserWebhook(userId: number, webhook: CreateUserWebhook): UserWebhook {
+    const validated = CreateUserWebhookSchema.parse(webhook);
+    const encryptedUrl = this.encryptWebhookUrl(validated.webhook_url);
+    
+    const stmt = this.db.prepare(`
+      INSERT INTO user_webhooks (user_id, name, webhook_url_encrypted, webhook_type, is_active)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      userId,
+      validated.name,
+      encryptedUrl,
+      validated.webhook_type,
+      validated.is_active ? 1 : 0
+    );
+
+    return this.getUserWebhookById(result.lastInsertRowid as number)!;
+  }
+
+  getUserWebhookById(id: number, decrypt: boolean = false): UserWebhook | null {
+    const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE id = ?');
+    const row = stmt.get(id) as any;
+    
+    if (!row) return null;
+
+    const webhook: UserWebhook = {
+      ...row,
+      is_active: Boolean(row.is_active),
+    };
+
+    if (decrypt && webhook.webhook_url_encrypted) {
+      webhook.webhook_url = this.decryptWebhookUrl(webhook.webhook_url_encrypted);
+    }
+
+    return webhook;
+  }
+
+  getUserWebhooksByUserId(userId: number, decrypt: boolean = false): UserWebhook[] {
+    const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE user_id = ? ORDER BY created_at DESC');
+    const rows = stmt.all(userId) as any[];
+    
+    return rows.map(row => {
+      const webhook: UserWebhook = {
+        ...row,
+        is_active: Boolean(row.is_active),
+      };
+
+      if (decrypt && webhook.webhook_url_encrypted) {
+        webhook.webhook_url = this.decryptWebhookUrl(webhook.webhook_url_encrypted);
+      }
+
+      return webhook;
+    });
+  }
+
+  updateUserWebhook(id: number, userId: number, updates: Partial<CreateUserWebhook>): UserWebhook {
+    const currentWebhook = this.getUserWebhookById(id);
+    if (!currentWebhook || currentWebhook.user_id !== userId) {
+      throw new Error('Webhook not found or access denied');
+    }
+
+    const validatedUpdates = CreateUserWebhookSchema.partial().parse(updates);
+    
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (validatedUpdates.name) {
+      fields.push('name = ?');
+      values.push(validatedUpdates.name);
+    }
+
+    if (validatedUpdates.webhook_url) {
+      fields.push('webhook_url_encrypted = ?');
+      values.push(this.encryptWebhookUrl(validatedUpdates.webhook_url));
+    }
+
+    if (validatedUpdates.webhook_type) {
+      fields.push('webhook_type = ?');
+      values.push(validatedUpdates.webhook_type);
+    }
+
+    if (validatedUpdates.is_active !== undefined) {
+      fields.push('is_active = ?');
+      values.push(validatedUpdates.is_active ? 1 : 0);
+    }
+
+    if (fields.length === 0) {
+      return currentWebhook;
+    }
+
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    
+    const stmt = this.db.prepare(`
+      UPDATE user_webhooks 
+      SET ${fields.join(', ')}
+      WHERE id = ? AND user_id = ?
+    `);
+
+    stmt.run(...values, id, userId);
+    return this.getUserWebhookById(id)!;
+  }
+
+  deleteUserWebhook(id: number, userId: number): boolean {
+    const stmt = this.db.prepare('DELETE FROM user_webhooks WHERE id = ? AND user_id = ?');
+    const result = stmt.run(id, userId);
+    return result.changes > 0;
+  }
+
+  getUserActiveWebhooks(userId: number): UserWebhook[] {
+    const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC');
+    const rows = stmt.all(userId) as any[];
+    
+    return rows.map(row => ({
+      ...row,
+      is_active: Boolean(row.is_active),
+      webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted), // Decrypt for use
+    }));
+  }
+
+  // Get rule webhooks with decrypted URLs (for notifications)
+  getRuleWebhooksForNotification(ruleId: number): UserWebhook[] {
+    const rule = this.getRuleById(ruleId);
+    if (!rule) return [];
+
+    // If using new webhook system
+    if (rule.webhook_ids?.length) {
+      const placeholders = rule.webhook_ids.map(() => '?').join(',');
+      const stmt = this.db.prepare(`
+        SELECT * FROM user_webhooks 
+        WHERE id IN (${placeholders}) AND is_active = 1
+      `);
+      const rows = stmt.all(...rule.webhook_ids) as any[];
+      
+      return rows.map(row => ({
+        ...row,
+        is_active: Boolean(row.is_active),
+        webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
+      }));
+    }
+
+    // Fallback to legacy discord_webhook
+    if (rule.discord_webhook) {
+      return [{
+        id: -1, // Fake ID for legacy webhook
+        user_id: parseInt(rule.user_id),
+        name: 'Legacy Discord Webhook',
+        webhook_url_encrypted: '',
+        webhook_url: rule.discord_webhook,
+        webhook_type: 'discord' as const,
+        is_active: true,
+        created_at: rule.created_at || '',
+        updated_at: rule.updated_at || '',
+      }];
+    }
+
+    return [];
   }
 
   close() {

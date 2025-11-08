@@ -247,9 +247,13 @@ async function setupSchedulerControls() {
 async function registerRoutes() {
   // Import auth routes
   const { default: authRoutes } = await import('./routes/auth.js');
+  const { default: webhooksRoutes } = await import('./routes/webhooks.js');
   
   // Authentication
   await fastify.register(authRoutes, { prefix: '/api/auth' });
+  
+  // User webhooks management
+  await fastify.register(webhooksRoutes, { prefix: '/api/webhooks' });
   
   // Rules CRUD
   await fastify.register(rulesRoutes, { prefix: '/api/rules' });

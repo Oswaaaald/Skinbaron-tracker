@@ -154,14 +154,31 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         user_id: request.user!.id.toString(), // Convert to string for compatibility
       });
       
-      // Validate webhook URL by testing it
-      const webhookValid = await notificationService.testWebhook(ruleData.discord_webhook);
-      if (!webhookValid) {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid Discord webhook',
-          message: 'The provided Discord webhook URL is invalid or unreachable',
-        });
+      // Validate webhook URL if using legacy discord_webhook
+      if (ruleData.discord_webhook) {
+        const webhookValid = await notificationService.testWebhook(ruleData.discord_webhook);
+        if (!webhookValid) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Invalid Discord webhook',
+            message: 'The provided Discord webhook URL is invalid or unreachable',
+          });
+        }
+      }
+      
+      // Validate webhook_ids if using new system
+      if (ruleData.webhook_ids?.length) {
+        const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
+        const userWebhookIds = userWebhooks.map(w => w.id);
+        
+        const invalidWebhooks = ruleData.webhook_ids.filter(id => !userWebhookIds.includes(id));
+        if (invalidWebhooks.length > 0) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Invalid webhook IDs',
+            message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
+          });
+        }
       }
 
       const rule = store.createRule(ruleData);
@@ -546,7 +563,18 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       let webhookTestResult = null;
       if (webhook_test) {
-        webhookTestResult = await notificationService.testWebhook(rule.discord_webhook);
+        if (rule.discord_webhook) {
+          webhookTestResult = await notificationService.testWebhook(rule.discord_webhook);
+        } else {
+          // Test new webhook system
+          const webhooks = store.getRuleWebhooksForNotification(rule.id!);
+          if (webhooks.length > 0) {
+            const testResults = await Promise.all(
+              webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
+            );
+            webhookTestResult = testResults.every(result => result); // All must pass
+          }
+        }
       }
       
       request.log.info(`Tested rule ${id}: ${matches.length} matches found`);
