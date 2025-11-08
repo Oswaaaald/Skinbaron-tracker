@@ -26,6 +26,7 @@ const RuleParamsSchema = z.object({
 
 const TestRuleRequestSchema = z.object({
   webhook_test: z.boolean().optional().default(false),
+  webhook_only: z.boolean().optional().default(false),
 });
 
 // Route handlers
@@ -534,6 +535,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         type: 'object',
         properties: {
           webhook_test: { type: 'boolean', default: false },
+          webhook_only: { type: 'boolean', default: false },
         },
       },
       response: {
@@ -563,7 +565,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { id } = RuleParamsSchema.parse(request.params);
-      const { webhook_test } = TestRuleRequestSchema.parse(request.body);
+      const { webhook_test, webhook_only } = TestRuleRequestSchema.parse(request.body);
       
       const rule = store.getRuleById(id);
       if (!rule) {
@@ -573,11 +575,13 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
       
-      // Test the rule
-      const matches = await scheduler.testRule(rule);
-      
+      let matches = [];
       let webhookTestResult = null;
-      if (webhook_test) {
+      
+      if (webhook_only) {
+        // Only test webhooks, skip SkinBaron API
+        request.log.info(`Testing webhooks only for rule ${id}`);
+        
         if (rule.discord_webhook) {
           webhookTestResult = await notificationService.testWebhook(rule.discord_webhook);
         } else {
@@ -588,6 +592,27 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
               webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
             );
             webhookTestResult = testResults.every(result => result); // All must pass
+          }
+        }
+        
+        // Return empty matches array for webhook-only test
+        matches = [];
+      } else {
+        // Normal test: test rule first, then optionally webhooks
+        matches = await scheduler.testRule(rule);
+        
+        if (webhook_test) {
+          if (rule.discord_webhook) {
+            webhookTestResult = await notificationService.testWebhook(rule.discord_webhook);
+          } else {
+            // Test new webhook system
+            const webhooks = store.getRuleWebhooksForNotification(rule.id!);
+            if (webhooks.length > 0) {
+              const testResults = await Promise.all(
+                webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
+              );
+              webhookTestResult = testResults.every(result => result); // All must pass
+            }
           }
         }
       }

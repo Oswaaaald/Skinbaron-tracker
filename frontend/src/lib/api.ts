@@ -211,7 +211,7 @@ class ApiClient {
     });
   }
 
-  async testRule(id: number, webhookTest: boolean = false): Promise<ApiResponse<{
+  async testRule(id: number, webhookTest: boolean = false, webhookOnly: boolean = false): Promise<ApiResponse<{
     matches: any[];
     matchCount: number;
     webhookTest: boolean | null;
@@ -222,7 +222,10 @@ class ApiClient {
       webhookTest: boolean | null;
     }>(`/api/rules/${id}/test`, {
       method: 'POST',
-      body: JSON.stringify({ webhook_test: webhookTest }),
+      body: JSON.stringify({ 
+        webhook_test: webhookTest,
+        webhook_only: webhookOnly 
+      }),
     });
   }
 

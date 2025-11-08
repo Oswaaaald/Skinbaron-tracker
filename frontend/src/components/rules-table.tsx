@@ -129,11 +129,16 @@ export function RulesTable() {
   })
 
   const testRuleMutation = useMutation({
-    mutationFn: ({ id, webhookTest }: { id: number; webhookTest: boolean }) =>
-      apiClient.testRule(id, webhookTest),
+    mutationFn: ({ id, webhookTest, webhookOnly }: { id: number; webhookTest: boolean; webhookOnly?: boolean }) =>
+      apiClient.testRule(id, webhookTest, webhookOnly),
     onSuccess: (data) => {
       if (data.success && data.data) {
-        toast.success(`Test completed: ${data.data.matchCount} matches found${data.data.webhookTest ? ', webhook test sent' : ''}`)
+        const isWebhookOnly = data.data.matchCount === 0 && data.data.webhookTest !== null;
+        if (isWebhookOnly) {
+          toast.success(`Webhook test ${data.data.webhookTest ? 'successful' : 'failed'}`)
+        } else {
+          toast.success(`Test completed: ${data.data.matchCount} matches found${data.data.webhookTest ? ', webhook test sent' : ''}`)
+        }
       } else {
         toast.error(data.error || 'Test failed')
       }
@@ -163,6 +168,12 @@ export function RulesTable() {
   const handleTest = (rule: Rule, webhookTest: boolean = false) => {
     if (rule.id) {
       testRuleMutation.mutate({ id: rule.id, webhookTest })
+    }
+  }
+
+  const handleTestWebhookOnly = (rule: Rule) => {
+    if (rule.id) {
+      testRuleMutation.mutate({ id: rule.id, webhookTest: true, webhookOnly: true })
     }
   }
 
@@ -300,6 +311,10 @@ export function RulesTable() {
                         <DropdownMenuItem onClick={() => handleTest(rule, true)}>
                           <TestTube2 className="mr-2 h-4 w-4" />
                           Test + Webhook
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleTestWebhookOnly(rule)}>
+                          <TestTube2 className="mr-2 h-4 w-4" />
+                          Test Webhook Only
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
