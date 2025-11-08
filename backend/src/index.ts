@@ -134,7 +134,17 @@ async function setupHealthCheck() {
       scheduler: schedulerHealth
     };
     
-    const status = Object.values(services).every(s => s === 'healthy') ? 'healthy' : 'degraded';
+    // Consider 'running' as healthy for scheduler, 'healthy' for others
+    const isHealthy = (service: string, status: string) => {
+      if (service === 'scheduler') return status === 'running' || status === 'healthy';
+      return status === 'healthy';
+    };
+    
+    const allServicesHealthy = Object.entries(services).every(([service, status]) => 
+      isHealthy(service, status)
+    );
+    
+    const status = allServicesHealthy ? 'healthy' : 'degraded';
 
     return reply.code(200).send({
       success: true,
