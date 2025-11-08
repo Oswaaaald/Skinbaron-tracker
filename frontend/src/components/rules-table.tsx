@@ -26,6 +26,7 @@ import { MoreHorizontal, Edit, Trash2, TestTube2, Play, Pause } from "lucide-rea
 import { toast } from "sonner"
 import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
+import { formatWearPercentage } from "@/lib/wear-utils"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
@@ -243,9 +244,9 @@ export function RulesTable() {
                   <TableCell>
                     {rule.min_price || rule.max_price ? (
                       <span>
-                        {rule.min_price ? `$${rule.min_price}` : ''}
+                        {rule.min_price ? `${rule.min_price}€` : ''}
                         {rule.min_price && rule.max_price ? ' - ' : ''}
-                        {rule.max_price ? `$${rule.max_price}` : ''}
+                        {rule.max_price ? `${rule.max_price}€` : ''}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">Any</span>
@@ -253,15 +254,15 @@ export function RulesTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
-                      {rule.min_wear !== undefined && rule.min_wear !== null && (
-                        <Badge variant="outline" className="text-xs">
-                          Min Wear: {rule.min_wear}
-                        </Badge>
+                                            {rule.min_wear !== undefined && rule.min_wear !== null && (
+                        <div className="text-xs text-muted-foreground">
+                          Min Wear: {formatWearPercentage(rule.min_wear)}
+                        </div>
                       )}
                       {rule.max_wear !== undefined && rule.max_wear !== null && (
-                        <Badge variant="outline" className="text-xs">
-                          Max Wear: {rule.max_wear}
-                        </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          Max Wear: {formatWearPercentage(rule.max_wear)}
+                        </div>
                       )}
                       {rule.stattrak && (
                         <Badge variant="outline" className="text-xs">

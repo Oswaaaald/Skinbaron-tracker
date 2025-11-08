@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { apiClient, type Rule, type Webhook, type CreateRuleData } from "@/lib/api"
+import { wearToPercentage, percentageToWear } from "@/lib/wear-utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
@@ -37,8 +38,8 @@ const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
   min_price: z.number().positive().optional().or(z.literal(0)),
   max_price: z.number().positive().optional().or(z.literal(0)),
-  min_wear: z.number().min(0).max(1).optional(),
-  max_wear: z.number().min(0).max(1).optional(),
+  min_wear: z.number().min(0).max(100).optional(),
+  max_wear: z.number().min(0).max(100).optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
   webhook_ids: z.array(z.number()).min(1, "At least one webhook must be selected").max(10, "Maximum 10 webhooks allowed"),
@@ -95,8 +96,8 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           search_item: rule.search_item || "",
           min_price: rule.min_price || undefined,
           max_price: rule.max_price || undefined,
-          min_wear: rule.min_wear || undefined,
-          max_wear: rule.max_wear || undefined,
+          min_wear: rule.min_wear !== undefined ? wearToPercentage(rule.min_wear) : undefined,
+          max_wear: rule.max_wear !== undefined ? wearToPercentage(rule.max_wear) : undefined,
           stattrak: rule.stattrak || false,
           souvenir: rule.souvenir || false,
           webhook_ids: rule.webhook_ids || [],
@@ -168,13 +169,13 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     setIsSubmitting(true)
 
     try {
-      // Convert RuleFormData to CreateRuleData (they have the same structure)
+      // Convert RuleFormData to CreateRuleData (convert percentages to 0-1 wear values)
       const createData: CreateRuleData = {
         search_item: data.search_item,
         min_price: data.min_price || undefined,
         max_price: data.max_price || undefined,
-        min_wear: data.min_wear,
-        max_wear: data.max_wear,
+        min_wear: data.min_wear !== undefined ? percentageToWear(data.min_wear) : undefined,
+        max_wear: data.max_wear !== undefined ? percentageToWear(data.max_wear) : undefined,
         stattrak: data.stattrak,
         souvenir: data.souvenir,
         webhook_ids: data.webhook_ids,
@@ -301,7 +302,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                 name="min_wear"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Min Wear (0-1)</FormLabel>
+                    <FormLabel>Min Wear (0-100%)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -324,7 +325,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                 name="max_wear"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Max Wear (0-1)</FormLabel>
+                    <FormLabel>Max Wear (0-100%)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

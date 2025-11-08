@@ -19,6 +19,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient, type Alert } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
+import { formatWearPercentage } from "@/lib/wear-utils"
 
 const ALERT_TYPE_LABELS = {
   match: 'Rule Match',
@@ -106,9 +107,9 @@ export function AlertsTable() {
   const hasMorePages = alerts.length === limit
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 2,
     }).format(price)
   }
@@ -230,11 +231,11 @@ export function AlertsTable() {
                     </TableCell>
                     <TableCell>
                       {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                        <span className="font-mono text-sm">
-                          {alert.wear_value.toFixed(4)}
+                        <span className="text-sm">
+                          {formatWearPercentage(alert.wear_value)}
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">N/A</span>
+                        <span className="text-muted-foreground text-sm">N/A</span>
                       )}
                     </TableCell>
                     <TableCell>
