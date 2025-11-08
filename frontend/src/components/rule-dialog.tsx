@@ -219,9 +219,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       processedData.webhook_ids = []
       // Keep discord_webhook as is
     } else {
-      // Using saved webhooks - clear discord_webhook and ensure we have webhook_ids
-      processedData.discord_webhook = ""
+      // Using saved webhooks - completely remove discord_webhook and ensure we have webhook_ids
+      delete processedData.discord_webhook
       // Keep webhook_ids as is
+    }
+
+    // Remove empty discord_webhook to avoid validation errors
+    if (processedData.discord_webhook === "") {
+      delete processedData.discord_webhook
     }
 
     if (isEditing && rule?.id) {
