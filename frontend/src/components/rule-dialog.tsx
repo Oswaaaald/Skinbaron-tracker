@@ -201,8 +201,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   }
 
   const getSelectedWebhookNames = () => {
+    if (!webhooks || !Array.isArray(webhooks)) return ''
     return webhooks
-      .filter(webhook => selectedWebhooks.includes(webhook.id!))
+      .filter(webhook => webhook.id && selectedWebhooks.includes(webhook.id))
       .map(webhook => webhook.name)
       .join(', ')
   }
@@ -400,9 +401,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     Select which webhooks should receive notifications for this rule
                   </FormDescription>
                   
-                  {webhooks.length === 0 ? (
+                  {!webhooks || webhooks.length === 0 ? (
                     <div className="text-center py-4 text-muted-foreground">
-                      No webhooks configured. Create webhooks first in the Webhooks section.
+                      {!webhooks ? 'Loading webhooks...' : 'No webhooks configured. Create webhooks first in the Webhooks section.'}
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">

@@ -129,7 +129,12 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP ${response.status}`);
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          console.warn('Authentication error, token may be invalid');
+          // Don't throw immediately, let the auth context handle it
+        }
+        throw new Error(data.message || data.error || `HTTP ${response.status}`);
       }
 
       return data;

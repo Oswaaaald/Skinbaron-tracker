@@ -70,6 +70,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiClient.setAuthTokenGetter(() => token)
   }, [token])
 
+  // Check token validity periodically and refresh if needed
+  useEffect(() => {
+    if (!token || !user) return
+
+    const checkTokenValidity = async () => {
+      try {
+        // Try to make a simple authenticated request
+        const response = await apiClient.getHealth()
+        if (!response.success) {
+          // Token might be invalid, logout user
+          console.warn('Token validation failed, logging out')
+          logout()
+        }
+      } catch (error) {
+        console.error('Token check failed:', error)
+        // If it's an auth error, logout
+        if (error instanceof Error && error.message.includes('token')) {
+          logout()
+        }
+      }
+    }
+
+    // Check token every 5 minutes
+    const interval = setInterval(checkTokenValidity, 5 * 60 * 1000)
+    
+    // Also check immediately
+    checkTokenValidity()
+
+    return () => clearInterval(interval)
+  }, [token, user])
+
   const saveAuthState = (token: string, user: User) => {
     // JWT tokens from our backend expire in 7 days
     const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000)

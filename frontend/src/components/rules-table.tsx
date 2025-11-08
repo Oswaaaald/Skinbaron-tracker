@@ -60,7 +60,7 @@ export function RulesTable() {
   // Helper function to get webhook display text
   const getWebhookDisplay = (rule: Rule) => {
     
-    if (rule.webhook_ids && rule.webhook_ids.length > 0) {
+    if (rule.webhook_ids && rule.webhook_ids.length > 0 && webhooks) {
       const webhookNames = rule.webhook_ids
         .map(id => {
           const webhook = webhooks.find(w => w.id === id)
