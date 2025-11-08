@@ -193,8 +193,16 @@ export class AlertScheduler {
           // Get rule webhooks (new system)
           const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
           
+          console.log(`🔔 Rule ${rule.id} notification debug:`, {
+            ruleId: rule.id,
+            ruleWebhookIds: rule.webhook_ids,
+            foundWebhooks: webhooks.length,
+            webhookDetails: webhooks.map(w => ({ id: w.id, name: w.name, hasUrl: !!w.webhook_url }))
+          });
+          
           // Send notifications to all rule webhooks
           const notificationPromises = webhooks.map(async (webhook) => {
+            console.log(`📤 Sending notification via webhook ${webhook.id} (${webhook.name})`);
             return this.notificationService.sendNotification(
               webhook.webhook_url!,
               {
