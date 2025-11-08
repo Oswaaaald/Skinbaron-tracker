@@ -13,7 +13,8 @@ export interface Rule {
   max_wear?: number;
   stattrak?: boolean;
   souvenir?: boolean;
-  discord_webhook: string;
+  discord_webhook?: string; // Make optional since we can use webhook_ids instead
+  webhook_ids?: number[]; // New: array of webhook IDs
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;

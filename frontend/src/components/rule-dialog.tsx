@@ -102,8 +102,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   useEffect(() => {
     if (open) {
       if (rule) {
-        // Editing existing rule
-        const hasDirectWebhook = !!rule.discord_webhook
+        // Editing existing rule - determine which webhook method was used
+        const hasDirectWebhook = !!rule.discord_webhook && (!rule.webhook_ids || rule.webhook_ids.length === 0)
+        const hasWebhookIds = !!rule.webhook_ids && rule.webhook_ids.length > 0
         setUseDirectWebhook(hasDirectWebhook)
         
         form.reset({
@@ -114,7 +115,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           max_wear: rule.max_wear,
           stattrak: rule.stattrak || false,
           souvenir: rule.souvenir || false,
-          webhook_ids: [], // TODO: Parse from rule if using new system
+          webhook_ids: rule.webhook_ids || [], // Load existing webhook_ids
           discord_webhook: rule.discord_webhook || "",
           enabled: rule.enabled ?? true,
         })
@@ -176,9 +177,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       return
     }
 
-    console.log('Form submission data:', data)
-    console.log('useDirectWebhook:', useDirectWebhook)
-
     setIsSubmitting(true)
     
     // Convert empty numbers to undefined and clean webhook data
@@ -197,8 +195,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       // Using saved webhooks - clear discord_webhook
       delete processedData.discord_webhook
     }
-
-    console.log('Processed data for submission:', processedData)
 
     if (isEditing && rule?.id) {
       updateRuleMutation.mutate({ id: rule.id, data: processedData })
@@ -367,12 +363,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <FormControl>
                         <Select
                           value={field.value?.[0]?.toString() || ""}
-                          onValueChange={(value) => {
-                            console.log('Webhook selection changed:', value)
-                            const newValue = value ? [Number(value)] : []
-                            console.log('Setting webhook_ids to:', newValue)
-                            field.onChange(newValue)
-                          }}
+                          onValueChange={(value) => field.onChange(value ? [Number(value)] : [])}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Choose a webhook..." />

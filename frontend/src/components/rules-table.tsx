@@ -37,6 +37,47 @@ export function RulesTable() {
     queryFn: () => apiClient.getRules(),
   })
 
+  // Fetch user's webhooks to display webhook names in rules table
+  const { data: webhooks = [] } = useQuery({
+    queryKey: ['webhooks'],
+    queryFn: () => apiClient.getWebhooks(),
+  })
+
+  // Helper function to get webhook display text
+  const getWebhookDisplay = (rule: Rule) => {
+    if (rule.discord_webhook) {
+      return (
+        <Badge variant="outline" className="text-xs">
+          Direct URL
+        </Badge>
+      )
+    }
+    
+    if (rule.webhook_ids && rule.webhook_ids.length > 0) {
+      const webhookNames = rule.webhook_ids
+        .map(id => webhooks.find(w => w.id === id)?.name)
+        .filter(Boolean)
+      
+      if (webhookNames.length > 0) {
+        return (
+          <div className="flex gap-1 flex-wrap">
+            {webhookNames.map((name, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {name}
+              </Badge>
+            ))}
+          </div>
+        )
+      }
+    }
+    
+    return (
+      <Badge variant="secondary" className="text-xs">
+        No webhook
+      </Badge>
+    )
+  }
+
   const toggleRuleMutation = useMutation({
     mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
       apiClient.updateRule(id, { enabled }),
@@ -139,6 +180,7 @@ export function RulesTable() {
                 <TableHead>Item</TableHead>
                 <TableHead>Price Range</TableHead>
                 <TableHead>Conditions</TableHead>
+                <TableHead>Webhook</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -184,6 +226,9 @@ export function RulesTable() {
                         </Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {getWebhookDisplay(rule)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={rule.enabled ? "default" : "secondary"}>
