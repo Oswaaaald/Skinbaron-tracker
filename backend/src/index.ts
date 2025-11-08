@@ -461,6 +461,35 @@ async function setupTestEndpoint() {
       deploymentCheck: 'This endpoint proves the new code is running'
     });
   });
+
+  // Debug endpoint to test memory forcing
+  fastify.get('/api/debug-memory', async (request, reply) => {
+    let memoryStats = {
+      heapUsed: 67 * 1024 * 1024, // 67MB
+      heapTotal: 134 * 1024 * 1024, // 134MB  
+      rss: 89 * 1024 * 1024 // 89MB
+    };
+    
+    return reply.code(200).send({
+      success: true,
+      message: 'Debug memory endpoint',
+      forcedMemory: memoryStats,
+      testValue: 'This should always show forced values'
+    });
+  });
+
+  // Debug endpoint to test system status forcing
+  fastify.get('/api/debug-system', async (request, reply) => {
+    return reply.code(200).send({
+      success: true,
+      message: 'Debug system endpoint',
+      forcedData: {
+        scheduler: { isRunning: true, totalRuns: 999 },
+        database: { totalRules: 123, enabledRules: 456 },
+        config: { nodeEnv: 'debug-test' }
+      }
+    });
+  });
 }
 
 // Register API routes
