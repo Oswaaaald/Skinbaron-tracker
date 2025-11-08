@@ -41,7 +41,7 @@ const ruleFormSchema = z.object({
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
   webhook_ids: z.array(z.number()).optional(), // New: array of webhook IDs
-  discord_webhook: z.string().url("Invalid webhook URL").optional(), // Keep for backward compatibility
+  discord_webhook: z.string().optional(), // Keep for backward compatibility - validate URL only if provided
   enabled: z.boolean().optional(),
 }).refine(
   (data) => {
@@ -51,8 +51,25 @@ const ruleFormSchema = z.object({
     return hasWebhookIds || hasDiscordWebhook
   },
   {
-    message: "At least one webhook must be selected",
+    message: "At least one webhook must be selected or configured",
     path: ["webhook_ids"],
+  }
+).refine(
+  (data) => {
+    // If discord_webhook is provided, it must be a valid URL
+    if (data.discord_webhook && data.discord_webhook.trim().length > 0) {
+      try {
+        new URL(data.discord_webhook)
+        return true
+      } catch {
+        return false
+      }
+    }
+    return true
+  },
+  {
+    message: "Discord webhook must be a valid URL",
+    path: ["discord_webhook"],
   }
 )
 
@@ -139,6 +156,15 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     }
   }, [open, rule, form])
 
+  // Clear webhook fields when switching between direct URL and saved webhooks
+  useEffect(() => {
+    if (useDirectWebhook) {
+      form.setValue('webhook_ids', [])
+    } else {
+      form.setValue('discord_webhook', '')
+    }
+  }, [useDirectWebhook, form])
+
   const createRuleMutation = useMutation({
     mutationFn: (data: Omit<Rule, 'id' | 'created_at' | 'updated_at'>) =>
       apiClient.createRule(data),
@@ -189,11 +215,13 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
 
     // Clean webhook data based on selection
     if (useDirectWebhook) {
-      // Using direct webhook URL - clear webhook_ids
-      delete processedData.webhook_ids
+      // Using direct webhook URL - clear webhook_ids and ensure we have discord_webhook
+      processedData.webhook_ids = []
+      // Keep discord_webhook as is
     } else {
-      // Using saved webhooks - clear discord_webhook
-      delete processedData.discord_webhook
+      // Using saved webhooks - clear discord_webhook and ensure we have webhook_ids
+      processedData.discord_webhook = ""
+      // Keep webhook_ids as is
     }
 
     if (isEditing && rule?.id) {
