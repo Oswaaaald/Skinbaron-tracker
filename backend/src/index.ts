@@ -163,7 +163,17 @@ async function setupHealthCheck() {
         status === 'healthy' || status === 'running'
       ) ? 'healthy' : 'degraded';
 
-      const memUsage = process.memoryUsage();
+      let memoryStats = { heapUsed: 0, heapTotal: 0, rss: 0 };
+      try {
+        const memUsage = process.memoryUsage();
+        memoryStats = {
+          heapUsed: memUsage.heapUsed || 0,
+          heapTotal: memUsage.heapTotal || 0,
+          rss: memUsage.rss || 0
+        };
+      } catch (error) {
+        request.log.warn({ error }, 'Failed to get memory usage');
+      }
       
       return reply.code(200).send({
         success: true,
@@ -172,11 +182,7 @@ async function setupHealthCheck() {
         services,
         stats: {
           uptime: process.uptime(),
-          memory: {
-            heapUsed: memUsage.heapUsed,
-            heapTotal: memUsage.heapTotal,
-            rss: memUsage.rss
-          },
+          memory: memoryStats,
           version: process.env.npm_package_version || '1.0.0',
         },
       });
@@ -238,19 +244,28 @@ async function setupSystemStatus() {
         databaseStats = { error: 'Failed to load database stats' };
       }
 
+      // Build config object with error handling  
+      let configData = {};
+      try {
+        configData = {
+          nodeEnv: appConfig.NODE_ENV,
+          pollCron: appConfig.POLL_CRON,
+          enableBestDeals: appConfig.ENABLE_BEST_DEALS,
+          enableNewestItems: appConfig.ENABLE_NEWEST_ITEMS,
+          feedsMaxPrice: appConfig.FEEDS_MAX_PRICE,
+          feedsMaxWear: appConfig.FEEDS_MAX_WEAR,
+        };
+      } catch (error) {
+        request.log.error({ error }, 'Failed to get config');
+        configData = { error: 'Failed to load configuration' };
+      }
+
       return reply.code(200).send({
         success: true,
         data: {
           scheduler: schedulerStats,
           database: databaseStats,
-          config: {
-            nodeEnv: appConfig.NODE_ENV,
-            pollCron: appConfig.POLL_CRON,
-            enableBestDeals: appConfig.ENABLE_BEST_DEALS,
-            enableNewestItems: appConfig.ENABLE_NEWEST_ITEMS,
-            feedsMaxPrice: appConfig.FEEDS_MAX_PRICE,
-            feedsMaxWear: appConfig.FEEDS_MAX_WEAR,
-          },
+          config: configData,
         },
       });
     } catch (error) {
