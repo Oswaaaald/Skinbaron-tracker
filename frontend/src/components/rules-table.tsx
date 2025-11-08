@@ -49,7 +49,10 @@ export function RulesTable() {
     retry: 2,
   })
 
-  const webhooks = webhooksResponse?.data || []
+  // Handle both direct array and ApiResponse wrapper
+  const webhooks = Array.isArray(webhooksResponse) 
+    ? webhooksResponse 
+    : (webhooksResponse?.data || [])
   
   // Debug webhooks loading
   console.log('Webhooks loading state:', { webhooksLoading, webhooksError, webhooksResponse, webhooks })
