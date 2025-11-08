@@ -140,31 +140,28 @@ async function setupHealthCheck() {
   });
 }
 
-// System status endpoint - REAL DATA VERSION
+// System status endpoint - Simplified for users
 async function setupSystemStatus() {
   fastify.get('/api/system/status', async (request, reply) => {
     try {
-      const store = getStore();
       const scheduler = getScheduler();
 
-      // Get real scheduler stats
+      // Get simplified scheduler status (read-only for users)
       const schedulerStats = scheduler.getStats();
       
-      // Get real database stats  
-      const databaseStats = store.getStats();
-      
-      // Get real config data (only relevant system settings)
-      const configData = {
-        nodeEnv: appConfig.NODE_ENV,
-        pollCron: appConfig.POLL_CRON,
+      // Only return essential information for users
+      const simplifiedStatus = {
+        isRunning: schedulerStats.isRunning,
+        lastRunTime: schedulerStats.lastRunTime,
+        nextRunTime: schedulerStats.nextRunTime,
+        totalRuns: schedulerStats.totalRuns,
+        totalAlerts: schedulerStats.totalAlerts,
       };
 
       return reply.code(200).send({
         success: true,
         data: {
-          scheduler: schedulerStats,
-          database: databaseStats,
-          config: configData,
+          scheduler: simplifiedStatus,
         },
       });
     } catch (error) {
@@ -177,68 +174,7 @@ async function setupSystemStatus() {
   });
 }
 
-// Scheduler control endpoints
-async function setupSchedulerControls() {
-  // Start scheduler
-  fastify.post('/api/system/scheduler/start', async (request, reply) => {
-    try {
-      const scheduler = getScheduler();
-      scheduler.start();
-      
-      return reply.code(200).send({
-        success: true,
-        message: 'Scheduler started successfully',
-      });
-    } catch (error) {
-      request.log.error({ error }, 'Failed to start scheduler');
-      return reply.code(500).send({
-        success: false,
-        error: 'Failed to start scheduler',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
 
-  // Stop scheduler
-  fastify.post('/api/system/scheduler/stop', async (request, reply) => {
-    try {
-      const scheduler = getScheduler();
-      scheduler.stop();
-      
-      return reply.code(200).send({
-        success: true,
-        message: 'Scheduler stopped successfully',
-      });
-    } catch (error) {
-      request.log.error({ error }, 'Failed to stop scheduler');
-      return reply.code(500).send({
-        success: false,
-        error: 'Failed to stop scheduler',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // Force run scheduler
-  fastify.post('/api/system/scheduler/run', async (request, reply) => {
-    try {
-      const scheduler = getScheduler();
-      await scheduler.forceRun();
-      
-      return reply.code(200).send({
-        success: true,
-        message: 'Scheduler cycle completed successfully',
-      });
-    } catch (error) {
-      request.log.error({ error }, 'Failed to run scheduler');
-      return reply.code(500).send({
-        success: false,
-        error: 'Failed to run scheduler',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-}
 
 
 
@@ -281,7 +217,6 @@ async function initializeApp() {
     await registerPlugins();
     await setupHealthCheck();
     await setupSystemStatus();
-    await setupSchedulerControls();
     await registerRoutes();
 
     // Start server

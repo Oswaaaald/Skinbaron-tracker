@@ -24,19 +24,19 @@ export function SystemStats() {
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   })
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    refetchInterval: 30000,
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   })
 
   const { data: alertStatsResponse } = useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    refetchInterval: 60000,
+    refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes
   })
 
   const cleanupAlertsMutation = useMutation({
@@ -251,26 +251,14 @@ export function SystemStats() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            System Actions
+            System Maintenance
           </CardTitle>
           <CardDescription>
-            Maintenance and refresh options
+            Cleanup and maintenance options
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2 justify-center">
-            <Button
-              variant="outline"
-              onClick={() => {
-                queryClient.invalidateQueries({ queryKey: ['health'] })
-                queryClient.invalidateQueries({ queryKey: ['system-status'] })
-                queryClient.invalidateQueries({ queryKey: ['alert-stats'] })
-              }}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Refresh Status
-            </Button>
-            
             <Button
               variant="outline"
               onClick={handleCleanupAlerts}
@@ -284,7 +272,7 @@ export function SystemStats() {
           <div className="text-center text-sm text-muted-foreground mt-4">
             System automatically monitors your rules and sends alerts when matches are found.
             <br />
-            Scans typically occur every few minutes.
+            Data refreshes automatically - no manual refresh needed.
           </div>
         </CardContent>
       </Card>

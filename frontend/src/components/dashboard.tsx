@@ -10,8 +10,6 @@ import {
   Activity, 
   AlertTriangle, 
   Bell, 
-  Play, 
-  Pause, 
   RotateCcw, 
   Settings, 
   Moon, 
@@ -34,51 +32,27 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState("rules")
 
   // Fetch system status
-  const { data: systemStatus, isLoading: isLoadingStatus, refetch: refetchStatus } = useQuery({
+  const { data: systemStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   })
 
   // Fetch user statistics
   const { data: userStats, isLoading: isLoadingUserStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
-    refetchInterval: 30000,
+    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
   })
 
   // Fetch health status
   const { data: health, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   })
 
-  const handleSchedulerAction = async (action: 'start' | 'stop' | 'run') => {
-    try {
-      let response;
-      switch (action) {
-        case 'start':
-          response = await apiClient.startScheduler()
-          break
-        case 'stop':
-          response = await apiClient.stopScheduler()
-          break
-        case 'run':
-          response = await apiClient.runScheduler()
-          break
-      }
-      
-      if (response.success) {
-        toast.success(response.data?.message || `Scheduler ${action} successful`)
-        refetchStatus()
-      } else {
-        toast.error(response.error || `Failed to ${action} scheduler`)
-      }
-    } catch (error) {
-      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  }
+
 
   const isSchedulerRunning = systemStatus?.data?.scheduler.isRunning
   // Use user stats instead of global stats
@@ -110,14 +84,6 @@ export function Dashboard() {
             <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => refetchStatus()}
-            disabled={isLoadingStatus}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
         </div>
       </div>
 
@@ -125,37 +91,18 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Scheduler Status</CardTitle>
+            <CardTitle className="text-sm font-medium">Monitoring Status</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-2">
               <Badge variant={isSchedulerRunning ? "default" : "secondary"}>
-                {isSchedulerRunning ? "Running" : "Stopped"}
+                {isSchedulerRunning ? "Active" : "Inactive"}
               </Badge>
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleSchedulerAction(isSchedulerRunning ? 'stop' : 'start')}
-                  disabled={isLoadingStatus}
-                >
-                  {isSchedulerRunning ? (
-                    <Pause className="h-3 w-3" />
-                  ) : (
-                    <Play className="h-3 w-3" />
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleSchedulerAction('run')}
-                  disabled={isLoadingStatus || !isSchedulerRunning}
-                >
-                  <RotateCcw className="h-3 w-3" />
-                </Button>
-              </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isSchedulerRunning ? "Monitoring your rules automatically" : "System monitoring paused"}
+            </p>
           </CardContent>
         </Card>
 

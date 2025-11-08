@@ -79,22 +79,6 @@ export interface SystemStats {
     nextRunTime: Date | null;
     totalRuns: number;
     totalAlerts: number;
-    errorCount: number;
-    lastError: string | null;
-  };
-  database: {
-    totalRules: number;
-    enabledRules: number;
-    totalAlerts: number;
-    todayAlerts: number;
-  };
-  config: {
-    nodeEnv: string;
-    pollCron: string;
-    enableBestDeals: boolean;
-    enableNewestItems: boolean;
-    feedsMaxPrice: number;
-    feedsMaxWear: number;
   };
 }
 
@@ -173,24 +157,7 @@ class ApiClient {
     return this.request<SystemStats>('/api/system/status');
   }
 
-  // Scheduler endpoints
-  async startScheduler() {
-    return this.request<{ message: string }>('/api/system/scheduler/start', {
-      method: 'POST',
-    });
-  }
 
-  async stopScheduler() {
-    return this.request<{ message: string }>('/api/system/scheduler/stop', {
-      method: 'POST',
-    });
-  }
-
-  async runScheduler() {
-    return this.request<{ message: string }>('/api/system/scheduler/run', {
-      method: 'POST',
-    });
-  }
 
   // Rules endpoints
   async getRules(): Promise<ApiResponse<Rule[]>> {
