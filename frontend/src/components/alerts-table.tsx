@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Table,
@@ -50,8 +50,9 @@ export function AlertsTable() {
     try {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
-        // Refresh the alerts list
+        // Refresh the alerts list and stats
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
+        queryClient.invalidateQueries({ queryKey: ['alert-stats'] })
         alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
       }
     } catch (error) {
@@ -72,6 +73,13 @@ export function AlertsTable() {
     refetchInterval: 10000, // Refresh every 10 seconds
     refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   })
+
+  // Invalidate alert stats when alerts data changes
+  useEffect(() => {
+    if (alertsResponse) {
+      queryClient.invalidateQueries({ queryKey: ['alert-stats'] })
+    }
+  }, [alertsResponse, queryClient])
 
   if (isLoading) {
     return <LoadingSpinner />

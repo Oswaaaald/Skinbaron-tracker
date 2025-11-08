@@ -25,13 +25,13 @@ export function SystemStats() {
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchInterval: 60 * 1000, // Refresh every minute for scheduler stats
   })
 
   const { data: alertStatsResponse } = useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes
+    refetchInterval: 30 * 1000, // Refresh every 30 seconds for real-time stats
   })
 
 
