@@ -174,7 +174,7 @@ export class SkinBaronClient {
     try {
       // Simple search to test API connectivity
       await this.search({ 
-        search_item: 'ak-47',
+        search_item: 'AWP',
         limit: 1
       });
       return true;
