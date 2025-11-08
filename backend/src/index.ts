@@ -9,6 +9,7 @@ import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
 import rulesRoutes from './routes/rules.js';
 import alertsRoutes from './routes/alerts.js';
+import testRoutes from './routes/test.js';
 
 // Create Fastify instance
 const fastify = Fastify({
@@ -347,15 +348,11 @@ async function setupSchedulerControls() {
 }
 
 // Register API routes
-async function setupRoutes() {
-  // API routes
+async function registerRoutes() {
+  // Rules CRUD
   await fastify.register(rulesRoutes, { prefix: '/api/rules' });
   await fastify.register(alertsRoutes, { prefix: '/api/alerts' });
-  
-  // System endpoints
-  await setupHealthCheck();
-  await setupSystemStatus();
-  await setupSchedulerControls();
+  await fastify.register(testRoutes);
 }
 
 // Initialize application
