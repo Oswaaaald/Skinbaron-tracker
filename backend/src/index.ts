@@ -461,6 +461,19 @@ async function setupSchedulerControls() {
   });
 }
 
+// Test endpoint to verify deployment
+async function setupTestEndpoint() {
+  fastify.get('/api/version-test', async (request, reply) => {
+    return reply.code(200).send({
+      success: true,
+      message: 'Version with forced values deployed!',
+      timestamp: new Date().toISOString(),
+      version: '2.0.0-test-force-values',
+      deploymentCheck: 'This endpoint proves the new code is running'
+    });
+  });
+}
+
 // Register API routes
 async function registerRoutes() {
   // Rules CRUD
@@ -492,6 +505,7 @@ async function initializeApp() {
     await setupHealthCheck();
     await setupSystemStatus();
     await setupSchedulerControls();
+    await setupTestEndpoint();
     await registerRoutes();
 
     // Start server
