@@ -141,7 +141,7 @@ export class AlertScheduler {
         }
 
         // Double-check filters (API might not be perfect)
-        if (!this.skinBaronClient.matchesFilters(item, {
+        if (!client.matchesFilters(item, {
           search_item: rule.search_item,
           min: rule.min_price,
           max: rule.max_price,
@@ -163,7 +163,7 @@ export class AlertScheduler {
             wear_value: item.wearValue,
             stattrak: item.statTrak ?? false,
             souvenir: item.souvenir ?? false,
-            skin_url: this.skinBaronClient.getSkinUrl(item.saleId),
+            skin_url: client.getSkinUrl(item.saleId),
             alert_type: 'match',
           };
 
