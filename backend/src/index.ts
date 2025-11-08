@@ -89,29 +89,47 @@ async function registerPlugins() {
   });
 }
 
-// Health check endpoint - SIMPLIFIED VERSION WITH FORCED VALUES
+// Health check endpoint
 async function setupHealthCheck() {
   fastify.get('/api/health', async (request, reply) => {
-    // ALWAYS return forced test values
-    const forcedMemoryStats = {
-      heapUsed: 67 * 1024 * 1024, // 67MB
-      heapTotal: 134 * 1024 * 1024, // 134MB  
-      rss: 89 * 1024 * 1024 // 89MB
+    const store = getStore();
+    const scheduler = getScheduler();
+    
+    // Check database health
+    let dbHealth = 'healthy';
+    try {
+      await store.getStats(); // Simple check to see if DB is accessible
+    } catch (error) {
+      dbHealth = 'unhealthy';
+    }
+    
+    // Check scheduler health
+    let schedulerHealth = 'stopped';
+    try {
+      const schedulerStats = scheduler.getStats();
+      schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
+    } catch (error) {
+      schedulerHealth = 'unhealthy';
+    }
+    
+    // Determine overall status
+    const services = {
+      database: dbHealth,
+      skinbaron_api: 'unhealthy', // Always unhealthy without API key
+      scheduler: schedulerHealth
     };
+    
+    const status = Object.values(services).every(s => s === 'healthy') ? 'healthy' : 'degraded';
 
     return reply.code(200).send({
       success: true,
-      status: 'degraded',
+      status,
       timestamp: new Date().toISOString(),
-      services: {
-        database: 'healthy',
-        skinbaron_api: 'unhealthy',
-        scheduler: 'running'
-      },
+      services,
       stats: {
         uptime: process.uptime(),
-        memory: forcedMemoryStats,
-        version: '2.0.0-forced',
+        memory: process.memoryUsage(),
+        version: '2.0.0',
       },
     });
   });
@@ -221,72 +239,7 @@ async function setupSchedulerControls() {
   });
 }
 
-// Test endpoint to verify deployment
-async function setupTestEndpoint() {
-  fastify.get('/api/version-test', async (request, reply) => {
-    return reply.code(200).send({
-      success: true,
-      message: 'Version with forced values deployed!',
-      timestamp: new Date().toISOString(),
-      version: '2.0.0-test-force-values',
-      deploymentCheck: 'This endpoint proves the new code is running'
-    });
-  });
 
-  // Debug endpoint to test memory forcing
-  fastify.get('/api/debug-memory', async (request, reply) => {
-    let memoryStats = {
-      heapUsed: 67 * 1024 * 1024, // 67MB
-      heapTotal: 134 * 1024 * 1024, // 134MB  
-      rss: 89 * 1024 * 1024 // 89MB
-    };
-    
-    return reply.code(200).send({
-      success: true,
-      message: 'Debug memory endpoint',
-      forcedMemory: memoryStats,
-      testValue: 'This should always show forced values'
-    });
-  });
-
-  // Debug endpoint to test system status forcing
-  fastify.get('/api/debug-system', async (request, reply) => {
-    return reply.code(200).send({
-      success: true,
-      message: 'Debug system endpoint',
-      forcedData: {
-        scheduler: { isRunning: true, totalRuns: 999 },
-        database: { totalRules: 123, enabledRules: 456 },
-        config: { nodeEnv: 'debug-test' }
-      }
-    });
-  });
-
-  // Exact replica of health endpoint for testing
-  fastify.get('/api/test-health', async (request, reply) => {
-    let memoryStats = {
-      heapUsed: 67 * 1024 * 1024, // 67MB
-      heapTotal: 134 * 1024 * 1024, // 134MB  
-      rss: 89 * 1024 * 1024 // 89MB
-    };
-
-    return reply.code(200).send({
-      success: true,
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: 'healthy',
-        skinbaron_api: 'test',
-        scheduler: 'running'
-      },
-      stats: {
-        uptime: process.uptime(),
-        memory: memoryStats,
-        version: '2.0.0-test',
-      },
-    });
-  });
-}
 
 // Register API routes
 async function registerRoutes() {
@@ -319,7 +272,6 @@ async function initializeApp() {
     await setupHealthCheck();
     await setupSystemStatus();
     await setupSchedulerControls();
-    await setupTestEndpoint();
     await registerRoutes();
 
     // Start server
