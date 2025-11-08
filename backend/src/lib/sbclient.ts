@@ -142,19 +142,25 @@ export class SkinBaronClient {
     );
 
     // Convert sales to items format for backward compatibility
-    const items: SkinBaronItem[] = (result.sales || []).map(sale => ({
-      saleId: sale.id,
-      itemName: sale.market_name,
-      price: sale.price,
-      wearValue: sale.wear,
-      statTrak: sale.stattrak ?? sale.market_name.includes('StatTrak™'),
-      souvenir: sale.souvenir ?? sale.market_name.includes('Souvenir'),
-      sellerName: sale.seller,
-      currency: sale.currency || 'EUR',
-      quality: sale.quality,
-      rarity: sale.rarity,
-      skinUrl: sale.sbinspect || this.getSkinUrl(sale.id), // Utiliser sbinspect si disponible
-    }));
+    const items: SkinBaronItem[] = (result.sales || []).map(sale => {
+      // Améliorer la détection StatTrak - toujours utiliser le nom pour plus de fiabilité
+      const isStatTrak = sale.market_name.includes('StatTrak™');
+      const isSouvenir = sale.market_name.includes('Souvenir');
+      
+      return {
+        saleId: sale.id,
+        itemName: sale.market_name,
+        price: sale.price,
+        wearValue: sale.wear,
+        statTrak: isStatTrak, // Toujours basé sur le nom pour plus de fiabilité
+        souvenir: isSouvenir, // Toujours basé sur le nom pour plus de fiabilité
+        sellerName: sale.seller,
+        currency: sale.currency || 'EUR',
+        quality: sale.quality,
+        rarity: sale.rarity,
+        skinUrl: sale.sbinspect || this.getSkinUrl(sale.id), // Utiliser sbinspect si disponible
+      };
+    });
 
     return { items };
   }
@@ -191,42 +197,41 @@ export class SkinBaronClient {
     return `https://skinbaron.de/offers/show?offerUuid=${saleId}`;
   }
 
-  /**
-   * Check if an item matches the given filters
+    /**
+   * Check if an item matches the given search parameters
    */
   matchesFilters(item: SkinBaronItem, params: SearchParams): boolean {
-    // Price filters
+    // Check StatTrak filter - amélioration de la logique
+    if (params.statTrak !== undefined) {
+      const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
+      if (itemIsStatTrak !== params.statTrak) {
+        return false;
+      }
+    }
+
+    // Check Souvenir filter - amélioration de la logique
+    if (params.souvenir !== undefined) {
+      const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
+      if (itemIsSouvenir !== params.souvenir) {
+        return false;
+      }
+    }
+
+    // Check price range
     if (params.min !== undefined && item.price < params.min) {
       return false;
     }
+
     if (params.max !== undefined && item.price > params.max) {
       return false;
     }
 
-    // Wear filters
-    if (item.wearValue !== undefined) {
-      if (params.minWear !== undefined && item.wearValue < params.minWear) {
-        return false;
-      }
-      if (params.maxWear !== undefined && item.wearValue > params.maxWear) {
-        return false;
-      }
-    }
-
-    // StatTrak filter
-    if (params.statTrak !== undefined && item.statTrak !== params.statTrak) {
+    // Check wear range
+    if (params.minWear !== undefined && item.wearValue && item.wearValue < params.minWear) {
       return false;
     }
 
-    // Souvenir filter
-    if (params.souvenir !== undefined && item.souvenir !== params.souvenir) {
-      return false;
-    }
-
-    // Item name filter (case-insensitive partial match)
-    const itemName = item.itemName.toLowerCase();
-    const searchItem = params.search_item.toLowerCase();
-    if (!itemName.includes(searchItem)) {
+    if (params.maxWear !== undefined && item.wearValue && item.wearValue > params.maxWear) {
       return false;
     }
 
