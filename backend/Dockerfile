@@ -1,29 +1,26 @@
-# Backend Dockerfile for SkinBaron Alerts
-FROM node:22-alpine AS base
+# Backend Dockerfile for SkinBaron Alerts  
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Install build dependencies for better-sqlite3
-RUN apk add --no-cache libc6-compat python3 make g++ sqlite-dev
 WORKDIR /app
+# Install build dependencies for better-sqlite3 and clean up in same layer
+RUN apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && apk del .build-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
-# Install build dependencies for TypeScript compilation and better-sqlite3
-RUN apk add --no-cache libc6-compat python3 make g++ sqlite-dev
 WORKDIR /app
+# Install build dependencies, copy files, build and clean up in optimized layers
+RUN apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Install all dependencies (including dev dependencies)
-RUN npm ci
-
-# Build the application
-RUN npm run build
+# Install dev dependencies, build and clean up
+RUN npm ci && npm run build && apk del .build-deps
 
 # Production image, copy all the files and run the app
 FROM base AS runner
