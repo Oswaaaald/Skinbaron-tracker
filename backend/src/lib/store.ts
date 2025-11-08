@@ -35,23 +35,29 @@ export const AlertSchema = z.object({
   sent_at: z.string().optional(),
 });
 
-// User schema (for multi-user support)
-export const UserSchema = z.object({
-  id: z.number().optional(),
+// User schemas (for multi-user support)
+export const CreateUserSchema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
   password_hash: z.string(),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
+});
+
+export const UserSchema = z.object({
+  id: z.number(),
+  username: z.string().min(3).max(20),
+  email: z.string().email(),
+  password_hash: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });
 
 // Types inferred from schemas
 export type Rule = z.infer<typeof RuleSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
 export type User = z.infer<typeof UserSchema>;
+export type CreateUser = z.infer<typeof CreateUserSchema>;
 export type CreateRule = Omit<Rule, 'id' | 'created_at' | 'updated_at'>;
 export type CreateAlert = Omit<Alert, 'id' | 'sent_at'>;
-export type CreateUser = Omit<User, 'id' | 'created_at' | 'updated_at'>;
 
 export class Store {
   private db: Database.Database;
@@ -366,7 +372,7 @@ export class Store {
 
   // User management methods
   createUser(user: CreateUser): User {
-    const validated = UserSchema.omit({ id: true, created_at: true, updated_at: true }).parse(user);
+    const validated = CreateUserSchema.parse(user);
     
     const stmt = this.db.prepare(`
       INSERT INTO users (username, email, password_hash)
@@ -413,7 +419,7 @@ export class Store {
       throw new Error('User not found');
     }
 
-    const validatedUpdates = UserSchema.omit({ id: true, created_at: true }).partial().parse(updates);
+    const validatedUpdates = CreateUserSchema.partial().parse(updates);
     
     const fields = Object.keys(validatedUpdates).filter(key => key !== 'updated_at');
     if (fields.length === 0) {

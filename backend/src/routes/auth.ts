@@ -235,7 +235,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     // User is already attached by auth middleware
-    const user = await store.getUserById(request.user!.id);
+    if (!request.user) {
+      return reply.code(401).send({
+        success: false,
+        error: 'Authentication required',
+      });
+    }
+    
+    const user = await store.getUserById(request.user.id);
     
     if (!user) {
       return reply.code(404).send({
