@@ -4,8 +4,13 @@ import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { User, LogOut, Settings, Shield } from 'lucide-react'
+import { toast } from 'sonner'
 
-export function UserNav() {
+interface UserNavProps {
+  onTabChange?: (tab: string) => void
+}
+
+export function UserNav({ onTabChange }: UserNavProps) {
   const { user, logout } = useAuth()
 
   if (!user) return null
@@ -38,15 +43,24 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => {
+            toast.info('Profile page coming soon! For now, your account info is displayed above.')
+          }}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => {
+            toast.info('Settings page coming soon! Basic account management is available.')
+          }}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => {
+            if (onTabChange) {
+              onTabChange('webhooks')
+              toast.success('Switched to Webhooks tab')
+            }
+          }}>
             <Shield className="mr-2 h-4 w-4" />
             <span>Webhooks</span>
           </DropdownMenuItem>

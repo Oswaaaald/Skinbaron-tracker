@@ -31,6 +31,7 @@ import { apiClient } from "@/lib/api"
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("rules")
 
   // Fetch system status
   const { data: systemStatus, isLoading: isLoadingStatus, refetch: refetchStatus } = useQuery({
@@ -97,7 +98,7 @@ export function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <UserNav />
+          <UserNav onTabChange={setActiveTab} />
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -199,7 +200,7 @@ export function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="rules" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="rules">Rules</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
