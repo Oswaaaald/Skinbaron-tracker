@@ -135,8 +135,8 @@ export class AlertScheduler {
 
       let newAlerts = 0;
       for (const item of response.items) {
-        // Check if already processed
-        if (this.store.isProcessed(item.saleId)) {
+        // Check if already processed for this rule
+        if (this.store.isProcessed(item.saleId, rule.id)) {
           continue;
         }
 

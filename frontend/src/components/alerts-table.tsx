@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Table,
   TableBody,
@@ -35,7 +35,29 @@ export function AlertsTable() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
+  const [isCleaningUp, setIsCleaningUp] = useState(false)
   const limit = 20
+  const queryClient = useQueryClient()
+
+  const handleCleanupAlerts = async () => {
+    if (isCleaningUp) return
+    
+    setIsCleaningUp(true)
+    try {
+      const response = await apiClient.cleanupAlerts()
+      if (response.success) {
+        // Refresh the alerts list
+        queryClient.invalidateQueries({ queryKey: ['alerts'] })
+        // Show success message (you might want to add a toast notification here)
+        console.log(`Successfully deleted ${response.data?.deletedCount} old alerts`)
+      }
+    } catch (error) {
+      console.error('Failed to cleanup alerts:', error)
+      // Show error message (you might want to add a toast notification here)
+    } finally {
+      setIsCleaningUp(false)
+    }
+  }
 
   const { data: alertsResponse, isLoading, error } = useQuery({
     queryKey: ['alerts', page, search, alertTypeFilter],
@@ -44,6 +66,8 @@ export function AlertsTable() {
       offset: page * limit,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }),
+    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   })
 
   if (isLoading) {
@@ -134,6 +158,26 @@ export function AlertsTable() {
               <SelectItem value="new_item">New Item</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-2 block">
+            Actions
+          </label>
+          <Button
+            variant="outline"
+            onClick={handleCleanupAlerts}
+            disabled={isCleaningUp}
+            className="w-[180px]"
+          >
+            {isCleaningUp ? (
+              <>
+                <LoadingSpinner />
+                Cleaning...
+              </>
+            ) : (
+              'Clean My Old Alerts'
+            )}
+          </Button>
         </div>
       </div>
 

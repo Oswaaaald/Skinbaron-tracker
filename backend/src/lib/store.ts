@@ -133,7 +133,7 @@ export class Store {
       CREATE TABLE IF NOT EXISTS alerts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         rule_id INTEGER,
-        sale_id TEXT UNIQUE NOT NULL,
+        sale_id TEXT NOT NULL,
         item_name TEXT NOT NULL,
         price REAL NOT NULL,
         wear_value REAL,
@@ -142,7 +142,8 @@ export class Store {
         skin_url TEXT NOT NULL,
         alert_type TEXT DEFAULT 'match',
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE
+        FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE,
+        UNIQUE(rule_id, sale_id)
       )
     `);
 
@@ -157,6 +158,8 @@ export class Store {
 
     console.log('✅ Database tables initialized');
   }
+
+
 
   private initializeUserTables() {
     // Create users table
@@ -398,7 +401,7 @@ export class Store {
       return this.getAlertById(result.lastInsertRowid as number)!;
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        // Sale already processed
+        // Sale already processed for this rule
         throw new Error('DUPLICATE_SALE');
       }
       throw error;
@@ -520,9 +523,16 @@ export class Store {
   }
 
   // Utility methods
-  isProcessed(saleId: string): boolean {
-    const stmt = this.db.prepare('SELECT 1 FROM alerts WHERE sale_id = ? LIMIT 1');
-    return stmt.get(saleId) !== undefined;
+  isProcessed(saleId: string, ruleId?: number): boolean {
+    if (ruleId) {
+      // Check if this specific rule has already processed this sale
+      const stmt = this.db.prepare('SELECT 1 FROM alerts WHERE sale_id = ? AND rule_id = ? LIMIT 1');
+      return stmt.get(saleId, ruleId) !== undefined;
+    } else {
+      // Legacy behavior: check globally (for backward compatibility)
+      const stmt = this.db.prepare('SELECT 1 FROM alerts WHERE sale_id = ? LIMIT 1');
+      return stmt.get(saleId) !== undefined;
+    }
   }
 
   getStats() {
