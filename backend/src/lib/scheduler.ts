@@ -115,8 +115,10 @@ export class AlertScheduler {
    */
   private async processRule(rule: Rule): Promise<number> {
     try {
+      const client = getSkinBaronClient();
+      
       // Search for items matching the rule
-      const response = await this.skinBaronClient.search({
+      const response = await client.search({
         search_item: rule.search_item,
         min: rule.min_price,
         max: rule.max_price,
@@ -127,7 +129,7 @@ export class AlertScheduler {
         limit: 20, // Limit to prevent API overload
       });
 
-      if (!response.success || !response.items) {
+      if (!response.items || response.items.length === 0) {
         return 0;
       }
 
@@ -238,7 +240,9 @@ export class AlertScheduler {
    * Test a specific rule without creating alerts
    */
   async testRule(rule: Rule): Promise<SkinBaronItem[]> {
-    const response = await this.skinBaronClient.search({
+    const client = getSkinBaronClient();
+    
+    const response = await client.search({
       search_item: rule.search_item,
       min: rule.min_price,
       max: rule.max_price,
@@ -249,12 +253,12 @@ export class AlertScheduler {
       limit: 10,
     });
 
-    if (!response.success || !response.items) {
+    if (!response.items || response.items.length === 0) {
       return [];
     }
 
-    return response.items.filter(item => 
-      this.skinBaronClient.matchesFilters(item, {
+    return response.items.filter((item: SkinBaronItem) => 
+      client.matchesFilters(item, {
         search_item: rule.search_item,
         min: rule.min_price,
         max: rule.max_price,
