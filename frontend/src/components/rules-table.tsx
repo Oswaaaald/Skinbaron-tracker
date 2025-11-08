@@ -38,10 +38,12 @@ export function RulesTable() {
   })
 
   // Fetch user's webhooks to display webhook names in rules table
-  const { data: webhooks = [] } = useQuery({
+  const { data: webhooksResponse } = useQuery({
     queryKey: ['webhooks'],
     queryFn: () => apiClient.getWebhooks(),
   })
+
+  const webhooks = webhooksResponse?.data || []
 
   // Helper function to get webhook display text
   const getWebhookDisplay = (rule: Rule) => {
