@@ -93,8 +93,21 @@ export function RulesTable() {
   }
 
   const toggleRuleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
-      apiClient.updateRule(id, { enabled }),
+    mutationFn: ({ rule, enabled }: { rule: Rule; enabled: boolean }) => {
+      // Send complete rule data with updated enabled status (like create)
+      const updateData = {
+        search_item: rule.search_item,
+        min_price: rule.min_price,
+        max_price: rule.max_price,
+        min_wear: rule.min_wear,
+        max_wear: rule.max_wear,
+        stattrak: rule.stattrak,
+        souvenir: rule.souvenir,
+        webhook_ids: rule.webhook_ids,
+        enabled: enabled,
+      };
+      return apiClient.updateRule(rule.id, updateData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
       toast.success('Rule updated successfully')
@@ -142,7 +155,7 @@ export function RulesTable() {
 
   const handleToggleEnabled = (rule: Rule) => {
     if (rule.id) {
-      toggleRuleMutation.mutate({ id: rule.id, enabled: !rule.enabled })
+      toggleRuleMutation.mutate({ rule: rule, enabled: !rule.enabled })
     }
   }
 

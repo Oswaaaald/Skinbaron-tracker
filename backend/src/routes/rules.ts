@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getStore, RuleSchema, type Rule, type CreateRule } from '../lib/store.js';
+import { getStore, RuleSchema, CreateRuleSchema, type Rule, type CreateRule } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getNotificationService } from '../lib/notifier.js';
 
@@ -12,13 +12,23 @@ declare module 'fastify' {
 }
 
 // Request/Response schemas
+/**
+ * Rule request schemas
+ */
 const CreateRuleRequestSchema = RuleSchema.omit({ 
   id: true, 
   created_at: true, 
   updated_at: true 
-});
+}).refine(
+  (data) => data.webhook_ids && data.webhook_ids.length > 0,
+  {
+    message: "At least one webhook must be provided",
+    path: ["webhook_ids"],
+  }
+);
 
-const UpdateRuleRequestSchema = CreateRuleRequestSchema.partial();
+// Use the same schema for updates to maintain consistency
+const UpdateRuleRequestSchema = CreateRuleRequestSchema;
 
 const RuleParamsSchema = z.object({
   id: z.string().transform(val => parseInt(val, 10)),
@@ -160,7 +170,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
       const userWebhookIds = userWebhooks.map(w => w.id);
       
-      const invalidWebhooks = ruleData.webhook_ids?.filter(id => !userWebhookIds.includes(id)) || [];
+      const invalidWebhooks = ruleData.webhook_ids?.filter((id: number) => !userWebhookIds.includes(id)) || [];
       if (invalidWebhooks.length > 0) {
         return reply.code(400).send({
           success: false,
@@ -297,16 +307,17 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       },
       body: {
         type: 'object',
+        required: ['search_item', 'webhook_ids'],
         properties: {
           search_item: { type: 'string', minLength: 1 },
-          min_price: { type: 'number', minimum: 0 },
-          max_price: { type: 'number', minimum: 0 },
-          min_wear: { type: 'number', minimum: 0, maximum: 1 },
-          max_wear: { type: 'number', minimum: 0, maximum: 1 },
-          stattrak: { type: 'boolean' },
-          souvenir: { type: 'boolean' },
+          min_price: { type: 'number', minimum: 0, nullable: true },
+          max_price: { type: 'number', minimum: 0, nullable: true },
+          min_wear: { type: 'number', minimum: 0, maximum: 1, nullable: true },
+          max_wear: { type: 'number', minimum: 0, maximum: 1, nullable: true },
+          stattrak: { type: 'boolean', nullable: true },
+          souvenir: { type: 'boolean', nullable: true },
           webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 1, maxItems: 10 },
-          enabled: { type: 'boolean' },
+          enabled: { type: 'boolean', default: true },
         },
       },
       response: {
@@ -364,21 +375,25 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      const updates = UpdateRuleRequestSchema.parse(request.body);
+      // Parse body but add user_id from authenticated user (same as create)
+      const bodyData = request.body as any;
       
-      // Validate webhook_ids if provided
-      if (updates.webhook_ids?.length) {
-        const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
-        const userWebhookIds = userWebhooks.map(w => w.id);
-        
-        const invalidWebhooks = updates.webhook_ids.filter(id => !userWebhookIds.includes(id));
-        if (invalidWebhooks.length > 0) {
-          return reply.code(400).send({
-            success: false,
-            error: 'Invalid webhook IDs',
-            message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
-          });
-        }
+      const updates = UpdateRuleRequestSchema.parse({
+        ...bodyData,
+        user_id: request.user!.id.toString(), // Convert to string for compatibility
+      });
+      
+      // Validate webhook_ids - must belong to user (same validation as create)
+      const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
+      const userWebhookIds = userWebhooks.map(w => w.id);
+      
+      const invalidWebhooks = updates.webhook_ids?.filter((id: number) => !userWebhookIds.includes(id)) || [];
+      if (invalidWebhooks.length > 0) {
+        return reply.code(400).send({
+          success: false,
+          error: 'Invalid webhook IDs',
+          message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
+        });
       }
       
       const rule = store.updateRule(id, updates);

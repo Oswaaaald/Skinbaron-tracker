@@ -209,10 +209,10 @@ class ApiClient {
     });
   }
 
-  async updateRule(id: number, updates: Partial<Rule>): Promise<ApiResponse<Rule>> {
+  async updateRule(id: number, data: CreateRuleData): Promise<ApiResponse<Rule>> {
     return this.request<Rule>(`/api/rules/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(updates),
+      body: JSON.stringify(data),
     });
   }
 
