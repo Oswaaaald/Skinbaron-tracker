@@ -36,10 +36,10 @@ import { X } from "lucide-react"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
-  min_price: z.number().positive().optional().or(z.literal(0)),
-  max_price: z.number().positive().optional().or(z.literal(0)),
-  min_wear: z.number().min(0).max(100).optional(),
-  max_wear: z.number().min(0).max(100).optional(),
+  min_price: z.number().min(0, "Prix minimum doit être positif").optional(),
+  max_price: z.number().min(0, "Prix maximum doit être positif").optional(),
+  min_wear: z.number().min(0, "Wear minimum doit être entre 0 et 100").max(100, "Wear minimum doit être entre 0 et 100").optional(),
+  max_wear: z.number().min(0, "Wear maximum doit être entre 0 et 100").max(100, "Wear maximum doit être entre 0 et 100").optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
   webhook_ids: z.array(z.number()).min(1, "At least one webhook must be selected").max(10, "Maximum 10 webhooks allowed"),
@@ -258,15 +258,27 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     <FormLabel>Min Price (€)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0"
+                        type="text"
+                        placeholder="ex: 10.50"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value?.toString() || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0) {
+                              field.onChange(num)
+                            }
+                          }
+                        }}
                         disabled={isSubmitting}
                       />
                     </FormControl>
+                    <FormDescription>
+                      Prix minimum en euros. Laissez vide pour ignorer.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -280,15 +292,27 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     <FormLabel>Max Price (€)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="No limit"
+                        type="text"
+                        placeholder="ex: 50"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value?.toString() || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0) {
+                              field.onChange(num)
+                            }
+                          }
+                        }}
                         disabled={isSubmitting}
                       />
                     </FormControl>
+                    <FormDescription>
+                      Prix maximum en euros. Laissez vide pour ignorer.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -305,16 +329,27 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     <FormLabel>Min Wear (0-100%)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min="0"
-                        max="1"
-                        step="0.001"
-                        placeholder="0"
+                        type="text"
+                        placeholder="ex: 15"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value?.toString() || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num)) {
+                              field.onChange(num)
+                            }
+                          }
+                        }}
                         disabled={isSubmitting}
                       />
                     </FormControl>
+                    <FormDescription>
+                      Entre 0 et 100. Laissez vide pour ignorer.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -328,16 +363,27 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     <FormLabel>Max Wear (0-100%)</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min="0"
-                        max="1"
-                        step="0.001"
-                        placeholder="1"
+                        type="text"
+                        placeholder="ex: 85"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value?.toString() || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num)) {
+                              field.onChange(num)
+                            }
+                          }
+                        }}
                         disabled={isSubmitting}
                       />
                     </FormControl>
+                    <FormDescription>
+                      Entre 0 et 100. Laissez vide pour ignorer.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
