@@ -250,31 +250,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * POST /alerts/cleanup - Cleanup old alerts
    */
-  fastify.post('/cleanup', {
-    schema: {
-      description: 'Cleanup old alerts (older than 30 days)',
-      tags: ['Alerts'],
-      body: {
-        type: ['object', 'null'],
-        additionalProperties: true
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                deletedCount: { type: 'number' },
-                message: { type: 'string' },
-              },
-            },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
+  fastify.post('/cleanup', async (request, reply) => {
     try {
       const deletedCount = store.cleanupOldAlerts();
       

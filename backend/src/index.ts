@@ -161,25 +161,7 @@ async function setupSystemStatus() {
 // Scheduler control endpoints
 async function setupSchedulerControls() {
   // Start scheduler
-  fastify.post('/api/system/scheduler/start', {
-    schema: {
-      description: 'Start the scheduler',
-      tags: ['Scheduler'],
-      body: {
-        type: ['object', 'null'],
-        additionalProperties: true
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
+  fastify.post('/api/system/scheduler/start', async (request, reply) => {
     try {
       const scheduler = getScheduler();
       scheduler.start();
@@ -199,25 +181,7 @@ async function setupSchedulerControls() {
   });
 
   // Stop scheduler
-  fastify.post('/api/system/scheduler/stop', {
-    schema: {
-      description: 'Stop the scheduler',
-      tags: ['Scheduler'],
-      body: {
-        type: ['object', 'null'],
-        additionalProperties: true
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
+  fastify.post('/api/system/scheduler/stop', async (request, reply) => {
     try {
       const scheduler = getScheduler();
       scheduler.stop();
@@ -237,25 +201,7 @@ async function setupSchedulerControls() {
   });
 
   // Force run scheduler
-  fastify.post('/api/system/scheduler/run', {
-    schema: {
-      description: 'Force run a scheduler cycle',
-      tags: ['Scheduler'],
-      body: {
-        type: ['object', 'null'],
-        additionalProperties: true
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
+  fastify.post('/api/system/scheduler/run', async (request, reply) => {
     try {
       const scheduler = getScheduler();
       await scheduler.forceRun();
