@@ -52,9 +52,16 @@ export function AlertsTable() {
     try {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
-        // Refresh the alerts list and sync all stats immediately
+        console.log('Alerts cleared, refreshing data...')
+        // Refresh the alerts list immediately
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        syncStats()
+        
+        // Small delay to ensure backend has processed the deletion
+        setTimeout(async () => {
+          await syncStats()
+          console.log('Data refresh completed')
+        }, 100)
+        
         alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
       }
     } catch (error) {
@@ -79,6 +86,7 @@ export function AlertsTable() {
   // Sync stats when alerts data changes
   useEffect(() => {
     if (alertsResponse) {
+      console.log('Alerts data changed, syncing stats...')
       syncStats()
     }
   }, [alertsResponse, syncStats])
