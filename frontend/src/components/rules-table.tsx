@@ -47,6 +47,12 @@ export function RulesTable() {
 
   // Helper function to get webhook display text
   const getWebhookDisplay = (rule: Rule) => {
+    // Debug logging
+    console.log('getWebhookDisplay called for rule:', rule.id)
+    console.log('rule.webhook_ids:', rule.webhook_ids)
+    console.log('rule.discord_webhook:', rule.discord_webhook)
+    console.log('available webhooks:', webhooks)
+    
     if (rule.discord_webhook) {
       return (
         <Badge variant="outline" className="text-xs">
@@ -57,8 +63,14 @@ export function RulesTable() {
     
     if (rule.webhook_ids && rule.webhook_ids.length > 0) {
       const webhookNames = rule.webhook_ids
-        .map(id => webhooks.find(w => w.id === id)?.name)
+        .map(id => {
+          const webhook = webhooks.find(w => w.id === id)
+          console.log(`Looking for webhook ID ${id}, found:`, webhook)
+          return webhook?.name
+        })
         .filter(Boolean)
+      
+      console.log('webhookNames:', webhookNames)
       
       if (webhookNames.length > 0) {
         return (
@@ -73,6 +85,7 @@ export function RulesTable() {
       }
     }
     
+    console.log('Falling back to "No webhook"')
     return (
       <Badge variant="secondary" className="text-xs">
         No webhook
