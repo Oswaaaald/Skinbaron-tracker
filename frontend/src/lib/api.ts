@@ -88,9 +88,16 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`;
+      
+      // Only add Content-Type header if there's a body
+      const headers: Record<string, string> = {};
+      if (options.body) {
+        headers['Content-Type'] = 'application/json';
+      }
+      
       const response = await fetch(url, {
         headers: {
-          'Content-Type': 'application/json',
+          ...headers,
           ...options.headers,
         },
         ...options,
