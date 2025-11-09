@@ -123,9 +123,9 @@ export class NotificationService {
       fields: [],
     };
 
-    // Add item image (will appear after description, before fields)
+    // Add item image as smaller thumbnail
     if (item.imageUrl) {
-      embed.image = {
+      embed.thumbnail = {
         url: item.imageUrl,
       };
     }
