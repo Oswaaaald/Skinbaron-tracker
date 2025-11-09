@@ -20,6 +20,7 @@ import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient, type Alert } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
+import { useAuth } from "@/contexts/auth-context"
 
 const ALERT_TYPE_LABELS = {
   match: 'Rule Match',
@@ -41,6 +42,7 @@ export function AlertsTable() {
   const limit = 20
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
+  const { isAuthLoading } = useAuth()
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
@@ -75,6 +77,7 @@ export function AlertsTable() {
       offset: page * limit,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }),
+    enabled: !isAuthLoading, // Wait for authentication to load
     refetchInterval: 10000, // Refresh every 10 seconds
     refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   })

@@ -27,15 +27,18 @@ import { toast } from "sonner"
 import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
 import { formatWearPercentage } from "@/lib/wear-utils"
+import { useAuth } from "@/contexts/auth-context"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { isLoading: isAuthLoading } = useAuth()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
     queryFn: () => apiClient.getRules(),
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
   // Fetch user's webhooks to display webhook names in rules table
@@ -48,6 +51,7 @@ export function RulesTable() {
       return result
     },
     retry: 2,
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
   // Handle both direct array and ApiResponse wrapper

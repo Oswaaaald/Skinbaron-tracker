@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Edit, Trash2, ExternalLink, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiClient, type Webhook } from '@/lib/api'
+import { useAuth } from '@/contexts/auth-context'
 
 interface WebhookFormData {
   name: string
@@ -38,6 +39,7 @@ export function WebhooksTable() {
   const [error, setError] = useState('')
 
   const queryClient = useQueryClient()
+  const { isAuthLoading } = useAuth()
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
@@ -47,6 +49,7 @@ export function WebhooksTable() {
       if (!result.success) throw new Error(result.error)
       return result.data || []
     },
+    enabled: !isAuthLoading, // Wait for authentication to load
   })
 
   // Create webhook mutation
