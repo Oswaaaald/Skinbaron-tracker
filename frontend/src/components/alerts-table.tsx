@@ -42,7 +42,7 @@ export function AlertsTable() {
   const limit = 20
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
-  const { isLoading: isAuthLoading } = useAuth()
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuth()
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
@@ -77,7 +77,7 @@ export function AlertsTable() {
       offset: page * limit,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }),
-    enabled: !isAuthLoading, // Wait for authentication to load
+    enabled: !isAuthLoading && isAuthenticated, // Wait for authentication to complete and be valid
     refetchInterval: 10000, // Refresh every 10 seconds
     refetchIntervalInBackground: true, // Continue refreshing when tab is not active
   })

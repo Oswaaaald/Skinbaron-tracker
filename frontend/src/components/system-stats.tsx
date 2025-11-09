@@ -16,28 +16,29 @@ import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 
 export function SystemStats() {
-  const { isLoading: isAuthLoading } = useAuth()
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuth()
 
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-    enabled: !isAuthLoading, // Wait for auth to load
+    refetchInterval: 30000, // 30 seconds
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    refetchInterval: 60 * 1000, // Refresh every minute for scheduler stats
-    enabled: !isAuthLoading, // Wait for auth to load
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
+  // Alerts statistics - used for real-time updates
   const { data: alertStatsResponse } = useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    refetchInterval: 10000, // Refresh every 10 seconds - SAME as alerts
-    refetchIntervalInBackground: true, // Continue refreshing when tab is not active
-    enabled: !isAuthLoading, // Wait for auth to load
+    refetchInterval: 10000, // 10 seconds for real-time stats
+    refetchIntervalInBackground: true, // Keep refreshing in background
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
 

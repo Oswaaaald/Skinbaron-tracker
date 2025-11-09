@@ -40,7 +40,7 @@ export function Dashboard() {
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-    enabled: !isAuthLoading, // Wait for auth to load
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
   // Fetch user statistics
@@ -48,15 +48,15 @@ export function Dashboard() {
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
     refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
-    enabled: !isAuthLoading, // Wait for auth to load
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
   // Fetch health status
   const { data: health, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-    enabled: !isAuthLoading, // Wait for auth to load
+    refetchInterval: 30 * 1000, // Refresh every 30 seconds
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
 

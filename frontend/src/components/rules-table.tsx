@@ -33,25 +33,23 @@ export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { isLoading: isAuthLoading } = useAuth()
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuth()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
     queryFn: () => apiClient.getRules(),
-    enabled: !isAuthLoading, // Wait for auth to load
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
-  // Fetch user's webhooks to display webhook names in rules table
+    // Fetch user's webhooks to display webhook names in rules table
   const { data: webhooksResponse, isLoading: webhooksLoading, error: webhooksError } = useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => {
-      console.log('Fetching webhooks...')
-      const result = await apiClient.getWebhooks()
-      console.log('Webhooks API response:', result)
-      return result
+      const result = await apiClient.getWebhooks(false) // Don't decrypt for listing
+      if (!result.success) throw new Error(result.error)
+      return result.data || []
     },
-    retry: 2,
-    enabled: !isAuthLoading, // Wait for auth to load
+    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
   // Handle both direct array and ApiResponse wrapper
