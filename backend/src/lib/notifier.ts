@@ -92,9 +92,27 @@ export class NotificationService {
   private createEmbed(options: NotificationOptions): DiscordEmbed {
     const { alertType, item, rule, skinUrl } = options;
 
+    // Build description with item info
+    const descriptionParts: string[] = [];
+    descriptionParts.push(`💰 **Price:** ${item.price} ${item.currency}`);
+    
+    if (item.wearValue !== undefined) {
+      const wearPercentage = (item.wearValue * 100).toFixed(2);
+      descriptionParts.push(`🔍 **Wear Value:** ${wearPercentage}%`);
+    }
+
+    // StatTrak and Souvenir indicators
+    const badges: string[] = [];
+    if (item.statTrak) badges.push('🔥 StatTrak™');
+    if (item.souvenir) badges.push('🏆 Souvenir');
+    if (badges.length > 0) {
+      descriptionParts.push(`🏷️ **Special:** ${badges.join(', ')}`);
+    }
+
     // Base embed structure
     const embed: DiscordEmbed = {
       title: this.getEmbedTitle(alertType, item),
+      description: descriptionParts.join('\n\n'),
       url: skinUrl,
       color: this.getEmbedColor(alertType),
       timestamp: new Date().toISOString(),
@@ -105,50 +123,17 @@ export class NotificationService {
       fields: [],
     };
 
-    // Add item image as thumbnail (smaller size)
+    // Add item image (will appear after description, before fields)
     if (item.imageUrl) {
-      embed.thumbnail = {
+      embed.image = {
         url: item.imageUrl,
       };
     }
 
-    // Add item details (vertical layout)
+    // Add action button as field
     if (embed.fields) {
       embed.fields.push({
-        name: '💰 Price',
-        value: `${item.price} ${item.currency}`,
-        inline: false,
-      });
-
-      if (item.wearValue !== undefined) {
-        const wearPercentage = (item.wearValue * 100).toFixed(2);
-        embed.fields.push({
-          name: '🔍 Wear Value',
-          value: `${wearPercentage}%`,
-          inline: false,
-        });
-      }
-
-      // StatTrak and Souvenir indicators
-      const badges: string[] = [];
-      if (item.statTrak) badges.push('🔥 StatTrak™');
-      if (item.souvenir) badges.push('🏆 Souvenir');
-
-      if (badges.length > 0) {
-        embed.fields.push({
-          name: '🏷️ Special',
-          value: badges.join('\n'),
-          inline: false,
-        });
-      }
-
-
-
-
-
-      // Add action button after image
-      embed.fields.push({
-        name: '\u200B', // Invisible character for spacing
+        name: '\u200B', // Invisible character
         value: `🎯 [**VIEW ON SKINBARON**](${skinUrl})`,
         inline: false,
       });
