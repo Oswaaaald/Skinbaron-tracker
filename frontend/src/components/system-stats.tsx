@@ -16,20 +16,20 @@ import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 
 export function SystemStats() {
-  const { isLoading: isAuthLoading, token } = useAuth()
+  const { isReady, isAuthenticated } = useAuth()
 
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 30000, // 30 seconds
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
     refetchInterval: 5 * 60 * 1000, // 5 minutes
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
   // Alerts statistics - used for real-time updates
@@ -38,7 +38,7 @@ export function SystemStats() {
     queryFn: () => apiClient.getAlertStats(),
     refetchInterval: 10000, // 10 seconds for real-time stats
     refetchIntervalInBackground: true, // Keep refreshing in background
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
 

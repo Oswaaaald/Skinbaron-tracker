@@ -33,14 +33,14 @@ export function Dashboard() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("rules")
   const { syncStats } = useSyncStats()
-  const { isLoading: isAuthLoading, token } = useAuth()
+  const { isReady, isAuthenticated } = useAuth()
 
   // Fetch system status
   const { data: systemStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
   // Fetch user statistics
@@ -48,7 +48,7 @@ export function Dashboard() {
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
     refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
   // Fetch health status
@@ -56,7 +56,7 @@ export function Dashboard() {
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 30 * 1000, // Refresh every 30 seconds
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
 

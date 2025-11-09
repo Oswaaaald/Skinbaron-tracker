@@ -14,6 +14,7 @@ export interface AuthContextType {
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
+  isReady: boolean // New flag to indicate auth state is fully initialized
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
@@ -34,12 +35,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isReady, setIsReady] = useState(false)
 
   const isAuthenticated = !!user && !!token
 
   // Load auth state from localStorage on mount
   useEffect(() => {
-    const loadAuthState = () => {
+    const loadAuthState = async () => {
       try {
         const stored = localStorage.getItem(AUTH_STORAGE_KEY)
         if (stored) {
@@ -49,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (authData.expiresAt > Date.now()) {
             setUser(authData.user)
             setToken(authData.token)
+            // Wait a bit to ensure state updates are processed
+            await new Promise(resolve => setTimeout(resolve, 50))
           } else {
             // Token expired, clear storage
             localStorage.removeItem(AUTH_STORAGE_KEY)
@@ -59,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(AUTH_STORAGE_KEY)
       } finally {
         setIsLoading(false)
+        setIsReady(true)
       }
     }
 
@@ -119,12 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
     setUser(user)
     setToken(token)
+    setIsReady(true)
   }
 
   const clearAuthState = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY)
     setUser(null)
     setToken(null)
+    setIsReady(false)
   }
 
   const login = async (email: string, password: string) => {
@@ -219,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token,
     isLoading,
     isAuthenticated,
+    isReady,
     login,
     register,
     logout,

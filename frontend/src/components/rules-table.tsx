@@ -33,12 +33,12 @@ export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { isLoading: isAuthLoading, token } = useAuth()
+  const { isReady, isAuthenticated } = useAuth()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
     queryFn: () => apiClient.getRules(),
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
     // Fetch user's webhooks to display webhook names in rules table
@@ -49,7 +49,7 @@ export function RulesTable() {
       if (!result.success) throw new Error(result.error)
       return result.data || []
     },
-    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
+    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
   // webhooksResponse is directly an array since queryFn returns result.data || []
