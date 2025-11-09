@@ -18,6 +18,9 @@ export const DiscordEmbedSchema = z.object({
   thumbnail: z.object({
     url: z.string().url(),
   }).optional(),
+  image: z.object({
+    url: z.string().url(),
+  }).optional(),
   fields: z.array(z.object({
     name: z.string().max(256),
     value: z.string().max(1024),
@@ -102,58 +105,51 @@ export class NotificationService {
       fields: [],
     };
 
-    // Add item image as thumbnail if available
+    // Add item image as main image if available
     if (item.imageUrl) {
-      embed.thumbnail = {
+      embed.image = {
         url: item.imageUrl,
       };
     }
 
-    // Add item details
+    // Add item details (vertical layout)
     if (embed.fields) {
       embed.fields.push({
         name: '💰 Price',
-        value: `**${item.price} ${item.currency}**`,
-        inline: true,
+        value: `${item.price} ${item.currency}`,
+        inline: false,
       });
 
       if (item.wearValue !== undefined) {
         const wearPercentage = (item.wearValue * 100).toFixed(2);
         embed.fields.push({
           name: '🔍 Wear Value',
-          value: `**${wearPercentage}%**`,
-          inline: true,
+          value: `${wearPercentage}%`,
+          inline: false,
         });
       }
 
       // StatTrak and Souvenir indicators
       const badges: string[] = [];
-      if (item.statTrak) badges.push('🔥 **StatTrak™**');
-      if (item.souvenir) badges.push('🏆 **Souvenir**');
+      if (item.statTrak) badges.push('🔥 StatTrak™');
+      if (item.souvenir) badges.push('🏆 Souvenir');
 
       if (badges.length > 0) {
         embed.fields.push({
           name: '🏷️ Special',
           value: badges.join('\n'),
-          inline: true,
-        });
-      }
-
-      // Add seller info if available
-      if (item.sellerName) {
-        embed.fields.push({
-          name: '👤 Seller',
-          value: item.sellerName,
-          inline: true,
+          inline: false,
         });
       }
 
 
 
-      // Add enhanced action button
+
+
+      // Add simple action button
       embed.fields.push({
-        name: '🎯 **Check Now**',
-        value: `➡️ [**VIEW ON SKINBARON**](${skinUrl})\n🚀 *Click to open this item on SkinBaron*`,
+        name: '',
+        value: `🎯 [**VIEW ON SKINBARON**](${skinUrl})`,
         inline: false,
       });
     }
