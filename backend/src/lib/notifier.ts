@@ -96,7 +96,7 @@ export class NotificationService {
       color: this.getEmbedColor(alertType),
       timestamp: new Date().toISOString(),
       footer: {
-        text: 'SkinBaron Alerts • CS2 Skin Monitoring',
+        text: 'SkinBaron Alerts • CS2 Skin Monitoring By Oswaaaald',
         icon_url: this.botAvatar,
       },
       fields: [],
@@ -121,7 +121,7 @@ export class NotificationService {
         const wearPercentage = (item.wearValue * 100).toFixed(2);
         embed.fields.push({
           name: '🔍 Wear Value',
-          value: `\`${wearPercentage}%\``,
+          value: `**${wearPercentage}%**`,
           inline: true,
         });
       }
@@ -152,8 +152,8 @@ export class NotificationService {
 
       // Add enhanced action button
       embed.fields.push({
-        name: '🎯 **BUY NOW**',
-        value: `## 🛒 [**VIEW ON SKINBARON**](${skinUrl}) 🛒\n\n🚀 *Click to open this item on SkinBaron*`,
+        name: '🎯 **Check Now**',
+        value: `➡️ [**VIEW ON SKINBARON**](${skinUrl})\n🚀 *Click to open this item on SkinBaron*`,
         inline: false,
       });
     }
