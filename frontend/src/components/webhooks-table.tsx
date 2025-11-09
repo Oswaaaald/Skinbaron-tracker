@@ -39,7 +39,7 @@ export function WebhooksTable() {
   const [error, setError] = useState('')
 
   const queryClient = useQueryClient()
-  const { isAuthLoading } = useAuth()
+  const { isLoading: isAuthLoading } = useAuth()
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({

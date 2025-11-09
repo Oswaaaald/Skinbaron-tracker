@@ -42,7 +42,7 @@ export function AlertsTable() {
   const limit = 20
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
-  const { isAuthLoading } = useAuth()
+  const { isLoading: isAuthLoading } = useAuth()
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
