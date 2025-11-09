@@ -40,6 +40,7 @@ export interface SkinBaronItem {
   quality?: string;
   rarity?: string;
   skinUrl?: string; // URL vers l'offre SkinBaron
+  imageUrl?: string; // URL de l'image Steam de l'item
 }
 
 // Search parameters
@@ -159,6 +160,7 @@ export class SkinBaronClient {
         quality: sale.quality,
         rarity: sale.rarity,
         skinUrl: sale.sbinspect || this.getSkinUrl(sale.id), // Utiliser sbinspect si disponible
+        imageUrl: sale.img, // URL de l'image Steam
       };
     });
 

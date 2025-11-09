@@ -102,6 +102,13 @@ export class NotificationService {
       fields: [],
     };
 
+    // Add item image as thumbnail if available
+    if (item.imageUrl) {
+      embed.thumbnail = {
+        url: item.imageUrl,
+      };
+    }
+
     // Add item details
     if (embed.fields) {
       embed.fields.push({
