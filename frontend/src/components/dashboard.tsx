@@ -26,18 +26,21 @@ import { UserNav } from "@/components/user-nav"
 import { WebhooksTable } from "@/components/webhooks-table"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
+import { useAuth } from "@/contexts/auth-context"
 
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("rules")
   const { syncStats } = useSyncStats()
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuth()
 
   // Fetch system status
   const { data: systemStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
   // Fetch user statistics
@@ -45,6 +48,7 @@ export function Dashboard() {
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
     refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
   // Fetch health status
@@ -52,6 +56,7 @@ export function Dashboard() {
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
 

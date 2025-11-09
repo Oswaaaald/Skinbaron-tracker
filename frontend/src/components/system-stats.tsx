@@ -13,19 +13,23 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
 
 export function SystemStats() {
+  const { isLoading: isAuthLoading } = useAuth()
 
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
     refetchInterval: 60 * 1000, // Refresh every minute for scheduler stats
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
   const { data: alertStatsResponse } = useQuery({
@@ -33,6 +37,7 @@ export function SystemStats() {
     queryFn: () => apiClient.getAlertStats(),
     refetchInterval: 10000, // Refresh every 10 seconds - SAME as alerts
     refetchIntervalInBackground: true, // Continue refreshing when tab is not active
+    enabled: !isAuthLoading, // Wait for auth to load
   })
 
 
