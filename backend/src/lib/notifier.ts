@@ -148,38 +148,12 @@ export class NotificationService {
         });
       }
 
-      // Add rule context for matches
-      if (alertType === 'match' && rule) {
-        const ruleDetails: string[] = [];
-        
-        if (rule.min_price !== undefined || rule.max_price !== undefined) {
-          const min = rule.min_price ? `${rule.min_price}€` : '0€';
-          const max = rule.max_price ? `${rule.max_price}€` : '∞';
-          ruleDetails.push(`💰 Price: ${min} - ${max}`);
-        }
 
-        if (rule.min_wear !== undefined || rule.max_wear !== undefined) {
-          const min = rule.min_wear ? (rule.min_wear * 100).toFixed(2) + '%' : '0.00%';
-          const max = rule.max_wear ? (rule.max_wear * 100).toFixed(2) + '%' : '100.00%';
-          ruleDetails.push(`🔍 Wear: ${min} - ${max}`);
-        }
 
-        if (rule.stattrak) ruleDetails.push('🔥 StatTrak™');
-        if (rule.souvenir) ruleDetails.push('🏆 Souvenir');
-
-        if (ruleDetails.length > 0) {
-          embed.fields.push({
-            name: '⚙️ Rule Filters',
-            value: ruleDetails.join('\n'),
-            inline: false,
-          });
-        }
-      }
-
-      // Add action button
+      // Add enhanced action button
       embed.fields.push({
-        name: '🚀 Actions',
-        value: `[🛒 **View on SkinBaron**](${skinUrl})`,
+        name: '🎯 **BUY NOW**',
+        value: `## 🛒 [**VIEW ON SKINBARON**](${skinUrl}) 🛒\n\n🚀 *Click to open this item on SkinBaron*`,
         inline: false,
       });
     }
