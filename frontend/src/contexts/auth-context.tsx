@@ -67,7 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Setup API client with auth token getter
   useEffect(() => {
-    apiClient.setAuthTokenGetter(() => token)
+    console.log('🔑 Setting up API client with token:', token ? 'present' : 'missing')
+    apiClient.setAuthTokenGetter(() => {
+      const currentToken = token
+      console.log('🔑 API client requesting token:', currentToken ? 'present' : 'missing')
+      return currentToken
+    })
   }, [token])
 
   // Check token validity periodically and refresh if needed

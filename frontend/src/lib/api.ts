@@ -115,7 +115,12 @@ class ApiClient {
         const token = this.getAuthToken();
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
+          console.log('🔑 API request with auth token for:', endpoint)
+        } else {
+          console.warn('⚠️ No token available for API request:', endpoint)
         }
+      } else {
+        console.warn('⚠️ No auth token getter configured for API request:', endpoint)
       }
       
       const response = await fetch(url, {
