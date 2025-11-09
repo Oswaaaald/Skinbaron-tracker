@@ -4,7 +4,7 @@
  * Convert wear value from 0-1 format to percentage (0-100)
  */
 export function wearToPercentage(wear: number): number {
-  return Math.round(wear * 100)
+  return wear * 100
 }
 
 /**
@@ -15,8 +15,8 @@ export function percentageToWear(percentage: number): number {
 }
 
 /**
- * Format wear value for display as percentage
+ * Format wear value as percentage for display
  */
 export function formatWearPercentage(wear: number): string {
-  return `${wearToPercentage(wear)}%`
+  return `${wearToPercentage(wear).toFixed(2)}%`;
 }

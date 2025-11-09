@@ -1,6 +1,6 @@
 import { request } from 'undici';
 import { z } from 'zod';
-import { DISCORD_COLORS } from './config.js';
+import { DISCORD_COLORS, appConfig } from './config.js';
 import type { Rule, Alert } from './store.js';
 import type { SkinBaronItem } from './sbclient.js';
 
@@ -43,8 +43,8 @@ export interface NotificationOptions {
 }
 
 export class NotificationService {
-  private readonly botName = '🔔 SkinBaron Alerts';
-  private readonly botAvatar = 'https://skinbaron.de/favicon.png';
+  private readonly botName = appConfig.DISCORD_BOT_NAME;
+  private readonly botAvatar = appConfig.DISCORD_BOT_AVATAR;
 
   constructor() {
   }
@@ -111,9 +111,10 @@ export class NotificationService {
       });
 
       if (item.wearValue !== undefined) {
+        const wearPercentage = (item.wearValue * 100).toFixed(2);
         embed.fields.push({
           name: '🔍 Wear Value',
-          value: `\`${item.wearValue.toFixed(6)}\``,
+          value: `\`${wearPercentage}%\``,
           inline: true,
         });
       }
@@ -151,8 +152,8 @@ export class NotificationService {
         }
 
         if (rule.min_wear !== undefined || rule.max_wear !== undefined) {
-          const min = rule.min_wear ? rule.min_wear.toFixed(3) : '0.000';
-          const max = rule.max_wear ? rule.max_wear.toFixed(3) : '1.000';
+          const min = rule.min_wear ? (rule.min_wear * 100).toFixed(2) + '%' : '0.00%';
+          const max = rule.max_wear ? (rule.max_wear * 100).toFixed(2) + '%' : '100.00%';
           ruleDetails.push(`🔍 Wear: ${min} - ${max}`);
         }
 
@@ -328,7 +329,7 @@ export class NotificationService {
     
     if (item.statTrak) parts.push('StatTrak™');
     if (item.souvenir) parts.push('Souvenir');
-    if (item.wearValue) parts.push(`Wear: ${item.wearValue.toFixed(6)}`);
+    if (item.wearValue) parts.push(`Wear: ${(item.wearValue * 100).toFixed(2)}%`);
     
     parts.push(`${item.price} ${item.currency}`);
     

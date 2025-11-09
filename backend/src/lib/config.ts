@@ -15,6 +15,8 @@ const ConfigSchema = z.object({
   
   // Discord
   DISCORD_WEBHOOK: z.string().url().optional().or(z.literal('')),
+  DISCORD_BOT_NAME: z.string().default('🎯 CS2 Tracker'),
+  DISCORD_BOT_AVATAR: z.string().url().default('https://i.imgur.com/YourImageHere.png'),
   
   // Database
   SQLITE_PATH: z.string().default('./data/alerts.db'),
