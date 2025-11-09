@@ -39,7 +39,7 @@ export function WebhooksTable() {
   const [error, setError] = useState('')
 
   const queryClient = useQueryClient()
-  const { isLoading: isAuthLoading, isAuthenticated } = useAuth()
+  const { isLoading: isAuthLoading, token } = useAuth()
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
@@ -49,7 +49,7 @@ export function WebhooksTable() {
       if (!result.success) throw new Error(result.error)
       return result.data || []
     },
-    enabled: !isAuthLoading && isAuthenticated, // Wait for authentication to complete and be valid
+    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
   })
 
   // Create webhook mutation

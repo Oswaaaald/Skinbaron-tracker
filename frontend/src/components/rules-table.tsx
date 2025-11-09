@@ -33,12 +33,12 @@ export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const queryClient = useQueryClient()
-  const { isLoading: isAuthLoading, isAuthenticated } = useAuth()
+  const { isLoading: isAuthLoading, token } = useAuth()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
     queryFn: () => apiClient.getRules(),
-    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
+    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
   })
 
     // Fetch user's webhooks to display webhook names in rules table
@@ -49,14 +49,11 @@ export function RulesTable() {
       if (!result.success) throw new Error(result.error)
       return result.data || []
     },
-    enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
+    enabled: !isAuthLoading && !!token, // Wait for auth loading to finish and token to be present
   })
 
   // webhooksResponse is directly an array since queryFn returns result.data || []
   const webhooks = webhooksResponse || []
-  
-  // Debug webhooks loading
-  console.log('Webhooks loading state:', { webhooksLoading, webhooksError, webhooksResponse, webhooks })
 
   // Helper function to get webhook display text
   const getWebhookDisplay = (rule: Rule) => {
@@ -65,12 +62,9 @@ export function RulesTable() {
       const webhookNames = rule.webhook_ids
         .map(id => {
           const webhook = webhooks.find(w => w.id === id)
-          console.log(`Looking for webhook ID ${id}, found:`, webhook)
           return webhook?.name
         })
         .filter(Boolean)
-      
-      console.log('webhookNames:', webhookNames)
       
       if (webhookNames.length > 0) {
         return (
@@ -84,8 +78,6 @@ export function RulesTable() {
         )
       }
     }
-    
-    console.log('Falling back to "No webhook"')
     return (
       <Badge variant="secondary" className="text-xs">
         No webhook
