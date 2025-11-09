@@ -138,7 +138,7 @@ export class NotificationService {
       // Add action button after info
       embed.fields.push({
         name: '\u200B', // Invisible character for spacing
-        value: `🎯 [**VIEW ON SKINBARON**](${skinUrl})`,
+        value: `🔗 [**VIEW ON SKINBARON**](${skinUrl})`,
         inline: false,
       });
     }
@@ -176,7 +176,7 @@ export class NotificationService {
     
     switch (alertType) {
       case 'match':
-        return `🎯 Rule Match • ${baseTitle}`;
+        return `🛎 ${baseTitle}`;
       case 'best_deal':
         return `💎 Best Deal • ${baseTitle}`;
       case 'new_item':
