@@ -176,7 +176,7 @@ export class NotificationService {
     
     switch (alertType) {
       case 'match':
-        return `🛎 ${baseTitle}`;
+        return `${baseTitle}`;
       case 'best_deal':
         return `💎 Best Deal • ${baseTitle}`;
       case 'new_item':
