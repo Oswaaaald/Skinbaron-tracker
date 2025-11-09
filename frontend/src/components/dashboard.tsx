@@ -25,11 +25,13 @@ import { SystemStats } from "@/components/system-stats"
 import { UserNav } from "@/components/user-nav"
 import { WebhooksTable } from "@/components/webhooks-table"
 import { apiClient } from "@/lib/api"
+import { useSyncStats } from "@/hooks/use-sync-stats"
 
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("rules")
+  const { syncStats } = useSyncStats()
 
   // Fetch system status
   const { data: systemStatus, isLoading: isLoadingStatus } = useQuery({
