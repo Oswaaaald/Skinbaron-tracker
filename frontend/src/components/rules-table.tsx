@@ -28,12 +28,14 @@ import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
+import { useSyncStats } from "@/hooks/use-sync-stats"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const queryClient = useQueryClient()
   const { isReady, isAuthenticated } = useAuth()
+  const { syncStats } = useSyncStats()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
@@ -113,6 +115,7 @@ export function RulesTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
+      syncStats() // Sync stats immediately after rule change
       toast.success('Rule updated successfully')
     },
     onError: (error) => {
@@ -124,6 +127,7 @@ export function RulesTable() {
     mutationFn: (id: number) => apiClient.deleteRule(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
+      syncStats() // Sync stats immediately after rule deletion
       toast.success('Rule deleted successfully')
     },
     onError: (error) => {

@@ -32,6 +32,7 @@ import { wearToPercentage, percentageToWear } from "@/lib/wear-utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
+import { useSyncStats } from "@/hooks/use-sync-stats"
 import { X } from "lucide-react"
 
 const ruleFormSchema = z.object({
@@ -59,6 +60,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const { syncStats } = useSyncStats()
   const isEditing = !!rule
 
   // Local state for display values (separate from form values)
@@ -149,6 +151,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       if (result.success) {
         toast.success("Rule created successfully!")
         queryClient.invalidateQueries({ queryKey: ['rules'] })
+        syncStats() // Sync stats immediately after rule creation
         onOpenChange(false)
       } else {
         toast.error(result.error || "Failed to create rule")
@@ -168,6 +171,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       if (result.success) {
         toast.success("Rule updated successfully!")
         queryClient.invalidateQueries({ queryKey: ['rules'] })
+        syncStats() // Sync stats immediately after rule update
         onOpenChange(false)
       } else {
         toast.error(result.error || "Failed to update rule")
