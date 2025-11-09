@@ -52,10 +52,8 @@ export function RulesTable() {
     enabled: !isAuthLoading && isAuthenticated, // Wait for auth to complete and be valid
   })
 
-  // Handle both direct array and ApiResponse wrapper
-  const webhooks = Array.isArray(webhooksResponse) 
-    ? webhooksResponse 
-    : (webhooksResponse?.data || [])
+  // webhooksResponse is directly an array since queryFn returns result.data || []
+  const webhooks = webhooksResponse || []
   
   // Debug webhooks loading
   console.log('Webhooks loading state:', { webhooksLoading, webhooksError, webhooksResponse, webhooks })
