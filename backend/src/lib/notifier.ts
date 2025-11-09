@@ -92,27 +92,9 @@ export class NotificationService {
   private createEmbed(options: NotificationOptions): DiscordEmbed {
     const { alertType, item, rule, skinUrl } = options;
 
-    // Build description with item info
-    const descriptionParts: string[] = [];
-    descriptionParts.push(`💰 **Price:** ${item.price} ${item.currency}`);
-    
-    if (item.wearValue !== undefined) {
-      const wearPercentage = (item.wearValue * 100).toFixed(2);
-      descriptionParts.push(`🔍 **Wear Value:** ${wearPercentage}%`);
-    }
-
-    // StatTrak and Souvenir indicators
-    const badges: string[] = [];
-    if (item.statTrak) badges.push('🔥 StatTrak™');
-    if (item.souvenir) badges.push('🏆 Souvenir');
-    if (badges.length > 0) {
-      descriptionParts.push(`🏷️ **Special:** ${badges.join(', ')}`);
-    }
-
     // Base embed structure
     const embed: DiscordEmbed = {
       title: this.getEmbedTitle(alertType, item),
-      description: descriptionParts.join('\n\n'),
       url: skinUrl,
       color: this.getEmbedColor(alertType),
       timestamp: new Date().toISOString(),
@@ -123,20 +105,49 @@ export class NotificationService {
       fields: [],
     };
 
-    // Add item image as smaller thumbnail
-    if (item.imageUrl) {
-      embed.thumbnail = {
-        url: item.imageUrl,
-      };
-    }
-
-    // Add action button as field
+    // Add item details horizontally
     if (embed.fields) {
       embed.fields.push({
-        name: '\u200B', // Invisible character
+        name: '💰 Price',
+        value: `${item.price} ${item.currency}`,
+        inline: true,
+      });
+
+      if (item.wearValue !== undefined) {
+        const wearPercentage = (item.wearValue * 100).toFixed(2);
+        embed.fields.push({
+          name: '🔍 Wear Value',
+          value: `${wearPercentage}%`,
+          inline: true,
+        });
+      }
+
+      // StatTrak and Souvenir indicators
+      const badges: string[] = [];
+      if (item.statTrak) badges.push('🔥 StatTrak™');
+      if (item.souvenir) badges.push('🏆 Souvenir');
+      
+      if (badges.length > 0) {
+        embed.fields.push({
+          name: '🏷️ Special',
+          value: badges.join('\n'),
+          inline: true,
+        });
+      }
+
+      // Add action button after info
+      embed.fields.push({
+        name: '\u200B', // Invisible character for spacing
         value: `🎯 [**VIEW ON SKINBARON**](${skinUrl})`,
         inline: false,
       });
+    }
+
+    // Add item image (will appear at the bottom, closest to being "between" content and footer)
+    if (item.imageUrl) {
+      embed.image = {
+        url: item.imageUrl,
+      };
     }
 
     return embed;
