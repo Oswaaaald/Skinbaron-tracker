@@ -105,9 +105,9 @@ export class NotificationService {
       fields: [],
     };
 
-    // Add item image as main image if available
+    // Add item image as thumbnail (smaller size)
     if (item.imageUrl) {
-      embed.image = {
+      embed.thumbnail = {
         url: item.imageUrl,
       };
     }
@@ -146,9 +146,9 @@ export class NotificationService {
 
 
 
-      // Add simple action button
+      // Add action button after image
       embed.fields.push({
-        name: '',
+        name: '\u200B', // Invisible character for spacing
         value: `🎯 [**VIEW ON SKINBARON**](${skinUrl})`,
         inline: false,
       });
