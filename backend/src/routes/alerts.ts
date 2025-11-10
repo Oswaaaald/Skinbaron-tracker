@@ -201,6 +201,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.get('/stats', {
     preHandler: [fastify.authenticate],
+    logLevel: 'warn', // Reduce logging for this frequent endpoint
     schema: {
       description: 'Get user alert statistics',
       tags: ['Alerts'],

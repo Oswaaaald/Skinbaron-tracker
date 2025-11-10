@@ -96,7 +96,9 @@ async function registerPlugins() {
 
 // Health check endpoint
 async function setupHealthCheck() {
-  fastify.get('/api/health', async (request, reply) => {
+  fastify.get('/api/health', {
+    logLevel: 'warn' // Reduce logging for frequent health checks
+  }, async (request, reply) => {
     const store = getStore();
     const scheduler = getScheduler();
     
