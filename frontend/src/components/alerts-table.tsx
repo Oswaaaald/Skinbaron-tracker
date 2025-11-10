@@ -55,7 +55,6 @@ export function AlertsTable() {
     try {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
-        console.log('Alerts cleared, invalidating cache...')
         // Invalidate alerts and stats cache - let auto-refresh handle the rest
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
         syncStats()
@@ -85,7 +84,6 @@ export function AlertsTable() {
   // Sync stats when alerts data changes
   useEffect(() => {
     if (alertsResponse) {
-      console.log('Alerts data changed, syncing stats...')
       syncStats()
     }
   }, [alertsResponse, syncStats])

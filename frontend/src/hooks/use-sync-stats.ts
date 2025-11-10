@@ -11,15 +11,11 @@ export function useSyncStats() {
   const queryClient = useQueryClient()
 
   const syncStats = async () => {
-    console.log('🔄 Forcing immediate stats refresh...')
-    
     // Force immediate refetch instead of just invalidating
     await Promise.all([
       queryClient.refetchQueries({ queryKey: ['alert-stats'] }),
       queryClient.refetchQueries({ queryKey: ['system-status'] })
     ])
-    
-    console.log('✅ Stats refreshed immediately!')
   }
 
   return { syncStats }
