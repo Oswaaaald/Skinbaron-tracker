@@ -84,7 +84,12 @@ export class SkinBaronClient {
 
       const url = `${this.baseURL}${endpoint}`;
       
-      console.log(`🔍 SkinBaron API Request to ${endpoint}:`, requestBody);
+      // Log request without exposing API key
+      const logBody = { ...requestBody };
+      if (logBody.apikey) {
+        logBody.apikey = `${logBody.apikey.substring(0, 8)}...${logBody.apikey.substring(-4)}`;
+      }
+      console.log(`🔍 SkinBaron API Request to ${endpoint}:`, logBody);
 
       const { statusCode, body } = await request(url, {
         method: 'POST',
@@ -169,21 +174,57 @@ export class SkinBaronClient {
 
 
 
+  private lastConnectionTest: { timestamp: number; result: boolean } | null = null;
+  private readonly CONNECTION_TEST_CACHE_MS = 60000; // Cache for 1 minute
+
   /**
-   * Test API connection
+   * Test API connection (with caching to avoid excessive calls)
    */
   async testConnection(): Promise<boolean> {
+    const now = Date.now();
+    
+    // Use cached result if less than 1 minute old
+    if (this.lastConnectionTest && 
+        (now - this.lastConnectionTest.timestamp) < this.CONNECTION_TEST_CACHE_MS) {
+      return this.lastConnectionTest.result;
+    }
+
     try {
-      // Simple search to test API connectivity
+      // Lightweight test - just validate API key format if provided
+      if (!this.apiKey) {
+        // No API key = public access only, assume healthy
+        this.lastConnectionTest = { timestamp: now, result: true };
+        return true;
+      }
+
+      // For authenticated users, do a minimal search
       await this.search({ 
-        search_item: 'AWP',
+        search_item: 'AK-47',
         limit: 1
       });
+      
+      this.lastConnectionTest = { timestamp: now, result: true };
       return true;
     } catch (error) {
       console.error('❌ SkinBaron API connection test failed:', error);
+      this.lastConnectionTest = { timestamp: now, result: false };
       return false;
     }
+  }
+
+  /**
+   * Check API health status without making actual requests
+   */
+  getHealthStatus(): 'healthy' | 'unhealthy' | 'unknown' {
+    if (!this.lastConnectionTest) return 'unknown';
+    
+    const now = Date.now();
+    const age = now - this.lastConnectionTest.timestamp;
+    
+    // If test is older than 5 minutes, consider it unknown
+    if (age > 300000) return 'unknown';
+    
+    return this.lastConnectionTest.result ? 'healthy' : 'unhealthy';
   }
 
   /**

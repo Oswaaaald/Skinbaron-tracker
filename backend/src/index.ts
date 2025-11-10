@@ -117,12 +117,19 @@ async function setupHealthCheck() {
       schedulerHealth = 'unhealthy';
     }
 
-    // Check SkinBaron API health
+    // Check SkinBaron API health (lightweight check)
     let skinbaronHealth = 'unhealthy';
     try {
       const skinbaronClient = getSkinBaronClient();
-      const isConnected = await skinbaronClient.testConnection();
-      skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
+      const healthStatus = skinbaronClient.getHealthStatus();
+      
+      if (healthStatus === 'unknown') {
+        // Only do actual test if we don't have recent data
+        const isConnected = await skinbaronClient.testConnection();
+        skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
+      } else {
+        skinbaronHealth = healthStatus;
+      }
     } catch (error) {
       skinbaronHealth = 'unhealthy';
     }
