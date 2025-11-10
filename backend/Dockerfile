@@ -1,11 +1,15 @@
 # Backend Dockerfile for SkinBaron Alerts  
 FROM node:20-alpine AS base
 
+# Update npm to latest version and update Alpine package index
+RUN apk update && apk add --no-cache ca-certificates && \
+    npm install -g npm@latest
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
-# Install build dependencies for better-sqlite3 and clean up in same layer
-RUN apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
+# Update package index and install build dependencies for better-sqlite3
+RUN apk update && apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
@@ -14,8 +18,8 @@ RUN npm ci --omit=dev && apk del .build-deps
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-# Install build dependencies, copy files, build and clean up in optimized layers
-RUN apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
+# Update package index and install build dependencies
+RUN apk update && apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
