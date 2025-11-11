@@ -47,7 +47,8 @@ export function Dashboard() {
   const { data: userStats, isLoading: isLoadingUserStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
-    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes
+    refetchInterval: 10 * 1000, // Refresh every 10 seconds (same as alert-stats)
+    refetchIntervalInBackground: true, // Keep refreshing in background
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
