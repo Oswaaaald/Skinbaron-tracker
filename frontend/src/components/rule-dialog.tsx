@@ -584,7 +584,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               </Button>
               <Button 
                 type="submit" 
-                disabled={isSubmitting || selectedWebhooks.length === 0}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
