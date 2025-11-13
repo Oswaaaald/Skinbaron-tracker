@@ -175,7 +175,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(400).send({
           success: false,
           error: 'Invalid webhook IDs',
-          message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
+          message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you. Please check that these webhooks haven't been deleted.`,
         });
       }
 
@@ -383,17 +383,34 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         user_id: request.user!.id.toString(), // Convert to string for compatibility
       });
       
-      // Validate webhook_ids - must belong to user (same validation as create)
+      // Validate webhook_ids - filter out deleted webhooks automatically
       const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
       const userWebhookIds = userWebhooks.map(w => w.id);
       
-      const invalidWebhooks = updates.webhook_ids?.filter((id: number) => !userWebhookIds.includes(id)) || [];
-      if (invalidWebhooks.length > 0) {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid webhook IDs',
-          message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you`,
-        });
+      if (updates.webhook_ids) {
+        // Store original count for logging
+        const originalCount = updates.webhook_ids.length;
+        
+        // Filter out webhook IDs that no longer exist or don't belong to user
+        const validWebhookIds = updates.webhook_ids.filter((id: number) => userWebhookIds.includes(id));
+        
+        // If no valid webhook IDs remain, that's an error
+        if (validWebhookIds.length === 0) {
+          return reply.code(400).send({
+            success: false,
+            error: 'No valid webhook IDs',
+            message: 'All specified webhook IDs have been deleted or do not belong to you. Please add at least one webhook.',
+          });
+        }
+        
+        // Update with only the valid webhook IDs
+        updates.webhook_ids = validWebhookIds;
+        
+        // Log if some webhooks were filtered out
+        if (originalCount > validWebhookIds.length) {
+          const removedCount = originalCount - validWebhookIds.length;
+          request.log.info(`Filtered out ${removedCount} deleted webhook(s) from rule update`);
+        }
       }
       
       const rule = store.updateRule(id, updates);

@@ -813,9 +813,44 @@ export class Store {
   }
 
   deleteUserWebhook(id: number, userId: number): boolean {
-    const stmt = this.db.prepare('DELETE FROM user_webhooks WHERE id = ? AND user_id = ?');
-    const result = stmt.run(id, userId);
+    const deleteWebhookStmt = this.db.prepare('DELETE FROM user_webhooks WHERE id = ? AND user_id = ?');
+    const result = deleteWebhookStmt.run(id, userId);
+    
+    if (result.changes > 0) {
+      // Clean up rules that reference this webhook
+      this.cleanupRulesAfterWebhookDeletion(id, userId);
+    }
+    
     return result.changes > 0;
+  }
+
+  private cleanupRulesAfterWebhookDeletion(webhookId: number, userId: number): void {
+    // Get all rules for this user that might reference the deleted webhook
+    const getRulesStmt = this.db.prepare('SELECT id, webhook_ids FROM rules WHERE user_id = ?');
+    const rules = getRulesStmt.all(userId) as any[];
+
+    for (const rule of rules) {
+      try {
+        const webhookIds = JSON.parse(rule.webhook_ids) as number[];
+        const updatedWebhookIds = webhookIds.filter(id => id !== webhookId);
+        
+        if (updatedWebhookIds.length !== webhookIds.length) {
+          if (updatedWebhookIds.length === 0) {
+            // If no webhooks remain, disable the rule but keep it
+            const updateStmt = this.db.prepare('UPDATE rules SET enabled = 0, webhook_ids = ? WHERE id = ?');
+            updateStmt.run(JSON.stringify([]), rule.id);
+            console.log(`Disabled rule ${rule.id} - no webhooks remaining after webhook ${webhookId} deletion`);
+          } else {
+            // Update with remaining webhook IDs
+            const updateStmt = this.db.prepare('UPDATE rules SET webhook_ids = ? WHERE id = ?');
+            updateStmt.run(JSON.stringify(updatedWebhookIds), rule.id);
+            console.log(`Updated rule ${rule.id} - removed webhook ${webhookId}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error cleaning up rule ${rule.id} after webhook deletion:`, error);
+      }
+    }
   }
 
   getUserActiveWebhooks(userId: number): UserWebhook[] {
