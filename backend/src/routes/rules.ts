@@ -19,13 +19,7 @@ const CreateRuleRequestSchema = RuleSchema.omit({
   id: true, 
   created_at: true, 
   updated_at: true 
-}).refine(
-  (data) => data.webhook_ids && data.webhook_ids.length > 0,
-  {
-    message: "At least one webhook must be provided",
-    path: ["webhook_ids"],
-  }
-);
+});
 
 // Use the same schema for updates to maintain consistency
 const UpdateRuleRequestSchema = CreateRuleRequestSchema;
@@ -116,7 +110,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
-        required: ['search_item', 'webhook_ids'],
+        required: ['search_item'],
         properties: {
           search_item: { type: 'string', minLength: 1 },
           min_price: { type: 'number', minimum: 0 },
@@ -125,7 +119,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
           max_wear: { type: 'number', minimum: 0, maximum: 1 },
           stattrak: { type: 'boolean' },
           souvenir: { type: 'boolean' },
-          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 1, maxItems: 10 },
+          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 0, maxItems: 10 },
           enabled: { type: 'boolean', default: true },
         },
       },
@@ -166,17 +160,22 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         user_id: request.user!.id.toString(), // Convert to string for compatibility
       });
       
-      // Validate webhook_ids - must belong to user
-      const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
-      const userWebhookIds = userWebhooks.map(w => w.id);
-      
-      const invalidWebhooks = ruleData.webhook_ids?.filter((id: number) => !userWebhookIds.includes(id)) || [];
-      if (invalidWebhooks.length > 0) {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid webhook IDs',
-          message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you. Please check that these webhooks haven't been deleted.`,
-        });
+      // Validate webhook_ids if provided - must belong to user
+      if (ruleData.webhook_ids && ruleData.webhook_ids.length > 0) {
+        const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
+        const userWebhookIds = userWebhooks.map(w => w.id);
+        
+        const invalidWebhooks = ruleData.webhook_ids.filter((id: number) => !userWebhookIds.includes(id));
+        if (invalidWebhooks.length > 0) {
+          return reply.code(400).send({
+            success: false,
+            error: 'Invalid webhook IDs',
+            message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you. Please check that these webhooks haven't been deleted.`,
+          });
+        }
+      } else {
+        // If no webhook IDs provided, set to empty array
+        ruleData.webhook_ids = [];
       }
 
       const rule = store.createRule(ruleData);
@@ -307,7 +306,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       },
       body: {
         type: 'object',
-        required: ['search_item', 'webhook_ids'],
+        required: ['search_item'],
         properties: {
           search_item: { type: 'string', minLength: 1 },
           min_price: { type: 'number', minimum: 0, nullable: true },
@@ -316,7 +315,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
           max_wear: { type: 'number', minimum: 0, maximum: 1, nullable: true },
           stattrak: { type: 'boolean', nullable: true },
           souvenir: { type: 'boolean', nullable: true },
-          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 1, maxItems: 10 },
+          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 0, maxItems: 10 },
           enabled: { type: 'boolean', default: true },
         },
       },
@@ -387,29 +386,25 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
       const userWebhookIds = userWebhooks.map(w => w.id);
       
-      if (updates.webhook_ids) {
-        // Store original count for logging
-        const originalCount = updates.webhook_ids.length;
-        
-        // Filter out webhook IDs that no longer exist or don't belong to user
-        const validWebhookIds = updates.webhook_ids.filter((id: number) => userWebhookIds.includes(id));
-        
-        // If no valid webhook IDs remain, that's an error
-        if (validWebhookIds.length === 0) {
-          return reply.code(400).send({
-            success: false,
-            error: 'No valid webhook IDs',
-            message: 'All specified webhook IDs have been deleted or do not belong to you. Please add at least one webhook.',
-          });
-        }
-        
-        // Update with only the valid webhook IDs
-        updates.webhook_ids = validWebhookIds;
-        
-        // Log if some webhooks were filtered out
-        if (originalCount > validWebhookIds.length) {
-          const removedCount = originalCount - validWebhookIds.length;
-          request.log.info(`Filtered out ${removedCount} deleted webhook(s) from rule update`);
+      if (updates.webhook_ids !== undefined) {
+        if (updates.webhook_ids.length === 0) {
+          // Allow empty webhook arrays - rule will be created/updated without notifications
+          // No validation needed
+        } else {
+          // Store original count for logging
+          const originalCount = updates.webhook_ids.length;
+          
+          // Filter out webhook IDs that no longer exist or don't belong to user
+          const validWebhookIds = updates.webhook_ids.filter((id: number) => userWebhookIds.includes(id));
+          
+          // Update with only the valid webhook IDs (could be empty after filtering)
+          updates.webhook_ids = validWebhookIds;
+          
+          // Log if some webhooks were filtered out
+          if (originalCount > validWebhookIds.length) {
+            const removedCount = originalCount - validWebhookIds.length;
+            request.log.info(`Filtered out ${removedCount} deleted webhook(s) from rule update`);
+          }
         }
       }
       

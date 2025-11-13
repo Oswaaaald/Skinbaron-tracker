@@ -16,7 +16,7 @@ export const RuleSchema = z.object({
   max_wear: z.number().min(0).max(1).optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
-  webhook_ids: z.array(z.number()).min(1, 'At least one webhook ID is required'),
+  webhook_ids: z.array(z.number()).min(0).default([]),
   enabled: z.boolean().default(true),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),

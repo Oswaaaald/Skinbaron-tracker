@@ -43,7 +43,7 @@ const ruleFormSchema = z.object({
   max_wear: z.number().min(0, "Wear maximum doit être entre 0 et 100").max(100, "Wear maximum doit être entre 0 et 100").optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
-  webhook_ids: z.array(z.number()).min(1, "At least one webhook must be selected").max(10, "Maximum 10 webhooks allowed"),
+  webhook_ids: z.array(z.number()).max(10, "Maximum 10 webhooks allowed").default([]),
   enabled: z.boolean().optional(),
 })
 
@@ -507,14 +507,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               name="webhook_ids"
               render={() => (
                 <FormItem>
-                  <FormLabel>Notification Webhooks * (Max 10)</FormLabel>
+                  <FormLabel>Notification Webhooks (Optional - Max 10)</FormLabel>
                   <FormDescription className="mb-3">
-                    Select which webhooks should receive notifications for this rule
+                    Select which webhooks should receive notifications for this rule. Leave empty to create a rule without notifications.
                   </FormDescription>
                   
                   {!webhooks || webhooks.length === 0 ? (
                     <div className="text-center py-4 text-muted-foreground">
-                      {!webhooks ? 'Loading webhooks...' : 'No webhooks configured. Create webhooks first in the Webhooks section.'}
+                      {!webhooks ? 'Loading webhooks...' : 'No webhooks configured. You can create a rule without notifications or add webhooks in the Webhooks section.'}
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">

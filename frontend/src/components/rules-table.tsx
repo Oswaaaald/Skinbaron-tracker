@@ -94,10 +94,7 @@ export function RulesTable() {
         throw new Error('Rule ID is required');
       }
       
-      // Ensure webhook_ids has at least one item (required by backend validation)
-      if (!rule.webhook_ids || rule.webhook_ids.length === 0) {
-        throw new Error('Rule must have at least one webhook configured');
-      }
+      // Note: webhook_ids can now be empty - rules without webhooks are allowed
       
       // Send complete rule data with updated enabled status, ensuring all fields are properly set
       const updateData = {
@@ -281,7 +278,7 @@ export function RulesTable() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {rule.created_at ? new Date(rule.created_at).toLocaleDateString() : 'N/A'}
+                    {rule.created_at ? new Date(rule.created_at).toLocaleDateString('en-GB') : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

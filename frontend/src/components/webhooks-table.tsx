@@ -233,7 +233,7 @@ export function WebhooksTable() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {webhook.created_at ? new Date(webhook.created_at).toLocaleDateString() : '-'}
+                    {webhook.created_at ? new Date(webhook.created_at).toLocaleDateString('en-GB') : '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

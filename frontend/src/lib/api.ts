@@ -13,7 +13,7 @@ export interface Rule {
   max_wear?: number;
   stattrak?: boolean;
   souvenir?: boolean;
-  webhook_ids: number[]; // Array of webhook IDs (required)
+  webhook_ids: number[]; // Array of webhook IDs (optional)
   enabled?: boolean;
   created_at?: string;
   updated_at?: string;
