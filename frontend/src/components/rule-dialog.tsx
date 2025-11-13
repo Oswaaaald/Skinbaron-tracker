@@ -80,7 +80,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     enabled: open, // Only fetch when dialog is open
   })
 
-  const form = useForm<RuleFormData>({
+  const form = useForm({
     resolver: zodResolver(ruleFormSchema),
     defaultValues: {
       search_item: "",
