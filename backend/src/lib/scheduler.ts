@@ -168,35 +168,36 @@ export class AlertScheduler {
           };
 
           const createdAlert = this.store.createAlert(alert);
+          
+          // Always count the alert as created, regardless of webhook notifications
+          newAlerts++;
 
           // Get rule webhooks (secured webhook system)
           const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
           
-          // Send notifications to all rule webhooks
-          const notificationPromises = webhooks.map(async (webhook: any) => {
-            return this.notificationService.sendNotification(
-              webhook.webhook_url!,
-              {
-                alertType: 'match',
-                item,
-                rule,
-                skinUrl: alert.skin_url,
+          // Send notifications to all rule webhooks (if any exist)
+          if (webhooks.length > 0) {
+            const notificationPromises = webhooks.map(async (webhook: any) => {
+              return this.notificationService.sendNotification(
+                webhook.webhook_url!,
+                {
+                  alertType: 'match',
+                  item,
+                  rule,
+                  skinUrl: alert.skin_url,
+                }
+              );
+            });
+
+            // Wait for all notifications to complete
+            const results = await Promise.allSettled(notificationPromises);
+            
+            let successCount = 0;
+            results.forEach((result: any) => {
+              if (result.status === 'fulfilled' && result.value) {
+                successCount++;
               }
-            );
-          });
-
-          // Wait for all notifications to complete
-          const results = await Promise.allSettled(notificationPromises);
-          
-          let successCount = 0;
-          results.forEach((result: any) => {
-            if (result.status === 'fulfilled' && result.value) {
-              successCount++;
-            }
-          });
-
-          if (successCount > 0) {
-            newAlerts++;
+            });
           }
 
         } catch (error) {
