@@ -7,7 +7,7 @@ services:
     container_name: skinbaron-alerts-backend
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-3001}:8080"
     labels:
       # Enable Traefik
       - "traefik.enable=true"
@@ -59,7 +59,7 @@ services:
     container_name: skinbaron-alerts-frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3002}:3000"
     labels:
       # Enable Traefik
       - "traefik.enable=true"
