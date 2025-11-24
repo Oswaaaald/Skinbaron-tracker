@@ -8,21 +8,23 @@ services:
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-3001}:8080"
-    # labels:
-      # # Enable Traefik
-      # - "traefik.enable=true"
-      # # Backend API Router (HTTPS)
-      # - "traefik.http.routers.skinbaron-backend-secure.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
-      # - "traefik.http.routers.skinbaron-backend-secure.entrypoints=websecure"
-      # - "traefik.http.routers.skinbaron-backend-secure.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.skinbaron-backend-secure.service=skinbaron-backend"
-      # # Backend API Router (HTTP redirect)
-      # - "traefik.http.routers.skinbaron-backend.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
-      # - "traefik.http.routers.skinbaron-backend.entrypoints=web"
-      # - "traefik.http.routers.skinbaron-backend.middlewares=redirect-to-https@file"
-      # - "traefik.http.routers.skinbaron-backend.service=skinbaron-backend"
-      # # Backend Service
-      # - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
+    labels:
+      # Disable automatic discovery by Dokploy
+      - "traefik.enable=true"
+      # Backend API Router (HTTPS) - higher priority
+      - "traefik.http.routers.skinbaron-backend-secure.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-backend-secure.entrypoints=websecure"
+      - "traefik.http.routers.skinbaron-backend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.skinbaron-backend-secure.service=skinbaron-backend"
+      - "traefik.http.routers.skinbaron-backend-secure.priority=100"
+      # Backend API Router (HTTP redirect) - higher priority
+      - "traefik.http.routers.skinbaron-backend.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-backend.entrypoints=web"
+      - "traefik.http.routers.skinbaron-backend.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.skinbaron-backend.service=skinbaron-backend"
+      - "traefik.http.routers.skinbaron-backend.priority=100"
+      # Backend Service - correct internal port
+      - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
     environment:
       - NODE_ENV=production
       - PORT=8080
@@ -60,21 +62,23 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3002}:3000"
-    # labels:
-      # # Enable Traefik
-      # - "traefik.enable=true"
-      # # Frontend Router (HTTPS)
-      # - "traefik.http.routers.skinbaron-frontend-secure.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
-      # - "traefik.http.routers.skinbaron-frontend-secure.entrypoints=websecure"
-      # - "traefik.http.routers.skinbaron-frontend-secure.tls.certresolver=letsencrypt"
-      # - "traefik.http.routers.skinbaron-frontend-secure.service=skinbaron-frontend"
-      # # Frontend Router (HTTP redirect)
-      # - "traefik.http.routers.skinbaron-frontend.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
-      # - "traefik.http.routers.skinbaron-frontend.entrypoints=web"
-      # - "traefik.http.routers.skinbaron-frontend.middlewares=redirect-to-https@file"
-      # - "traefik.http.routers.skinbaron-frontend.service=skinbaron-frontend"
-      # # Frontend Service
-      # - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
+    labels:
+      # Enable Traefik with higher priority than Dokploy
+      - "traefik.enable=true"
+      # Frontend Router (HTTPS) - higher priority
+      - "traefik.http.routers.skinbaron-frontend-secure.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.skinbaron-frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.skinbaron-frontend-secure.service=skinbaron-frontend"
+      - "traefik.http.routers.skinbaron-frontend-secure.priority=100"
+      # Frontend Router (HTTP redirect) - higher priority
+      - "traefik.http.routers.skinbaron-frontend.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-frontend.entrypoints=web"
+      - "traefik.http.routers.skinbaron-frontend.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.skinbaron-frontend.service=skinbaron-frontend"
+      - "traefik.http.routers.skinbaron-frontend.priority=100"
+      # Frontend Service - correct internal port
+      - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8080}
