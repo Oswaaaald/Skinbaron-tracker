@@ -9,9 +9,20 @@ services:
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      # Backend API Router (HTTPS)
+      - "traefik.http.routers.skinbaron-backend-secure.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-backend-secure.entrypoints=websecure"
+      - "traefik.http.routers.skinbaron-backend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.skinbaron-backend-secure.service=skinbaron-backend"
+      # Backend API Router (HTTP redirect)
+      - "traefik.http.routers.skinbaron-backend.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-backend.entrypoints=web"
+      - "traefik.http.routers.skinbaron-backend.middlewares=redirect-to-https"
+      - "traefik.http.routers.skinbaron-backend.service=skinbaron-backend"
+      # Backend Service
       - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
-      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-28-web.loadbalancer.server.port=8080"
-      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-28-websecure.loadbalancer.server.port=8080"
     environment:
       - NODE_ENV=production
       - PORT=8080
@@ -50,9 +61,20 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      # Frontend Router (HTTPS)
+      - "traefik.http.routers.skinbaron-frontend-secure.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.skinbaron-frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.skinbaron-frontend-secure.service=skinbaron-frontend"
+      # Frontend Router (HTTP redirect)
+      - "traefik.http.routers.skinbaron-frontend.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
+      - "traefik.http.routers.skinbaron-frontend.entrypoints=web"
+      - "traefik.http.routers.skinbaron-frontend.middlewares=redirect-to-https"
+      - "traefik.http.routers.skinbaron-frontend.service=skinbaron-frontend"
+      # Frontend Service
       - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
-      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-29-web.loadbalancer.server.port=3000"
-      - "traefik.http.services.oswaaaaldbe-skinbarontracker-cmyieu-29-websecure.loadbalancer.server.port=3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8080}
