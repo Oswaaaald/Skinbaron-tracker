@@ -19,7 +19,7 @@ services:
       # Backend API Router (HTTP redirect)
       - "traefik.http.routers.skinbaron-backend.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
       - "traefik.http.routers.skinbaron-backend.entrypoints=web"
-      - "traefik.http.routers.skinbaron-backend.middlewares=redirect-to-https"
+      - "traefik.http.routers.skinbaron-backend.middlewares=redirect-to-https@file"
       - "traefik.http.routers.skinbaron-backend.service=skinbaron-backend"
       # Backend Service
       - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
@@ -71,7 +71,7 @@ services:
       # Frontend Router (HTTP redirect)
       - "traefik.http.routers.skinbaron-frontend.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
       - "traefik.http.routers.skinbaron-frontend.entrypoints=web"
-      - "traefik.http.routers.skinbaron-frontend.middlewares=redirect-to-https"
+      - "traefik.http.routers.skinbaron-frontend.middlewares=redirect-to-https@file"
       - "traefik.http.routers.skinbaron-frontend.service=skinbaron-frontend"
       # Frontend Service
       - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
