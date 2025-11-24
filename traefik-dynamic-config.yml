@@ -1,0 +1,57 @@
+http:
+  routers:
+    # Frontend Router (HTTPS)
+    skinbaron-frontend-secure:
+      rule: "Host(`skinbaron-tracker.oswaaaald.be`)"
+      service: skinbaron-frontend-service
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+    
+    # Frontend Router (HTTP redirect)
+    skinbaron-frontend:
+      rule: "Host(`skinbaron-tracker.oswaaaald.be`)"
+      service: skinbaron-frontend-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+    
+    # Backend API Router (HTTPS)
+    skinbaron-backend-secure:
+      rule: "Host(`skinbaron-tracker-api.oswaaaald.be`)"
+      service: skinbaron-backend-service
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+    
+    # Backend API Router (HTTP redirect)
+    skinbaron-backend:
+      rule: "Host(`skinbaron-tracker-api.oswaaaald.be`)"
+      service: skinbaron-backend-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+
+  services:
+    # Frontend Service
+    skinbaron-frontend-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3002"
+    
+    # Backend Service
+    skinbaron-backend-service:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3001"
+
+  middlewares:
+    # HTTPS Redirect Middleware
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
