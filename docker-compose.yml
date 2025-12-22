@@ -1,94 +1,98 @@
 services:
-  # Backend API Service
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: skinbaron-alerts-backend
     restart: unless-stopped
-    ports:
-      - "${BACKEND_PORT:-3001}:8080"
+
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.skinbaron-backend-secure.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
-      - "traefik.http.routers.skinbaron-backend-secure.entrypoints=websecure"
-      - "traefik.http.routers.skinbaron-backend-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.skinbaron-backend-secure.service=skinbaron-backend"
-      - "traefik.http.routers.skinbaron-backend-secure.priority=200"
-      - "traefik.http.routers.skinbaron-backend.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)"
-      - "traefik.http.routers.skinbaron-backend.entrypoints=web"
-      - "traefik.http.routers.skinbaron-backend.middlewares=redirect-to-https@file"
-      - "traefik.http.routers.skinbaron-backend.service=skinbaron-backend"
-      - "traefik.http.routers.skinbaron-backend.priority=200"
-      - "traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080"
+      - traefik.enable=true
+      - traefik.http.routers.skinbaron-backend-secure.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)
+      - traefik.http.routers.skinbaron-backend-secure.entrypoints=websecure
+      - traefik.http.routers.skinbaron-backend-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080
+
     environment:
-      - NODE_ENV=production
-      - PORT=8080
-      - SB_API_KEY=${SB_API_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-      - SQLITE_PATH=/app/data/alerts.db
-      - POLL_CRON=${POLL_CRON:-*/2 * * * *}
-      - ENABLE_BEST_DEALS=${ENABLE_BEST_DEALS:-true}
-      - ENABLE_NEWEST_ITEMS=${ENABLE_NEWEST_ITEMS:-true}
-      - FEEDS_MAX_PRICE=${FEEDS_MAX_PRICE:-200}
-      - FEEDS_MAX_WEAR=${FEEDS_MAX_WEAR:-0.20}
-      - CORS_ORIGIN=${CORS_ORIGIN:-https://skinbaron-tracker-app.oswaaaald.be}
-      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
-      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60000}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      NODE_ENV: production
+      PORT: 8080
+      SB_API_KEY: ${SB_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      SQLITE_PATH: /app/data/alerts.db
+      POLL_CRON: ${POLL_CRON:-*/5 * * * *}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+
     volumes:
       - backend_data:/app/data
+
+    read_only: true
+    tmpfs:
+      - /tmp
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+
     networks:
       - skinbaron_network
 
-  # Frontend Web Interface
   frontend:
-    build: 
+    build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://skinbaron-tracker-api.oswaaaald.be}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+
     container_name: skinbaron-alerts-frontend
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3002}:3000"
+
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.skinbaron-frontend-secure.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
-      - "traefik.http.routers.skinbaron-frontend-secure.entrypoints=websecure"
-      - "traefik.http.routers.skinbaron-frontend-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.skinbaron-frontend-secure.service=skinbaron-frontend"
-      - "traefik.http.routers.skinbaron-frontend-secure.priority=200"
-      - "traefik.http.routers.skinbaron-frontend.rule=Host(`skinbaron-tracker.oswaaaald.be`)"
-      - "traefik.http.routers.skinbaron-frontend.entrypoints=web"
-      - "traefik.http.routers.skinbaron-frontend.middlewares=redirect-to-https@file"
-      - "traefik.http.routers.skinbaron-frontend.service=skinbaron-frontend"
-      - "traefik.http.routers.skinbaron-frontend.priority=200"
-      - "traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000"
+      - traefik.enable=true
+      - traefik.http.routers.skinbaron-frontend-secure.rule=Host(`skinbaron-tracker.oswaaaald.be`)
+      - traefik.http.routers.skinbaron-frontend-secure.entrypoints=websecure
+      - traefik.http.routers.skinbaron-frontend-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000
+
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8080}
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+
     depends_on:
       backend:
         condition: service_healthy
+
+    read_only: true
+    tmpfs:
+      - /tmp
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+
     networks:
       - skinbaron_network
 
 volumes:
   backend_data:
-    driver: local
 
 networks:
   skinbaron_network:

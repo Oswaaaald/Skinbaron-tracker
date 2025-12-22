@@ -1,65 +1,54 @@
-# Backend Dockerfile for SkinBaron Alerts  
+# ================================
+# Backend Dockerfile (HARDENED)
+# ================================
+
 FROM node:20-alpine AS base
 
-# Update npm to latest version and update Alpine package index
-RUN apk update && apk add --no-cache ca-certificates && \
-    npm install -g npm@latest
+RUN apk update && apk add --no-cache ca-certificates \
+    && npm install -g npm@latest
 
-# Install dependencies only when needed
+# ---------- deps ----------
 FROM base AS deps
 WORKDIR /app
-# Update package index and install build dependencies for better-sqlite3
-RUN apk update && apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
 
-# Install dependencies based on the preferred package manager
+RUN apk add --no-cache --virtual .build-deps \
+    python3 make g++ sqlite-dev libc6-compat
+
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev && apk del .build-deps
 
-# Rebuild the source code only when needed
+# ---------- builder ----------
 FROM base AS builder
 WORKDIR /app
-# Update package index and install build dependencies
-RUN apk update && apk add --no-cache --virtual .build-deps python3 make g++ sqlite-dev libc6-compat
+
+RUN apk add --no-cache --virtual .build-deps \
+    python3 make g++ sqlite-dev libc6-compat
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Install dev dependencies, build and clean up
 RUN npm ci && npm run build && apk del .build-deps
 
-# Production image, copy all the files and run the app
+# ---------- runner ----------
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 skinbaron-alerts
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 skinbaron
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data && chown skinbaron-alerts:nodejs /app/data
+RUN mkdir -p /app/data && chown skinbaron:nodejs /app/data
 
-# Copy the built application
-COPY --from=builder --chown=skinbaron-alerts:nodejs /app/dist ./dist
-COPY --from=builder --chown=skinbaron-alerts:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=skinbaron-alerts:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=skinbaron:nodejs /app/dist ./dist
+COPY --from=builder --chown=skinbaron:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=skinbaron:nodejs /app/package.json ./package.json
 
-# Switch to non-root user
-USER skinbaron-alerts
+USER skinbaron
 
-# Expose port
 EXPOSE 8080
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); \
-  const options = { host: 'localhost', port: 8080, path: '/health', timeout: 2000 }; \
-  const req = http.request(options, (res) => { \
-    if (res.statusCode === 200) process.exit(0); \
-    else process.exit(1); \
-  }); \
-  req.on('error', () => process.exit(1)); \
-  req.end();"
+  CMD node -e "require('http').get('http://localhost:8080/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Start the application
 CMD ["node", "dist/index.js"]

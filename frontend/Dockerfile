@@ -1,77 +1,56 @@
-# Frontend Dockerfile for SkinBaron Alerts
+# ================================
+# Frontend Dockerfile (HARDENED)
+# ================================
+
 FROM node:20-alpine AS base
 
-# Update npm to latest version and update Alpine package index
-RUN apk update && apk add --no-cache ca-certificates && \
-    npm install -g npm@latest
+RUN apk update && apk add --no-cache ca-certificates \
+    && npm install -g npm@latest
 
-# Install dependencies only when needed
+# ---------- deps ----------
 FROM base AS deps
-# Update package index and install compatibility libraries
-RUN apk update && apk add --no-cache libc6-compat
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 
-# Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Rebuild the source code only when needed
+# ---------- builder ----------
 FROM base AS builder
 WORKDIR /app
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build arguments for environment variables
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080
-
-# Set environment variables for build
+ARG NEXT_PUBLIC_API_URL=https://skinbaron-tracker-api.oswaaaald.be
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the application
 RUN npm run build
 
-# Production image, copy all the files and run next
+# ---------- runner ----------
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Non-root user
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
 
-# Copy the built application
+# Copy build output (READ-ONLY at runtime)
 COPY --from=builder /app/public ./public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Switch to non-root user
 USER nextjs
 
-# Expose port
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); \
-  const options = { host: 'localhost', port: 3000, path: '/', timeout: 2000 }; \
-  const req = http.request(options, (res) => { \
-    if (res.statusCode === 200) process.exit(0); \
-    else process.exit(1); \
-  }); \
-  req.on('error', () => process.exit(1)); \
-  req.end();"
+  CMD node -e "require('http').get('http://localhost:3000/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Start the application
 CMD ["node", "server.js"]
