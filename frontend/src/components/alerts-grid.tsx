@@ -262,43 +262,46 @@ export function AlertsGrid() {
                     </div>
                   </div>
 
-                  <CardHeader className="pb-1 pt-2">
-                    <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
-                      {alert.item_name}
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
-                      {formatDate(alert.sent_at)}
-                    </CardDescription>
-                  </CardHeader>
-                  
-                  <CardContent className="flex-1 flex flex-col space-y-3 pt-1 pb-2">
-                    {/* Details */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Wear</span>
-                      <span className="font-medium">
-                        {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                          formatWearPercentage(alert.wear_value)
-                        ) : (
-                          <span className="text-muted-foreground">N/A</span>
-                        )}
-                      </span>
+                  <CardHeader className="pb-2 pt-2 space-y-2">
+                    <div>
+                      <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
+                        {alert.item_name}
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        {formatDate(alert.sent_at)}
+                      </CardDescription>
                     </div>
 
-                    {(alert.stattrak || alert.souvenir) && (
-                      <div className="flex gap-1 flex-wrap pt-1">
-                        {alert.stattrak && (
-                          <Badge variant="outline" className="text-[11px]">
-                            StatTrak™
-                          </Badge>
-                        )}
-                        {alert.souvenir && (
-                          <Badge variant="outline" className="text-[11px]">
-                            Souvenir
-                          </Badge>
-                        )}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Wear</span>
+                        <span className="font-medium">
+                          {alert.wear_value !== undefined && alert.wear_value !== null ? (
+                            formatWearPercentage(alert.wear_value)
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </span>
                       </div>
-                    )}
 
+                      {(alert.stattrak || alert.souvenir) && (
+                        <div className="flex gap-1 flex-wrap">
+                          {alert.stattrak && (
+                            <Badge variant="outline" className="text-[11px]">
+                              StatTrak™
+                            </Badge>
+                          )}
+                          {alert.souvenir && (
+                            <Badge variant="outline" className="text-[11px]">
+                              Souvenir
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="flex-1 flex flex-col pt-1 pb-2">
                     {/* Action Button */}
                     <Button asChild className="w-full mt-auto" size="sm">
                       <a
