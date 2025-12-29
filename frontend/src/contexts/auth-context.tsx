@@ -73,10 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Setup API client with auth token getter
   useEffect(() => {
     apiClient.setAuthTokenGetter(() => {
-      const currentToken = token
-      return currentToken
+      // Always read from localStorage to get the latest token
+      // This avoids React state timing issues
+      try {
+        const stored = localStorage.getItem(AUTH_STORAGE_KEY)
+        if (stored) {
+          const authData: AuthStorage = JSON.parse(stored)
+          // Check if token is still valid
+          if (authData.expiresAt > Date.now()) {
+            return authData.token
+          }
+        }
+      } catch (error) {
+        // Silent fail
+      }
+      return null
     })
-  }, [token])
+  }, []) // Run only once on mount
 
   // Check token validity periodically and refresh if needed
   useEffect(() => {
