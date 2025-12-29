@@ -273,91 +273,83 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_price"
-                render={({ field }) => {
-                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>Min Price (€)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="ex: 10.50"
-                          value={displayValue}
-                          onChange={(e) => {
-                            setDisplayValue(e.target.value)
-                          }}
-                          onBlur={(e) => {
-                            const val = e.target.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setDisplayValue('')
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Min Price (€)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="ex: 10.50"
+                        value={minPriceDisplay}
+                        onChange={(e) => {
+                          setMinPriceDisplay(e.target.value)
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                            setMinPriceDisplay('')
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0) {
+                              field.onChange(num)
+                              setMinPriceDisplay(num.toString())
                             } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0) {
-                                field.onChange(num)
-                                setDisplayValue(num.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setDisplayValue('')
-                              }
+                              field.onChange(undefined)
+                              setMinPriceDisplay('')
                             }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Prix minimum en euros. Laissez vide pour ignorer.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Prix minimum en euros. Laissez vide pour ignorer.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <FormField
                 control={form.control}
                 name="max_price"
-                render={({ field }) => {
-                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>Max Price (€)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="ex: 50"
-                          value={displayValue}
-                          onChange={(e) => {
-                            setDisplayValue(e.target.value)
-                          }}
-                          onBlur={(e) => {
-                            const val = e.target.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setDisplayValue('')
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Price (€)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="ex: 50"
+                        value={maxPriceDisplay}
+                        onChange={(e) => {
+                          setMaxPriceDisplay(e.target.value)
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                            setMaxPriceDisplay('')
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0) {
+                              field.onChange(num)
+                              setMaxPriceDisplay(num.toString())
                             } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0) {
-                                field.onChange(num)
-                                setDisplayValue(num.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setDisplayValue('')
-                              }
+                              field.onChange(undefined)
+                              setMaxPriceDisplay('')
                             }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Prix maximum en euros. Laissez vide pour ignorer.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Prix maximum en euros. Laissez vide pour ignorer.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
@@ -366,91 +358,83 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_wear"
-                render={({ field }) => {
-                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>Min Wear (0-100%)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="ex: 15"
-                          value={displayValue}
-                          onChange={(e) => {
-                            setDisplayValue(e.target.value)
-                          }}
-                          onBlur={(e) => {
-                            const val = e.target.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setDisplayValue('')
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Min Wear (0-100%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="ex: 15"
+                        value={minWearDisplay}
+                        onChange={(e) => {
+                          setMinWearDisplay(e.target.value)
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                            setMinWearDisplay('')
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
+                              field.onChange(num)
+                              setMinWearDisplay(num.toString())
                             } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0 && num <= 100) {
-                                field.onChange(num)
-                                setDisplayValue(num.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setDisplayValue('')
-                              }
+                              field.onChange(undefined)
+                              setMinWearDisplay('')
                             }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Entre 0 et 100. Laissez vide pour ignorer.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Entre 0 et 100. Laissez vide pour ignorer.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <FormField
                 control={form.control}
                 name="max_wear"
-                render={({ field }) => {
-                  const [displayValue, setDisplayValue] = useState(field.value?.toString() || '')
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>Max Wear (0-100%)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="ex: 85"
-                          value={displayValue}
-                          onChange={(e) => {
-                            setDisplayValue(e.target.value)
-                          }}
-                          onBlur={(e) => {
-                            const val = e.target.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setDisplayValue('')
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Wear (0-100%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="ex: 85"
+                        value={maxWearDisplay}
+                        onChange={(e) => {
+                          setMaxWearDisplay(e.target.value)
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val === '') {
+                            field.onChange(undefined)
+                            setMaxWearDisplay('')
+                          } else {
+                            const num = parseFloat(val)
+                            if (!isNaN(num) && num >= 0 && num <= 100) {
+                              field.onChange(num)
+                              setMaxWearDisplay(num.toString())
                             } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0 && num <= 100) {
-                                field.onChange(num)
-                                setDisplayValue(num.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setDisplayValue('')
-                              }
+                              field.onChange(undefined)
+                              setMaxWearDisplay('')
                             }
-                          }}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Entre 0 et 100. Laissez vide pour ignorer.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Entre 0 et 100. Laissez vide pour ignorer.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
