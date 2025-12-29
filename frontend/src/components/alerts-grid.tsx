@@ -234,7 +234,7 @@ export function AlertsGrid() {
                   className="group relative overflow-hidden border border-border/70 bg-background shadow-sm hover:shadow-md transition-all flex flex-col p-0"
                 >
                   {/* Image Header */}
-                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900">
                     {alert.skin_url ? (
                       <img
                         src={alert.skin_url}
@@ -262,16 +262,16 @@ export function AlertsGrid() {
                     </div>
                   </div>
 
-                  <CardHeader className="pb-2 pt-2">
+                  <CardHeader className="pb-1 pt-2">
                     <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
                       {alert.item_name}
                     </CardTitle>
-                    <CardDescription className="text-xs mt-1">
+                    <CardDescription className="text-xs mt-0.5">
                       {formatDate(alert.sent_at)}
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="flex-1 flex flex-col gap-2 pt-0">
+                  <CardContent className="flex-1 flex flex-col gap-1.5 pt-0">
                     {/* Details */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Wear</span>
