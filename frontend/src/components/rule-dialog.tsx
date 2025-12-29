@@ -284,6 +284,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         onChange={(e) => {
                           setMinPriceDisplay(e.target.value)
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          }
+                        }}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
                           if (val === '') {
@@ -324,6 +330,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         value={maxPriceDisplay}
                         onChange={(e) => {
                           setMaxPriceDisplay(e.target.value)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          }
                         }}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
@@ -369,6 +381,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         onChange={(e) => {
                           setMinWearDisplay(e.target.value)
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          }
+                        }}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
                           if (val === '') {
@@ -409,6 +427,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         value={maxWearDisplay}
                         onChange={(e) => {
                           setMaxWearDisplay(e.target.value)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          }
                         }}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
