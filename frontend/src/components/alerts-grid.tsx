@@ -231,10 +231,10 @@ export function AlertsGrid() {
               return (
                 <Card
                   key={alert.id}
-                  className="group relative overflow-hidden border border-border/70 bg-gradient-to-br from-background via-background to-muted/30 shadow-sm hover:shadow-md transition-all flex flex-col"
+                  className="group relative overflow-hidden border border-border/70 bg-background shadow-sm hover:shadow-md transition-all flex flex-col"
                 >
                   {/* Image Header */}
-                  <div className="relative aspect-[4/3] bg-gradient-to-br from-primary/5 via-muted/40 to-background overflow-hidden">
+                  <div className="relative aspect-[4/3] bg-background overflow-hidden">
                     {alert.skin_url ? (
                       <img
                         src={alert.skin_url}
@@ -257,12 +257,12 @@ export function AlertsGrid() {
                     </Badge>
 
                     {/* Price pill */}
-                    <div className="absolute bottom-3 right-3 bg-background/85 backdrop-blur px-3 py-1 rounded-full shadow border border-border/50 text-sm font-semibold">
+                    <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
                       {formatPrice(alert.price)}
                     </div>
                   </div>
 
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 pt-2">
                     <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
                       {alert.item_name}
                     </CardTitle>
@@ -271,7 +271,7 @@ export function AlertsGrid() {
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="space-y-3 flex-1 flex flex-col">
+                  <CardContent className="flex-1 flex flex-col gap-2 pt-0">
                     {/* Details */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Wear</span>
