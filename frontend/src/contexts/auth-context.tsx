@@ -122,10 +122,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
     setUser(user)
     setToken(token)
-    setIsReady(true)
     
-    // Wait for state updates to propagate
+    // Wait for state updates to propagate BEFORE setting isReady
     await new Promise(resolve => setTimeout(resolve, 100))
+    setIsReady(true)
   }
 
   const clearAuthState = () => {
