@@ -262,7 +262,7 @@ export function AlertsGrid() {
                     </div>
                   </div>
 
-                  <CardHeader className="pb-2 pt-2 space-y-2">
+                  <CardHeader className="flex-1 flex flex-col justify-between pb-3 pt-2 space-y-2">
                     <div>
                       <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
                         {alert.item_name}
@@ -299,21 +299,20 @@ export function AlertsGrid() {
                         </div>
                       )}
                     </div>
+
+                    <div className="pt-2">
+                      <Button asChild className="w-full" size="sm">
+                        <a
+                          href={getSkinBaronUrl(alert.sale_id, alert.item_name)}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          View on SkinBaron
+                          <ExternalLink className="ml-2 h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
                   </CardHeader>
-                  
-                  <CardContent className="flex-1 flex flex-col pt-1 pb-2">
-                    {/* Action Button */}
-                    <Button asChild className="w-full mt-auto" size="sm">
-                      <a
-                        href={getSkinBaronUrl(alert.sale_id, alert.item_name)}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                      >
-                        View on SkinBaron
-                        <ExternalLink className="ml-2 h-3 w-3" />
-                      </a>
-                    </Button>
-                  </CardContent>
                 </Card>
               )
             })}
