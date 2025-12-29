@@ -149,8 +149,6 @@ export class AlertScheduler {
         limit: 20, // Limit to prevent API overload
       });
 
-      console.log(`[DEBUG] Rule ${rule.id} (${rule.search_item}): ${response.items?.length || 0} items from API`);
-
       if (!response.items || response.items.length === 0) {
         return 0;
       }
@@ -174,8 +172,6 @@ export class AlertScheduler {
         })) {
           continue;
         }
-
-        console.log(`[DEBUG] Rule ${rule.id}: Creating alert for ${item.itemName} (${item.saleId})`);
 
         // Create alert
         try {

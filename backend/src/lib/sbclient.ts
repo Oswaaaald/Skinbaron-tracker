@@ -250,7 +250,6 @@ export class SkinBaronClient {
     if (params.statTrak !== undefined) {
       const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
       if (itemIsStatTrak !== params.statTrak) {
-        console.log(`[FILTER] StatTrak mismatch: item=${itemIsStatTrak}, param=${params.statTrak}`);
         return false;
       }
     }
@@ -259,30 +258,25 @@ export class SkinBaronClient {
     if (params.souvenir !== undefined) {
       const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
       if (itemIsSouvenir !== params.souvenir) {
-        console.log(`[FILTER] Souvenir mismatch: item=${itemIsSouvenir}, param=${params.souvenir}`);
         return false;
       }
     }
 
     // Check price range
     if (params.min !== undefined && params.min !== null && item.price < params.min) {
-      console.log(`[FILTER] Price too low: ${item.price} < ${params.min}`);
       return false;
     }
 
     if (params.max !== undefined && params.max !== null && item.price > params.max) {
-      console.log(`[FILTER] Price too high: ${item.price} > ${params.max}`);
       return false;
     }
 
     // Check wear range
     if (params.minWear !== undefined && params.minWear !== null && item.wearValue && item.wearValue < params.minWear) {
-      console.log(`[FILTER] Wear too low: ${item.wearValue} < ${params.minWear}`);
       return false;
     }
 
     if (params.maxWear !== undefined && params.maxWear !== null && item.wearValue && item.wearValue > params.maxWear) {
-      console.log(`[FILTER] Wear too high: ${item.wearValue} > ${params.maxWear}`);
       return false;
     }
 
