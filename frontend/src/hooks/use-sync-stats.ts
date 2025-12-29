@@ -11,16 +11,12 @@ export function useSyncStats() {
   const queryClient = useQueryClient()
 
   const syncStats = async () => {
-    console.log('🔄 Syncing all statistics (alert-stats, system-status, user-stats)...')
-    
     // Force immediate refetch instead of just invalidating
     await Promise.all([
       queryClient.refetchQueries({ queryKey: ['alert-stats'] }),
       queryClient.refetchQueries({ queryKey: ['system-status'] }),
       queryClient.refetchQueries({ queryKey: ['user-stats'] }) // Add user stats for dashboard sync
     ])
-    
-    console.log('✅ All statistics synced immediately!')
   }
 
   return { syncStats }
