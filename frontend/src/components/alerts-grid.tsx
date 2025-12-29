@@ -271,7 +271,7 @@ export function AlertsGrid() {
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="flex-1 flex flex-col space-y-3 pt-1">
+                  <CardContent className="flex-1 flex flex-col space-y-3 pt-1 pb-2">
                     {/* Details */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Wear</span>
