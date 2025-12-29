@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,9 +32,22 @@ import { useAuth } from "@/contexts/auth-context"
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("rules")
+  
+  // Restore active tab from localStorage on mount
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dashboard-active-tab') || 'rules'
+    }
+    return 'rules'
+  })
+  
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('dashboard-active-tab', activeTab)
+  }, [activeTab])
 
   // Fetch system status
   const { data: systemStatus, isLoading: isLoadingStatus } = useQuery({
