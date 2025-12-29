@@ -265,12 +265,12 @@ export class SkinBaronClient {
     }
 
     // Check price range
-    if (params.min !== undefined && item.price < params.min) {
+    if (params.min !== undefined && params.min !== null && item.price < params.min) {
       console.log(`[FILTER] Price too low: ${item.price} < ${params.min}`);
       return false;
     }
 
-    if (params.max !== undefined && item.price > params.max) {
+    if (params.max !== undefined && params.max !== null && item.price > params.max) {
       console.log(`[FILTER] Price too high: ${item.price} > ${params.max}`);
       return false;
     }
