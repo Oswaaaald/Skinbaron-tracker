@@ -223,7 +223,7 @@ export function AlertsGrid() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
             {alerts.map((alert) => {
               const config = ALERT_TYPE_CONFIG[alert.alert_type as keyof typeof ALERT_TYPE_CONFIG] || ALERT_TYPE_CONFIG.match
               const Icon = config.icon
@@ -271,7 +271,7 @@ export function AlertsGrid() {
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="flex-1 flex flex-col gap-2 pt-0">
+                  <CardContent className="flex-1 flex flex-col space-y-3 pt-1">
                     {/* Details */}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Wear</span>
