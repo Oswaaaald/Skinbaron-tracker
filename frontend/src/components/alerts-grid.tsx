@@ -167,6 +167,7 @@ export function AlertsGrid() {
                       className="
                         max-h-[85%] max-w-[85%]
                         object-contain
+						translate-y-[6px]
                         transition-transform duration-500
                         group-hover:scale-[1.06]
                       "
