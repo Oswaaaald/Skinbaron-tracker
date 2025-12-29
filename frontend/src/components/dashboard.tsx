@@ -20,6 +20,7 @@ import { toast } from "sonner"
 
 import { RulesTable } from "@/components/rules-table"
 import { AlertsTable } from "@/components/alerts-table"
+import { AlertsGrid } from "@/components/alerts-grid"
 import { RuleDialog } from "@/components/rule-dialog"
 import { SystemStats } from "@/components/system-stats"
 import { UserNav } from "@/components/user-nav"
@@ -184,10 +185,10 @@ export function Dashboard() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Alert History</h2>
             <p className="text-muted-foreground">
-              View all triggered alerts and notifications
+              View all triggered alerts with detailed information
             </p>
           </div>
-          <AlertsTable />
+          <AlertsGrid />
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
