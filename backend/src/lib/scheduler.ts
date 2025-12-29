@@ -85,21 +85,32 @@ export class AlertScheduler {
         return;
       }
 
-      // Process each rule in parallel for better performance
-      const rulePromises = rules.map(async (rule) => {
+      // Process each rule SEQUENTIALLY with delay to avoid rate limiting (429)
+      let totalNewAlerts = 0;
+      for (let i = 0; i < rules.length; i++) {
+        const rule = rules[i];
+        if (!rule) continue; // Skip undefined rules
+        
         try {
-          return await this.processRule(rule);
+          const alertCount = await this.processRule(rule);
+          totalNewAlerts += alertCount;
+          
+          // Add 1 second delay between requests to avoid rate limiting
+          // Skip delay after last rule
+          if (i < rules.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         } catch (error) {
           this.stats.errorCount++;
           this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
-          return 0;
+          console.error(`Error processing rule ${rule.id}:`, error);
+          
+          // Continue to next rule even if one fails
+          continue;
         }
-      });
+      }
 
-      const alertCounts = await Promise.all(rulePromises);
-      const newAlerts = alertCounts.reduce((sum, count) => sum + count, 0);
-
-      this.stats.totalAlerts += newAlerts;
+      this.stats.totalAlerts += totalNewAlerts;
 
       // Update next run time
       if (this.cronJob) {

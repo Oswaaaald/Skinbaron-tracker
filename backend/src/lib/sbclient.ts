@@ -69,8 +69,12 @@ export class SkinBaronClient {
   private async makeRequest<T>(
     endpoint: string, 
     params: Record<string, any> = {}, 
-    schema: z.ZodSchema<T>
+    schema: z.ZodSchema<T>,
+    retryCount: number = 0
   ): Promise<T> {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [2000, 5000, 10000]; // 2s, 5s, 10s backoff
+    
     try {
       const requestBody: Record<string, any> = {
         appid: this.appId,
@@ -94,6 +98,17 @@ export class SkinBaronClient {
         body: JSON.stringify(requestBody),
       });
 
+      // Handle rate limiting with retry
+      if (statusCode === 429) {
+        if (retryCount < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[retryCount];
+          console.warn(`⚠️ Rate limited (429), retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.makeRequest(endpoint, params, schema, retryCount + 1);
+        }
+        throw new Error(`SkinBaron API rate limit exceeded after ${MAX_RETRIES} retries`);
+      }
+
       if (statusCode !== 200) {
         throw new Error(`SkinBaron API error: ${statusCode}`);
       }
@@ -114,7 +129,10 @@ export class SkinBaronClient {
       
       return validatedData;
     } catch (error) {
-      console.error(`❌ SkinBaron API Error (${endpoint}):`, error);
+      // Don't log retry errors, only final errors
+      if (retryCount === 0 || retryCount >= MAX_RETRIES) {
+        console.error(`❌ SkinBaron API Error (${endpoint}):`, error);
+      }
       throw error;
     }
   }
