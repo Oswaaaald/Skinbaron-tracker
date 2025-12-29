@@ -229,14 +229,17 @@ export function AlertsGrid() {
               const Icon = config.icon
               
               return (
-                <Card key={alert.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                <Card
+                  key={alert.id}
+                  className="group relative overflow-hidden border border-border/70 bg-gradient-to-br from-background via-background to-muted/30 shadow-sm hover:shadow-md transition-all flex flex-col"
+                >
                   {/* Image Header */}
-                  <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted overflow-hidden">
+                  <div className="relative aspect-[4/3] bg-gradient-to-br from-primary/5 via-muted/40 to-background overflow-hidden">
                     {alert.skin_url ? (
-                      <img 
-                        src={alert.skin_url} 
+                      <img
+                        src={alert.skin_url}
                         alt={alert.item_name}
-                        className="w-full h-full object-contain p-4"
+                        className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
                         onError={(e) => {
                           e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E'
                         }}
@@ -246,10 +249,17 @@ export function AlertsGrid() {
                         No Image
                       </div>
                     )}
-                    <Badge variant={config.color} className="absolute top-2 right-2">
+
+                    {/* Type badge */}
+                    <Badge variant={config.color} className="absolute top-2 right-2 shadow-sm">
                       <Icon className="h-3 w-3 mr-1" />
                       {config.label}
                     </Badge>
+
+                    {/* Price pill */}
+                    <div className="absolute bottom-3 right-3 bg-background/85 backdrop-blur px-3 py-1 rounded-full shadow border border-border/50 text-sm font-semibold">
+                      {formatPrice(alert.price)}
+                    </div>
                   </div>
 
                   <CardHeader className="pb-3">
@@ -263,40 +273,31 @@ export function AlertsGrid() {
                   
                   <CardContent className="space-y-3 flex-1 flex flex-col">
                     {/* Details */}
-                    <div className="flex-1 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Price:</span>
-                        <span className="text-lg font-bold">
-                          {formatPrice(alert.price)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Wear:</span>
-                        <span className="text-sm font-medium">
-                          {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                            formatWearPercentage(alert.wear_value)
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
-                        </span>
-                      </div>
-
-                      {/* Features */}
-                      {(alert.stattrak || alert.souvenir) && (
-                        <div className="flex gap-1 flex-wrap pt-1">
-                          {alert.stattrak && (
-                            <Badge variant="outline" className="text-xs">
-                              StatTrak™
-                            </Badge>
-                          )}
-                          {alert.souvenir && (
-                            <Badge variant="outline" className="text-xs">
-                              Souvenir
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Wear</span>
+                      <span className="font-medium">
+                        {alert.wear_value !== undefined && alert.wear_value !== null ? (
+                          formatWearPercentage(alert.wear_value)
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )}
+                      </span>
                     </div>
+
+                    {(alert.stattrak || alert.souvenir) && (
+                      <div className="flex gap-1 flex-wrap pt-1">
+                        {alert.stattrak && (
+                          <Badge variant="outline" className="text-[11px]">
+                            StatTrak™
+                          </Badge>
+                        )}
+                        {alert.souvenir && (
+                          <Badge variant="outline" className="text-[11px]">
+                            Souvenir
+                          </Badge>
+                        )}
+                      </div>
+                    )}
 
                     {/* Action Button */}
                     <Button
