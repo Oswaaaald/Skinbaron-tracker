@@ -66,8 +66,21 @@ async function registerPlugins() {
   // CORS
   await fastify.register(cors, {
     origin: (origin, callback) => {
-      // Allow requests from frontend or no origin (e.g., mobile apps)
-      if (!origin || origin === appConfig.CORS_ORIGIN) {
+      // In production, allow configured frontend origin
+      const allowedOrigins = [
+        appConfig.CORS_ORIGIN,
+        'https://skinbaron-tracker.oswaaaald.be',
+        'http://localhost:3000',
+      ];
+      
+      // Allow requests with no origin (e.g., mobile apps, Postman)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'), false);
