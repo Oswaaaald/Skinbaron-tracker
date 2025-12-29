@@ -235,10 +235,14 @@ export function RulesTable() {
                     {rule.search_item}
                   </TableCell>
                   <TableCell>
-                    {rule.min_price !== null && rule.min_price !== undefined && rule.max_price !== null && rule.max_price !== undefined ? (
-                      <span>{rule.min_price}€ - {rule.max_price}€</span>
-                    ) : rule.max_price !== null && rule.max_price !== undefined ? (
-                      <span>≤{rule.max_price}€</span>
+                    {rule.max_price !== null && rule.max_price !== undefined ? (
+                      rule.min_price && rule.min_price > 0 ? (
+                        <span>{rule.min_price}€ - {rule.max_price}€</span>
+                      ) : (
+                        <span>{rule.max_price}€</span>
+                      )
+                    ) : rule.min_price && rule.min_price > 0 ? (
+                      <span>{rule.min_price}€+</span>
                     ) : (
                       <span className="text-muted-foreground">Any</span>
                     )}
