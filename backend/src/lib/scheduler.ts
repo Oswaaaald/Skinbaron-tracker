@@ -183,7 +183,7 @@ export class AlertScheduler {
             wear_value: item.wearValue,
             stattrak: item.statTrak ?? false,
             souvenir: item.souvenir ?? false,
-            skin_url: client.getSkinUrl(item.saleId),
+            skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
             alert_type: 'match',
           };
 

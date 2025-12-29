@@ -262,31 +262,28 @@ export function AlertsGrid() {
                   </CardHeader>
                   
                   <CardContent className="space-y-3 flex-1 flex flex-col">
-                    {/* Price - Large and prominent */}
-                    <div className="text-center py-3 bg-primary/10 rounded-lg border border-primary/20">
-                      <div className="text-2xl font-bold text-primary">
-                        {formatPrice(alert.price)}
-                      </div>
-                    </div>
-
                     {/* Details */}
-                    <div className="flex-1">
-                      <div className="text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Wear:</span>
-                          <span className="font-medium">
-                            {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                              formatWearPercentage(alert.wear_value)
-                            ) : (
-                              <span className="text-muted-foreground">N/A</span>
-                            )}
-                          </span>
-                        </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Price:</span>
+                        <span className="text-lg font-bold">
+                          {formatPrice(alert.price)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Wear:</span>
+                        <span className="text-sm font-medium">
+                          {alert.wear_value !== undefined && alert.wear_value !== null ? (
+                            formatWearPercentage(alert.wear_value)
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </span>
                       </div>
 
                       {/* Features */}
                       {(alert.stattrak || alert.souvenir) && (
-                        <div className="flex gap-1 flex-wrap mt-2">
+                        <div className="flex gap-1 flex-wrap pt-1">
                           {alert.stattrak && (
                             <Badge variant="outline" className="text-xs">
                               StatTrak™
