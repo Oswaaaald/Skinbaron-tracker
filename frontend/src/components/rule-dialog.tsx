@@ -286,7 +286,20 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.currentTarget.blur()
+                            const val = e.currentTarget.value.trim()
+                            if (val === '') {
+                              field.onChange(undefined)
+                              setMinPriceDisplay('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0) {
+                                field.onChange(num)
+                                setMinPriceDisplay(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setMinPriceDisplay('')
+                              }
+                            }
                           }
                         }}
                         onBlur={(e) => {
@@ -332,7 +345,20 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.currentTarget.blur()
+                            const val = e.currentTarget.value.trim()
+                            if (val === '') {
+                              field.onChange(undefined)
+                              setMaxPriceDisplay('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0) {
+                                field.onChange(num)
+                                setMaxPriceDisplay(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setMaxPriceDisplay('')
+                              }
+                            }
                           }
                         }}
                         onBlur={(e) => {
@@ -381,7 +407,20 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.currentTarget.blur()
+                            const val = e.currentTarget.value.trim()
+                            if (val === '') {
+                              field.onChange(undefined)
+                              setMinWearDisplay('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0 && num <= 100) {
+                                field.onChange(num)
+                                setMinWearDisplay(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setMinWearDisplay('')
+                              }
+                            }
                           }
                         }}
                         onBlur={(e) => {
@@ -427,7 +466,20 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.currentTarget.blur()
+                            const val = e.currentTarget.value.trim()
+                            if (val === '') {
+                              field.onChange(undefined)
+                              setMaxWearDisplay('')
+                            } else {
+                              const num = parseFloat(val)
+                              if (!isNaN(num) && num >= 0 && num <= 100) {
+                                field.onChange(num)
+                                setMaxWearDisplay(num.toString())
+                              } else {
+                                field.onChange(undefined)
+                                setMaxWearDisplay('')
+                              }
+                            }
                           }
                         }}
                         onBlur={(e) => {
