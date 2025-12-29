@@ -102,10 +102,10 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         // Editing existing rule
         form.reset({
           search_item: rule.search_item || "",
-          min_price: rule.min_price || undefined,
-          max_price: rule.max_price || undefined,
-          min_wear: rule.min_wear !== undefined ? wearToPercentage(rule.min_wear) : undefined,
-          max_wear: rule.max_wear !== undefined ? wearToPercentage(rule.max_wear) : undefined,
+          min_price: rule.min_price !== undefined && rule.min_price !== null ? rule.min_price : undefined,
+          max_price: rule.max_price !== undefined && rule.max_price !== null ? rule.max_price : undefined,
+          min_wear: rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined,
+          max_wear: rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined,
           stattrak: rule.stattrak || false,
           souvenir: rule.souvenir || false,
           webhook_ids: rule.webhook_ids || [],
@@ -113,10 +113,10 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         })
         setSelectedWebhooks(rule.webhook_ids || [])
         // Sync display values
-        setMinPriceDisplay(rule.min_price?.toString() || '')
-        setMaxPriceDisplay(rule.max_price?.toString() || '')
-        setMinWearDisplay(rule.min_wear !== undefined ? wearToPercentage(rule.min_wear).toString() : '')
-        setMaxWearDisplay(rule.max_wear !== undefined ? wearToPercentage(rule.max_wear).toString() : '')
+        setMinPriceDisplay(rule.min_price !== undefined && rule.min_price !== null ? rule.min_price.toString() : '')
+        setMaxPriceDisplay(rule.max_price !== undefined && rule.max_price !== null ? rule.max_price.toString() : '')
+        setMinWearDisplay(rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear).toString() : '')
+        setMaxWearDisplay(rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear).toString() : '')
       } else {
         // Creating new rule
         form.reset({
