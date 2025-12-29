@@ -237,8 +237,6 @@ export function RulesTable() {
                   <TableCell>
                     {rule.min_price !== null && rule.min_price !== undefined && rule.max_price !== null && rule.max_price !== undefined ? (
                       <span>{rule.min_price}€ - {rule.max_price}€</span>
-                    ) : rule.min_price !== null && rule.min_price !== undefined ? (
-                      <span>≥{rule.min_price}€</span>
                     ) : rule.max_price !== null && rule.max_price !== undefined ? (
                       <span>≤{rule.max_price}€</span>
                     ) : (

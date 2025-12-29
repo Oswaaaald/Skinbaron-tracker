@@ -192,9 +192,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       // Convert RuleFormData to CreateRuleData (convert percentages to 0-1 wear values)
       const createData: CreateRuleData = {
         search_item: data.search_item,
-        min_price: data.min_price || undefined,
+        min_price: data.min_price !== undefined ? data.min_price : 0,
         max_price: data.max_price || undefined,
-        min_wear: data.min_wear !== undefined ? percentageToWear(data.min_wear) : undefined,
+        min_wear: data.min_wear !== undefined ? percentageToWear(data.min_wear) : 0,
         max_wear: data.max_wear !== undefined ? percentageToWear(data.max_wear) : undefined,
         stattrak: data.stattrak,
         souvenir: data.souvenir,
