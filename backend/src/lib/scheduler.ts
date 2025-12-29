@@ -85,28 +85,36 @@ export class AlertScheduler {
         return;
       }
 
-      // Process each rule SEQUENTIALLY with delay to avoid rate limiting (429)
+      // Process rules in batches to avoid rate limiting while maintaining speed
+      const BATCH_SIZE = 10; // Process 10 rules in parallel
+      const BATCH_DELAY = 2000; // 2 seconds between batches
+      
       let totalNewAlerts = 0;
-      for (let i = 0; i < rules.length; i++) {
-        const rule = rules[i];
-        if (!rule) continue; // Skip undefined rules
+      
+      // Split rules into batches
+      for (let batchStart = 0; batchStart < rules.length; batchStart += BATCH_SIZE) {
+        const batch = rules.slice(batchStart, batchStart + BATCH_SIZE);
         
-        try {
-          const alertCount = await this.processRule(rule);
-          totalNewAlerts += alertCount;
+        // Process batch in parallel
+        const batchPromises = batch.map(async (rule) => {
+          if (!rule) return 0;
           
-          // Add 1 second delay between requests to avoid rate limiting
-          // Skip delay after last rule
-          if (i < rules.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+          try {
+            return await this.processRule(rule);
+          } catch (error) {
+            this.stats.errorCount++;
+            this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
+            console.error(`Error processing rule ${rule.id}:`, error);
+            return 0;
           }
-        } catch (error) {
-          this.stats.errorCount++;
-          this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`Error processing rule ${rule.id}:`, error);
-          
-          // Continue to next rule even if one fails
-          continue;
+        });
+        
+        const batchResults = await Promise.all(batchPromises);
+        totalNewAlerts += batchResults.reduce((sum, count) => sum + count, 0);
+        
+        // Add delay between batches (skip for last batch)
+        if (batchStart + BATCH_SIZE < rules.length) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
         }
       }
 
