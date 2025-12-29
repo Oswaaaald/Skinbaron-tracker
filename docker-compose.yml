@@ -6,13 +6,6 @@ services:
     container_name: skinbaron-alerts-backend
     restart: unless-stopped
 
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.skinbaron-backend-secure.rule=Host(`skinbaron-tracker-api.oswaaaald.be`)
-      - traefik.http.routers.skinbaron-backend-secure.entrypoints=websecure
-      - traefik.http.routers.skinbaron-backend-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.skinbaron-backend.loadbalancer.server.port=8080
-
     environment:
       NODE_ENV: production
       PORT: 8080
@@ -56,13 +49,6 @@ services:
 
     container_name: skinbaron-alerts-frontend
     restart: unless-stopped
-
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.skinbaron-frontend-secure.rule=Host(`skinbaron-tracker.oswaaaald.be`)
-      - traefik.http.routers.skinbaron-frontend-secure.entrypoints=websecure
-      - traefik.http.routers.skinbaron-frontend-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.skinbaron-frontend.loadbalancer.server.port=3000
 
     environment:
       NODE_ENV: production
