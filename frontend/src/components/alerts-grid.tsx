@@ -231,7 +231,7 @@ export function AlertsGrid() {
               return (
                 <Card
                   key={alert.id}
-                  className="group relative overflow-hidden border border-border/70 bg-background shadow-sm hover:shadow-md transition-all flex flex-col p-0"
+                  className="group relative overflow-hidden border border-border/70 bg-muted/60 shadow-sm hover:shadow-md transition-all flex flex-col p-0"
                 >
                   {/* Image Header */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -262,11 +262,11 @@ export function AlertsGrid() {
                     </div>
                   </div>
 
-                  <CardHeader className="pb-2 pt-2">
+                  <CardHeader className="pb-1 pt-2">
                     <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
                       {alert.item_name}
                     </CardTitle>
-                    <CardDescription className="text-xs mt-1">
+                    <CardDescription className="text-xs mt-0.5">
                       {formatDate(alert.sent_at)}
                     </CardDescription>
                   </CardHeader>
