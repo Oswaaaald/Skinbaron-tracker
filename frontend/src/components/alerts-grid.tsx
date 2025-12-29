@@ -234,7 +234,7 @@ export function AlertsGrid() {
                   className="group relative overflow-hidden border border-border/70 bg-background shadow-sm hover:shadow-md transition-all flex flex-col"
                 >
                   {/* Image Header */}
-                  <div className="relative aspect-[4/3] bg-background overflow-hidden">
+                  <div className="relative aspect-[4/3] bg-muted/80 overflow-hidden">
                     {alert.skin_url ? (
                       <img
                         src={alert.skin_url}
