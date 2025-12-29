@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,17 +23,31 @@ import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
 
 const ALERT_TYPE_CONFIG = {
-  match: { label: "Rule Match", icon: Bell },
-  best_deal: { label: "Best Deal", icon: TrendingDown },
-  new_item: { label: "New Item", icon: Sparkles }
+  match: {
+    label: "Rule Match",
+    color: "default" as const,
+    icon: Bell
+  },
+  best_deal: {
+    label: "Best Deal",
+    color: "destructive" as const,
+    icon: TrendingDown
+  },
+  new_item: {
+    label: "New Item",
+    color: "secondary" as const,
+    icon: Sparkles
+  }
 } as const
 
 export function AlertsGrid() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState("")
   const [alertTypeFilter, setAlertTypeFilter] = useState("")
+  const [isClearingAll, setIsClearingAll] = useState(false)
   const limit = 12
 
+  const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
 
@@ -90,7 +104,9 @@ export function AlertsGrid() {
   const getSkinBaronUrl = (saleId: string, itemName?: string) => {
     if (!itemName) return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
     const clean = itemName.replace(/StatTrak™\s+|Souvenir\s+/g, "")
-    return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodeURIComponent(clean)}`
+    return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodeURIComponent(
+      clean
+    )}`
   }
 
   return (
@@ -136,54 +152,48 @@ export function AlertsGrid() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {alerts.map((alert) => {
           const config =
-            ALERT_TYPE_CONFIG[alert.alert_type as keyof typeof ALERT_TYPE_CONFIG] ||
-            ALERT_TYPE_CONFIG.match
+            ALERT_TYPE_CONFIG[
+              alert.alert_type as keyof typeof ALERT_TYPE_CONFIG
+            ] || ALERT_TYPE_CONFIG.match
           const Icon = config.icon
 
           return (
             <Card
               key={alert.id}
               className="
-                group relative overflow-hidden
-                rounded-2xl
-                bg-gradient-to-b from-[#0b1220] to-[#070d18]
-                border border-white/15
-                shadow-[0_12px_35px_rgba(0,0,0,0.45)]
-                hover:shadow-[0_30px_80px_rgba(0,0,0,0.65)]
+                group overflow-hidden rounded-2xl
+                border border-white/10
+                bg-gradient-to-b from-background/80 to-background/40
+                backdrop-blur-xl
+                shadow-[0_10px_30px_rgba(0,0,0,0.15)]
+                hover:shadow-[0_25px_70px_rgba(0,0,0,0.3)]
                 transition-all duration-300
-                flex flex-col p-0
+                p-0 flex flex-col
               "
             >
               {/* Image */}
-              <div className="relative aspect-[4/3] overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-                <div className="absolute inset-0 bg-black/30" />
+              <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10" />
 
                 {alert.skin_url && (
-                  <img
-                    src={alert.skin_url}
-                    alt={alert.item_name}
-                    className="relative z-10 w-full h-full object-contain p-5 transition-transform duration-500 group-hover:scale-[1.06]"
-                  />
+                  <div className="relative z-10 flex items-center justify-center h-full">
+                    <img
+                      src={alert.skin_url}
+                      alt={alert.item_name}
+                      className="
+                        max-h-[85%] max-w-[85%]
+                        object-contain
+                        transition-transform duration-500
+                        group-hover:scale-[1.06]
+                      "
+                    />
+                  </div>
                 )}
 
-                <Badge
-                  className={`
-                    absolute top-3 left-3
-                    rounded-full px-2.5 py-1 text-[11px] font-medium
-                    backdrop-blur-md shadow-sm
-                    ${
-                      alert.alert_type === "match"
-                        ? "bg-blue-500/20 text-blue-300 border border-blue-400/30"
-                        : alert.alert_type === "best_deal"
-                        ? "bg-red-500/20 text-red-300 border border-red-400/30"
-                        : "bg-purple-500/20 text-purple-300 border border-purple-400/30"
-                    }
-                  `}
-                >
+                <Badge className="absolute top-3 left-3 rounded-full bg-background/70 backdrop-blur border border-white/10 text-[11px]">
                   <Icon className="h-3 w-3 mr-1" />
                   {config.label}
                 </Badge>
@@ -193,13 +203,10 @@ export function AlertsGrid() {
                 </div>
               </div>
 
-              {/* Border separator */}
-              <div className="h-px bg-white/10" />
-
               {/* Content */}
-              <CardHeader className="px-4 py-4 space-y-3 flex-1">
+              <CardHeader className="px-4 pt-3 pb-4 space-y-3 flex-1">
                 <div>
-                  <CardTitle className="text-sm font-semibold leading-snug line-clamp-2">
+                  <CardTitle className="text-sm font-semibold line-clamp-2">
                     {alert.item_name}
                   </CardTitle>
                   <CardDescription className="text-xs mt-1 opacity-70">
@@ -207,7 +214,7 @@ export function AlertsGrid() {
                   </CardDescription>
                 </div>
 
-                <div className="flex justify-between text-xs">
+                <div className="text-xs flex justify-between">
                   <span className="text-muted-foreground">Wear</span>
                   <span className="font-medium">
                     {alert.wear_value != null
@@ -234,7 +241,11 @@ export function AlertsGrid() {
                   </div>
                 )}
 
-                <Button asChild size="sm" className="w-full rounded-full mt-2">
+                <Button
+                  asChild
+                  size="sm"
+                  className="w-full rounded-full mt-2"
+                >
                   <a
                     href={getSkinBaronUrl(alert.sale_id, alert.item_name)}
                     target="_blank"
