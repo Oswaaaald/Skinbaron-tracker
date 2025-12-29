@@ -83,13 +83,6 @@ export class SkinBaronClient {
       }
 
       const url = `${this.baseURL}${endpoint}`;
-      
-      // Log request without exposing API key
-      const logBody = { ...requestBody };
-      if (logBody.apikey) {
-        logBody.apikey = `${logBody.apikey.substring(0, 8)}...${logBody.apikey.substring(-4)}`;
-      }
-      console.log(`🔍 SkinBaron API Request to ${endpoint}:`, logBody);
 
       const { statusCode, body } = await request(url, {
         method: 'POST',
@@ -106,14 +99,13 @@ export class SkinBaronClient {
       }
 
       const rawData = await body.text();
-      console.log(`📡 SkinBaron API Response from ${endpoint}:`, rawData.substring(0, 500));
-      
       let jsonData;
       
       try {
         jsonData = JSON.parse(rawData);
       } catch (parseError) {
-        console.error('Failed to parse SkinBaron response:', rawData);
+        // Log first 200 chars only to avoid flooding logs
+        console.error('Failed to parse SkinBaron response:', rawData.substring(0, 200));
         throw new Error('Invalid JSON response from SkinBaron API');
       }
 

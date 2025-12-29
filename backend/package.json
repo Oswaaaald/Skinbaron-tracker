@@ -1,6 +1,7 @@
 {
   "name": "skinbaron-alerts-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend API for SkinBaron Alerts - CS2 skin monitoring and alerting system",
   "main": "dist/index.js",
   "scripts": {

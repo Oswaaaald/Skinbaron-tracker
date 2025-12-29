@@ -151,6 +151,7 @@ export class Store {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_rules_user_id ON rules (user_id);
       CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules (enabled);
+      CREATE INDEX IF NOT EXISTS idx_rules_user_enabled ON rules (user_id, enabled);
       CREATE INDEX IF NOT EXISTS idx_alerts_sale_id ON alerts (sale_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_rule_id ON alerts (rule_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_sent_at ON alerts (sent_at);

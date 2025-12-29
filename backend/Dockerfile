@@ -4,8 +4,7 @@
 
 FROM node:20-alpine AS base
 
-RUN apk update && apk add --no-cache ca-certificates \
-    && npm install -g npm@latest
+RUN apk update && apk add --no-cache ca-certificates
 
 # ---------- deps ----------
 FROM base AS deps

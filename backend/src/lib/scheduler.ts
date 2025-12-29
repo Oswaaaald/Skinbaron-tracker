@@ -85,17 +85,19 @@ export class AlertScheduler {
         return;
       }
 
-      // Process each rule
-      let newAlerts = 0;
-      for (const rule of rules) {
+      // Process each rule in parallel for better performance
+      const rulePromises = rules.map(async (rule) => {
         try {
-          const ruleAlerts = await this.processRule(rule);
-          newAlerts += ruleAlerts;
+          return await this.processRule(rule);
         } catch (error) {
           this.stats.errorCount++;
           this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
+          return 0;
         }
-      }
+      });
+
+      const alertCounts = await Promise.all(rulePromises);
+      const newAlerts = alertCounts.reduce((sum, count) => sum + count, 0);
 
       this.stats.totalAlerts += newAlerts;
 

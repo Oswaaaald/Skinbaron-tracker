@@ -22,7 +22,7 @@ const ConfigSchema = z.object({
   SQLITE_PATH: z.string().default('./data/alerts.db'),
   
   // Authentication
-  JWT_SECRET: z.string().default('change-this-in-production-' + Math.random().toString(36)),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters in production'),
   
   // Polling
   POLL_CRON: z.string().default('*/5 * * * *'),
