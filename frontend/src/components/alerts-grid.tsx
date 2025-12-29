@@ -231,10 +231,10 @@ export function AlertsGrid() {
               return (
                 <Card
                   key={alert.id}
-                  className="group relative overflow-hidden border border-border/70 bg-background shadow-sm hover:shadow-md transition-all flex flex-col"
+                  className="group relative overflow-hidden border border-border/70 bg-background shadow-sm hover:shadow-md transition-all flex flex-col p-0"
                 >
                   {/* Image Header */}
-                  <div className="relative aspect-[4/3] bg-muted/80 overflow-hidden">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
                     {alert.skin_url ? (
                       <img
                         src={alert.skin_url}
