@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval)
   }, [token, user])
 
-  const saveAuthState = (token: string, user: User) => {
+  const saveAuthState = async (token: string, user: User) => {
     // JWT tokens from our backend expire in 7 days
     const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000)
     
@@ -123,6 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user)
     setToken(token)
     setIsReady(true)
+    
+    // Wait for state updates to propagate
+    await new Promise(resolve => setTimeout(resolve, 100))
   }
 
   const clearAuthState = () => {
@@ -148,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.success && data.data) {
         const { token, ...userData } = data.data
-        saveAuthState(token, userData)
+        await saveAuthState(token, userData)
         return { success: true }
       } else {
         return { 
@@ -181,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.success && data.data) {
         const { token, ...userData } = data.data
-        saveAuthState(token, userData)
+        await saveAuthState(token, userData)
         return { success: true }
       } else {
         return { 
