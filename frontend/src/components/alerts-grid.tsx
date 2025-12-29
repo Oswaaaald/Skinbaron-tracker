@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,6 @@ export function AlertsGrid() {
   const [alertTypeFilter, setAlertTypeFilter] = useState("")
   const limit = 12
 
-  const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
 
@@ -167,15 +166,10 @@ export function AlertsGrid() {
                   <img
                     src={alert.skin_url}
                     alt={alert.item_name}
-                    className="
-                      relative z-10 w-full h-full object-contain p-5
-                      transition-transform duration-500
-                      group-hover:scale-[1.06]
-                    "
+                    className="relative z-10 w-full h-full object-contain p-5 transition-transform duration-500 group-hover:scale-[1.06]"
                   />
                 )}
 
-                {/* Badge */}
                 <Badge
                   className={`
                     absolute top-3 left-3
@@ -194,14 +188,16 @@ export function AlertsGrid() {
                   {config.label}
                 </Badge>
 
-                {/* Price */}
                 <div className="absolute bottom-3 right-3 bg-white text-black text-sm font-semibold px-3 py-1 rounded-full shadow-lg">
                   {formatPrice(alert.price)}
                 </div>
               </div>
 
+              {/* Border separator */}
+              <div className="h-px bg-white/10" />
+
               {/* Content */}
-              <CardHeader className="px-4 pt-3 pb-4 space-y-3 flex-1 border-t border-white/10">
+              <CardHeader className="px-4 py-4 space-y-3 flex-1">
                 <div>
                   <CardTitle className="text-sm font-semibold leading-snug line-clamp-2">
                     {alert.item_name}
