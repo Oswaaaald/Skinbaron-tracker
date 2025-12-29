@@ -126,8 +126,13 @@ export function AlertsGrid() {
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  const getSkinBaronUrl = (saleId: string) => {
-    return `https://skinbaron.de/offers/show_offer?offerId=${saleId}`
+  const getSkinBaronUrl = (saleId: string, itemName?: string) => {
+    if (itemName) {
+      const productName = itemName.replace(/StatTrak™\s+/, '').replace(/Souvenir\s+/, '')
+      const encodedProductName = encodeURIComponent(productName)
+      return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodedProductName}`
+    }
+    return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
   }
 
   if (alerts.length === 0 && page === 0 && !search && !alertTypeFilter) {
@@ -224,72 +229,83 @@ export function AlertsGrid() {
               const Icon = config.icon
               
               return (
-                <Card key={alert.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base leading-tight truncate" title={alert.item_name}>
-                          {alert.item_name}
-                        </CardTitle>
-                        <CardDescription className="text-xs mt-1">
-                          {formatDate(alert.sent_at)}
-                        </CardDescription>
+                <Card key={alert.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                  {/* Image Header */}
+                  <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted overflow-hidden">
+                    {alert.skin_url ? (
+                      <img 
+                        src={alert.skin_url} 
+                        alt={alert.item_name}
+                        className="w-full h-full object-contain p-4"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E'
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                        No Image
                       </div>
-                      <Badge variant={config.color} className="shrink-0">
-                        <Icon className="h-3 w-3 mr-1" />
-                        {config.label}
-                      </Badge>
-                    </div>
+                    )}
+                    <Badge variant={config.color} className="absolute top-2 right-2">
+                      <Icon className="h-3 w-3 mr-1" />
+                      {config.label}
+                    </Badge>
+                  </div>
+
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
+                      {alert.item_name}
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                      {formatDate(alert.sent_at)}
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  
+                  <CardContent className="space-y-3 flex-1 flex flex-col">
                     {/* Price - Large and prominent */}
-                    <div className="text-center py-3 bg-muted/50 rounded-lg">
+                    <div className="text-center py-3 bg-primary/10 rounded-lg border border-primary/20">
                       <div className="text-2xl font-bold text-primary">
                         {formatPrice(alert.price)}
                       </div>
                     </div>
 
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <div className="text-xs text-muted-foreground">Wear</div>
-                        <div className="font-medium">
-                          {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                            formatWearPercentage(alert.wear_value)
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
+                    {/* Details */}
+                    <div className="flex-1">
+                      <div className="text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Wear:</span>
+                          <span className="font-medium">
+                            {alert.wear_value !== undefined && alert.wear_value !== null ? (
+                              formatWearPercentage(alert.wear_value)
+                            ) : (
+                              <span className="text-muted-foreground">N/A</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Features */}
+                      {(alert.stattrak || alert.souvenir) && (
+                        <div className="flex gap-1 flex-wrap mt-2">
+                          {alert.stattrak && (
+                            <Badge variant="outline" className="text-xs">
+                              StatTrak™
+                            </Badge>
+                          )}
+                          {alert.souvenir && (
+                            <Badge variant="outline" className="text-xs">
+                              Souvenir
+                            </Badge>
                           )}
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Sale ID</div>
-                        <div className="font-mono text-xs truncate" title={alert.sale_id}>
-                          {alert.sale_id}
-                        </div>
-                      </div>
+                      )}
                     </div>
-
-                    {/* Features */}
-                    {(alert.stattrak || alert.souvenir) && (
-                      <div className="flex gap-1 flex-wrap">
-                        {alert.stattrak && (
-                          <Badge variant="outline" className="text-xs">
-                            StatTrak™
-                          </Badge>
-                        )}
-                        {alert.souvenir && (
-                          <Badge variant="outline" className="text-xs">
-                            Souvenir
-                          </Badge>
-                        )}
-                      </div>
-                    )}
 
                     {/* Action Button */}
                     <Button
-                      className="w-full"
+                      className="w-full mt-auto"
                       size="sm"
-                      onClick={() => window.open(getSkinBaronUrl(alert.sale_id), '_blank')}
+                      onClick={() => window.open(getSkinBaronUrl(alert.sale_id, alert.item_name), '_blank')}
                     >
                       View on SkinBaron
                       <ExternalLink className="ml-2 h-3 w-3" />
