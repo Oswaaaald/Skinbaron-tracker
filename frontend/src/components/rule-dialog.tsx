@@ -286,7 +286,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.preventDefault()
                             e.currentTarget.blur()
                           }
                         }}
@@ -333,7 +332,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.preventDefault()
                             e.currentTarget.blur()
                           }
                         }}
@@ -383,7 +381,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.preventDefault()
                             e.currentTarget.blur()
                           }
                         }}
@@ -430,7 +427,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            e.preventDefault()
                             e.currentTarget.blur()
                           }
                         }}
