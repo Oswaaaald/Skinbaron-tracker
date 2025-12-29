@@ -20,6 +20,10 @@ export class AlertScheduler {
   private skinBaronClient = getSkinBaronClient();
   private notificationService = getNotificationService();
 
+  // Discord rate limiting: max 30 messages per minute per webhook
+  private readonly DISCORD_DELAY_MS = 2100; // ~2 seconds between messages (allows ~28 per minute with safety margin)
+  private webhookQueues = new Map<string, Promise<void>>();
+
   // Statistics
   private stats: SchedulerStats = {
     isRunning: false,
@@ -195,10 +199,11 @@ export class AlertScheduler {
           // Get rule webhooks (secured webhook system)
           const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
           
-          // Send notifications to all rule webhooks (if any exist)
+          // Send notifications to all rule webhooks with rate limiting
           if (webhooks.length > 0) {
-            const notificationPromises = webhooks.map(async (webhook: any) => {
-              return this.notificationService.sendNotification(
+            for (const webhook of webhooks) {
+              // Queue the notification with proper rate limiting per webhook URL
+              this.queueWebhookNotification(
                 webhook.webhook_url!,
                 {
                   alertType: 'match',
@@ -206,18 +211,10 @@ export class AlertScheduler {
                   rule,
                   skinUrl: alert.skin_url,
                 }
-              );
-            });
-
-            // Wait for all notifications to complete
-            const results = await Promise.allSettled(notificationPromises);
-            
-            let successCount = 0;
-            results.forEach((result: any) => {
-              if (result.status === 'fulfilled' && result.value) {
-                successCount++;
-              }
-            });
+              ).catch(() => {
+                // Ignore notification errors to not block alert creation
+              });
+            }
           }
 
         } catch (error) {
@@ -234,6 +231,41 @@ export class AlertScheduler {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Queue webhook notification with rate limiting per webhook URL
+   * Discord allows max 30 messages per minute per webhook
+   */
+  private async queueWebhookNotification(
+    webhookUrl: string,
+    options: { alertType: 'match' | 'best_deal' | 'new_item', item: SkinBaronItem, rule?: Rule, skinUrl: string }
+  ): Promise<void> {
+    // Get or create queue for this webhook URL
+    const existingQueue = this.webhookQueues.get(webhookUrl) || Promise.resolve();
+    
+    // Chain the new notification after the existing queue
+    const newQueue = existingQueue.then(async () => {
+      try {
+        await this.notificationService.sendNotification(webhookUrl, options);
+      } catch (error) {
+        // Log but don't throw - we don't want to block other notifications
+      }
+      // Add delay before next message to respect Discord rate limits
+      await new Promise(resolve => setTimeout(resolve, this.DISCORD_DELAY_MS));
+    });
+    
+    // Update the queue
+    this.webhookQueues.set(webhookUrl, newQueue);
+    
+    // Clean up the queue after it's done (with extra time buffer)
+    newQueue.then(() => {
+      setTimeout(() => {
+        if (this.webhookQueues.get(webhookUrl) === newQueue) {
+          this.webhookQueues.delete(webhookUrl);
+        }
+      }, this.DISCORD_DELAY_MS * 2);
+    });
   }
 
   /**
