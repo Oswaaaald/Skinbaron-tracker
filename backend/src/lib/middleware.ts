@@ -87,7 +87,6 @@ export async function optionalAuthMiddleware(request: FastifyRequest, reply: Fas
     // Continue without error if no auth
   } catch (error) {
     // Log error but continue
-    console.error('Optional auth error:', error);
   }
 }
 

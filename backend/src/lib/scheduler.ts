@@ -104,7 +104,6 @@ export class AlertScheduler {
           } catch (error) {
             this.stats.errorCount++;
             this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
-            console.error(`Error processing rule ${rule.id}:`, error);
             return 0;
           }
         });

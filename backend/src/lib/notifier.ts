@@ -77,11 +77,9 @@ export class NotificationService {
       if (response.ok) {
         return true;
       } else {
-        console.error(`❌ Discord webhook error: ${response.status}`);
         return false;
       }
     } catch (error) {
-      console.error('❌ Failed to send Discord notification:', error);
       return false;
     }
   }
@@ -251,7 +249,6 @@ export class NotificationService {
 
       return statusCode === 204;
     } catch (error) {
-      console.error('❌ Webhook test failed:', error);
       return false;
     }
   }
@@ -289,7 +286,6 @@ export class NotificationService {
 
       return statusCode === 204;
     } catch (sendError) {
-      console.error('❌ Failed to send error notification:', sendError);
       return false;
     }
   }

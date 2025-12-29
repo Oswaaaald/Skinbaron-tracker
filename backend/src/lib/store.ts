@@ -105,7 +105,6 @@ export class Store {
     
     this.initializeTables();
     this.initializeUserTables(); // Add multi-user support
-    console.log(`✅ SQLite database initialized at: ${dbPath}`);
   }
 
   private initializeTables() {
@@ -156,7 +155,6 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_alerts_sent_at ON alerts (sent_at);
     `);
 
-    console.log('✅ Database tables initialized');
   }
 
 
@@ -199,7 +197,6 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
     `);
 
-    console.log('✅ User tables initialized');
   }
 
   // Rules CRUD operations
@@ -242,7 +239,6 @@ export class Store {
           webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
         }
       } catch (error) {
-        console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
       }
     }
     
@@ -266,7 +262,6 @@ export class Store {
             webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
           }
         } catch (error) {
-          console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
         }
       }
       
@@ -297,7 +292,6 @@ export class Store {
             webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
           }
         } catch (error) {
-          console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
         }
       }
       
@@ -325,7 +319,6 @@ export class Store {
             webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
           }
         } catch (error) {
-          console.warn(`Failed to parse webhook_ids for rule ${row.id}:`, row.webhook_ids);
         }
       }
       
@@ -667,7 +660,6 @@ export class Store {
       const encrypted = CryptoJS.AES.encrypt(url, secretKey);
       return encrypted.toString();
     } catch (error) {
-      console.error('Webhook encryption failed:', error instanceof Error ? error.message : error);
       throw new Error('Failed to encrypt webhook URL');
     }
   }
@@ -676,7 +668,6 @@ export class Store {
     const secretKey = appConfig.JWT_SECRET;
     
     if (!encryptedUrl || !secretKey) {
-      console.warn('Missing encrypted URL or secret key');
       return '';
     }
     
@@ -684,7 +675,6 @@ export class Store {
       const bytes = CryptoJS.AES.decrypt(encryptedUrl, secretKey);
       
       if (!bytes || bytes.words.length === 0) {
-        console.warn('Decryption returned empty bytes - wrong key or corrupted data');
         return '';
       }
       
@@ -692,18 +682,15 @@ export class Store {
       
       // Validate that we got a proper URL back
       if (!decrypted || decrypted.length === 0) {
-        console.warn('Decrypted string is empty');
         return '';
       }
       
       if (!decrypted.startsWith('http')) {
-        console.warn('Decrypted string is not a valid URL:', decrypted.substring(0, 20));
         return '';
       }
       
       return decrypted;
     } catch (error) {
-      console.error('Webhook decryption failed:', error instanceof Error ? error.message : error);
       return '';
     }
   }
@@ -839,16 +826,13 @@ export class Store {
             // If no webhooks remain, disable the rule but keep it
             const updateStmt = this.db.prepare('UPDATE rules SET enabled = 0, webhook_ids = ? WHERE id = ?');
             updateStmt.run(JSON.stringify([]), rule.id);
-            console.log(`Disabled rule ${rule.id} - no webhooks remaining after webhook ${webhookId} deletion`);
           } else {
             // Update with remaining webhook IDs
             const updateStmt = this.db.prepare('UPDATE rules SET webhook_ids = ? WHERE id = ?');
             updateStmt.run(JSON.stringify(updatedWebhookIds), rule.id);
-            console.log(`Updated rule ${rule.id} - removed webhook ${webhookId}`);
           }
         }
       } catch (error) {
-        console.error(`Error cleaning up rule ${rule.id} after webhook deletion:`, error);
       }
     }
   }

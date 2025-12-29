@@ -270,7 +270,6 @@ async function initializeApp() {
 
 // Start the application
 initializeApp().catch((error) => {
-  console.error('Fatal error during initialization:', error);
   process.exit(1);
 });
 

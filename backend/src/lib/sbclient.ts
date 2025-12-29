@@ -102,7 +102,6 @@ export class SkinBaronClient {
       if (statusCode === 429) {
         if (retryCount < MAX_RETRIES) {
           const delay = RETRY_DELAYS[retryCount];
-          console.warn(`⚠️ Rate limited (429), retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           return this.makeRequest(endpoint, params, schema, retryCount + 1);
         }
@@ -119,8 +118,6 @@ export class SkinBaronClient {
       try {
         jsonData = JSON.parse(rawData);
       } catch (parseError) {
-        // Log first 200 chars only to avoid flooding logs
-        console.error('Failed to parse SkinBaron response:', rawData.substring(0, 200));
         throw new Error('Invalid JSON response from SkinBaron API');
       }
 
@@ -129,10 +126,6 @@ export class SkinBaronClient {
       
       return validatedData;
     } catch (error) {
-      // Don't log retry errors, only final errors
-      if (retryCount === 0 || retryCount >= MAX_RETRIES) {
-        console.error(`❌ SkinBaron API Error (${endpoint}):`, error);
-      }
       throw error;
     }
   }
@@ -216,7 +209,6 @@ export class SkinBaronClient {
       this.lastConnectionTest = { timestamp: now, result: true };
       return true;
     } catch (error) {
-      console.error('❌ SkinBaron API connection test failed:', error);
       this.lastConnectionTest = { timestamp: now, result: false };
       return false;
     }
