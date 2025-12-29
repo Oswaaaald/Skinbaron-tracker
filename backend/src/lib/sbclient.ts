@@ -185,7 +185,7 @@ export class SkinBaronClient {
 
 
   private lastConnectionTest: { timestamp: number; result: boolean } | null = null;
-  private readonly CONNECTION_TEST_CACHE_MS = 60000; // Cache for 1 minute
+  private readonly CONNECTION_TEST_CACHE_MS = 300000; // Cache for 5 minutes (sync with scheduler)
 
   /**
    * Test API connection (with caching to avoid excessive calls)
