@@ -229,60 +229,50 @@ export function AlertsGrid() {
               const Icon = config.icon
               
               return (
-                <Card key={alert.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:scale-[1.02] flex flex-col group">
-                  {/* Image Header with Gradient Overlay */}
-                  <div className="relative h-56 bg-gradient-to-br from-background to-muted/50 overflow-hidden">
+                <Card key={alert.id} className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+                  {/* Image Header */}
+                  <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted overflow-hidden">
                     {alert.skin_url ? (
-                      <>
-                        <img 
-                          src={alert.skin_url} 
-                          alt={alert.item_name}
-                          className="w-full h-full object-contain p-6 group-hover:scale-110 transition-transform duration-300"
-                          onError={(e) => {
-                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" font-family="Arial" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E'
-                          }}
-                        />
-                        {/* Subtle gradient overlay at bottom */}
-                        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background/80 to-transparent" />
-                      </>
+                      <img 
+                        src={alert.skin_url} 
+                        alt={alert.item_name}
+                        className="w-full h-full object-contain p-4"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E'
+                        }}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                        No Image Available
+                        No Image
                       </div>
                     )}
-                    {/* Type Badge - positioned elegantly */}
-                    <div className="absolute top-3 right-3">
-                      <Badge variant={config.color} className="shadow-lg backdrop-blur-sm">
-                        <Icon className="h-3.5 w-3.5 mr-1.5" />
-                        {config.label}
-                      </Badge>
-                    </div>
-                    {/* Time Badge - bottom left */}
-                    <div className="absolute bottom-3 left-3">
-                      <Badge variant="secondary" className="shadow-lg backdrop-blur-sm">
-                        {formatDate(alert.sent_at)}
-                      </Badge>
-                    </div>
+                    <Badge variant={config.color} className="absolute top-2 right-2">
+                      <Icon className="h-3 w-3 mr-1" />
+                      {config.label}
+                    </Badge>
                   </div>
 
-                  <CardHeader className="pb-4">
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
                       {alert.item_name}
                     </CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                      {formatDate(alert.sent_at)}
+                    </CardDescription>
                   </CardHeader>
                   
-                  <CardContent className="space-y-4 flex-1 flex flex-col pt-0">
-                    {/* Price and Wear - Clean grid layout */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm font-medium text-muted-foreground">Price</span>
-                        <span className="text-xl font-bold">
+                  <CardContent className="space-y-3 flex-1 flex flex-col">
+                    {/* Details */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Price:</span>
+                        <span className="text-lg font-bold">
                           {formatPrice(alert.price)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <span className="text-sm font-medium text-muted-foreground">Wear</span>
-                        <span className="text-sm font-semibold">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Wear:</span>
+                        <span className="text-sm font-medium">
                           {alert.wear_value !== undefined && alert.wear_value !== null ? (
                             formatWearPercentage(alert.wear_value)
                           ) : (
@@ -290,32 +280,32 @@ export function AlertsGrid() {
                           )}
                         </span>
                       </div>
-                    </div>
 
-                    {/* Features */}
-                    {(alert.stattrak || alert.souvenir) && (
-                      <div className="flex gap-2 flex-wrap">
-                        {alert.stattrak && (
-                          <Badge variant="outline" className="text-xs font-medium">
-                            StatTrak™
-                          </Badge>
-                        )}
-                        {alert.souvenir && (
-                          <Badge variant="outline" className="text-xs font-medium">
-                            Souvenir
-                          </Badge>
-                        )}
-                      </div>
-                    )}
+                      {/* Features */}
+                      {(alert.stattrak || alert.souvenir) && (
+                        <div className="flex gap-1 flex-wrap pt-1">
+                          {alert.stattrak && (
+                            <Badge variant="outline" className="text-xs">
+                              StatTrak™
+                            </Badge>
+                          )}
+                          {alert.souvenir && (
+                            <Badge variant="outline" className="text-xs">
+                              Souvenir
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Action Button */}
                     <Button
-                      className="w-full mt-auto group-hover:shadow-lg transition-shadow"
+                      className="w-full mt-auto"
                       size="sm"
                       onClick={() => window.open(getSkinBaronUrl(alert.sale_id, alert.item_name), '_blank')}
                     >
                       View on SkinBaron
-                      <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                      <ExternalLink className="ml-2 h-3 w-3" />
                     </Button>
                   </CardContent>
                 </Card>
