@@ -8,7 +8,7 @@ const WebhookParamsSchema = z.object({
 });
 
 const WebhookQuerySchema = z.object({
-  decrypt: z.string().transform(val => val === 'true').default('false'),
+  decrypt: z.string().default('false').transform(val => val === 'true'),
 });
 
 // Route handlers
@@ -62,7 +62,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       // Don't return encrypted URL in response
       const { webhook_url_encrypted, ...safeWebhook } = webhook;
       
-      return reply.code(201).send({
+      return reply.status(201).send({
         success: true,
         data: safeWebhook,
       });
@@ -70,14 +70,14 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to create webhook');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to create webhook',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -135,7 +135,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         return safe;
       });
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: safeWebhooks,
       });
@@ -143,14 +143,14 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to get webhooks');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve webhooks',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -214,7 +214,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       const webhook = store.getUserWebhookById(id, decrypt);
       
       if (!webhook || webhook.user_id !== request.user!.id) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Webhook not found',
         });
@@ -223,7 +223,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       // Remove encrypted field from response
       const { webhook_url_encrypted, ...safeWebhook } = webhook;
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: safeWebhook,
       });
@@ -231,14 +231,14 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to get webhook');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve webhook',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -307,7 +307,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       // Remove encrypted field from response
       const { webhook_url_encrypted, ...safeWebhook } = webhook;
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: safeWebhook,
       });
@@ -315,21 +315,21 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to update webhook');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
       if (error instanceof Error && error.message.includes('not found')) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Webhook not found',
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to update webhook',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -374,13 +374,13 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       const deleted = store.deleteUserWebhook(id, request.user!.id);
       
       if (!deleted) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Webhook not found',
         });
       }
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         message: 'Webhook deleted successfully',
       });
@@ -388,14 +388,14 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to delete webhook');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to delete webhook',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -446,13 +446,13 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         return safe;
       });
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: safeWebhooks,
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get active webhooks');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve active webhooks',
         message: error instanceof Error ? error.message : 'Unknown error',

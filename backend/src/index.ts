@@ -155,7 +155,7 @@ async function setupHealthCheck() {
     
     const status = allServicesHealthy ? 'healthy' : 'degraded';
 
-    return reply.code(200).send({
+    return reply.status(200).send({
       success: true,
       status,
       timestamp: new Date().toISOString(),
@@ -187,7 +187,7 @@ async function setupSystemStatus() {
         totalAlerts: schedulerStats.totalAlerts,
       };
 
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           scheduler: simplifiedStatus,
@@ -195,7 +195,7 @@ async function setupSystemStatus() {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get system status');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve system status',
       });

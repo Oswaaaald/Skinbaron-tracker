@@ -4,7 +4,8 @@
 
 FROM node:20-alpine AS base
 
-RUN apk update && apk add --no-cache ca-certificates
+RUN apk update && apk add --no-cache ca-certificates && \
+    npm install -g npm@11.7.0
 
 # ---------- deps ----------
 FROM base AS deps
@@ -14,7 +15,8 @@ RUN apk add --no-cache --virtual .build-deps \
     python3 make g++ sqlite-dev libc6-compat
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && apk del .build-deps
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev && apk del .build-deps
 
 # ---------- builder ----------
 FROM base AS builder
@@ -23,10 +25,12 @@ WORKDIR /app
 RUN apk add --no-cache --virtual .build-deps \
     python3 make g++ sqlite-dev libc6-compat
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY package.json package-lock.json* ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
-RUN npm ci && npm run build && apk del .build-deps
+COPY . .
+RUN npm run build && apk del .build-deps
 
 # ---------- runner ----------
 FROM base AS runner

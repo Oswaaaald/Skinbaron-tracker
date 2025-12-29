@@ -4,8 +4,8 @@ import { getStore } from '../lib/store.js';
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
-  limit: z.string().transform(val => parseInt(val, 10)).default('50'),
-  offset: z.string().transform(val => parseInt(val, 10)).default('0'),
+  limit: z.string().default('50').transform(val => parseInt(val, 10)),
+  offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
   alert_type: z.enum(['match', 'best_deal', 'new_item']).optional(),
 });
@@ -83,7 +83,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
         if (!rule || rule.user_id !== request.user!.id.toString()) {
-          return reply.code(403).send({
+          return reply.status(403).send({
             success: false,
             error: 'Access denied',
             message: 'You can only access alerts for your own rules',
@@ -96,7 +96,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         alerts = alerts.filter(alert => alert.alert_type === query.alert_type);
       }
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: alerts,
         pagination: {
@@ -109,14 +109,14 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to get alerts');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve alerts',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -176,19 +176,19 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       const alert = store.getAlertByIdForUser(id, request.user!.id);
       
       if (!alert) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Alert not found',
         });
       }
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: alert,
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get alert');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve alert',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -243,7 +243,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         new_item: userAlerts.filter(alert => alert.alert_type === 'new_item').length,
       };
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           ...stats,
@@ -252,7 +252,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get alert stats');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve alert statistics',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -272,7 +272,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       
       request.log.info(`User ${userId} cleaned up ${deletedCount} old alerts`);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           deletedCount,
@@ -281,7 +281,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to cleanup user alerts');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to cleanup alerts',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -301,7 +301,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       
       request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           deletedCount,
@@ -310,7 +310,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to clear all user alerts');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to clear alerts',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -364,7 +364,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const query = z.object({
-        limit: z.string().transform(val => parseInt(val, 10)).default('20'),
+        limit: z.coerce.number().default(20),
       }).parse(request.query);
       
       // Get user's alerts and filter for last 24h
@@ -375,7 +375,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         .filter(alert => new Date(alert.sent_at!) > oneDayAgo)
         .slice(0, query.limit);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: recentAlerts,
         count: recentAlerts.length,
@@ -384,14 +384,14 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to get recent alerts');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve recent alerts',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -456,21 +456,21 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       }).parse(request.params);
       
       const { limit, offset } = z.object({
-        limit: z.string().transform(val => parseInt(val, 10)).default('50'),
-        offset: z.string().transform(val => parseInt(val, 10)).default('0'),
+        limit: z.coerce.number().default(50),
+        offset: z.coerce.number().default(0),
       }).parse(request.query);
       
       // Ensure rule belongs to the user before getting alerts
       const rule = store.getRuleById(ruleId);
       if (!rule) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
       }
 
       if (rule.user_id !== request.user!.id.toString()) {
-        return reply.code(403).send({
+        return reply.status(403).send({
           success: false,
           error: 'Access denied',
           message: 'You can only access alerts for your own rules',
@@ -480,7 +480,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       // Get alerts for user's rule
       const ruleAlerts = store.getAlertsByRuleIdForUser(ruleId, request.user!.id, limit, offset);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: ruleAlerts,
         count: ruleAlerts.length,
@@ -489,14 +489,14 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to get alerts by rule');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve alerts for rule',
         message: error instanceof Error ? error.message : 'Unknown error',

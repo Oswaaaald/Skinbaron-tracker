@@ -57,7 +57,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Check if user already exists
       const existingUser = await store.getUserByEmail(userData.email);
       if (existingUser) {
-        return reply.code(409).send({
+        return reply.status(409).send({
           success: false,
           error: 'User already exists',
           message: 'An account with this email already exists',
@@ -67,7 +67,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Check if username is taken
       const existingUsername = await store.getUserByUsername(userData.username);
       if (existingUsername) {
-        return reply.code(409).send({
+        return reply.status(409).send({
           success: false,
           error: 'Username taken',
           message: 'This username is already taken',
@@ -89,7 +89,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       request.log.info({ userId: user.id }, 'New user registered');
 
-      return reply.code(201).send({
+      return reply.status(201).send({
         success: true,
         data: {
           id: user.id!,
@@ -103,14 +103,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       request.log.error({ error }, 'Registration failed');
       
       if (error instanceof Error && error.message.includes('validation')) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
           message: error.message,
         });
       }
 
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Registration failed',
         message: 'Internal server error during registration',
@@ -159,7 +159,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Find user by email
       const user = await store.getUserByEmail(loginData.email);
       if (!user) {
-        return reply.code(401).send({
+        return reply.status(401).send({
           success: false,
           error: 'Invalid credentials',
           message: 'Email or password is incorrect',
@@ -173,7 +173,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       );
 
       if (!isValidPassword) {
-        return reply.code(401).send({
+        return reply.status(401).send({
           success: false,
           error: 'Invalid credentials',
           message: 'Email or password is incorrect',
@@ -185,7 +185,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       request.log.info({ userId: user.id }, 'User logged in');
 
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           id: user.id!,
@@ -198,7 +198,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     } catch (error) {
       request.log.error({ error }, 'Login failed');
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Login failed',
         message: 'Internal server error during login',
@@ -236,7 +236,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     // User is already attached by auth middleware
     if (!request.user) {
-      return reply.code(401).send({
+      return reply.status(401).send({
         success: false,
         error: 'Authentication required',
       });
@@ -245,13 +245,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const user = await store.getUserById(request.user.id);
     
     if (!user) {
-      return reply.code(404).send({
+      return reply.status(404).send({
         success: false,
         error: 'User not found',
       });
     }
     
-    return reply.code(200).send({
+    return reply.status(200).send({
       success: true,
       data: {
         id: user.id!,

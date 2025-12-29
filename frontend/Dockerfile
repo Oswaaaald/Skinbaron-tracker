@@ -4,7 +4,8 @@
 
 FROM node:20-alpine AS base
 
-RUN apk update && apk add --no-cache ca-certificates
+RUN apk update && apk add --no-cache ca-certificates && \
+    npm install -g npm@11.7.0
 
 # ---------- deps ----------
 FROM base AS deps
@@ -12,20 +13,26 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # ---------- builder ----------
 FROM base AS builder
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json* ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL=https://skinbaron-tracker-api.oswaaaald.be
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_BUILD_TURBO=1
 
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # ---------- runner ----------
 FROM base AS runner

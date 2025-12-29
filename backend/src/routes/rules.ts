@@ -84,14 +84,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       // Get rules only for the authenticated user
       const rules = store.getRulesByUserId(request.user!.id);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: rules,
         count: rules.length,
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get rules');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve rules',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -167,7 +167,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         
         const invalidWebhooks = ruleData.webhook_ids.filter((id: number) => !userWebhookIds.includes(id));
         if (invalidWebhooks.length > 0) {
-          return reply.code(400).send({
+          return reply.status(400).send({
             success: false,
             error: 'Invalid webhook IDs',
             message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you. Please check that these webhooks haven't been deleted.`,
@@ -182,7 +182,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       request.log.info(`Created rule ${rule.id} for user ${rule.user_id}`);
       
-      return reply.code(201).send({
+      return reply.status(201).send({
         success: true,
         data: rule,
       });
@@ -190,14 +190,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to create rule');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to create rule',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -260,7 +260,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       const rule = store.getRuleById(id);
       
       if (!rule) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
@@ -268,20 +268,20 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
 
       // Verify user owns this rule
       if (rule.user_id !== request.user!.id.toString()) {
-        return reply.code(403).send({
+        return reply.status(403).send({
           success: false,
           error: 'Access denied',
           message: 'You can only access your own rules',
         });
       }
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: rule,
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to get rule');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to retrieve rule',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -360,14 +360,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       // Check if rule exists and user owns it
       const existingRule = store.getRuleById(id);
       if (!existingRule) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
       }
 
       if (existingRule.user_id !== request.user!.id.toString()) {
-        return reply.code(403).send({
+        return reply.status(403).send({
           success: false,
           error: 'Access denied',
           message: 'You can only update your own rules',
@@ -411,7 +411,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       const rule = store.updateRule(id, updates);
       
       if (!rule) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
@@ -419,7 +419,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       request.log.info(`Updated rule ${rule.id}`);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: rule,
       });
@@ -427,14 +427,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       request.log.error({ error }, 'Failed to update rule');
       
       if (error instanceof z.ZodError) {
-        return reply.code(400).send({
+        return reply.status(400).send({
           success: false,
           error: 'Validation error',
-          details: error.errors,
+          details: error.issues,
         });
       }
       
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to update rule',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -481,14 +481,14 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       // Check if rule exists and user owns it
       const existingRule = store.getRuleById(id);
       if (!existingRule) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
       }
 
       if (existingRule.user_id !== request.user!.id.toString()) {
-        return reply.code(403).send({
+        return reply.status(403).send({
           success: false,
           error: 'Access denied',
           message: 'You can only delete your own rules',
@@ -498,7 +498,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       const deleted = store.deleteRule(id);
       
       if (!deleted) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
@@ -506,13 +506,13 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       request.log.info(`Deleted rule ${id}`);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         message: 'Rule deleted successfully',
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to delete rule');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to delete rule',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -571,7 +571,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       const rule = store.getRuleById(id);
       if (!rule) {
-        return reply.code(404).send({
+        return reply.status(404).send({
           success: false,
           error: 'Rule not found',
         });
@@ -611,7 +611,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       request.log.info(`Tested rule ${id}: ${matches.length} matches found`);
       
-      return reply.code(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           matches,
@@ -621,7 +621,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to test rule');
-      return reply.code(500).send({
+      return reply.status(500).send({
         success: false,
         error: 'Failed to test rule',
         message: error instanceof Error ? error.message : 'Unknown error',

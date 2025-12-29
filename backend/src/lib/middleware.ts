@@ -21,7 +21,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     const token = AuthService.extractTokenFromHeader(authHeader);
     
     if (!token) {
-      return reply.code(401).send({
+      return reply.status(401).send({
         success: false,
         error: 'Authentication required',
         message: 'No token provided',
@@ -30,7 +30,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 
     const payload = AuthService.verifyToken(token);
     if (!payload) {
-      return reply.code(401).send({
+      return reply.status(401).send({
         success: false,
         error: 'Invalid token',
         message: 'Token is invalid or expired',
@@ -40,7 +40,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     // Get user from database (we'll implement this)
     const user = await getUserById(payload.userId);
     if (!user) {
-      return reply.code(401).send({
+      return reply.status(401).send({
         success: false,
         error: 'User not found',
         message: 'Token references non-existent user',
@@ -55,7 +55,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     };
 
   } catch (error) {
-    return reply.code(500).send({
+    return reply.status(500).send({
       success: false,
       error: 'Authentication error',
       message: 'Internal authentication error',
