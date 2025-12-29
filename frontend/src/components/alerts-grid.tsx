@@ -300,13 +300,15 @@ export function AlertsGrid() {
                     )}
 
                     {/* Action Button */}
-                    <Button
-                      className="w-full mt-auto"
-                      size="sm"
-                      onClick={() => window.open(getSkinBaronUrl(alert.sale_id, alert.item_name), '_blank')}
-                    >
-                      View on SkinBaron
-                      <ExternalLink className="ml-2 h-3 w-3" />
+                    <Button asChild className="w-full mt-auto" size="sm">
+                      <a
+                        href={getSkinBaronUrl(alert.sale_id, alert.item_name)}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        View on SkinBaron
+                        <ExternalLink className="ml-2 h-3 w-3" />
+                      </a>
                     </Button>
                   </CardContent>
                 </Card>
