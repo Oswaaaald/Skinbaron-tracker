@@ -160,14 +160,13 @@ export function AlertsGrid() {
                 <div className="absolute inset-0 bg-black/30" />
 
                 {alert.skin_url && (
-                  <div className="relative z-10 flex items-center justify-center h-full">
+                  <div className="relative z-10 flex items-end justify-center h-full pb-4">
                     <img
                       src={alert.skin_url}
                       alt={alert.item_name}
                       className="
                         max-h-[85%] max-w-[85%]
                         object-contain
-						translate-y-[6px]
                         transition-transform duration-500
                         group-hover:scale-[1.06]
                       "
