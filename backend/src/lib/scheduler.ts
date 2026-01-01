@@ -201,6 +201,9 @@ export class AlertScheduler {
           
           // Send notifications to all rule webhooks with rate limiting
           if (webhooks.length > 0) {
+            // Get the actual SkinBaron offer URL for clickable links
+            const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
+            
             for (const webhook of webhooks) {
               // Queue the notification with proper rate limiting per webhook URL
               this.queueWebhookNotification(
@@ -209,7 +212,7 @@ export class AlertScheduler {
                   alertType: 'match',
                   item,
                   rule,
-                  skinUrl: alert.skin_url,
+                  skinUrl: offerUrl, // Use offer URL for links, not image URL
                 }
               ).catch(() => {
                 // Ignore notification errors to not block alert creation
