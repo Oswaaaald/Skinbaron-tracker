@@ -112,11 +112,13 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           enabled: rule.enabled ?? true,
         })
         setSelectedWebhooks(rule.webhook_ids || [])
-        // Sync display values
-        setMinPriceDisplay(rule.min_price !== undefined && rule.min_price !== null ? rule.min_price.toString() : '')
-        setMaxPriceDisplay(rule.max_price !== undefined && rule.max_price !== null ? rule.max_price.toString() : '')
-        setMinWearDisplay(rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear).toString() : '')
-        setMaxWearDisplay(rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear).toString() : '')
+        // Sync display values with rounding
+        setMinPriceDisplay(rule.min_price !== undefined && rule.min_price !== null ? (Math.round(rule.min_price * 100) / 100).toString() : '')
+        setMaxPriceDisplay(rule.max_price !== undefined && rule.max_price !== null ? (Math.round(rule.max_price * 100) / 100).toString() : '')
+        const minWearPct = rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined
+        const maxWearPct = rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined
+        setMinWearDisplay(minWearPct !== undefined ? minWearPct.toString() : '')
+        setMaxWearDisplay(maxWearPct !== undefined ? maxWearPct.toString() : '')
       } else {
         // Creating new rule
         form.reset({
@@ -293,8 +295,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             } else {
                               const num = parseFloat(val)
                               if (!isNaN(num) && num >= 0) {
-                                field.onChange(num)
-                                setMinPriceDisplay(num.toString())
+                                const rounded = Math.round(num * 100) / 100
+                                field.onChange(rounded)
+                                setMinPriceDisplay(rounded.toString())
                               } else {
                                 field.onChange(undefined)
                                 setMinPriceDisplay('')
@@ -310,8 +313,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                           } else {
                             const num = parseFloat(val)
                             if (!isNaN(num) && num >= 0) {
-                              field.onChange(num)
-                              setMinPriceDisplay(num.toString())
+                              const rounded = Math.round(num * 100) / 100
+                              field.onChange(rounded)
+                              setMinPriceDisplay(rounded.toString())
                             } else {
                               field.onChange(undefined)
                               setMinPriceDisplay('')
@@ -352,8 +356,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             } else {
                               const num = parseFloat(val)
                               if (!isNaN(num) && num >= 0) {
-                                field.onChange(num)
-                                setMaxPriceDisplay(num.toString())
+                                const rounded = Math.round(num * 100) / 100
+                                field.onChange(rounded)
+                                setMaxPriceDisplay(rounded.toString())
                               } else {
                                 field.onChange(undefined)
                                 setMaxPriceDisplay('')
@@ -369,8 +374,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                           } else {
                             const num = parseFloat(val)
                             if (!isNaN(num) && num >= 0) {
-                              field.onChange(num)
-                              setMaxPriceDisplay(num.toString())
+                              const rounded = Math.round(num * 100) / 100
+                              field.onChange(rounded)
+                              setMaxPriceDisplay(rounded.toString())
                             } else {
                               field.onChange(undefined)
                               setMaxPriceDisplay('')
@@ -414,8 +420,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             } else {
                               const num = parseFloat(val)
                               if (!isNaN(num) && num >= 0 && num <= 100) {
-                                field.onChange(num)
-                                setMinWearDisplay(num.toString())
+                                const rounded = Math.round(num * 100) / 100
+                                field.onChange(rounded)
+                                setMinWearDisplay(rounded.toString())
                               } else {
                                 field.onChange(undefined)
                                 setMinWearDisplay('')
@@ -431,8 +438,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                           } else {
                             const num = parseFloat(val)
                             if (!isNaN(num) && num >= 0 && num <= 100) {
-                              field.onChange(num)
-                              setMinWearDisplay(num.toString())
+                              const rounded = Math.round(num * 100) / 100
+                              field.onChange(rounded)
+                              setMinWearDisplay(rounded.toString())
                             } else {
                               field.onChange(undefined)
                               setMinWearDisplay('')
@@ -473,8 +481,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             } else {
                               const num = parseFloat(val)
                               if (!isNaN(num) && num >= 0 && num <= 100) {
-                                field.onChange(num)
-                                setMaxWearDisplay(num.toString())
+                                const rounded = Math.round(num * 100) / 100
+                                field.onChange(rounded)
+                                setMaxWearDisplay(rounded.toString())
                               } else {
                                 field.onChange(undefined)
                                 setMaxWearDisplay('')
@@ -490,8 +499,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                           } else {
                             const num = parseFloat(val)
                             if (!isNaN(num) && num >= 0 && num <= 100) {
-                              field.onChange(num)
-                              setMaxWearDisplay(num.toString())
+                              const rounded = Math.round(num * 100) / 100
+                              field.onChange(rounded)
+                              setMaxWearDisplay(rounded.toString())
                             } else {
                               field.onChange(undefined)
                               setMaxWearDisplay('')
