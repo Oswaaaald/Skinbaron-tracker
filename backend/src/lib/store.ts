@@ -693,6 +693,12 @@ export class Store {
   }
 
   deleteUser(id: number): boolean {
+    // Prevent deletion of super admin
+    const user = this.getUserById(id);
+    if (user?.is_super_admin) {
+      throw new Error('Cannot delete super admin');
+    }
+    
     const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;

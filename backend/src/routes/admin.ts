@@ -30,6 +30,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
                   username: { type: 'string' },
                   email: { type: 'string' },
                   is_admin: { type: 'boolean' },
+                  is_super_admin: { type: 'boolean' },
                   created_at: { type: 'string' },
                   stats: {
                     type: 'object',
@@ -62,6 +63,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
             username: user.username,
             email: user.email,
             is_admin: user.is_admin || false,
+            is_super_admin: user.is_super_admin || false,
             created_at: user.created_at,
             stats: {
               rules_count: rulesCount,
