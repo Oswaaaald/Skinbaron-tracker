@@ -78,9 +78,17 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         : await register(formData.username, formData.email, formData.password)
 
       if (!result.success) {
-        setError(result.error || `${mode} failed`)
+        // Check for pending approval error
+        if (result.error === 'Account pending approval') {
+          setError('Your account is awaiting admin approval. Please check back later.')
+        } else {
+          setError(result.error || `${mode} failed`)
+        }
+      } else if (mode === 'register') {
+        // Show success message for registration
+        setError('Registration successful! Your account is awaiting admin approval.')
       }
-      // If successful, the auth context will handle the redirect
+      // If successful login, the auth context will handle the redirect
     } catch (error) {
       setError('An unexpected error occurred')
     } finally {
@@ -190,7 +198,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             )}
 
             {error && (
-              <Alert variant="destructive">
+              <Alert variant={error.includes('successful') ? 'default' : 'destructive'}>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}

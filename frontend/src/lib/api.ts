@@ -417,6 +417,34 @@ class ApiClient {
       body: data ? JSON.stringify(data) : undefined,
     });
   }
+
+  // Generic POST method for admin endpoints
+  async post(endpoint: string, data?: any): Promise<ApiResponse<any>> {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  // Get pending users (admin only)
+  async getPendingUsers(): Promise<ApiResponse<Array<{
+    id: number;
+    username: string;
+    email: string;
+    created_at: string;
+  }>>> {
+    return this.get('/api/admin/pending-users');
+  }
+
+  // Approve a user (admin only)
+  async approveUser(userId: number): Promise<ApiResponse<{ message: string }>> {
+    return this.post(`/api/admin/approve-user/${userId}`);
+  }
+
+  // Reject a user (admin only)
+  async rejectUser(userId: number): Promise<ApiResponse<{ message: string }>> {
+    return this.post(`/api/admin/reject-user/${userId}`);
+  }
 }
 
 export const apiClient = new ApiClient();

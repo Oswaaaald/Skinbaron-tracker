@@ -48,6 +48,15 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       });
     }
 
+    // Check if user is approved
+    if (!user.is_approved) {
+      return reply.status(403).send({
+        success: false,
+        error: 'Account pending approval',
+        message: 'Your account is awaiting admin approval',
+      });
+    }
+
     // Attach user to request
     request.user = {
       id: user.id,

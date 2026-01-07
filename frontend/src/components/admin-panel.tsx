@@ -56,6 +56,11 @@ export function AdminPanel() {
     user: null,
     action: 'grant',
   })
+  const [pendingUserDialog, setpendingUserDialog] = useState<{ open: boolean; userId: number | null; action: 'approve' | 'reject' }>({
+    open: false,
+    userId: null,
+    action: 'approve',
+  })
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading } = useQuery({
@@ -63,6 +68,15 @@ export function AdminPanel() {
     queryFn: async () => {
       const response = await apiClient.get('/api/admin/users')
       return response.data as AdminUser[]
+    },
+  })
+
+  // Fetch pending users
+  const { data: pendingUsersData, isLoading: pendingUsersLoading } = useQuery({
+    queryKey: ['admin', 'pendingUsers'],
+    queryFn: async () => {
+      const response = await apiClient.getPendingUsers()
+      return response.data
     },
   })
 
@@ -98,6 +112,31 @@ export function AdminPanel() {
       // Force all connected users to refresh their profile immediately
       window.dispatchEvent(new CustomEvent('user-profile-changed'))
       setAdminDialog({ open: false, user: null, action: 'grant' })
+    },
+  })
+
+  // Approve user mutation
+  const approveUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiClient.approveUser(userId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pendingUsers'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      setpendingUserDialog({ open: false, userId: null, action: 'approve' })
+    },
+  })
+
+  // Reject user mutation
+  const rejectUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiClient.rejectUser(userId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pendingUsers'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      setpendingUserDialog({ open: false, userId: null, action: 'reject' })
     },
   })
 
@@ -140,6 +179,60 @@ export function AdminPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Pending Users Section */}
+      {pendingUsersData && pendingUsersData.length > 0 && (
+        <Card className="border-orange-500 border-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              Pending Approvals ({pendingUsersData.length})
+            </CardTitle>
+            <CardDescription>New user registrations awaiting approval</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Registered</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingUsersData.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.username}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{new Date(user.created_at).toLocaleDateString('fr-FR')}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => setpendingUserDialog({ open: true, userId: user.id, action: 'approve' })}
+                          disabled={approveUserMutation.isPending}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setpendingUserDialog({ open: true, userId: user.id, action: 'reject' })}
+                          disabled={rejectUserMutation.isPending}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Global Stats */}
       {statsData && (
         <div className="grid gap-4 md:grid-cols-5">
@@ -389,6 +482,42 @@ export function AdminPanel() {
             </Button>
             <Button onClick={confirmToggleAdmin} disabled={toggleAdminMutation.isPending}>
               {toggleAdminMutation.isPending ? <LoadingSpinner size="sm" /> : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pending User Approval/Reject Dialog */}
+      <Dialog open={pendingUserDialog.open} onOpenChange={(open) => setpendingUserDialog({ ...pendingUserDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingUserDialog.action === 'approve' ? 'Approve User' : 'Reject User'}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingUserDialog.action === 'approve' 
+                ? 'This user will be able to log in and use the application.'
+                : 'This will permanently delete the user registration.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setpendingUserDialog({ open: false, userId: null, action: 'approve' })}>
+              Cancel
+            </Button>
+            <Button 
+              variant={pendingUserDialog.action === 'approve' ? 'default' : 'destructive'}
+              onClick={() => {
+                if (pendingUserDialog.userId) {
+                  if (pendingUserDialog.action === 'approve') {
+                    approveUserMutation.mutate(pendingUserDialog.userId)
+                  } else {
+                    rejectUserMutation.mutate(pendingUserDialog.userId)
+                  }
+                }
+              }}
+              disabled={approveUserMutation.isPending || rejectUserMutation.isPending}
+            >
+              {(approveUserMutation.isPending || rejectUserMutation.isPending) ? <LoadingSpinner size="sm" /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

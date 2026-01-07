@@ -316,4 +316,159 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     }
   });
+
+  /**
+   * GET /api/admin/pending-users - Get users pending approval (admin only)
+   */
+  fastify.get('/pending-users', {
+    preHandler: [fastify.requireAdmin],
+    schema: {
+      description: 'Get users pending approval (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                  created_at: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const pendingUsers = store.getPendingUsers();
+
+      return reply.status(200).send({
+        success: true,
+        data: pendingUsers,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get pending users');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to retrieve pending users',
+      });
+    }
+  });
+
+  /**
+   * POST /api/admin/approve-user/:id - Approve a pending user (admin only)
+   */
+  fastify.post('/approve-user/:id', {
+    preHandler: [fastify.requireAdmin],
+    schema: {
+      description: 'Approve a pending user (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const success = store.approveUser(id);
+
+      if (!success) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Log admin action
+      store.logAdminAction(request.user!.id, 'APPROVE_USER', id);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'User approved successfully',
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to approve user');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to approve user',
+      });
+    }
+  });
+
+  /**
+   * POST /api/admin/reject-user/:id - Reject (delete) a pending user (admin only)
+   */
+  fastify.post('/reject-user/:id', {
+    preHandler: [fastify.requireAdmin],
+    schema: {
+      description: 'Reject and delete a pending user (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const success = store.rejectUser(id);
+
+      if (!success) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Log admin action
+      store.logAdminAction(request.user!.id, 'REJECT_USER', id);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'User rejected and deleted successfully',
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to reject user');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to reject user',
+      });
+    }
+  });
 }

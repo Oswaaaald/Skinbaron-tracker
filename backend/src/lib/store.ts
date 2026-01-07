@@ -52,6 +52,7 @@ export const UserSchema = z.object({
   password_hash: z.string(),
   is_admin: z.number().default(0),
   is_super_admin: z.number().default(0),
+  is_approved: z.number().default(0),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -224,6 +225,20 @@ export class Store {
         this.db.prepare('UPDATE users SET is_super_admin = 1, is_admin = 1 WHERE id = ?').run(firstUser.id);
         console.log(`✅ Migration: Made first user (ID: ${firstUser.id}) a super admin`);
       }
+    }
+
+    // Migration: Add is_approved column if it doesn't exist
+    const hasIsApproved = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='is_approved'
+    `).get() as { count: number };
+
+    if (hasIsApproved.count === 0) {
+      this.db.exec(`ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0`);
+      console.log('✅ Migration: Added is_approved column to users table');
+      
+      // Approve all existing users
+      this.db.prepare('UPDATE users SET is_approved = 1').run();
+      console.log('✅ Migration: Approved all existing users');
     }
 
     // Create admin actions audit log table
@@ -628,8 +643,8 @@ export class Store {
     const validated = CreateUserSchema.parse(user);
     
     const stmt = this.db.prepare(`
-      INSERT INTO users (username, email, password_hash)
-      VALUES (?, ?, ?)
+      INSERT INTO users (username, email, password_hash, is_approved)
+      VALUES (?, ?, ?, 0)
     `);
 
     try {
@@ -939,16 +954,38 @@ export class Store {
 
   // Admin methods
   getAllUsers() {
-    const stmt = this.db.prepare('SELECT id, username, email, is_admin, is_super_admin, created_at, updated_at FROM users ORDER BY created_at DESC');
+    const stmt = this.db.prepare('SELECT id, username, email, is_admin, is_super_admin, is_approved, created_at, updated_at FROM users ORDER BY created_at DESC');
     return stmt.all() as Array<{
       id: number;
       username: string;
       email: string;
       is_admin: number;
       is_super_admin: number;
+      is_approved: number;
       created_at: string;
       updated_at: string;
     }>;
+  }
+
+  getPendingUsers() {
+    const stmt = this.db.prepare('SELECT id, username, email, created_at FROM users WHERE is_approved = 0 ORDER BY created_at DESC');
+    return stmt.all() as Array<{
+      id: number;
+      username: string;
+      email: string;
+      created_at: string;
+    }>;
+  }
+
+  approveUser(userId: number): boolean {
+    const stmt = this.db.prepare('UPDATE users SET is_approved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+    const result = stmt.run(userId);
+    return result.changes > 0;
+  }
+
+  rejectUser(userId: number): boolean {
+    // Reject = delete the user
+    return this.deleteUser(userId);
   }
 
   getUserRules(userId: number) {
