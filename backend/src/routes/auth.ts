@@ -88,8 +88,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate token
       const token = AuthService.generateToken(user.id);
 
-      request.log.info({ userId: user.id }, 'New user registered');
-
       return reply.status(201).send({
         success: true,
         data: {
@@ -187,8 +185,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Generate token
       const token = AuthService.generateToken(user.id!);
-
-      request.log.info({ userId: user.id }, 'User logged in');
 
       return reply.status(200).send({
         success: true,

@@ -75,8 +75,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         }
       });
 
-      request.log.info({ adminId: request.user!.id }, 'Admin listed all users');
-
       return reply.status(200).send({
         success: true,
         data: usersWithStats,
@@ -156,8 +154,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Log admin action
       store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
-
-      request.log.info({ adminId, targetUserId: id }, 'Admin deleted user');
 
       return reply.status(200).send({
         success: true,
@@ -249,8 +245,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const details = `${is_admin ? 'Granted' : 'Revoked'} admin privileges for ${user.username}`;
       store.logAdminAction(adminId, action, id, details);
 
-      request.log.info({ adminId, targetUserId: id, is_admin }, 'Admin toggled user admin status');
-
       return reply.status(200).send({
         success: true,
         message: `Admin status updated for ${user.username}`,
@@ -273,8 +267,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const stats = store.getGlobalStats();
-
-      request.log.info({ adminId: request.user!.id }, 'Admin viewed global stats');
 
       return reply.status(200).send({
         success: true,
