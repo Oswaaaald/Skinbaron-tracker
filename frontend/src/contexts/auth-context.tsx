@@ -131,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Check if critical fields have changed
           if (currentUser.is_admin !== serverUser.is_admin ||
+              currentUser.is_super_admin !== serverUser.is_super_admin ||
               currentUser.username !== serverUser.username ||
               currentUser.email !== serverUser.email ||
               currentUser.avatar_url !== serverUser.avatar_url) {
@@ -143,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: serverUser.email,
               avatar_url: serverUser.avatar_url,
               is_admin: serverUser.is_admin,
+              is_super_admin: serverUser.is_super_admin,
             })
           }
         }
@@ -160,8 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Check token every 5 minutes
     const tokenInterval = setInterval(checkTokenValidity, 5 * 60 * 1000)
-    // Check profile every 10 seconds for real-time updates
-    const profileInterval = setInterval(checkUserProfile, 10 * 1000)
+    // Check profile every 2 seconds for real-time updates
+    const profileInterval = setInterval(checkUserProfile, 2 * 1000)
     
     // Check both immediately
     checkTokenValidity()
