@@ -255,61 +255,92 @@ export function AdminPanel() {
                   })}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {user.is_admin ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleAdmin(user, 'revoke')}
-                          disabled={
-                            toggleAdminMutation.isPending || 
-                            isCurrentUser(user) || 
-                            isLastAdmin() ||
-                            user.is_super_admin
-                          }
-                          title={
-                            user.is_super_admin
-                              ? "Cannot revoke super admin status"
-                              : isCurrentUser(user)
-                              ? "You cannot revoke your own admin status"
-                              : isLastAdmin()
-                              ? "Cannot revoke the last admin"
-                              : undefined
-                          }
-                        >
-                          <ShieldOff className="h-4 w-4 mr-1" />
-                          Revoke Admin
-                        </Button>
+                      {user.is_super_admin ? (
+                        // Super Admin - show locked state
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            className="opacity-40 cursor-not-allowed"
+                            title="Cannot revoke super admin status"
+                          >
+                            <ShieldOff className="h-4 w-4 mr-1" />
+                            Protected
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            className="opacity-40 cursor-not-allowed"
+                            title="Cannot delete super admin"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Protected
+                          </Button>
+                        </>
+                      ) : user.is_admin ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleAdmin(user, 'revoke')}
+                            disabled={
+                              toggleAdminMutation.isPending || 
+                              isCurrentUser(user) || 
+                              isLastAdmin()
+                            }
+                            title={
+                              isCurrentUser(user)
+                                ? "You cannot revoke your own admin status"
+                                : isLastAdmin()
+                                ? "Cannot revoke the last admin"
+                                : undefined
+                            }
+                          >
+                            <ShieldOff className="h-4 w-4 mr-1" />
+                            Revoke Admin
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={
+                              deleteUserMutation.isPending || 
+                              isCurrentUser(user)
+                            }
+                            title={
+                              isCurrentUser(user)
+                                ? "You cannot delete your own account"
+                                : undefined
+                            }
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </>
                       ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleAdmin(user, 'grant')}
-                          disabled={toggleAdminMutation.isPending}
-                        >
-                          <Shield className="h-4 w-4 mr-1" />
-                          Make Admin
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleAdmin(user, 'grant')}
+                            disabled={toggleAdminMutation.isPending}
+                          >
+                            <Shield className="h-4 w-4 mr-1" />
+                            Make Admin
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={deleteUserMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </>
                       )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user)}
-                        disabled={
-                          deleteUserMutation.isPending || 
-                          isCurrentUser(user) ||
-                          user.is_super_admin
-                        }
-                        title={
-                          user.is_super_admin
-                            ? "Cannot delete super admin"
-                            : isCurrentUser(user)
-                            ? "You cannot delete your own account"
-                            : undefined
-                        }
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Delete
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
