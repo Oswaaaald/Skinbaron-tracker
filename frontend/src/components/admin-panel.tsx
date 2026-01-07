@@ -72,7 +72,7 @@ export function AdminPanel() {
   })
 
   // Fetch pending users
-  const { data: pendingUsersData, isLoading: pendingUsersLoading } = useQuery({
+  const { data: pendingUsersData } = useQuery({
     queryKey: ['admin', 'pendingUsers'],
     queryFn: async () => {
       const response = await apiClient.getPendingUsers()
