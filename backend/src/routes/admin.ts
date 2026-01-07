@@ -403,7 +403,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action
-      store.logAdminAction(request.user!.id, 'APPROVE_USER', id);
+      store.logAdminAction(request.user!.id, 'APPROVE_USER', id, `Approved user ID ${id}`);
 
       return reply.status(200).send({
         success: true,
@@ -457,7 +457,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action
-      store.logAdminAction(request.user!.id, 'REJECT_USER', id);
+      store.logAdminAction(request.user!.id, 'REJECT_USER', id, `Rejected user ID ${id}`);
 
       return reply.status(200).send({
         success: true,
