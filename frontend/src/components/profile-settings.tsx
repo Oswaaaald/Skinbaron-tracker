@@ -66,6 +66,7 @@ export function ProfileSettings() {
       return await apiClient.patch('/api/user/profile', data)
     },
     onSuccess: (response) => {
+      console.log('Profile update response:', response)
       setSuccessMessage('Profile updated successfully')
       setErrorMessage('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
@@ -74,6 +75,7 @@ export function ProfileSettings() {
       // Update auth context with data from backend (includes updated avatar_url)
       if (response?.data?.data) {
         const userData = response.data.data
+        console.log('Updating user with:', userData)
         updateUser({
           id: userData.id,
           username: userData.username,
