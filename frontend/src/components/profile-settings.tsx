@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,6 +42,14 @@ export function ProfileSettings() {
   
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+
+  // Sync local state with user context when user data changes
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username)
+      setEmail(user.email)
+    }
+  }, [user])
 
   // Fetch user stats
   const { data: stats } = useQuery({
