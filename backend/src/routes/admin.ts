@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getStore } from '../lib/store';
+import { getStore } from '../lib/store.js';
 
 /**
  * Admin routes - All routes require admin privileges
