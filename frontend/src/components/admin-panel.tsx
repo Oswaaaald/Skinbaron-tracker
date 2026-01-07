@@ -94,6 +94,8 @@ export function AdminPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      // Force all connected users to refresh their profile immediately
+      window.dispatchEvent(new CustomEvent('user-profile-changed'))
       setAdminDialog({ open: false, user: null, action: 'grant' })
     },
   })

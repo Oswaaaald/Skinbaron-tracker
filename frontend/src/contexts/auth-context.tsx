@@ -150,19 +150,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Listen for custom event when admin status changes
+    const handleProfileChanged = () => {
+      console.log('Profile change event received, checking profile...')
+      checkUserProfile()
+    }
+    window.addEventListener('user-profile-changed', handleProfileChanged)
+
     // Check token every 5 minutes
     const tokenInterval = setInterval(checkTokenValidity, 5 * 60 * 1000)
-    // Check profile every 30 seconds for real-time updates
-    const profileInterval = setInterval(checkUserProfile, 30 * 1000)
+    // Check profile every 10 seconds for real-time updates
+    const profileInterval = setInterval(checkUserProfile, 10 * 1000)
     
-    // Also check immediately
+    // Check both immediately
     checkTokenValidity()
+    checkUserProfile()
 
     return () => {
       clearInterval(tokenInterval)
       clearInterval(profileInterval)
+      window.removeEventListener('user-profile-changed', handleProfileChanged)
     }
-  }, [token]) // Only depend on token, not user
+  }, [token]) // Only depend on token
 
   const saveAuthState = async (token: string, user: User) => {
     // JWT tokens from our backend expire in 7 days
