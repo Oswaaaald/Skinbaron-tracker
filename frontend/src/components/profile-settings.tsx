@@ -66,16 +66,14 @@ export function ProfileSettings() {
       return await apiClient.patch('/api/user/profile', data)
     },
     onSuccess: (response) => {
-      console.log('Profile update response:', response)
       setSuccessMessage('Profile updated successfully')
       setErrorMessage('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
       // Also invalidate admin queries so admin panel updates
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       // Update auth context with data from backend (includes updated avatar_url)
-      if (response?.data?.data) {
-        const userData = response.data.data
-        console.log('Updating user with:', userData)
+      if (response?.data) {
+        const userData = response.data
         updateUser({
           id: userData.id,
           username: userData.username,
@@ -83,8 +81,6 @@ export function ProfileSettings() {
           avatar_url: userData.avatar_url,
           is_admin: userData.is_admin,
         })
-      } else {
-        console.error('No user data in response:', response)
       }
     },
     onError: (error: any) => {

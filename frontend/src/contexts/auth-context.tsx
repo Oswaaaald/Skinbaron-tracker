@@ -221,11 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const updateUser = (userData: Partial<User>) => {
-    console.log('updateUser called with:', userData)
-    console.log('Current user:', user)
     if (user) {
       const updatedUser = { ...user, ...userData }
-      console.log('Setting updated user:', updatedUser)
       setUser(updatedUser)
       
       // Update localStorage too if we have a token
@@ -235,7 +232,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const authData: AuthStorage = JSON.parse(stored)
           authData.user = updatedUser
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
-          console.log('Updated localStorage:', authData)
         }
       }
     }
