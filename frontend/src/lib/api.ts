@@ -394,6 +394,17 @@ class ApiClient {
     return this.request(endpoint, { method: 'GET' });
   }
 
+  // Get current user profile
+  async getUserProfile(): Promise<ApiResponse<{
+    id: number;
+    username: string;
+    email: string;
+    avatar_url: string;
+    is_admin: boolean;
+  }>> {
+    return this.request('/api/user/profile', { method: 'GET' });
+  }
+
   // Generic DELETE method for admin endpoints
   async delete(endpoint: string): Promise<ApiResponse<any>> {
     return this.request(endpoint, { method: 'DELETE' });

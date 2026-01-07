@@ -115,13 +115,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const checkUserProfile = async () => {
+      try {
+        // Check if user profile has changed (e.g., admin status)
+        const response = await apiClient.getUserProfile()
+        if (response.success && response.data) {
+          const currentUser = user
+          const serverUser = response.data
+          
+          // Check if critical fields have changed
+          if (currentUser.is_admin !== serverUser.is_admin ||
+              currentUser.username !== serverUser.username ||
+              currentUser.email !== serverUser.email ||
+              currentUser.avatar_url !== serverUser.avatar_url) {
+            console.log('User profile changed, updating...')
+            updateUser({
+              username: serverUser.username,
+              email: serverUser.email,
+              avatar_url: serverUser.avatar_url,
+              is_admin: serverUser.is_admin,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Profile check failed:', error)
+      }
+    }
+
     // Check token every 5 minutes
-    const interval = setInterval(checkTokenValidity, 5 * 60 * 1000)
+    const tokenInterval = setInterval(checkTokenValidity, 5 * 60 * 1000)
+    // Check profile every 30 seconds for real-time updates
+    const profileInterval = setInterval(checkUserProfile, 30 * 1000)
     
     // Also check immediately
     checkTokenValidity()
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(tokenInterval)
+      clearInterval(profileInterval)
+    }
   }, [token, user])
 
   const saveAuthState = async (token: string, user: User) => {

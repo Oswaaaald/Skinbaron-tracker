@@ -22,6 +22,65 @@ export default async function userRoutes(fastify: FastifyInstance) {
   const store = getStore();
 
   /**
+   * GET /api/user/profile - Get current user profile
+   */
+  fastify.get('/profile', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Get current user profile',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'number' },
+                username: { type: 'string' },
+                email: { type: 'string' },
+                avatar_url: { type: 'string' },
+                is_admin: { type: 'boolean' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const user = store.getUserById(userId);
+      
+      if (!user) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          avatar_url: AuthService.getGravatarUrl(user.email),
+          is_admin: user.is_admin,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get user profile');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to get user profile',
+      });
+    }
+  });
+
+  /**
    * GET /api/user/stats - Get current user statistics
    */
   fastify.get('/stats', {
