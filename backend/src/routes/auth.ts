@@ -90,16 +90,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       request.log.info({ userId: user.id }, 'New user registered');
 
-      const avatarUrl = AuthService.getGravatarUrl(user.email);
-      console.log('🖼️ Generated avatar URL:', avatarUrl);
-
       return reply.status(201).send({
         success: true,
         data: {
           id: user.id!,
           username: user.username,
           email: user.email,
-          avatar_url: avatarUrl,
+          avatar_url: AuthService.getGravatarUrl(user.email),
           token,
         },
       });
