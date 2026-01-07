@@ -28,7 +28,7 @@ interface UserStats {
 }
 
 export function ProfileSettings() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const queryClient = useQueryClient()
   
   const [username, setUsername] = useState(user?.username || '')
@@ -57,14 +57,17 @@ export function ProfileSettings() {
     mutationFn: async (data: { username?: string; email?: string }) => {
       return await apiClient.patch('/api/user/profile', data)
     },
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
       setSuccessMessage('Profile updated successfully')
       setErrorMessage('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-      // Update auth context
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
+      // Update auth context with new data
+      if (user) {
+        const updatedFields: Partial<typeof user> = {}
+        if (variables.username) updatedFields.username = variables.username
+        if (variables.email) updatedFields.email = variables.email
+        updateUser(updatedFields)
+      }
     },
     onError: (error: any) => {
       setErrorMessage(error.message || 'Failed to update profile')
