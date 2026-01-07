@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { User, LogOut, Settings } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 
 interface UserNavProps {
   onTabChange?: (tab: string) => void
@@ -50,10 +50,6 @@ export function UserNav({ onTabChange }: UserNavProps) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onTabChange?.('settings')}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onTabChange?.('settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
