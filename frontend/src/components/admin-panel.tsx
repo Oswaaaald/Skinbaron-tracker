@@ -287,7 +287,14 @@ export function AdminPanel() {
                           disabled={toggleAdminMutation.isPending}
                         >
                           <Shield className="h-4 w-4 mr-1" />
-                          Make Adm
+                          Make Admin
+                        </Button>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={
                           deleteUserMutation.isPending || 
                           isCurrentUser(user) ||
                           user.is_super_admin
@@ -298,14 +305,7 @@ export function AdminPanel() {
                             : isCurrentUser(user)
                             ? "You cannot delete your own account"
                             : undefined
-                        
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user)}
-                        disabled={deleteUserMutation.isPending || isCurrentUser(user)}
-                        title={isCurrentUser(user) ? "You cannot delete your own account" : undefined}
+                        }
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
