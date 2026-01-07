@@ -3,23 +3,20 @@
 import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
   Activity, 
   AlertTriangle, 
   Bell, 
-  RotateCcw, 
   Settings, 
   Moon, 
   Sun 
 } from "lucide-react"
 import { useTheme } from "next-themes"
-import { toast } from "sonner"
 
 import { RulesTable } from "@/components/rules-table"
-import { AlertsTable } from "@/components/alerts-table"
 import { AlertsGrid } from "@/components/alerts-grid"
 import { RuleDialog } from "@/components/rule-dialog"
 import { SystemStats } from "@/components/system-stats"
@@ -41,7 +38,7 @@ export function Dashboard() {
     return 'rules'
   })
   
-  const { syncStats } = useSyncStats()
+  useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
 
   // Save active tab to localStorage when it changes
@@ -50,7 +47,7 @@ export function Dashboard() {
   }, [activeTab])
 
   // Fetch system status
-  const { data: systemStatus, isLoading: isLoadingStatus } = useQuery({
+  const { data: systemStatus, isLoading: _isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
@@ -58,7 +55,7 @@ export function Dashboard() {
   })
 
   // Fetch user statistics
-  const { data: userStats, isLoading: isLoadingUserStats } = useQuery({
+  const { data: userStats, isLoading: _isLoadingUserStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
     refetchInterval: 10 * 1000, // Refresh every 10 seconds (same as alert-stats)
@@ -67,7 +64,7 @@ export function Dashboard() {
   })
 
   // Fetch health status
-  const { data: health, isLoading: isLoadingHealth } = useQuery({
+  useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
     refetchInterval: 30 * 1000, // Refresh every 30 seconds

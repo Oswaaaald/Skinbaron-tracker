@@ -10,7 +10,7 @@ interface UserNavProps {
   onTabChange?: (tab: string) => void
 }
 
-export function UserNav({ onTabChange }: UserNavProps) {
+export function UserNav({ onTabChange: _onTabChange }: UserNavProps) {
   const { user, logout } = useAuth()
 
   if (!user) return null

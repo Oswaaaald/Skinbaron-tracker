@@ -374,6 +374,20 @@ class ApiClient {
       body: JSON.stringify(updates),
     });
   }
+
+  // Items search endpoint for autocomplete
+  async searchItems(query: string, limit?: number): Promise<ApiResponse<Array<{
+    name: string;
+    imageUrl?: string;
+  }>>> {
+    const params = new URLSearchParams({ q: query });
+    if (limit) params.append('limit', limit.toString());
+    
+    return this.request<Array<{
+      name: string;
+      imageUrl?: string;
+    }>>(`/api/items/search?${params.toString()}`);
+  }
 }
 
 export const apiClient = new ApiClient();

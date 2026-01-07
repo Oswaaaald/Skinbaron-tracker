@@ -44,7 +44,7 @@ export function RulesTable() {
   })
 
     // Fetch user's webhooks to display webhook names in rules table
-  const { data: webhooksResponse, isLoading: webhooksLoading, error: webhooksError } = useQuery({
+  const { data: webhooksResponse } = useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => {
       const result = await apiClient.getWebhooks(false) // Don't decrypt for listing

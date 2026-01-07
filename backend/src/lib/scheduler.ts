@@ -17,7 +17,6 @@ export interface SchedulerStats {
 export class AlertScheduler {
   private cronJob: CronJob | null = null;
   private store = getStore();
-  private skinBaronClient = getSkinBaronClient();
   private notificationService = getNotificationService();
 
   // Discord rate limiting: max 30 messages per minute per webhook
@@ -78,7 +77,6 @@ export class AlertScheduler {
    * Execute polling cycle
    */
   private async executePoll(): Promise<void> {
-    const startTime = Date.now();
     this.stats.lastRunTime = new Date();
     this.stats.totalRuns++;
 
@@ -191,7 +189,7 @@ export class AlertScheduler {
             alert_type: 'match',
           };
 
-          const createdAlert = this.store.createAlert(alert);
+          this.store.createAlert(alert);
           
           // Always count the alert as created, regardless of webhook notifications
           newAlerts++;

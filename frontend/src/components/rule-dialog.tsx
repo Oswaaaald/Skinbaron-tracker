@@ -25,15 +25,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { apiClient, type Rule, type Webhook, type CreateRuleData } from "@/lib/api"
+import { apiClient, type Rule, type CreateRuleData } from "@/lib/api"
 import { wearToPercentage, percentageToWear } from "@/lib/wear-utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
-import { X } from "lucide-react"
+import { ItemCombobox } from "@/components/ui/item-combobox"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
@@ -59,7 +57,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
   const queryClient = useQueryClient()
-  const { user } = useAuth()
+  useAuth()
   const { syncStats } = useSyncStats()
   const isEditing = !!rule
 
@@ -256,14 +254,15 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                 <FormItem>
                   <FormLabel>Search Item *</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., AK-47 Redline, AWP Dragon Lore" 
-                      {...field}
+                    <ItemCombobox
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Type to search items (e.g., AK-47, AWP, Avalanche...)"
                       disabled={isSubmitting}
                     />
                   </FormControl>
                   <FormDescription>
-                    Item name or pattern to search for
+                    Search and select an item from SkinBaron
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

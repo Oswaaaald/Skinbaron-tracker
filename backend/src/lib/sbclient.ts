@@ -284,18 +284,6 @@ export class SkinBaronClient {
   }
 
   /**
-   * Normalize item data (ensure defaults)
-   */
-  private normalizeItem(item: SkinBaronItem): SkinBaronItem {
-    return {
-      ...item,
-      statTrak: item.statTrak ?? false,
-      souvenir: item.souvenir ?? false,
-      currency: item.currency ?? 'EUR',
-    };
-  }
-
-  /**
    * Format item for display
    */
   formatItem(item: SkinBaronItem): string {

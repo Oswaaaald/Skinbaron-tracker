@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Clock
 } from "lucide-react"
-import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -33,7 +32,7 @@ export function SystemStats() {
   })
 
   // Alerts statistics - used for real-time updates
-  const { data: alertStatsResponse } = useQuery({
+  useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
     refetchInterval: 10000, // 10 seconds for real-time stats
@@ -55,18 +54,12 @@ export function SystemStats() {
     timestamp: healthData.timestamp
   } : null
   const status = statusResponse?.data
-  const alertStats = alertStatsResponse?.data
 
   const formatUptime = (uptimeSeconds?: number) => {
     if (!uptimeSeconds) return 'N/A'
     const hours = Math.floor(uptimeSeconds / 3600)
     const minutes = Math.floor((uptimeSeconds % 3600) / 60)
     return `${hours}h ${minutes}m`
-  }
-
-  const formatMemory = (bytes?: number) => {
-    if (!bytes) return 'N/A'
-    return `${Math.round(bytes / 1024 / 1024)}MB`
   }
 
   const formatDate = (dateString?: Date | string | null) => {

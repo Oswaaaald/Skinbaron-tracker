@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getStore, RuleSchema, CreateRuleSchema, type Rule, type CreateRule } from '../lib/store.js';
+import { getStore, RuleSchema } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getNotificationService } from '../lib/notifier.js';
 

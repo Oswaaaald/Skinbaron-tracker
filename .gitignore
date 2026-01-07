@@ -68,6 +68,9 @@ Thumbs.db
 # Docker
 *.tar.gz
 docker-compose.override.yml
+# Development-only files (do not deploy to production)
+docker-compose.dev.yml
+**/Dockerfile.dev
 
 # Temporary files
 tmp/

@@ -42,7 +42,8 @@ function loadConfig() {
     return ConfigSchema.parse(process.env);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      error.issues.forEach((err) => {
+      error.issues.forEach((_err) => {
+        // Errors already logged by Zod
       });
     }
     process.exit(1);

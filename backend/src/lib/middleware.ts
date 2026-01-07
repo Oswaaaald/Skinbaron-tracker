@@ -66,7 +66,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 /**
  * Optional auth middleware (allows anonymous access)
  */
-export async function optionalAuthMiddleware(request: FastifyRequest, reply: FastifyReply) {
+export async function optionalAuthMiddleware(request: FastifyRequest, _reply: FastifyReply) {
   try {
     const authHeader = request.headers.authorization;
     const token = AuthService.extractTokenFromHeader(authHeader);

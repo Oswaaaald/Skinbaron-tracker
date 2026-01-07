@@ -93,7 +93,7 @@ async function registerPlugins() {
   await fastify.register(rateLimit, {
     max: appConfig.RATE_LIMIT_MAX,
     timeWindow: appConfig.RATE_LIMIT_WINDOW,
-    errorResponseBuilder: (request, context) => ({
+    errorResponseBuilder: (_request, context) => ({
       success: false,
       error: 'Rate limit exceeded',
       message: `Too many requests, please try again in ${Math.ceil(context.ttl / 1000)} seconds`,
@@ -111,22 +111,22 @@ async function registerPlugins() {
 async function setupHealthCheck() {
   fastify.get('/api/health', {
     logLevel: 'warn' // Reduce logging for frequent health checks
-  }, async (request, reply) => {
+  }, async (_request, reply) => {
     const store = getStore();
-    const scheduler = getScheduler();
+    const _scheduler = getScheduler();
     
     // Check database health
     let dbHealth = 'healthy';
     try {
       await store.getStats(); // Simple check to see if DB is accessible
-    } catch (error) {
+    } catch (_error) {
       dbHealth = 'unhealthy';
     }
     
     // Check scheduler health
     let schedulerHealth = 'unhealthy';
     try {
-      const schedulerStats = getScheduler().getStats();
+      const schedulerStats = _scheduler.getStats();
       schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
     } catch (error) {
       schedulerHealth = 'unhealthy';
@@ -225,6 +225,7 @@ async function registerRoutes() {
   // Import auth routes
   const { default: authRoutes } = await import('./routes/auth.js');
   const { default: webhooksRoutes } = await import('./routes/webhooks.js');
+  const { default: itemsRoutes } = await import('./routes/items.js');
   
   // Authentication
   await fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -235,6 +236,9 @@ async function registerRoutes() {
   // Rules CRUD
   await fastify.register(rulesRoutes, { prefix: '/api/rules' });
   await fastify.register(alertsRoutes, { prefix: '/api/alerts' });
+  
+  // Items search for autocomplete
+  await fastify.register(itemsRoutes, { prefix: '/api/items' });
 }
 
 // Initialize application
@@ -244,13 +248,13 @@ async function initializeApp() {
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');
-    const store = getStore();
+    getStore();
     
     fastify.log.info('🔍 Initializing SkinBaron client...');
-    const skinBaronClient = getSkinBaronClient();
+    getSkinBaronClient();
     
     fastify.log.info('🔔 Initializing notification service...');
-    const notificationService = getNotificationService();
+    getNotificationService();
     
     fastify.log.info('⏰ Initializing scheduler...');
     const scheduler = getScheduler();
@@ -282,7 +286,7 @@ async function initializeApp() {
 }
 
 // Start the application
-initializeApp().catch((error) => {
+initializeApp().catch((_error) => {
   process.exit(1);
 });
 

@@ -1,7 +1,7 @@
 import { request } from 'undici';
 import { z } from 'zod';
 import { DISCORD_COLORS, appConfig } from './config.js';
-import type { Rule, Alert } from './store.js';
+import type { Rule } from './store.js';
 import type { SkinBaronItem } from './sbclient.js';
 
 // Discord Webhook Schemas
@@ -88,7 +88,7 @@ export class NotificationService {
    * Create Discord embed for the notification
    */
   private createEmbed(options: NotificationOptions): DiscordEmbed {
-    const { alertType, item, rule, skinUrl } = options;
+    const { alertType, item, rule: _rule, skinUrl } = options;
 
     // Base embed structure
     const embed: DiscordEmbed = {
@@ -303,24 +303,6 @@ export class NotificationService {
     parts.push(`${item.price} ${item.currency}`);
     
     return parts.join(' | ');
-  }
-
-  /**
-   * Mask sensitive webhook URL for logging
-   */
-  private maskWebhook(webhookUrl: string): string {
-    try {
-      const url = new URL(webhookUrl);
-      const pathParts = url.pathname.split('/');
-      if (pathParts.length >= 3) {
-        // Mask the webhook token (last part)
-        pathParts[pathParts.length - 1] = '***';
-        url.pathname = pathParts.join('/');
-      }
-      return url.toString();
-    } catch {
-      return 'invalid-webhook';
-    }
   }
 }
 
