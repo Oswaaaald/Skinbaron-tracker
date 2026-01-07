@@ -247,15 +247,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json()
 
-      if (data.success && data.data) {
-        const { token, ...userData } = data.data
-        await saveAuthState(token, userData)
-        return { success: true }
-      } else {
-        return { 
-          success: false, 
-          error: data.message || data.error || 'Registration failed' 
+      if (data.success) {
+        // Check if user needs approval (no token provided)
+        if (data.data && !data.data.token) {
+          return { 
+            success: true,
+            error: data.message || 'Registration successful! Your account is awaiting admin approval.'
+          }
         }
+        
+        // User approved, has token
+        if (data.data && data.data.token) {
+          const { token, ...userData } = data.data
+          await saveAuthState(token, userData)
+          return { success: true }
+        }
+      }
+      
+      return { 
+        success: false, 
+        error: data.message || data.error || 'Registration failed' 
       }
     } catch (error) {
       console.error('Registration error:', error)

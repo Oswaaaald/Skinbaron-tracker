@@ -87,7 +87,22 @@ export default async function authRoutes(fastify: FastifyInstance) {
         password_hash: passwordHash,
       });
 
-      // Generate token
+      // Check if user is approved
+      if (!user.is_approved) {
+        // User created but needs approval - don't return token
+        return reply.status(201).send({
+          success: true,
+          message: 'Registration successful. Your account is awaiting admin approval.',
+          data: {
+            id: user.id!,
+            username: user.username,
+            email: user.email,
+            pending_approval: true,
+          },
+        });
+      }
+
+      // Generate token (only for approved users)
       const token = AuthService.generateToken(user.id);
 
       return reply.status(201).send({
