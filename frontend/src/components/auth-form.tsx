@@ -85,8 +85,14 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           setError(result.error || `${mode} failed`)
         }
       } else if (mode === 'register') {
-        // Show success message for registration
-        setError('Registration successful! Your account is awaiting admin approval.')
+        // Registration successful but pending approval
+        if (result.error && result.error.includes('awaiting admin approval')) {
+          setError('Registration successful! Your account is awaiting admin approval.')
+          // Redirect to login after 2 seconds
+          setTimeout(() => {
+            onToggleMode()
+          }, 2000)
+        }
       }
       // If successful login, the auth context will handle the redirect
     } catch (error) {

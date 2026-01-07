@@ -202,6 +202,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
+      // Check if user is approved
+      if (!user.is_approved) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Account pending approval',
+          message: 'Your account is awaiting admin approval',
+        });
+      }
+
       // Generate token
       const token = AuthService.generateToken(user.id!);
 
