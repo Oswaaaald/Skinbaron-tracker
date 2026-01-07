@@ -50,7 +50,7 @@ export const UserSchema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
   password_hash: z.string(),
-  is_admin: z.number().default(0).optional(),
+  is_admin: z.number().default(0),
   created_at: z.string(),
   updated_at: z.string(),
 });
