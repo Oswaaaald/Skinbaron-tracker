@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { appConfig } from './config.js';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
-import CryptoJS from 'crypto-js';
+import crypto from 'crypto';
 
 // Schema validation with Zod
 export const RuleSchema = z.object({
@@ -656,9 +656,16 @@ export class Store {
     const secretKey = appConfig.JWT_SECRET;
     
     try {
-      // Use a more explicit encoding approach
-      const encrypted = CryptoJS.AES.encrypt(url, secretKey);
-      return encrypted.toString();
+      // Derive key from JWT_SECRET using SHA-256
+      const key = crypto.createHash('sha256').update(secretKey).digest();
+      const iv = crypto.randomBytes(16);
+      
+      const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+      let encrypted = cipher.update(url, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      
+      // Return IV + encrypted data
+      return iv.toString('hex') + ':' + encrypted;
     } catch (error) {
       throw new Error('Failed to encrypt webhook URL');
     }
@@ -672,13 +679,21 @@ export class Store {
     }
     
     try {
-      const bytes = CryptoJS.AES.decrypt(encryptedUrl, secretKey);
-      
-      if (!bytes || bytes.words.length === 0) {
+      // Split IV and encrypted data
+      const parts = encryptedUrl.split(':');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
         return '';
       }
       
-      const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+      const iv = Buffer.from(parts[0], 'hex');
+      const encryptedText = parts[1];
+      
+      // Derive key from JWT_SECRET using SHA-256
+      const key = crypto.createHash('sha256').update(secretKey).digest();
+      
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      const decryptedBuffer = decipher.update(encryptedText, 'hex', 'utf8');
+      const decrypted = decryptedBuffer + decipher.final('utf8');
       
       // Validate that we got a proper URL back
       if (!decrypted || decrypted.length === 0) {
