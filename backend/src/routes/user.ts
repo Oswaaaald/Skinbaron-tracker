@@ -69,6 +69,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
           is_admin: user.is_admin,
+          is_super_admin: user.is_super_admin,
         },
       });
     } catch (error) {
@@ -161,6 +162,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
+                is_super_admin: { type: 'boolean' },
               },
             },
           },
@@ -204,6 +206,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           email: updatedUser.email,
           avatar_url: AuthService.getGravatarUrl(updatedUser.email),
           is_admin: updatedUser.is_admin,
+          is_super_admin: updatedUser.is_super_admin,
         },
       });
     } catch (error) {

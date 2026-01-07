@@ -31,6 +31,7 @@ interface AdminUser {
   username: string
   email: string
   is_admin: boolean
+  is_super_admin: boolean
   created_at: string
   stats: UserStats
 }
@@ -230,7 +231,12 @@ export function AdminPanel() {
                   <TableCell className="font-medium">{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    {user.is_admin ? (
+                    {user.is_super_admin ? (
+                      <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600">
+                        <Shield className="h-3 w-3" />
+                        Super Admin
+                      </Badge>
+                    ) : user.is_admin ? (
                       <Badge variant="default" className="gap-1">
                         <Shield className="h-3 w-3" />
                         Admin
@@ -254,9 +260,16 @@ export function AdminPanel() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleToggleAdmin(user, 'revoke')}
-                          disabled={toggleAdminMutation.isPending || isCurrentUser(user) || isLastAdmin()}
+                          disabled={
+                            toggleAdminMutation.isPending || 
+                            isCurrentUser(user) || 
+                            isLastAdmin() ||
+                            user.is_super_admin
+                          }
                           title={
-                            isCurrentUser(user)
+                            user.is_super_admin
+                              ? "Cannot revoke super admin status"
+                              : isCurrentUser(user)
                               ? "You cannot revoke your own admin status"
                               : isLastAdmin()
                               ? "Cannot revoke the last admin"
@@ -274,8 +287,18 @@ export function AdminPanel() {
                           disabled={toggleAdminMutation.isPending}
                         >
                           <Shield className="h-4 w-4 mr-1" />
-                          Make Admin
-                        </Button>
+                          Make Adm
+                          deleteUserMutation.isPending || 
+                          isCurrentUser(user) ||
+                          user.is_super_admin
+                        }
+                        title={
+                          user.is_super_admin
+                            ? "Cannot delete super admin"
+                            : isCurrentUser(user)
+                            ? "You cannot delete your own account"
+                            : undefined
+                        
                       )}
                       <Button
                         variant="destructive"

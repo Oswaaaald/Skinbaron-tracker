@@ -43,6 +43,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 username: { type: 'string' },
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
+                is_admin: { type: 'boolean' },
+                is_super_admin: { type: 'boolean' },
                 token: { type: 'string' },
               },
             },
@@ -96,6 +98,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
           is_admin: Boolean(user.is_admin),
+          is_super_admin: Boolean(user.is_super_admin),
           token,
         },
       });
@@ -147,6 +150,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
+                is_super_admin: { type: 'boolean' },
                 token: { type: 'string' },
               },
             },
@@ -194,6 +198,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
           is_admin: Boolean(user.is_admin),
+          is_super_admin: Boolean(user.is_super_admin),
           token,
         },
       });
@@ -231,6 +236,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
+                is_super_admin: { type: 'boolean' },
                 created_at: { type: 'string' },
               },
             },
@@ -264,6 +270,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         email: user.email,
         avatar_url: AuthService.getGravatarUrl(user.email),
         is_admin: Boolean(user.is_admin),
+        is_super_admin: Boolean(user.is_super_admin),
         created_at: user.created_at!,
       },
     });

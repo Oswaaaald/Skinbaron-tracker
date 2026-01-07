@@ -9,6 +9,7 @@ export interface User {
   email: string
   avatar_url?: string
   is_admin?: boolean
+  is_super_admin?: boolean
 }
 
 export interface AuthContextType {

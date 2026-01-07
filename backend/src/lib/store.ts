@@ -51,6 +51,7 @@ export const UserSchema = z.object({
   email: z.string().email(),
   password_hash: z.string(),
   is_admin: z.number().default(0),
+  is_super_admin: z.number().default(0),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -206,6 +207,23 @@ export class Store {
     if (hasIsAdmin.count === 0) {
       this.db.exec(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0`);
       console.log('✅ Migration: Added is_admin column to users table');
+    }
+
+    // Migration: Add is_super_admin column if it doesn't exist
+    const hasIsSuperAdmin = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='is_super_admin'
+    `).get() as { count: number };
+
+    if (hasIsSuperAdmin.count === 0) {
+      this.db.exec(`ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT 0`);
+      console.log('✅ Migration: Added is_super_admin column to users table');
+      
+      // Make the first user a super admin if exists
+      const firstUser = this.db.prepare('SELECT id FROM users ORDER BY id LIMIT 1').get() as { id: number } | undefined;
+      if (firstUser) {
+        this.db.prepare('UPDATE users SET is_super_admin = 1, is_admin = 1 WHERE id = ?').run(firstUser.id);
+        console.log(`✅ Migration: Made first user (ID: ${firstUser.id}) a super admin`);
+      }
     }
 
     // Create admin actions audit log table
@@ -915,12 +933,13 @@ export class Store {
 
   // Admin methods
   getAllUsers() {
-    const stmt = this.db.prepare('SELECT id, username, email, is_admin, created_at, updated_at FROM users ORDER BY created_at DESC');
+    const stmt = this.db.prepare('SELECT id, username, email, is_admin, is_super_admin, created_at, updated_at FROM users ORDER BY created_at DESC');
     return stmt.all() as Array<{
       id: number;
       username: string;
       email: string;
       is_admin: number;
+      is_super_admin: number;
       created_at: string;
       updated_at: string;
     }>;
@@ -946,14 +965,19 @@ export class Store {
   }
 
   toggleUserAdmin(userId: number, isAdmin: boolean): boolean {
-
     try {
+      // Check if user is super admin - they cannot be demoted
+      const user = this.getUserById(userId);
+      if (user?.is_super_admin && !isAdmin) {
+        throw new Error('Cannot revoke admin status from super admin');
+      }
+      
       const stmt = this.db.prepare('UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?');
       const result = stmt.run(isAdmin ? 1 : 0, new Date().toISOString(), userId);
       return result.changes > 0;
     } catch (error) {
       console.error('Error toggling user admin:', error);
-      return false;
+      throw error;
     }
   }
 
