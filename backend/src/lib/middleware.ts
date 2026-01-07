@@ -9,6 +9,7 @@ declare module 'fastify' {
       username: string;
       email: string;
       is_admin: boolean;
+      is_super_admin: boolean;
     };
   }
 }
@@ -63,6 +64,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       username: user.username,
       email: user.email,
       is_admin: user.is_admin || false,
+      is_super_admin: user.is_super_admin || false,
     };
 
   } catch (error) {
@@ -114,6 +116,7 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
             username: user.username,
             email: user.email,
             is_admin: user.is_admin || false,
+            is_super_admin: user.is_super_admin || false,
           };
         }
       }
