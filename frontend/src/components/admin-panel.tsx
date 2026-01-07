@@ -381,10 +381,13 @@ export function AdminPanel() {
                             disabled={
                               toggleAdminMutation.isPending || 
                               isCurrentUser(user) || 
-                              isLastAdmin()
+                              isLastAdmin() ||
+                              !currentUser?.is_super_admin
                             }
                             title={
-                              isCurrentUser(user)
+                              !currentUser?.is_super_admin
+                                ? "Only super administrators can manage admin privileges"
+                                : isCurrentUser(user)
                                 ? "You cannot revoke your own admin status"
                                 : isLastAdmin()
                                 ? "Cannot revoke the last admin"
@@ -400,10 +403,13 @@ export function AdminPanel() {
                             onClick={() => handleDeleteUser(user)}
                             disabled={
                               deleteUserMutation.isPending || 
-                              isCurrentUser(user)
+                              isCurrentUser(user) ||
+                              !currentUser?.is_super_admin
                             }
                             title={
-                              isCurrentUser(user)
+                              !currentUser?.is_super_admin
+                                ? "Only super administrators can delete other administrators"
+                                : isCurrentUser(user)
                                 ? "You cannot delete your own account"
                                 : undefined
                             }
@@ -418,7 +424,12 @@ export function AdminPanel() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleToggleAdmin(user, 'grant')}
-                            disabled={toggleAdminMutation.isPending}
+                            disabled={toggleAdminMutation.isPending || !currentUser?.is_super_admin}
+                            title={
+                              !currentUser?.is_super_admin
+                                ? "Only super administrators can grant admin privileges"
+                                : undefined
+                            }
                           >
                             <Shield className="h-4 w-4 mr-1" />
                             Make Admin

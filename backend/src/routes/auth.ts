@@ -60,6 +60,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Check if user already exists
       const existingUser = await store.getUserByEmail(userData.email);
       if (existingUser) {
+        // Check if account is pending approval
+        if (!existingUser.is_approved) {
+          return reply.status(409).send({
+            success: false,
+            error: 'Account pending approval',
+            message: 'An account with this email is awaiting admin approval. Please wait for approval before attempting to register again.',
+          });
+        }
+        
         return reply.status(409).send({
           success: false,
           error: 'User already exists',

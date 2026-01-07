@@ -130,8 +130,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Check if this is the last admin
+      // Only super admins can delete admins
       if (user.is_admin) {
+        const currentAdmin = store.getUserById(adminId);
+        if (!currentAdmin?.is_super_admin) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Permission denied',
+            message: 'Only super administrators can delete other administrators',
+          });
+        }
+
         const allUsers = store.getAllUsers();
         const adminCount = allUsers.filter(u => u.is_admin).length;
         
@@ -216,6 +225,18 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           success: false,
           error: 'User not found',
         });
+      }
+
+      // Only super admins can grant or revoke admin status to/from admins
+      if (user.is_admin || is_admin) {
+        const currentAdmin = store.getUserById(adminId);
+        if (!currentAdmin?.is_super_admin) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Permission denied',
+            message: 'Only super administrators can manage admin privileges',
+          });
+        }
       }
 
       // If removing admin, check if this is the last admin

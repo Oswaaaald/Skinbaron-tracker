@@ -238,7 +238,13 @@ export function ProfileSettings() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email"
+                disabled={!user?.is_admin}
               />
+              {!user?.is_admin && (
+                <p className="text-sm text-muted-foreground">
+                  Only administrators can change their email address
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2">

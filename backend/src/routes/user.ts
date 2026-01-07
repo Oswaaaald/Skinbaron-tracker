@@ -174,6 +174,24 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = request.user!.id;
       const updates = UpdateProfileSchema.parse(request.body);
 
+      // Get current user to check admin status
+      const currentUser = store.getUserById(userId);
+      if (!currentUser) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Non-admin users cannot change their email
+      if (updates.email && !currentUser.is_admin) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Permission denied',
+          message: 'Only administrators can change their email address',
+        });
+      }
+
       // Check if email is already taken by another user
       if (updates.email) {
         const existingUser = store.getUserByEmail(updates.email);
