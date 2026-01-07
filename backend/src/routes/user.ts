@@ -116,10 +116,26 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Update user profile
       store.updateUser(userId, updates);
+      
+      // Get updated user data
+      const updatedUser = store.getUserById(userId);
+      if (!updatedUser) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
 
       return reply.status(200).send({
         success: true,
         message: 'Profile updated successfully',
+        data: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          avatar_url: AuthService.getGravatarUrl(updatedUser.email),
+          is_admin: updatedUser.is_admin,
+        },
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to update profile');

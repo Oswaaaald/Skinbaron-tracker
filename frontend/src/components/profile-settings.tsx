@@ -57,16 +57,19 @@ export function ProfileSettings() {
     mutationFn: async (data: { username?: string; email?: string }) => {
       return await apiClient.patch('/api/user/profile', data)
     },
-    onSuccess: (_response, variables) => {
+    onSuccess: (response) => {
       setSuccessMessage('Profile updated successfully')
       setErrorMessage('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-      // Update auth context with new data
-      if (user) {
-        const updatedFields: Partial<typeof user> = {}
-        if (variables.username) updatedFields.username = variables.username
-        if (variables.email) updatedFields.email = variables.email
-        updateUser(updatedFields)
+      // Update auth context with data from backend (includes updated avatar_url)
+      if (response.data && response.data.data) {
+        const userData = response.data.data
+        updateUser({
+          username: userData.username,
+          email: userData.email,
+          avatar_url: userData.avatar_url,
+          is_admin: userData.is_admin,
+        })
       }
     },
     onError: (error: any) => {
