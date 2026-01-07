@@ -29,8 +29,16 @@ export function UserNav({ onTabChange: _onTabChange }: UserNavProps) {
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 w-8 rounded-full p-0">
-            <span className="text-xs font-medium">{userInitials}</span>
+          <Button variant="outline" size="sm" className="h-8 w-8 rounded-full p-0 overflow-hidden">
+            {user.avatar_url ? (
+              <img 
+                src={user.avatar_url} 
+                alt={user.username}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-xs font-medium">{userInitials}</span>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end">
