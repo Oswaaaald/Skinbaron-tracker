@@ -240,7 +240,11 @@ export function AdminPanel() {
                   <TableCell>{user.stats.rules_count}</TableCell>
                   <TableCell>{user.stats.alerts_count}</TableCell>
                   <TableCell>{user.stats.webhooks_count}</TableCell>
-                  <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(user.created_at).toLocaleDateString('fr-FR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric' 
+                  })}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       {user.is_admin ? (

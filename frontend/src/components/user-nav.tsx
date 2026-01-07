@@ -4,13 +4,12 @@ import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { User, LogOut, Settings } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface UserNavProps {
   onTabChange?: (tab: string) => void
 }
 
-export function UserNav({ onTabChange: _onTabChange }: UserNavProps) {
+export function UserNav({ onTabChange }: UserNavProps) {
   const { user, logout } = useAuth()
 
   if (!user) return null
@@ -51,15 +50,11 @@ export function UserNav({ onTabChange: _onTabChange }: UserNavProps) {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => {
-            toast.info('Profile page coming soon! For now, your account info is displayed above.')
-          }}>
+          <DropdownMenuItem onClick={() => onTabChange?.('settings')}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {
-            toast.info('Settings page coming soon! Basic account management is available.')
-          }}>
+          <DropdownMenuItem onClick={() => onTabChange?.('settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </DropdownMenuItem>
