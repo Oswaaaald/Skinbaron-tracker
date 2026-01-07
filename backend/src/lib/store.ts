@@ -935,7 +935,7 @@ export class Store {
       SELECT a.* FROM alerts a
       INNER JOIN rules r ON a.rule_id = r.id
       WHERE r.user_id = ?
-      ORDER BY a.created_at DESC
+      ORDER BY a.sent_at DESC
     `);
     return stmt.all(userId.toString()) as Alert[];
   }

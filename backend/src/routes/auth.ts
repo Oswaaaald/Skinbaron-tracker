@@ -148,6 +148,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 username: { type: 'string' },
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
+                is_admin: { type: 'boolean' },
                 token: { type: 'string' },
               },
             },

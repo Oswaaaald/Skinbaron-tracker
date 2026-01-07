@@ -247,7 +247,7 @@ async function registerRoutes() {
   await fastify.register(itemsRoutes, { prefix: '/api/items' });
   
   // Admin routes (requires admin privileges)
-  const { default: adminRoutes } = await import('./routes/admin.js');
+  const { default: adminRoutes } = await import('./routes/admin');
   await fastify.register(adminRoutes, { prefix: '/api/admin' });
 }
 

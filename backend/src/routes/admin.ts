@@ -52,22 +52,27 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Get stats for each user
       const usersWithStats = users.map(user => {
-        const rulesCount = store.getUserRules(user.id).length;
-        const alertsCount = store.getUserAlerts(user.id).length;
-        const webhooksCount = store.getUserWebhooks(user.id).length;
+        try {
+          const rulesCount = store.getUserRules(user.id).length;
+          const alertsCount = store.getUserAlerts(user.id).length;
+          const webhooksCount = store.getUserWebhooks(user.id).length;
 
-        return {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          is_admin: user.is_admin || false,
-          created_at: user.created_at,
-          stats: {
-            rules_count: rulesCount,
-            alerts_count: alertsCount,
-            webhooks_count: webhooksCount,
-          },
-        };
+          return {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            is_admin: user.is_admin || false,
+            created_at: user.created_at,
+            stats: {
+              rules_count: rulesCount,
+              alerts_count: alertsCount,
+              webhooks_count: webhooksCount,
+            },
+          };
+        } catch (err) {
+          request.log.error({ error: err, userId: user.id }, 'Failed to get stats for user');
+          throw err;
+        }
       });
 
       request.log.info({ adminId: request.user!.id }, 'Admin listed all users');

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertCircle, Shield, ShieldOff, Trash2, Users } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { useAuth } from '@/contexts/auth-context'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -43,6 +44,7 @@ interface GlobalStats {
 }
 
 export function AdminPanel() {
+  const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: AdminUser | null }>({
     open: false,
@@ -58,8 +60,8 @@ export function AdminPanel() {
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
-      const response = await apiClient.get('/admin/users')
-      return response.data.data as AdminUser[]
+      const response = await apiClient.get('/api/admin/users')
+      return response.data as AdminUser[]
     },
   })
 
@@ -67,15 +69,15 @@ export function AdminPanel() {
   const { data: statsData } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
-      const response = await apiClient.get('/admin/stats')
-      return response.data.data as GlobalStats
+      const response = await apiClient.get('/api/admin/stats')
+      return response.data as GlobalStats
     },
   })
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
-      await apiClient.delete(`/admin/users/${userId}`)
+      await apiClient.delete(`/api/admin/users/${userId}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -87,7 +89,7 @@ export function AdminPanel() {
   // Toggle admin mutation
   const toggleAdminMutation = useMutation({
     mutationFn: async ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) => {
-      await apiClient.patch(`/admin/users/${userId}/admin`, { is_admin: isAdmin })
+      await apiClient.patch(`/api/admin/users/${userId}/admin`, { is_admin: isAdmin })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -95,6 +97,14 @@ export function AdminPanel() {
       setAdminDialog({ open: false, user: null, action: 'grant' })
     },
   })
+
+  const isCurrentUser = (user: AdminUser) => {
+    return currentUser?.email === user.email
+  }
+
+  const isLastAdmin = () => {
+    return statsData?.total_admins === 1
+  }
 
   const handleDeleteUser = (user: AdminUser) => {
     setDeleteDialog({ open: true, user })
@@ -238,7 +248,14 @@ export function AdminPanel() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleToggleAdmin(user, 'revoke')}
-                          disabled={toggleAdminMutation.isPending}
+                          disabled={toggleAdminMutation.isPending || isCurrentUser(user) || isLastAdmin()}
+                          title={
+                            isCurrentUser(user)
+                              ? "You cannot revoke your own admin status"
+                              : isLastAdmin()
+                              ? "Cannot revoke the last admin"
+                              : undefined
+                          }
                         >
                           <ShieldOff className="h-4 w-4 mr-1" />
                           Revoke Admin
@@ -258,7 +275,8 @@ export function AdminPanel() {
                         variant="destructive"
                         size="sm"
                         onClick={() => handleDeleteUser(user)}
-                        disabled={deleteUserMutation.isPending}
+                        disabled={deleteUserMutation.isPending || isCurrentUser(user)}
+                        title={isCurrentUser(user) ? "You cannot delete your own account" : undefined}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
