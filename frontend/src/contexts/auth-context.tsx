@@ -163,8 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json()
 
+      console.log('🔍 Login response data:', data.data)
+
       if (data.success && data.data) {
         const { token, ...userData } = data.data
+        console.log('🔍 User data being saved:', userData)
         await saveAuthState(token, userData)
         return { success: true }
       } else {
