@@ -120,7 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check if user profile has changed (e.g., admin status)
         const response = await apiClient.getUserProfile()
         if (response.success && response.data) {
-          const currentUser = user
+          // Get the latest user from localStorage to avoid stale closure
+          const stored = localStorage.getItem(AUTH_STORAGE_KEY)
+          if (!stored) return
+          
+          const authData: AuthStorage = JSON.parse(stored)
+          const currentUser = authData.user
           const serverUser = response.data
           
           // Check if critical fields have changed
@@ -128,7 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               currentUser.username !== serverUser.username ||
               currentUser.email !== serverUser.email ||
               currentUser.avatar_url !== serverUser.avatar_url) {
-            console.log('User profile changed, updating...')
+            console.log('User profile changed, updating...', {
+              old: currentUser,
+              new: serverUser
+            })
             updateUser({
               username: serverUser.username,
               email: serverUser.email,
@@ -154,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearInterval(tokenInterval)
       clearInterval(profileInterval)
     }
-  }, [token, user])
+  }, [token]) // Only depend on token, not user
 
   const saveAuthState = async (token: string, user: User) => {
     // JWT tokens from our backend expire in 7 days

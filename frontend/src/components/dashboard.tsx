@@ -41,6 +41,13 @@ export function Dashboard() {
     return 'rules'
   })
   
+  // Reset tab to 'rules' if user loses admin access while on admin/system tab
+  useEffect(() => {
+    if (!user?.is_admin && (activeTab === 'admin' || activeTab === 'system')) {
+      setActiveTab('rules')
+    }
+  }, [user?.is_admin, activeTab])
+  
   useSyncStats()
 
   // Save active tab to localStorage when it changes
