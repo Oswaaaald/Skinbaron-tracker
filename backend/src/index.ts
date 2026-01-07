@@ -232,9 +232,13 @@ async function registerRoutes() {
   const { default: authRoutes } = await import('./routes/auth.js');
   const { default: webhooksRoutes } = await import('./routes/webhooks.js');
   const { default: itemsRoutes } = await import('./routes/items.js');
+  const { default: userRoutes } = await import('./routes/user.js');
   
   // Authentication
   await fastify.register(authRoutes, { prefix: '/api/auth' });
+  
+  // User profile management
+  await fastify.register(userRoutes, { prefix: '/api/user' });
   
   // User webhooks management
   await fastify.register(webhooksRoutes, { prefix: '/api/webhooks' });

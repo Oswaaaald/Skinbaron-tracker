@@ -23,6 +23,7 @@ import { SystemStats } from "@/components/system-stats"
 import { UserNav } from "@/components/user-nav"
 import { WebhooksTable } from "@/components/webhooks-table"
 import { AdminPanel } from "@/components/admin-panel"
+import { ProfileSettings } from "@/components/profile-settings"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useAuth } from "@/contexts/auth-context"
@@ -170,6 +171,7 @@ export function Dashboard() {
           <TabsTrigger value="rules">Rules</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
           {user?.is_admin && <TabsTrigger value="admin">Admin</TabsTrigger>}
           {user?.is_admin && <TabsTrigger value="system">System</TabsTrigger>}
         </TabsList>
@@ -202,7 +204,15 @@ export function Dashboard() {
           </div>
           <AlertsGrid />
         </TabsContent>
-
+        <TabsContent value="settings" className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Profile & Settings</h2>
+            <p className="text-muted-foreground">
+              Manage your account and preferences
+            </p>
+          </div>
+          <ProfileSettings />
+        </TabsContent>
         {user?.is_admin && (
           <TabsContent value="admin" className="space-y-4">
             <div>
