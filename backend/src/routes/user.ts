@@ -94,6 +94,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
           properties: {
             success: { type: 'boolean' },
             message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'number' },
+                username: { type: 'string' },
+                email: { type: 'string' },
+                avatar_url: { type: 'string' },
+                is_admin: { type: 'boolean' },
+              },
+            },
           },
         },
       },

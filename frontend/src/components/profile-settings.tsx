@@ -61,15 +61,20 @@ export function ProfileSettings() {
       setSuccessMessage('Profile updated successfully')
       setErrorMessage('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+      // Also invalidate admin queries so admin panel updates
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       // Update auth context with data from backend (includes updated avatar_url)
-      if (response.data && response.data.data) {
+      if (response?.data?.data) {
         const userData = response.data.data
         updateUser({
+          id: userData.id,
           username: userData.username,
           email: userData.email,
           avatar_url: userData.avatar_url,
           is_admin: userData.is_admin,
         })
+      } else {
+        console.error('No user data in response:', response)
       }
     },
     onError: (error: any) => {
