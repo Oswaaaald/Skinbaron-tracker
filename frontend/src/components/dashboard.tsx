@@ -22,6 +22,7 @@ import { RuleDialog } from "@/components/rule-dialog"
 import { SystemStats } from "@/components/system-stats"
 import { UserNav } from "@/components/user-nav"
 import { WebhooksTable } from "@/components/webhooks-table"
+import { AdminPanel } from "@/components/admin-panel"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useAuth } from "@/contexts/auth-context"
@@ -29,6 +30,7 @@ import { useAuth } from "@/contexts/auth-context"
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
+  const { isReady, isAuthenticated, user } = useAuth()
   
   // Restore active tab from localStorage on mount
   const [activeTab, setActiveTab] = useState(() => {
@@ -39,7 +41,6 @@ export function Dashboard() {
   })
   
   useSyncStats()
-  const { isReady, isAuthenticated } = useAuth()
 
   // Save active tab to localStorage when it changes
   useEffect(() => {
@@ -169,7 +170,8 @@ export function Dashboard() {
           <TabsTrigger value="rules">Rules</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
-          <TabsTrigger value="system">System</TabsTrigger>
+          {user?.is_admin && <TabsTrigger value="admin">Admin</TabsTrigger>}
+          {user?.is_admin && <TabsTrigger value="system">System</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="rules" className="space-y-4">
@@ -201,15 +203,29 @@ export function Dashboard() {
           <AlertsGrid />
         </TabsContent>
 
-        <TabsContent value="system" className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">System Status</h2>
-            <p className="text-muted-foreground">
-              Monitor system health and performance
-            </p>
-          </div>
-          <SystemStats />
-        </TabsContent>
+        {user?.is_admin && (
+          <TabsContent value="admin" className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Admin Panel</h2>
+              <p className="text-muted-foreground">
+                Manage users and system settings
+              </p>
+            </div>
+            <AdminPanel />
+          </TabsContent>
+        )}
+
+        {user?.is_admin && (
+          <TabsContent value="system" className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">System Status</h2>
+              <p className="text-muted-foreground">
+                Monitor system health and performance
+              </p>
+            </div>
+            <SystemStats />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Rule Creation Dialog */}

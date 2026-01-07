@@ -25,15 +25,6 @@ export const WebhookSchema = z.object({
 });
 
 // Types
-export type User = {
-  id: number;
-  username: string;
-  email: string;
-  password_hash: string;
-  created_at: string;
-  updated_at: string;
-};
-
 export type UserWebhook = z.infer<typeof WebhookSchema>;
 export type CreateWebhook = Omit<UserWebhook, 'id' | 'created_at'>;
 

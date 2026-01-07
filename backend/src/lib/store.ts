@@ -50,6 +50,7 @@ export const UserSchema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
   password_hash: z.string(),
+  is_admin: z.number().default(0).optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -195,6 +196,34 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
+    `);
+
+    // Migration: Add is_admin column if it doesn't exist
+    const hasIsAdmin = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='is_admin'
+    `).get() as { count: number };
+
+    if (hasIsAdmin.count === 0) {
+      this.db.exec(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0`);
+      console.log('✅ Migration: Added is_admin column to users table');
+    }
+
+    // Create admin actions audit log table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_actions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_user_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        target_user_id INTEGER,
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_admin_actions_admin ON admin_actions(admin_user_id);
+      CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at);
     `);
 
   }
@@ -882,6 +911,103 @@ export class Store {
         webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
       }))
       .filter(webhook => webhook.webhook_url && webhook.webhook_url.length > 0); // Filter out failed decryptions
+  }
+
+  // Admin methods
+  getAllUsers() {
+    const stmt = this.db.prepare('SELECT id, username, email, is_admin, created_at, updated_at FROM users ORDER BY created_at DESC');
+    return stmt.all() as Array<{
+      id: number;
+      username: string;
+      email: string;
+      is_admin: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+  }
+
+  getUserRules(userId: number) {
+    return this.getRulesByUserId(userId);
+  }
+
+  getUserAlerts(userId: number) {
+    const stmt = this.db.prepare(`
+      SELECT a.* FROM alerts a
+      INNER JOIN rules r ON a.rule_id = r.id
+      WHERE r.user_id = ?
+      ORDER BY a.created_at DESC
+    `);
+    return stmt.all(userId.toString()) as Alert[];
+  }
+
+  getUserWebhooks(userId: number) {
+    const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE user_id = ?');
+    return stmt.all(userId.toString()) as UserWebhook[];
+  }
+
+  toggleUserAdmin(userId: number, isAdmin: boolean): boolean {
+
+    try {
+      const stmt = this.db.prepare('UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?');
+      const result = stmt.run(isAdmin ? 1 : 0, new Date().toISOString(), userId);
+      return result.changes > 0;
+    } catch (error) {
+      console.error('Error toggling user admin:', error);
+      return false;
+    }
+  }
+
+  getGlobalStats() {
+    const usersStmt = this.db.prepare('SELECT COUNT(*) as count FROM users');
+    const rulesStmt = this.db.prepare('SELECT COUNT(*) as count FROM rules');
+    const alertsStmt = this.db.prepare('SELECT COUNT(*) as count FROM alerts');
+    const webhooksStmt = this.db.prepare('SELECT COUNT(*) as count FROM user_webhooks');
+    const adminsStmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1');
+
+    return {
+      total_users: (usersStmt.get() as any).count,
+      total_admins: (adminsStmt.get() as any).count,
+      total_rules: (rulesStmt.get() as any).count,
+      total_alerts: (alertsStmt.get() as any).count,
+      total_webhooks: (webhooksStmt.get() as any).count,
+    };
+  }
+
+  logAdminAction(adminUserId: number, action: string, targetUserId: number | null, details: string) {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO admin_actions (admin_user_id, action, target_user_id, details, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      stmt.run(adminUserId, action, targetUserId, details, new Date().toISOString());
+    } catch (error) {
+      console.error('Error logging admin action:', error);
+    }
+  }
+
+  getAdminLogs(limit: number = 50) {
+    const stmt = this.db.prepare(`
+      SELECT 
+        al.*,
+        u1.username as admin_username,
+        u2.username as target_username
+      FROM admin_actions al
+      LEFT JOIN users u1 ON al.admin_user_id = u1.id
+      LEFT JOIN users u2 ON al.target_user_id = u2.id
+      ORDER BY al.created_at DESC
+      LIMIT ?
+    `);
+    
+    return stmt.all(limit) as Array<{
+      id: number;
+      admin_user_id: number;
+      admin_username: string;
+      action: string;
+      target_user_id: number | null;
+      target_username: string | null;
+      details: string;
+      created_at: string;
+    }>;
   }
 
   close() {

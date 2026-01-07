@@ -97,6 +97,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
+          is_admin: user.is_admin || false,
           token,
         },
       });
@@ -195,6 +196,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
+          is_admin: user.is_admin || false,
           token,
         },
       });
@@ -231,6 +233,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 username: { type: 'string' },
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
+                is_admin: { type: 'boolean' },
                 created_at: { type: 'string' },
               },
             },
@@ -263,6 +266,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         username: user.username,
         email: user.email,
         avatar_url: AuthService.getGravatarUrl(user.email),
+        is_admin: user.is_admin || false,
         created_at: user.created_at!,
       },
     });

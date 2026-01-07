@@ -388,6 +388,24 @@ class ApiClient {
       imageUrl?: string;
     }>>(`/api/items/search?${params.toString()}`);
   }
+
+  // Generic GET method for admin endpoints
+  async get(endpoint: string): Promise<ApiResponse<any>> {
+    return this.request(endpoint, { method: 'GET' });
+  }
+
+  // Generic DELETE method for admin endpoints
+  async delete(endpoint: string): Promise<ApiResponse<any>> {
+    return this.request(endpoint, { method: 'DELETE' });
+  }
+
+  // Generic PATCH method for admin endpoints
+  async patch(endpoint: string, data?: any): Promise<ApiResponse<any>> {
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

@@ -105,6 +105,12 @@ async function registerPlugins() {
     const { authMiddleware } = await import('./lib/middleware.js');
     await authMiddleware(request, reply);
   });
+
+  // Admin authentication hook
+  fastify.decorate('requireAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { requireAdminMiddleware } = await import('./lib/middleware.js');
+    await requireAdminMiddleware(request, reply);
+  });
 }
 
 // Health check endpoint
@@ -239,6 +245,10 @@ async function registerRoutes() {
   
   // Items search for autocomplete
   await fastify.register(itemsRoutes, { prefix: '/api/items' });
+  
+  // Admin routes (requires admin privileges)
+  const { default: adminRoutes } = await import('./routes/admin.js');
+  await fastify.register(adminRoutes, { prefix: '/api/admin' });
 }
 
 // Initialize application

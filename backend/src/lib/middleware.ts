@@ -8,6 +8,7 @@ declare module 'fastify' {
       id: number;
       username: string;
       email: string;
+      is_admin: boolean;
     };
   }
 }
@@ -52,6 +53,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       id: user.id,
       username: user.username,
       email: user.email,
+      is_admin: user.is_admin || false,
     };
 
   } catch (error) {
@@ -59,6 +61,28 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       success: false,
       error: 'Authentication error',
       message: 'Internal authentication error',
+    });
+  }
+}
+
+/**
+ * Admin authentication middleware - requires is_admin === true
+ */
+export async function requireAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  // First check normal authentication
+  await authMiddleware(request, reply);
+  
+  // If auth failed, the reply was already sent
+  if (reply.sent) {
+    return;
+  }
+  
+  // Check admin status
+  if (!request.user?.is_admin) {
+    return reply.status(403).send({
+      success: false,
+      error: 'Admin access required',
+      message: 'This action requires administrator privileges',
     });
   }
 }
@@ -80,6 +104,7 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
             id: user.id,
             username: user.username,
             email: user.email,
+            is_admin: user.is_admin || false,
           };
         }
       }
