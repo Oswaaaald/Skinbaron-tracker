@@ -57,7 +57,7 @@ export function ProfileSettings() {
     mutationFn: async (data: { username?: string; email?: string }) => {
       return await apiClient.patch('/api/user/profile', data)
     },
-    onSuccess: (response, variables) => {
+    onSuccess: (_response, variables) => {
       setSuccessMessage('Profile updated successfully')
       setErrorMessage('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
