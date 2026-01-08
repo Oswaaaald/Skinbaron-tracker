@@ -108,7 +108,7 @@ export function ItemCombobox({
             onValueChange={setSearchQuery}
             className="h-11"
           />
-          <CommandList className="max-h-[300px]">
+          <CommandList className="max-h-[300px] overflow-y-auto touch-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
