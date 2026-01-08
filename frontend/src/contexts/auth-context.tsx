@@ -92,6 +92,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return null
     })
+    
+    // Setup logout callback for when user is deleted/invalid
+    apiClient.setLogoutCallback(() => {
+      clearAuthState()
+      // Redirect to login page
+      window.location.href = '/auth'
+    })
   }, []) // Run only once on mount
 
   // Check token validity periodically and refresh if needed

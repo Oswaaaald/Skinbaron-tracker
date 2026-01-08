@@ -87,6 +87,7 @@ export interface SystemStats {
 class ApiClient {
   private baseURL: string;
   private getAuthToken: (() => string | null) | null = null;
+  private onLogout: (() => void) | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
@@ -95,6 +96,11 @@ class ApiClient {
   // Method to set the auth token getter (will be called from auth context)
   setAuthTokenGetter(getter: () => string | null) {
     this.getAuthToken = getter;
+  }
+
+  // Method to set logout callback
+  setLogoutCallback(callback: () => void) {
+    this.onLogout = callback;
   }
 
   private async request<T>(
@@ -133,8 +139,15 @@ class ApiClient {
       if (!response.ok) {
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
-          console.warn('Authentication error, token may be invalid');
-          // Don't throw immediately, let the auth context handle it
+          // Check if it's a deleted/non-existent user error
+          if (data.message?.includes('non-existent user') || data.error?.includes('non-existent user')) {
+            console.error('User no longer exists, logging out...');
+            if (this.onLogout) {
+              this.onLogout();
+            }
+          } else {
+            console.warn('Authentication error, token may be invalid');
+          }
         }
         throw new Error(data.message || data.error || `HTTP ${response.status}`);
       }
