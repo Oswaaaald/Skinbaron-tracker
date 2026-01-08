@@ -11,8 +11,9 @@ export interface Rule {
   max_price?: number;
   min_wear?: number;
   max_wear?: number;
-  stattrak?: boolean;
-  souvenir?: boolean;
+  stattrak_filter?: 'all' | 'only' | 'exclude';
+  souvenir_filter?: 'all' | 'only' | 'exclude';
+  allow_stickers?: boolean;
   webhook_ids: number[]; // Array of webhook IDs (optional)
   enabled?: boolean;
   created_at?: string;
@@ -25,8 +26,9 @@ export interface CreateRuleData {
   max_price?: number;
   min_wear?: number;
   max_wear?: number;
-  stattrak?: boolean;
-  souvenir?: boolean;
+  stattrak_filter?: 'all' | 'only' | 'exclude';
+  souvenir_filter?: 'all' | 'only' | 'exclude';
+  allow_stickers?: boolean;
   webhook_ids: number[];
   enabled?: boolean;
 }

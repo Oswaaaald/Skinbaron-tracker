@@ -103,8 +103,9 @@ export function RulesTable() {
         max_price: rule.max_price ?? undefined,
         min_wear: rule.min_wear ?? undefined,
         max_wear: rule.max_wear ?? undefined,
-        stattrak: rule.stattrak ?? false,
-        souvenir: rule.souvenir ?? false,
+        stattrak_filter: rule.stattrak_filter ?? 'all',
+        souvenir_filter: rule.souvenir_filter ?? 'all',
+        allow_stickers: rule.allow_stickers ?? true,
         webhook_ids: rule.webhook_ids,
         enabled: enabled,
       };
@@ -255,14 +256,29 @@ export function RulesTable() {
                           Max Wear: {formatWearPercentage(rule.max_wear)}
                         </div>
                       )}
-                      {rule.stattrak && (
+                      {rule.stattrak_filter === 'only' && (
                         <Badge variant="outline" className="text-xs">
-                          StatTrak
+                          ⭐ StatTrak Only
                         </Badge>
                       )}
-                      {rule.souvenir && (
+                      {rule.stattrak_filter === 'exclude' && (
+                        <Badge variant="secondary" className="text-xs">
+                          ✗ No StatTrak
+                        </Badge>
+                      )}
+                      {rule.souvenir_filter === 'only' && (
                         <Badge variant="outline" className="text-xs">
-                          Souvenir
+                          🏆 Souvenir Only
+                        </Badge>
+                      )}
+                      {rule.souvenir_filter === 'exclude' && (
+                        <Badge variant="secondary" className="text-xs">
+                          ✗ No Souvenir
+                        </Badge>
+                      )}
+                      {rule.allow_stickers === false && (
+                        <Badge variant="secondary" className="text-xs">
+                          🚫 No Stickers
                         </Badge>
                       )}
                     </div>

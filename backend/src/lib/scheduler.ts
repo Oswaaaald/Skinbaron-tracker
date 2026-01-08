@@ -139,6 +139,13 @@ export class AlertScheduler {
     try {
       const client = getSkinBaronClient();
       
+      // Convert filter enums to boolean params for API
+      // 'only' = true, 'exclude' = false, 'all' = undefined (no filter)
+      const statTrakParam = rule.stattrak_filter === 'only' ? true : 
+                           rule.stattrak_filter === 'exclude' ? false : undefined;
+      const souvenirParam = rule.souvenir_filter === 'only' ? true : 
+                           rule.souvenir_filter === 'exclude' ? false : undefined;
+      
       // Search for items matching the rule
       const response = await client.search({
         search_item: rule.search_item,
@@ -146,8 +153,8 @@ export class AlertScheduler {
         max: rule.max_price || undefined,
         minWear: rule.min_wear || undefined,
         maxWear: rule.max_wear || undefined,
-        statTrak: rule.stattrak,
-        souvenir: rule.souvenir,
+        statTrak: statTrakParam,
+        souvenir: souvenirParam,
         limit: 20, // Limit to prevent API overload
       });
 
@@ -162,15 +169,36 @@ export class AlertScheduler {
           continue;
         }
 
-        // Double-check filters (API might not be perfect)
+        // Apply additional filters that the API might not handle perfectly
+        // Filter StatTrak based on rule
+        const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
+        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) continue;
+        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) continue;
+
+        // Filter Souvenir based on rule
+        const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
+        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) continue;
+        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) continue;
+
+        // Filter stickers - check if item has stickers in name
+        if (!rule.allow_stickers) {
+          // If stickers aren't allowed, skip items with "Sticker" in the name
+          // Note: This is a simple check. A more sophisticated implementation
+          // would need to parse the item details from SkinBaron API
+          if (item.itemName.toLowerCase().includes('sticker')) {
+            continue;
+          }
+        }
+
+        // Double-check basic filters (API might not be perfect)
         if (!client.matchesFilters(item, {
           search_item: rule.search_item,
           min: rule.min_price,
           max: rule.max_price,
           minWear: rule.min_wear,
           maxWear: rule.max_wear,
-          statTrak: rule.stattrak,
-          souvenir: rule.souvenir,
+          statTrak: statTrakParam,
+          souvenir: souvenirParam,
         })) {
           continue;
         }
@@ -296,14 +324,20 @@ export class AlertScheduler {
   async testRule(rule: Rule): Promise<SkinBaronItem[]> {
     const client = getSkinBaronClient();
     
+    // Convert filter enums to boolean params for API
+    const statTrakParam = rule.stattrak_filter === 'only' ? true : 
+                         rule.stattrak_filter === 'exclude' ? false : undefined;
+    const souvenirParam = rule.souvenir_filter === 'only' ? true : 
+                         rule.souvenir_filter === 'exclude' ? false : undefined;
+    
     const response = await client.search({
       search_item: rule.search_item,
       min: rule.min_price || undefined,
       max: rule.max_price || undefined,
       minWear: rule.min_wear || undefined,
       maxWear: rule.max_wear || undefined,
-      statTrak: rule.stattrak,
-      souvenir: rule.souvenir,
+      statTrak: statTrakParam,
+      souvenir: souvenirParam,
       limit: 10,
     });
 
@@ -311,17 +345,30 @@ export class AlertScheduler {
       return [];
     }
 
-    return response.items.filter((item: SkinBaronItem) => 
-      client.matchesFilters(item, {
+    return response.items.filter((item: SkinBaronItem) => {
+      // Apply all filters including the new ones
+      const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
+      if (rule.stattrak_filter === 'only' && !itemIsStatTrak) return false;
+      if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) return false;
+
+      const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
+      if (rule.souvenir_filter === 'only' && !itemIsSouvenir) return false;
+      if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) return false;
+
+      if (!rule.allow_stickers && item.itemName.toLowerCase().includes('sticker')) {
+        return false;
+      }
+
+      return client.matchesFilters(item, {
         search_item: rule.search_item,
         min: rule.min_price || undefined,
         max: rule.max_price || undefined,
         minWear: rule.min_wear || undefined,
         maxWear: rule.max_wear || undefined,
-        statTrak: rule.stattrak,
-        souvenir: rule.souvenir,
-      })
-    );
+        statTrak: statTrakParam,
+        souvenir: souvenirParam,
+      });
+    });
   }
 
   /**

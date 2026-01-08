@@ -25,6 +25,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import { apiClient, type Rule, type CreateRuleData } from "@/lib/api"
 import { wearToPercentage, percentageToWear } from "@/lib/wear-utils"
@@ -39,8 +46,9 @@ const ruleFormSchema = z.object({
   max_price: z.number().min(0, "Prix maximum doit être positif").optional(),
   min_wear: z.number().min(0, "Wear minimum doit être entre 0 et 100").max(100, "Wear minimum doit être entre 0 et 100").optional(),
   max_wear: z.number().min(0, "Wear maximum doit être entre 0 et 100").max(100, "Wear maximum doit être entre 0 et 100").optional(),
-  stattrak: z.boolean().optional(),
-  souvenir: z.boolean().optional(),
+  stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
+  souvenir_filter: z.enum(['all', 'only', 'exclude']).default('all'),
+  allow_stickers: z.boolean().default(true),
   webhook_ids: z.array(z.number()).max(10, "Maximum 10 webhooks allowed").default([]),
   enabled: z.boolean().optional(),
 })
@@ -86,8 +94,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       max_price: undefined,
       min_wear: undefined,
       max_wear: undefined,
-      stattrak: false,
-      souvenir: false,
+      stattrak_filter: 'all' as const,
+      souvenir_filter: 'all' as const,
+      allow_stickers: true,
       webhook_ids: [],
       enabled: true,
     },
@@ -104,8 +113,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           max_price: rule.max_price !== undefined && rule.max_price !== null ? rule.max_price : undefined,
           min_wear: rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined,
           max_wear: rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined,
-          stattrak: rule.stattrak || false,
-          souvenir: rule.souvenir || false,
+          stattrak_filter: rule.stattrak_filter || 'all',
+          souvenir_filter: rule.souvenir_filter || 'all',
+          allow_stickers: rule.allow_stickers ?? true,
           webhook_ids: rule.webhook_ids || [],
           enabled: rule.enabled ?? true,
         })
@@ -125,8 +135,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
           max_price: undefined,
           min_wear: undefined,
           max_wear: undefined,
-          stattrak: false,
-          souvenir: false,
+          stattrak_filter: 'all',
+          souvenir_filter: 'all',
+          allow_stickers: true,
           webhook_ids: [],
           enabled: true,
         })
@@ -196,8 +207,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         max_price: data.max_price || undefined,
         min_wear: data.min_wear !== undefined ? percentageToWear(data.min_wear) : 0,
         max_wear: data.max_wear !== undefined ? percentageToWear(data.max_wear) : undefined,
-        stattrak: data.stattrak,
-        souvenir: data.souvenir,
+        stattrak_filter: data.stattrak_filter,
+        souvenir_filter: data.souvenir_filter,
+        allow_stickers: data.allow_stickers,
         webhook_ids: data.webhook_ids,
         enabled: data.enabled ?? true,
       }
@@ -519,39 +531,71 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               />
             </div>
 
-            {/* StatTrak and Souvenir */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="stattrak"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel>StatTrak™</FormLabel>
-                      <FormDescription className="text-sm">
-                        Only StatTrak™ items
+            {/* StatTrak, Souvenir and Stickers Filters */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="stattrak_filter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>StatTrak™ Filter</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="all">✓ Tout accepter</SelectItem>
+                          <SelectItem value="only">⭐ Uniquement StatTrak™</SelectItem>
+                          <SelectItem value="exclude">✗ Exclure StatTrak™</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Filtrer les items StatTrak™
                       </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="souvenir_filter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Souvenir Filter</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="all">✓ Tout accepter</SelectItem>
+                          <SelectItem value="only">🏆 Uniquement Souvenir</SelectItem>
+                          <SelectItem value="exclude">✗ Exclure Souvenir</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Filtrer les items Souvenir
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}
-                name="souvenir"
+                name="allow_stickers"
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <FormLabel>Souvenir</FormLabel>
+                      <FormLabel>Autoriser les Stickers</FormLabel>
                       <FormDescription className="text-sm">
-                        Only Souvenir items
+                        Inclure les items avec des stickers
                       </FormDescription>
                     </div>
                     <FormControl>

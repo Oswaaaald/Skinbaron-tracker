@@ -14,8 +14,9 @@ export const RuleSchema = z.object({
   max_price: z.number().min(0).optional(),
   min_wear: z.number().min(0).max(1).optional(),
   max_wear: z.number().min(0).max(1).optional(),
-  stattrak: z.boolean().optional(),
-  souvenir: z.boolean().optional(),
+  stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
+  souvenir_filter: z.enum(['all', 'only', 'exclude']).default('all'),
+  allow_stickers: z.boolean().default(true),
   webhook_ids: z.array(z.number()).min(0).default([]),
   enabled: z.boolean().default(true),
   created_at: z.string().optional(),
@@ -121,8 +122,9 @@ export class Store {
         max_price REAL,
         min_wear REAL CHECK (min_wear >= 0 AND min_wear <= 1),
         max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
-        stattrak BOOLEAN DEFAULT 0,
-        souvenir BOOLEAN DEFAULT 0,
+        stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
+        souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
+        allow_stickers BOOLEAN DEFAULT 1,
         webhook_ids TEXT, -- JSON array of webhook IDs
         enabled BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -241,6 +243,28 @@ export class Store {
       console.log('✅ Migration: Approved all existing users');
     }
 
+    // Migration: Add new filter columns to rules table if they don't exist
+    const hasStattrakFilter = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('rules') WHERE name='stattrak_filter'
+    `).get() as { count: number };
+
+    if (hasStattrakFilter.count === 0) {
+      // Add new columns
+      this.db.exec(`ALTER TABLE rules ADD COLUMN stattrak_filter TEXT DEFAULT 'all'`);
+      this.db.exec(`ALTER TABLE rules ADD COLUMN souvenir_filter TEXT DEFAULT 'all'`);
+      this.db.exec(`ALTER TABLE rules ADD COLUMN allow_stickers BOOLEAN DEFAULT 1`);
+      console.log('✅ Migration: Added filter columns to rules table');
+      
+      // Migrate old boolean stattrak/souvenir values to new filter format
+      this.db.exec(`
+        UPDATE rules 
+        SET stattrak_filter = CASE WHEN stattrak = 1 THEN 'only' ELSE 'all' END,
+            souvenir_filter = CASE WHEN souvenir = 1 THEN 'only' ELSE 'all' END
+        WHERE stattrak_filter IS NULL OR souvenir_filter IS NULL
+      `);
+      console.log('✅ Migration: Migrated old stattrak/souvenir values to new filter format');
+    }
+
     // Create admin actions audit log table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS admin_actions (
@@ -267,8 +291,8 @@ export class Store {
     
     const stmt = this.db.prepare(`
       INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                        stattrak, souvenir, webhook_ids, enabled)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -278,8 +302,9 @@ export class Store {
       validated.max_price ?? null,
       validated.min_wear ?? null,
       validated.max_wear ?? null,
-      validated.stattrak ? 1 : 0,
-      validated.souvenir ? 1 : 0,
+      validated.stattrak_filter,
+      validated.souvenir_filter,
+      validated.allow_stickers ? 1 : 0,
       JSON.stringify(validated.webhook_ids),
       validated.enabled ? 1 : 0
     );
@@ -292,7 +317,7 @@ export class Store {
     const row = stmt.get(id) as any;
     
     if (!row) return null;
-    
+
     let webhookIds: number[] = [];
     if (row.webhook_ids) {
       try {
@@ -306,12 +331,13 @@ export class Store {
     
     return {
       ...row,
-      stattrak: Boolean(row.stattrak),
-      souvenir: Boolean(row.souvenir),
+      stattrak_filter: row.stattrak_filter || 'all',
+      souvenir_filter: row.souvenir_filter || 'all',
+      allow_stickers: Boolean(row.allow_stickers),
       enabled: Boolean(row.enabled),
       webhook_ids: webhookIds,
     };
-  }  getAllRules(): Rule[] {
+  }getAllRules(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules ORDER BY created_at DESC');
     const rows = stmt.all() as any[];
     
@@ -329,8 +355,9 @@ export class Store {
       
       return {
         ...row,
-        stattrak: Boolean(row.stattrak),
-        souvenir: Boolean(row.souvenir),
+        stattrak_filter: row.stattrak_filter || 'all',
+        souvenir_filter: row.souvenir_filter || 'all',
+        allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
       };
@@ -360,8 +387,9 @@ export class Store {
       return {
         ...row,
         user_id: row.user_id, // Keep original format for now
-        stattrak: Boolean(row.stattrak),
-        souvenir: Boolean(row.souvenir),
+        stattrak_filter: row.stattrak_filter || 'all',
+        souvenir_filter: row.souvenir_filter || 'all',
+        allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
       };
@@ -386,8 +414,9 @@ export class Store {
       
       return {
         ...row,
-        stattrak: Boolean(row.stattrak),
-        souvenir: Boolean(row.souvenir),
+        stattrak_filter: row.stattrak_filter || 'all',
+        souvenir_filter: row.souvenir_filter || 'all',
+        allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
       };
@@ -403,7 +432,7 @@ export class Store {
     const stmt = this.db.prepare(`
       UPDATE rules 
       SET user_id = ?, search_item = ?, min_price = ?, max_price = ?, min_wear = ?, max_wear = ?, 
-          stattrak = ?, souvenir = ?, webhook_ids = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+          stattrak_filter = ?, souvenir_filter = ?, allow_stickers = ?, webhook_ids = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
@@ -414,8 +443,9 @@ export class Store {
       validated.max_price ?? null,
       validated.min_wear ?? null,
       validated.max_wear ?? null,
-      validated.stattrak ? 1 : 0,
-      validated.souvenir ? 1 : 0,
+      validated.stattrak_filter,
+      validated.souvenir_filter,
+      validated.allow_stickers ? 1 : 0,
       JSON.stringify(validated.webhook_ids),
       validated.enabled ? 1 : 0,
       id
