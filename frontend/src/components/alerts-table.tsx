@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { ExternalLink, Search, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
@@ -39,10 +39,18 @@ export function AlertsTable() {
   const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [isClearingAll, setIsClearingAll] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const limit = 20
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await queryClient.invalidateQueries({ queryKey: ['alerts'] })
+    syncStats()
+    setTimeout(() => setIsRefreshing(false), 500)
+  }
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
@@ -188,21 +196,32 @@ export function AlertsTable() {
           <label className="text-sm font-medium mb-2 block">
             Actions
           </label>
-          <Button
-            variant="outline"
-            onClick={handleClearAllAlerts}
-            disabled={isClearingAll}
-            className="w-[180px]"
-          >
-            {isClearingAll ? (
-              <>
-                <LoadingSpinner />
-                Clearing...
-              </>
-            ) : (
-              'Clear All Alerts'
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              size="icon"
+              title="Refresh alerts"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleClearAllAlerts}
+              disabled={isClearingAll}
+              className="w-[180px]"
+            >
+              {isClearingAll ? (
+                <>
+                  <LoadingSpinner />
+                  Clearing...
+                </>
+              ) : (
+                'Clear All Alerts'
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
