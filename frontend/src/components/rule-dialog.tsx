@@ -104,50 +104,48 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
 
   // Reset form when dialog opens/closes or rule changes
   useEffect(() => {
-    if (open) {
-      if (rule) {
-        // Editing existing rule
-        form.reset({
-          search_item: rule.search_item || "",
-          min_price: rule.min_price !== undefined && rule.min_price !== null ? rule.min_price : undefined,
-          max_price: rule.max_price !== undefined && rule.max_price !== null ? rule.max_price : undefined,
-          min_wear: rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined,
-          max_wear: rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined,
-          stattrak_filter: rule.stattrak_filter || 'all',
-          souvenir_filter: rule.souvenir_filter || 'all',
-          allow_stickers: rule.allow_stickers ?? true,
-          webhook_ids: rule.webhook_ids || [],
-          enabled: rule.enabled ?? true,
-        })
-        setSelectedWebhooks(rule.webhook_ids || [])
-        // Sync display values with rounding
-        setMinPriceDisplay(rule.min_price !== undefined && rule.min_price !== null ? (Math.round(rule.min_price * 100) / 100).toString() : '')
-        setMaxPriceDisplay(rule.max_price !== undefined && rule.max_price !== null ? (Math.round(rule.max_price * 100) / 100).toString() : '')
-        const minWearPct = rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined
-        const maxWearPct = rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined
-        setMinWearDisplay(minWearPct !== undefined ? minWearPct.toString() : '')
-        setMaxWearDisplay(maxWearPct !== undefined ? maxWearPct.toString() : '')
-      } else {
-        // Creating new rule
-        form.reset({
-          search_item: "",
-          min_price: undefined,
-          max_price: undefined,
-          min_wear: undefined,
-          max_wear: undefined,
-          stattrak_filter: 'all',
-          souvenir_filter: 'all',
-          allow_stickers: true,
-          webhook_ids: [],
-          enabled: true,
-        })
-        setSelectedWebhooks([])
-        // Reset display values
-        setMinPriceDisplay('')
-        setMaxPriceDisplay('')
-        setMinWearDisplay('')
-        setMaxWearDisplay('')
-      }
+    if (open && rule) {
+      // Only reset when editing existing rule
+      form.reset({
+        search_item: rule.search_item || "",
+        min_price: rule.min_price !== undefined && rule.min_price !== null ? rule.min_price : undefined,
+        max_price: rule.max_price !== undefined && rule.max_price !== null ? rule.max_price : undefined,
+        min_wear: rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined,
+        max_wear: rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined,
+        stattrak_filter: rule.stattrak_filter || 'all',
+        souvenir_filter: rule.souvenir_filter || 'all',
+        allow_stickers: rule.allow_stickers ?? true,
+        webhook_ids: rule.webhook_ids || [],
+        enabled: rule.enabled ?? true,
+      })
+      setSelectedWebhooks(rule.webhook_ids || [])
+      // Sync display values with rounding
+      setMinPriceDisplay(rule.min_price !== undefined && rule.min_price !== null ? (Math.round(rule.min_price * 100) / 100).toString() : '')
+      setMaxPriceDisplay(rule.max_price !== undefined && rule.max_price !== null ? (Math.round(rule.max_price * 100) / 100).toString() : '')
+      const minWearPct = rule.min_wear !== undefined && rule.min_wear !== null ? wearToPercentage(rule.min_wear) : undefined
+      const maxWearPct = rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined
+      setMinWearDisplay(minWearPct !== undefined ? minWearPct.toString() : '')
+      setMaxWearDisplay(maxWearPct !== undefined ? maxWearPct.toString() : '')
+    } else if (!open) {
+      // Reset form when dialog closes (for next creation)
+      form.reset({
+        search_item: "",
+        min_price: undefined,
+        max_price: undefined,
+        min_wear: undefined,
+        max_wear: undefined,
+        stattrak_filter: 'all',
+        souvenir_filter: 'all',
+        allow_stickers: true,
+        webhook_ids: [],
+        enabled: true,
+      })
+      setSelectedWebhooks([])
+      // Reset display values
+      setMinPriceDisplay('')
+      setMaxPriceDisplay('')
+      setMinWearDisplay('')
+      setMaxWearDisplay('')
     }
   }, [open, rule, form])
 

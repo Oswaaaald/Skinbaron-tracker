@@ -331,8 +331,8 @@ export class Store {
     
     return {
       ...row,
-      stattrak_filter: row.stattrak_filter || 'all',
-      souvenir_filter: row.souvenir_filter || 'all',
+      stattrak_filter: row.stattrak_filter ?? 'all',
+      souvenir_filter: row.souvenir_filter ?? 'all',
       allow_stickers: Boolean(row.allow_stickers),
       enabled: Boolean(row.enabled),
       webhook_ids: webhookIds,
@@ -355,8 +355,8 @@ export class Store {
       
       return {
         ...row,
-        stattrak_filter: row.stattrak_filter || 'all',
-        souvenir_filter: row.souvenir_filter || 'all',
+        stattrak_filter: row.stattrak_filter ?? 'all',
+        souvenir_filter: row.souvenir_filter ?? 'all',
         allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
@@ -387,8 +387,8 @@ export class Store {
       return {
         ...row,
         user_id: row.user_id, // Keep original format for now
-        stattrak_filter: row.stattrak_filter || 'all',
-        souvenir_filter: row.souvenir_filter || 'all',
+        stattrak_filter: row.stattrak_filter ?? 'all',
+        souvenir_filter: row.souvenir_filter ?? 'all',
         allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
@@ -414,8 +414,8 @@ export class Store {
       
       return {
         ...row,
-        stattrak_filter: row.stattrak_filter || 'all',
-        souvenir_filter: row.souvenir_filter || 'all',
+        stattrak_filter: row.stattrak_filter ?? 'all',
+        souvenir_filter: row.souvenir_filter ?? 'all',
         allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
