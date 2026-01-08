@@ -80,9 +80,13 @@ export class AlertScheduler {
     this.stats.lastRunTime = new Date();
     this.stats.totalRuns++;
 
+    console.log(`[Scheduler] 🔄 Starting poll cycle #${this.stats.totalRuns} at ${new Date().toISOString()}`);
+
     try {
       // Get all enabled rules
       const rules = this.store.getEnabledRules();
+      console.log(`[Scheduler] 📋 Found ${rules.length} enabled rules`);
+      
       if (rules.length === 0) {
         return;
       }
@@ -96,14 +100,20 @@ export class AlertScheduler {
       // Split rules into batches
       for (let batchStart = 0; batchStart < rules.length; batchStart += BATCH_SIZE) {
         const batch = rules.slice(batchStart, batchStart + BATCH_SIZE);
+        console.log(`[Scheduler] 🔄 Processing batch ${Math.floor(batchStart / BATCH_SIZE) + 1} (${batch.length} rules)`);
         
         // Process batch in parallel
         const batchPromises = batch.map(async (rule) => {
           if (!rule) return 0;
           
           try {
-            return await this.processRule(rule);
+            const alerts = await this.processRule(rule);
+            if (alerts > 0) {
+              console.log(`[Scheduler] ✅ Rule #${rule.id} (${rule.search_item}): ${alerts} new alerts`);
+            }
+            return alerts;
           } catch (error) {
+            console.error(`[Scheduler] ❌ Error processing rule #${rule.id}:`, error);
             this.stats.errorCount++;
             this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
             return 0;
@@ -119,6 +129,7 @@ export class AlertScheduler {
         }
       }
 
+      console.log(`[Scheduler] ✨ Poll complete: ${totalNewAlerts} total new alerts`);
       this.stats.totalAlerts += totalNewAlerts;
 
       // Update next run time
@@ -127,6 +138,7 @@ export class AlertScheduler {
       }
 
     } catch (error) {
+      console.error('[Scheduler] ❌ Error during poll:', error);
       this.stats.errorCount++;
       this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
     }
@@ -162,7 +174,11 @@ export class AlertScheduler {
         return 0;
       }
 
+      console.log(`[Rule #${rule.id}] 🔍 API returned ${response.items.length} items for "${rule.search_item}"`);
+
       let newAlerts = 0;
+      let filtered = 0;
+      
       for (const item of response.items) {
         // Check if already processed for this rule
         if (this.store.isProcessed(item.saleId, rule.id)) {
@@ -172,18 +188,32 @@ export class AlertScheduler {
         // Apply additional filters that the API might not handle perfectly
         // Filter StatTrak based on rule
         const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
-        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) continue;
-        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) continue;
+        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
+          filtered++;
+          continue;
+        }
+        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) {
+          filtered++;
+          continue;
+        }
 
         // Filter Souvenir based on rule
         const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) continue;
-        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) continue;
+        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) {
+          filtered++;
+          continue;
+        }
+        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) {
+          filtered++;
+          continue;
+        }
 
         // Filter stickers - check if item HAS stickers applied
         // allow_stickers = true means accept items with stickers
         // allow_stickers = false means reject items with stickers
         if (!rule.allow_stickers && item.hasStickers) {
+          console.log(`[Rule #${rule.id}] 🚫 Filtered item with stickers: ${item.itemName}`);
+          filtered++;
           continue; // Skip items with stickers if not allowed
         }
 
@@ -197,6 +227,7 @@ export class AlertScheduler {
           statTrak: statTrakParam,
           souvenir: souvenirParam,
         })) {
+          filtered++;
           continue;
         }
 
@@ -215,6 +246,7 @@ export class AlertScheduler {
           };
 
           this.store.createAlert(alert);
+          console.log(`[Rule #${rule.id}] 🎯 Created alert for: ${item.itemName} @ €${item.price}`);
           
           // Always count the alert as created, regardless of webhook notifications
           newAlerts++;
@@ -252,9 +284,14 @@ export class AlertScheduler {
         }
       }
 
+      if (filtered > 0) {
+        console.log(`[Rule #${rule.id}] 🔽 Filtered out ${filtered} items`);
+      }
+
       return newAlerts;
 
     } catch (error) {
+      console.error(`[Rule #${rule.id}] ❌ Error:`, error);
       throw error;
     }
   }
