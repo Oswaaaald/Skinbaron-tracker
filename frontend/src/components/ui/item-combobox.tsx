@@ -42,6 +42,7 @@ export function ItemCombobox({
   const [searchQuery, setSearchQuery] = React.useState(value || "")
   const [suggestions, setSuggestions] = React.useState<ItemSuggestion[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
+  const listRef = React.useRef<HTMLDivElement>(null)
   
   const debouncedSearch = useDebounce(searchQuery, 300)
 
@@ -100,6 +101,12 @@ export function ItemCombobox({
         align="start"
         sideOffset={4}
         style={{ width: 'var(--radix-popover-trigger-width)' }}
+        onWheel={(e) => {
+          // Allow wheel events to scroll the list
+          if (listRef.current) {
+            e.stopPropagation()
+          }
+        }}
       >
         <Command shouldFilter={false} className="rounded-lg border-0">
           <CommandInput
@@ -108,7 +115,10 @@ export function ItemCombobox({
             onValueChange={setSearchQuery}
             className="h-11"
           />
-          <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+          <CommandList 
+            ref={listRef as any}
+            className="max-h-[300px] overflow-y-auto overflow-x-hidden"
+          >
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
