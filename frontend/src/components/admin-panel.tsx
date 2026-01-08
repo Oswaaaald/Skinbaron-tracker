@@ -140,6 +140,24 @@ export function AdminPanel() {
     },
   })
 
+  // Force scheduler mutation (super admin only)
+  const forceSchedulerMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.forceSchedulerRun()
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to run scheduler')
+      }
+      return response
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      alert('Scheduler executed successfully!')
+    },
+    onError: (error) => {
+      alert(`Failed to run scheduler: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    },
+  })
+
   const isCurrentUser = (user: AdminUser) => {
     return currentUser?.email === user.email
   }
@@ -166,6 +184,12 @@ export function AdminPanel() {
     if (adminDialog.user) {
       const isAdmin = adminDialog.action === 'grant'
       toggleAdminMutation.mutate({ userId: adminDialog.user.id, isAdmin })
+    }
+  }
+
+  const handleForceScheduler = () => {
+    if (confirm('Force the scheduler to run now? This will check all enabled rules immediately.')) {
+      forceSchedulerMutation.mutate()
     }
   }
 
@@ -279,6 +303,31 @@ export function AdminPanel() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Super Admin Actions */}
+      {currentUser?.is_super_admin && (
+        <Card className="border-purple-500 border-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-purple-500" />
+              Super Admin Actions
+            </CardTitle>
+            <CardDescription>Advanced system controls</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => handleForceScheduler()}
+              disabled={forceSchedulerMutation.isPending}
+              variant="outline"
+            >
+              {forceSchedulerMutation.isPending ? 'Running...' : 'Force Scheduler Run'}
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">
+              Bypass the cron schedule and run the scheduler immediately
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Users Table */}

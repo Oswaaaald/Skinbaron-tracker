@@ -456,6 +456,11 @@ class ApiClient {
   async rejectUser(userId: number): Promise<ApiResponse<{ message: string }>> {
     return this.post(`/api/admin/reject-user/${userId}`);
   }
+
+  // Force scheduler run (super admin only)
+  async forceSchedulerRun(): Promise<ApiResponse<{ message: string }>> {
+    return this.post(`/api/admin/scheduler/force-run`);
+  }
 }
 
 export const apiClient = new ApiClient();

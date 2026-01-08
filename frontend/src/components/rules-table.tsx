@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { MoreHorizontal, Edit, Trash2, TestTube2, Play, Pause } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
 import { toast } from "sonner"
 import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
@@ -133,26 +133,6 @@ export function RulesTable() {
     },
   })
 
-  const testRuleMutation = useMutation({
-    mutationFn: ({ id, webhookTest, webhookOnly }: { id: number; webhookTest: boolean; webhookOnly?: boolean }) =>
-      apiClient.testRule(id, webhookTest, webhookOnly),
-    onSuccess: (data) => {
-      if (data.success && data.data) {
-        const isWebhookOnly = data.data.matchCount === 0 && data.data.webhookTest !== null;
-        if (isWebhookOnly) {
-          toast.success(`Webhook test ${data.data.webhookTest ? 'successful' : 'failed'}`)
-        } else {
-          toast.success(`Test completed: ${data.data.matchCount} matches found${data.data.webhookTest ? ', webhook test sent' : ''}`)
-        }
-      } else {
-        toast.error(data.error || 'Test failed')
-      }
-    },
-    onError: (error) => {
-      toast.error(`Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    },
-  })
-
   const handleEdit = (rule: Rule) => {
     setEditingRule(rule)
     setIsEditDialogOpen(true)
@@ -167,18 +147,6 @@ export function RulesTable() {
   const handleDelete = (rule: Rule) => {
     if (rule.id && confirm('Are you sure you want to delete this rule?')) {
       deleteRuleMutation.mutate(rule.id)
-    }
-  }
-
-  const handleTest = (rule: Rule, webhookTest: boolean = false) => {
-    if (rule.id) {
-      testRuleMutation.mutate({ id: rule.id, webhookTest })
-    }
-  }
-
-  const handleTestWebhookOnly = (rule: Rule) => {
-    if (rule.id) {
-      testRuleMutation.mutate({ id: rule.id, webhookTest: true, webhookOnly: true })
     }
   }
 
@@ -320,19 +288,6 @@ export function RulesTable() {
                               Enable
                             </>
                           )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleTest(rule, false)}>
-                          <TestTube2 className="mr-2 h-4 w-4" />
-                          Test Rule
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleTest(rule, true)}>
-                          <TestTube2 className="mr-2 h-4 w-4" />
-                          Test + Webhook
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleTestWebhookOnly(rule)}>
-                          <TestTube2 className="mr-2 h-4 w-4" />
-                          Test Webhook Only
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 

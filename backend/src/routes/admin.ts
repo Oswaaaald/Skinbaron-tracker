@@ -1,11 +1,13 @@
 import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
+import { getScheduler } from '../lib/scheduler.js';
 
 /**
  * Admin routes - All routes require admin privileges
  */
 export default async function adminRoutes(fastify: FastifyInstance) {
   const store = getStore();
+  const scheduler = getScheduler();
 
   /**
    * GET /api/admin/users - List all users (admin only)
@@ -489,6 +491,46 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({
         success: false,
         error: 'Failed to reject user',
+      });
+    }
+  });
+
+  /**
+   * POST /api/admin/scheduler/force-run - Force scheduler to run immediately (super admin only)
+   */
+  fastify.post('/scheduler/force-run', {
+    preHandler: [fastify.requireSuperAdmin],
+    schema: {
+      description: 'Force the scheduler to run immediately (bypasses cron schedule) - Super Admin only',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      // Force the scheduler to execute immediately
+      await scheduler.forceRun();
+
+      // Log admin action
+      store.logAdminAction(request.user!.id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Scheduler executed successfully',
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to force scheduler run');
+      return reply.status(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to execute scheduler',
       });
     }
   });
