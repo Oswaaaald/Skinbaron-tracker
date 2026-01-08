@@ -61,6 +61,7 @@ export function WebhooksTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
       setIsDialogOpen(false)
       resetForm()
       toast.success('Webhook created successfully')
@@ -79,6 +80,7 @@ export function WebhooksTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
       setIsDialogOpen(false)
       resetForm()
       toast.success('Webhook updated successfully')

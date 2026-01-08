@@ -166,6 +166,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       if (result.success) {
         toast.success("Rule created successfully!")
         queryClient.invalidateQueries({ queryKey: ['rules'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
         syncStats() // Sync stats immediately after rule creation
         onOpenChange(false)
       } else {
@@ -186,6 +187,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       if (result.success) {
         toast.success("Rule updated successfully!")
         queryClient.invalidateQueries({ queryKey: ['rules'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
         syncStats() // Sync stats immediately after rule update
         onOpenChange(false)
       } else {

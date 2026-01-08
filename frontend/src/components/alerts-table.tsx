@@ -57,6 +57,7 @@ export function AlertsTable() {
       if (response.success) {
         // Invalidate alerts and stats cache - let auto-refresh handle the rest
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
+        queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
         syncStats()
         
         alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)

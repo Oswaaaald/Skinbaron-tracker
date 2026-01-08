@@ -113,6 +113,7 @@ export function RulesTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
       syncStats() // Sync stats immediately after rule change
       toast.success('Rule updated successfully')
     },
@@ -125,6 +126,7 @@ export function RulesTable() {
     mutationFn: (id: number) => apiClient.deleteRule(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
       syncStats() // Sync stats immediately after rule deletion
       toast.success('Rule deleted successfully')
     },
