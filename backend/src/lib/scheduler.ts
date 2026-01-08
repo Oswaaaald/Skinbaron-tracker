@@ -163,22 +163,42 @@ export class AlertScheduler {
       }
 
       let newAlerts = 0;
+      let skippedCount = 0;
+      let filteredCount = 0;
+      
       for (const item of response.items) {
         // Check if already processed for this rule
         if (this.store.isProcessed(item.saleId, rule.id)) {
+          skippedCount++;
           continue;
         }
 
         // Apply additional filters that the API might not handle perfectly
         // Filter StatTrak based on rule
         const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
-        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) continue;
-        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) continue;
+        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
+          filteredCount++;
+          console.log(`🔴 Rule ${rule.id} (${rule.search_item}): Filtered out ${item.itemName} - not StatTrak (required: only)`);
+          continue;
+        }
+        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) {
+          filteredCount++;
+          console.log(`🔴 Rule ${rule.id} (${rule.search_item}): Filtered out ${item.itemName} - is StatTrak (excluded)`);
+          continue;
+        }
 
         // Filter Souvenir based on rule
         const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) continue;
-        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) continue;
+        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) {
+          filteredCount++;
+          console.log(`🔴 Rule ${rule.id} (${rule.search_item}): Filtered out ${item.itemName} - not Souvenir (required: only)`);
+          continue;
+        }
+        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) {
+          filteredCount++;
+          console.log(`🔴 Rule ${rule.id} (${rule.search_item}): Filtered out ${item.itemName} - is Souvenir (excluded)`);
+          continue;
+        }
 
         // Filter stickers - check if item has stickers in name
         if (!rule.allow_stickers) {
@@ -186,6 +206,8 @@ export class AlertScheduler {
           // Note: This is a simple check. A more sophisticated implementation
           // would need to parse the item details from SkinBaron API
           if (item.itemName.toLowerCase().includes('sticker')) {
+            filteredCount++;
+            console.log(`🔴 Rule ${rule.id} (${rule.search_item}): Filtered out ${item.itemName} - has stickers (not allowed)`);
             continue;
           }
         }
@@ -200,6 +222,8 @@ export class AlertScheduler {
           statTrak: statTrakParam,
           souvenir: souvenirParam,
         })) {
+          filteredCount++;
+          console.log(`🔴 Rule ${rule.id} (${rule.search_item}): Filtered out ${item.itemName} - doesn't match basic filters`);
           continue;
         }
 
@@ -218,6 +242,7 @@ export class AlertScheduler {
           };
 
           this.store.createAlert(alert);
+          console.log(`✅ Rule ${rule.id} (${rule.search_item}): Created alert for ${item.itemName} - €${item.price}`);
           
           // Always count the alert as created, regardless of webhook notifications
           newAlerts++;
@@ -249,10 +274,15 @@ export class AlertScheduler {
         } catch (error) {
           if (error instanceof Error && error.message === 'DUPLICATE_SALE') {
             // Already processed, skip
+            skippedCount++;
             continue;
           }
           throw error;
         }
+      }
+
+      if (response.items.length > 0) {
+        console.log(`📊 Rule ${rule.id} (${rule.search_item}): Found ${response.items.length} items, ${newAlerts} new alerts, ${skippedCount} already processed, ${filteredCount} filtered out`);
       }
 
       return newAlerts;
