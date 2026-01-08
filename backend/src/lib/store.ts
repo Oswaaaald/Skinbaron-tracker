@@ -8,7 +8,7 @@ import crypto from 'crypto';
 // Schema validation with Zod
 export const RuleSchema = z.object({
   id: z.number().optional(),
-  user_id: z.string().min(1, 'User ID is required'),
+  user_id: z.number().int().positive(),
   search_item: z.string().min(1, 'Search item is required'),
   min_price: z.number().min(0).optional(),
   max_price: z.number().min(0).optional(),

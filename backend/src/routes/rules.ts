@@ -59,7 +59,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
                 type: 'object',
                 properties: {
                   id: { type: 'number' },
-                  user_id: { type: 'string' },
+                  user_id: { type: 'number' },
                   search_item: { type: 'string' },
                   min_price: { type: 'number', nullable: true },
                   max_price: { type: 'number', nullable: true },
@@ -134,7 +134,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
               type: 'object',
               properties: {
                 id: { type: 'number' },
-                user_id: { type: 'string' },
+                user_id: { type: 'number' },
                 search_item: { type: 'string' },
                 min_price: { type: 'number', nullable: true },
                 max_price: { type: 'number', nullable: true },
@@ -160,7 +160,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       const ruleData = CreateRuleRequestSchema.parse({
         ...bodyData,
-        user_id: request.user!.id.toString(), // Convert to string for compatibility
+        user_id: request.user!.id,
       });
       
       // Validate webhook_ids if provided - must belong to user
@@ -232,7 +232,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
               type: 'object',
               properties: {
                 id: { type: 'number' },
-                user_id: { type: 'string' },
+                user_id: { type: 'number' },
                 search_item: { type: 'string' },
                 min_price: { type: 'number', nullable: true },
                 max_price: { type: 'number', nullable: true },
@@ -333,7 +333,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
               type: 'object',
               properties: {
                 id: { type: 'number' },
-                user_id: { type: 'string' },
+                user_id: { type: 'number' },
                 search_item: { type: 'string' },
                 min_price: { type: 'number', nullable: true },
                 max_price: { type: 'number', nullable: true },
@@ -372,7 +372,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      if (existingRule.user_id !== request.user!.id.toString()) {
+      if (existingRule.user_id !== request.user!.id) {
         return reply.status(403).send({
           success: false,
           error: 'Access denied',
@@ -385,7 +385,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       const updates = UpdateRuleRequestSchema.parse({
         ...bodyData,
-        user_id: request.user!.id.toString(), // Convert to string for compatibility
+        user_id: request.user!.id,
       });
       
       // Validate webhook_ids - filter out deleted webhooks automatically
