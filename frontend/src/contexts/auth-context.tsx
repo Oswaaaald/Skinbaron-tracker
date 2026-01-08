@@ -57,12 +57,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             // Force refresh profile to ensure we have latest fields (like is_super_admin)
             try {
-              const response = await apiClient.getUserProfile()
-              if (response.success && response.data) {
-                const updatedUser = { ...authData.user, ...response.data }
-                setUser(updatedUser)
-                authData.user = updatedUser
-                localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
+              const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+              const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+                headers: {
+                  'Authorization': `Bearer ${authData.token}`,
+                },
+              })
+              
+              if (response.ok) {
+                const data = await response.json()
+                if (data.success && data.data) {
+                  const updatedUser = { ...authData.user, ...data.data }
+                  setUser(updatedUser)
+                  authData.user = updatedUser
+                  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
+                  console.log('✅ Profile refreshed on mount:', updatedUser)
+                }
               }
             } catch (error) {
               console.error('Failed to refresh profile on mount:', error)
