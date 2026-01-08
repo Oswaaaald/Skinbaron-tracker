@@ -117,7 +117,11 @@ export function ItemCombobox({
           />
           <CommandList 
             ref={listRef as any}
-            className="max-h-[300px] overflow-y-auto overflow-x-hidden"
+            className="max-h-[300px] overflow-y-auto overflow-x-hidden touch-pan-y"
+            style={{ 
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y'
+            }}
           >
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
