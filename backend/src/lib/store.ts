@@ -316,8 +316,13 @@ export class Store {
         );
 
         -- Copy data from old table (only rules for existing users)
-        INSERT INTO rules_new 
-        SELECT * FROM rules 
+        INSERT INTO rules_new (id, user_id, search_item, min_price, max_price, min_wear, max_wear, 
+                               stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled, 
+                               created_at, updated_at)
+        SELECT id, user_id, search_item, min_price, max_price, min_wear, max_wear, 
+               stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled, 
+               created_at, updated_at
+        FROM rules 
         WHERE CAST(user_id AS INTEGER) IN (SELECT id FROM users);
 
         -- Drop old table
