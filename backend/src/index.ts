@@ -111,6 +111,12 @@ async function registerPlugins() {
     const { requireAdminMiddleware } = await import('./lib/middleware.js');
     await requireAdminMiddleware(request, reply);
   });
+
+  // Super Admin authentication hook
+  fastify.decorate('requireSuperAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { requireSuperAdminMiddleware } = await import('./lib/middleware.js');
+    await requireSuperAdminMiddleware(request, reply);
+  });
 }
 
 // Health check endpoint

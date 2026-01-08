@@ -99,6 +99,28 @@ export async function requireAdminMiddleware(request: FastifyRequest, reply: Fas
 }
 
 /**
+ * Super Admin authentication middleware - requires is_super_admin === true
+ */
+export async function requireSuperAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  // First check normal authentication
+  await authMiddleware(request, reply);
+  
+  // If auth failed, the reply was already sent
+  if (reply.sent) {
+    return;
+  }
+  
+  // Check super admin status
+  if (!request.user?.is_super_admin) {
+    return reply.status(403).send({
+      success: false,
+      error: 'Super Admin access required',
+      message: 'This action requires super administrator privileges',
+    });
+  }
+}
+
+/**
  * Optional auth middleware (allows anonymous access)
  */
 export async function optionalAuthMiddleware(request: FastifyRequest, _reply: FastifyReply) {
