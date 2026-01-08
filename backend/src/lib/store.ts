@@ -294,49 +294,54 @@ export class Store {
     if (needsRulesConstraint) {
       console.log('🔄 Migration: Adding CASCADE constraints to rules table...');
       
-      // SQLite doesn't support ALTER TABLE for foreign keys, so we need to recreate the table
-      this.db.exec(`
-        -- Create new rules table with proper constraints
-        CREATE TABLE rules_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          search_item TEXT NOT NULL,
-          min_price REAL,
-          max_price REAL,
-          min_wear REAL CHECK (min_wear >= 0 AND min_wear <= 1),
-          max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
-          stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
-          souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
-          allow_stickers BOOLEAN DEFAULT 1,
-          webhook_ids TEXT,
-          enabled BOOLEAN DEFAULT 1,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+      try {
+        // SQLite doesn't support ALTER TABLE for foreign keys, so we need to recreate the table
+        this.db.exec(`
+          -- Create new rules table with proper constraints
+          CREATE TABLE rules_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            search_item TEXT NOT NULL,
+            min_price REAL,
+            max_price REAL,
+            min_wear REAL CHECK (min_wear >= 0 AND min_wear <= 1),
+            max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
+            stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
+            souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
+            allow_stickers BOOLEAN DEFAULT 1,
+            webhook_ids TEXT,
+            enabled BOOLEAN DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          );
 
-        -- Copy data from old table (only rules for existing users)
-        INSERT INTO rules_new (id, user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                               stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled, 
-                               created_at, updated_at)
-        SELECT id, user_id, search_item, min_price, max_price, min_wear, max_wear, 
-               stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled, 
-               created_at, updated_at
-        FROM rules 
-        WHERE CAST(user_id AS INTEGER) IN (SELECT id FROM users);
+          -- Copy data from old table (only rules for existing users)
+          INSERT INTO rules_new (id, user_id, search_item, min_price, max_price, min_wear, max_wear, 
+                                 stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled, 
+                                 created_at, updated_at)
+          SELECT id, user_id, search_item, min_price, max_price, min_wear, max_wear, 
+                 stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled, 
+                 created_at, updated_at
+          FROM rules 
+          WHERE CAST(user_id AS INTEGER) IN (SELECT id FROM users);
 
-        -- Drop old table
-        DROP TABLE rules;
+          -- Drop old table
+          DROP TABLE rules;
 
-        -- Rename new table
-        ALTER TABLE rules_new RENAME TO rules;
+          -- Rename new table
+          ALTER TABLE rules_new RENAME TO rules;
 
-        -- Recreate indexes
-        CREATE INDEX idx_rules_user_id ON rules (user_id);
-        CREATE INDEX idx_rules_enabled ON rules (enabled);
-      `);
+          -- Recreate indexes
+          CREATE INDEX idx_rules_user_id ON rules (user_id);
+          CREATE INDEX idx_rules_enabled ON rules (enabled);
+        `);
 
-      console.log('✅ Migration: Added CASCADE constraints to rules table');
+        console.log('✅ Migration: Added CASCADE constraints to rules table');
+      } catch (error: any) {
+        console.error('❌ Migration failed:', error.message);
+        throw error;
+      }
     }
 
   }
