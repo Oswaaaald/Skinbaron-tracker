@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { ExternalLink, Search, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
+import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
@@ -39,18 +39,10 @@ export function AlertsTable() {
   const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [isClearingAll, setIsClearingAll] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const limit = 20
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await queryClient.invalidateQueries({ queryKey: ['alerts'] })
-    syncStats()
-    setTimeout(() => setIsRefreshing(false), 500)
-  }
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
@@ -137,28 +129,14 @@ export function AlertsTable() {
 
   if (alerts.length === 0 && page === 0 && !search && !alertTypeFilter) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            size="sm"
-            title="Refresh alerts"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>No Alerts Found</CardTitle>
-            <CardDescription>
-              No alerts have been triggered yet. Create some rules to start monitoring!
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>No Alerts Found</CardTitle>
+          <CardDescription>
+            No alerts have been triggered yet. Create some rules to start monitoring!
+          </CardDescription>
+        </CardHeader>
+      </Card>
     )
   }
 
@@ -210,32 +188,21 @@ export function AlertsTable() {
           <label className="text-sm font-medium mb-2 block">
             Actions
           </label>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              size="icon"
-              title="Refresh alerts"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleClearAllAlerts}
-              disabled={isClearingAll}
-              className="w-[180px]"
-            >
-              {isClearingAll ? (
-                <>
-                  <LoadingSpinner />
-                  Clearing...
-                </>
-              ) : (
-                'Clear All Alerts'
-              )}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={handleClearAllAlerts}
+            disabled={isClearingAll}
+            className="w-[180px]"
+          >
+            {isClearingAll ? (
+              <>
+                <LoadingSpinner />
+                Clearing...
+              </>
+            ) : (
+              'Clear All Alerts'
+            )}
+          </Button>
         </div>
       </div>
 
