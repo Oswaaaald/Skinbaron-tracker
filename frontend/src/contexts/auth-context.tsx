@@ -54,6 +54,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (authData.expiresAt > Date.now()) {
             setUser(authData.user)
             setToken(authData.token)
+            
+            // Force refresh profile to ensure we have latest fields (like is_super_admin)
+            try {
+              const response = await apiClient.getUserProfile()
+              if (response.success && response.data) {
+                const updatedUser = { ...authData.user, ...response.data }
+                setUser(updatedUser)
+                authData.user = updatedUser
+                localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
+              }
+            } catch (error) {
+              console.error('Failed to refresh profile on mount:', error)
+            }
+            
             // Wait a bit to ensure state updates are processed
             await new Promise(resolve => setTimeout(resolve, 50))
           } else {
