@@ -131,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Check if critical fields have changed
           if (currentUser.is_admin !== serverUser.is_admin ||
+              currentUser.is_super_admin !== serverUser.is_super_admin ||
               currentUser.username !== serverUser.username ||
               currentUser.email !== serverUser.email ||
               currentUser.avatar_url !== serverUser.avatar_url) {
@@ -143,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               email: serverUser.email,
               avatar_url: serverUser.avatar_url,
               is_admin: serverUser.is_admin,
+              is_super_admin: serverUser.is_super_admin,
             })
           }
         }
