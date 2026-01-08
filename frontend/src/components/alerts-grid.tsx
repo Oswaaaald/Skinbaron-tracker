@@ -5,10 +5,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { ExternalLink, Search, ChevronLeft, ChevronRight, Sparkles, TrendingDown, Bell } from "lucide-react"
+import { ExternalLink, ChevronLeft, ChevronRight, Sparkles, TrendingDown, Bell } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
@@ -37,7 +36,6 @@ const ALERT_TYPE_CONFIG = {
 
 export function AlertsGrid() {
   const [page, setPage] = useState(0)
-  const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [isClearingAll, setIsClearingAll] = useState(false)
   const limit = 12
@@ -69,7 +67,7 @@ export function AlertsGrid() {
   }
 
   const { data: alertsResponse, isLoading, error } = useQuery({
-    queryKey: ['alerts', page, search, alertTypeFilter],
+    queryKey: ['alerts', page, alertTypeFilter],
     queryFn: () => apiClient.getAlerts({
       limit,
       offset: page * limit,
@@ -135,7 +133,7 @@ export function AlertsGrid() {
     return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
   }
 
-  if (alerts.length === 0 && page === 0 && !search && !alertTypeFilter) {
+  if (alerts.length === 0 && page === 0 && !alertTypeFilter) {
     return (
       <Card>
         <CardHeader>
