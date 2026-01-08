@@ -271,7 +271,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Verify user owns this rule
-      if (rule.user_id !== request.user!.id.toString()) {
+      if (rule.user_id !== request.user!.id) {
         return reply.status(403).send({
           success: false,
           error: 'Access denied',
@@ -493,7 +493,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      if (existingRule.user_id !== request.user!.id.toString()) {
+      if (existingRule.user_id !== request.user!.id) {
         return reply.status(403).send({
           success: false,
           error: 'Access denied',

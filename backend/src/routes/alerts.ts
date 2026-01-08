@@ -82,7 +82,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       if (query.rule_id !== undefined) {
         // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
-        if (!rule || rule.user_id !== request.user!.id.toString()) {
+        if (!rule || rule.user_id !== request.user!.id) {
           return reply.status(403).send({
             success: false,
             error: 'Access denied',
@@ -469,7 +469,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      if (rule.user_id !== request.user!.id.toString()) {
+      if (rule.user_id !== request.user!.id) {
         return reply.status(403).send({
           success: false,
           error: 'Access denied',
