@@ -149,7 +149,7 @@ export function AdminPanel() {
       }
       return response
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
       alert('Scheduler executed successfully!')
     },
