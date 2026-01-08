@@ -108,7 +108,7 @@ export function ItemCombobox({
             onValueChange={setSearchQuery}
             className="h-11"
           />
-          <CommandList className="max-h-[300px] overflow-y-auto touch-auto">
+          <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -122,7 +122,7 @@ export function ItemCombobox({
                     : "No items found"}
                 </CommandEmpty>
                 {suggestions.length > 0 && (
-                  <CommandGroup className="p-2">
+                  <CommandGroup className="p-2 overflow-visible">
                     {suggestions.map((item) => (
                       <CommandItem
                         key={item.name}
