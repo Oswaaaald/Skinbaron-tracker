@@ -297,6 +297,9 @@ export class Store {
       try {
         // SQLite doesn't support ALTER TABLE for foreign keys, so we need to recreate the table
         this.db.exec(`
+          -- Drop rules_new if it exists from a previous failed migration
+          DROP TABLE IF EXISTS rules_new;
+
           -- Create new rules table with proper constraints
           CREATE TABLE rules_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
