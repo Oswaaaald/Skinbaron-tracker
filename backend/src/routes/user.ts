@@ -43,6 +43,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 email: { type: 'string' },
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
+                is_super_admin: { type: 'boolean' },
               },
             },
           },
