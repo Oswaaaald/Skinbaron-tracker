@@ -9,6 +9,8 @@ export const SkinBaronSaleSchema = z.object({
   img: z.string().optional(), // Steam image URL
   market_name: z.string(), // Steam market hash name
   sbinspect: z.string().optional(), // SkinBaron offer URL
+  inspect: z.string().optional(), // Inspect link
+  stickers: z.string().optional(), // Stickers applied on the item (JSON string or description)
   // Additional fields that might be returned
   wear: z.number().optional(),
   stattrak: z.boolean().optional(),
@@ -17,6 +19,7 @@ export const SkinBaronSaleSchema = z.object({
   currency: z.string().optional(),
   quality: z.string().optional(),
   rarity: z.string().optional(),
+  appid: z.number().optional(),
 });
 
 export const SearchResponseSchema = z.object({
@@ -35,6 +38,8 @@ export interface SkinBaronItem {
   wearValue?: number;
   statTrak?: boolean;
   souvenir?: boolean;
+  hasStickers?: boolean; // True if item has stickers applied
+  stickersData?: string; // Raw stickers data from API
   sellerName?: string;
   currency?: string;
   quality?: string;
@@ -156,6 +161,9 @@ export class SkinBaronClient {
       const isStatTrak = sale.market_name.includes('StatTrak™');
       const isSouvenir = sale.market_name.includes('Souvenir');
       
+      // Check if item has stickers applied (stickers field is non-empty)
+      const hasStickers = !!(sale.stickers && sale.stickers.trim().length > 0);
+      
       return {
         saleId: sale.id,
         itemName: sale.market_name,
@@ -163,6 +171,8 @@ export class SkinBaronClient {
         wearValue: sale.wear,
         statTrak: isStatTrak, // Toujours basé sur le nom pour plus de fiabilité
         souvenir: isSouvenir, // Toujours basé sur le nom pour plus de fiabilité
+        hasStickers: hasStickers, // True if item has stickers applied
+        stickersData: sale.stickers, // Raw stickers data
         sellerName: sale.seller,
         currency: sale.currency || 'EUR',
         quality: sale.quality,

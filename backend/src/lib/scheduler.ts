@@ -180,14 +180,11 @@ export class AlertScheduler {
         if (rule.souvenir_filter === 'only' && !itemIsSouvenir) continue;
         if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) continue;
 
-        // Filter stickers - check if item has stickers in name
-        if (!rule.allow_stickers) {
-          // If stickers aren't allowed, skip items with "Sticker" in the name
-          // Note: This is a simple check. A more sophisticated implementation
-          // would need to parse the item details from SkinBaron API
-          if (item.itemName.toLowerCase().includes('sticker')) {
-            continue;
-          }
+        // Filter stickers - check if item HAS stickers applied
+        // allow_stickers = true means accept items with stickers
+        // allow_stickers = false means reject items with stickers
+        if (!rule.allow_stickers && item.hasStickers) {
+          continue; // Skip items with stickers if not allowed
         }
 
         // Double-check basic filters (API might not be perfect)
@@ -355,7 +352,8 @@ export class AlertScheduler {
       if (rule.souvenir_filter === 'only' && !itemIsSouvenir) return false;
       if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) return false;
 
-      if (!rule.allow_stickers && item.itemName.toLowerCase().includes('sticker')) {
+      // Filter stickers - check if item HAS stickers applied
+      if (!rule.allow_stickers && item.hasStickers) {
         return false;
       }
 
