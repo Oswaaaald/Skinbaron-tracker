@@ -152,24 +152,6 @@ export function AlertsGrid() {
     <div className="space-y-6">
       {/* Filters */}
       <div className="flex gap-4 items-end flex-wrap">
-        <div className="flex-1 min-w-[250px]">
-          <label htmlFor="search" className="text-sm font-medium mb-2 block">
-            Search Items
-          </label>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="search"
-              placeholder="Search by item name..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(0)
-              }}
-              className="pl-10"
-            />
-          </div>
-        </div>
         <div>
           <label htmlFor="alert-type" className="text-sm font-medium mb-2 block">
             Alert Type
