@@ -168,16 +168,7 @@ class ApiClient {
 
   // Rules endpoints
   async getRules(): Promise<ApiResponse<Rule[]>> {
-    const response = await this.request<Rule[]>('/api/rules');
-    console.log('📥 Got rules from API, first rule filters:', 
-      response.data && response.data[0] ? {
-        id: response.data[0].id,
-        stattrak_filter: response.data[0].stattrak_filter,
-        souvenir_filter: response.data[0].souvenir_filter,
-        allow_stickers: response.data[0].allow_stickers,
-      } : 'No rules'
-    );
-    return response;
+    return this.request<Rule[]>('/api/rules');
   }
 
   async getRule(id: number): Promise<ApiResponse<Rule>> {

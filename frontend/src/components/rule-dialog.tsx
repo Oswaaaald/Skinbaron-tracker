@@ -104,14 +104,8 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
 
   // Reset form when dialog opens/closes or rule changes
   useEffect(() => {
-    if (open && rule) {      // Debug: log what we're resetting with
-      console.log('🔄 Resetting form with rule:', {
-        id: rule.id,
-        stattrak_filter: rule.stattrak_filter,
-        souvenir_filter: rule.souvenir_filter,
-        allow_stickers: rule.allow_stickers,
-      })
-            // Only reset when editing existing rule
+    if (open && rule) {
+      // Only reset when editing existing rule
       form.reset({
         search_item: rule.search_item || "",
         min_price: rule.min_price !== undefined && rule.min_price !== null ? rule.min_price : undefined,
@@ -205,12 +199,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     if (isSubmitting) return
     setIsSubmitting(true)
 
-    console.log('📤 Submitting form data:', {
-      stattrak_filter: data.stattrak_filter,
-      souvenir_filter: data.souvenir_filter,
-      allow_stickers: data.allow_stickers,
-    })
-
     try {
       // Convert RuleFormData to CreateRuleData (convert percentages to 0-1 wear values)
       const createData: CreateRuleData = {
@@ -225,12 +213,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         webhook_ids: data.webhook_ids,
         enabled: data.enabled ?? true,
       }
-
-      console.log('📤 Sending to API:', {
-        stattrak_filter: createData.stattrak_filter,
-        souvenir_filter: createData.souvenir_filter,
-        allow_stickers: createData.allow_stickers,
-      })
 
       if (isEditing && rule?.id) {
         updateRuleMutation.mutate({ id: rule.id, data: createData })
