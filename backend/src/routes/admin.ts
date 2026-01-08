@@ -499,7 +499,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/scheduler/force-run - Force scheduler to run immediately (super admin only)
    */
   fastify.post('/scheduler/force-run', {
-    preHandler: [fastify.requireSuperAdmin],
+    preHandler: [fastify.requireAdmin],
     schema: {
       description: 'Force the scheduler to run immediately (bypasses cron schedule) - Super Admin only',
       tags: ['Admin'],

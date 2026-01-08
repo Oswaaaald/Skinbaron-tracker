@@ -312,17 +312,6 @@ export class AlertScheduler {
   }
 
   /**
-   * Force run a polling cycle (for testing)
-   */
-  async forceRun(): Promise<void> {
-    if (this.stats.isRunning && this.cronJob) {
-      await this.executePoll();
-    } else {
-      throw new Error('Scheduler is not running');
-    }
-  }
-
-  /**
    * Test a specific rule without creating alerts
    */
   async testRule(rule: Rule): Promise<SkinBaronItem[]> {
