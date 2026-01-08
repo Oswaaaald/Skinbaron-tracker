@@ -137,14 +137,28 @@ export function AlertsTable() {
 
   if (alerts.length === 0 && page === 0 && !search && !alertTypeFilter) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No Alerts Found</CardTitle>
-          <CardDescription>
-            No alerts have been triggered yet. Create some rules to start monitoring!
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            size="sm"
+            title="Refresh alerts"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>No Alerts Found</CardTitle>
+            <CardDescription>
+              No alerts have been triggered yet. Create some rules to start monitoring!
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
     )
   }
 
