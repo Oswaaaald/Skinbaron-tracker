@@ -54,35 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (authData.expiresAt > Date.now()) {
             setUser(authData.user)
             setToken(authData.token)
-            
-            // Force refresh profile to ensure we have latest fields (like is_super_admin)
-            try {
-              const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-              const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
-                headers: {
-                  'Authorization': `Bearer ${authData.token}`,
-                },
-              })
-              
-              if (response.ok) {
-                const data = await response.json()
-                console.log('🔍 Raw backend response:', data)
-                if (data.success && data.data) {
-                  console.log('🔍 Backend data.data:', data.data)
-                  const updatedUser = { ...authData.user, ...data.data }
-                  console.log('🔍 Updated user object:', updatedUser)
-                  setUser(updatedUser)
-                  authData.user = updatedUser
-                  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
-                  console.log('✅ Profile refreshed on mount:', updatedUser)
-                }
-              } else {
-                console.error('❌ Profile refresh failed:', response.status, await response.text())
-              }
-            } catch (error) {
-              console.error('Failed to refresh profile on mount:', error)
-            }
-            
             // Wait a bit to ensure state updates are processed
             await new Promise(resolve => setTimeout(resolve, 50))
           } else {

@@ -68,8 +68,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
-          is_admin: Boolean(user.is_admin),
-          is_super_admin: Boolean(user.is_super_admin),
+          is_admin: user.is_admin,
+          is_super_admin: user.is_super_admin,
         },
       });
     } catch (error) {
