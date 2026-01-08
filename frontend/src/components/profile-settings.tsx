@@ -249,7 +249,12 @@ export function ProfileSettings() {
 
             <div className="flex items-center gap-2">
               <Label>Role:</Label>
-              {user?.is_admin ? (
+              {user?.is_super_admin ? (
+                <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                  <Shield className="h-3 w-3" />
+                  Super Admin
+                </Badge>
+              ) : user?.is_admin ? (
                 <Badge variant="default" className="gap-1">
                   <Shield className="h-3 w-3" />
                   Admin

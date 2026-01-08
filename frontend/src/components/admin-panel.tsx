@@ -325,7 +325,7 @@ export function AdminPanel() {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     {user.is_super_admin ? (
-                      <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600">
+                      <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
                         <Shield className="h-3 w-3" />
                         Super Admin
                       </Badge>
