@@ -283,6 +283,57 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at);
     `);
 
+    // Migration: Add CASCADE delete for orphaned data
+    // Check if we need to migrate rules table to add user_id constraint
+    const hasUserIdConstraint = this.db.prepare(`
+      SELECT sql FROM sqlite_master WHERE type='table' AND name='rules'
+    `).get() as { sql: string } | undefined;
+
+    const needsRulesConstraint = hasUserIdConstraint && !hasUserIdConstraint.sql.includes('FOREIGN KEY');
+
+    if (needsRulesConstraint) {
+      console.log('🔄 Migration: Adding CASCADE constraints to rules table...');
+      
+      // SQLite doesn't support ALTER TABLE for foreign keys, so we need to recreate the table
+      this.db.exec(`
+        -- Create new rules table with proper constraints
+        CREATE TABLE rules_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          search_item TEXT NOT NULL,
+          min_price REAL,
+          max_price REAL,
+          min_wear REAL CHECK (min_wear >= 0 AND min_wear <= 1),
+          max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
+          stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
+          souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
+          allow_stickers BOOLEAN DEFAULT 1,
+          webhook_ids TEXT,
+          enabled BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        -- Copy data from old table (only rules for existing users)
+        INSERT INTO rules_new 
+        SELECT * FROM rules 
+        WHERE CAST(user_id AS INTEGER) IN (SELECT id FROM users);
+
+        -- Drop old table
+        DROP TABLE rules;
+
+        -- Rename new table
+        ALTER TABLE rules_new RENAME TO rules;
+
+        -- Recreate indexes
+        CREATE INDEX idx_rules_user_id ON rules (user_id);
+        CREATE INDEX idx_rules_enabled ON rules (enabled);
+      `);
+
+      console.log('✅ Migration: Added CASCADE constraints to rules table');
+    }
+
   }
 
   // Rules CRUD operations
