@@ -96,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Setup logout callback for when user is deleted/invalid
     apiClient.setLogoutCallback(() => {
       clearAuthState()
-      // Redirect to login page
-      window.location.href = '/auth'
+      // Redirect to home page (auth form is there)
+      window.location.href = '/'
     })
   }, []) // Run only once on mount
 
