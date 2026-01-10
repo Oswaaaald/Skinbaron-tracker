@@ -175,7 +175,11 @@ export class Store {
 
 
   private initializeUserTables() {
-    // Create users table
+    // Disable foreign keys during migrations to allow table recreation
+    this.db.pragma('foreign_keys = OFF');
+    
+    try {
+      // Create users table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -486,7 +490,12 @@ export class Store {
         throw error;
       }
     }
-
+    
+    } finally {
+      // Re-enable foreign keys after all migrations
+      this.db.pragma('foreign_keys = ON');
+      console.log('✅ Foreign keys re-enabled');
+    }
   }
 
   // Rules CRUD operations

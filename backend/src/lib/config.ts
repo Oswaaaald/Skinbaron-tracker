@@ -42,11 +42,12 @@ const ConfigSchema = z.object({
 function loadConfig() {
   try {
     const parsed = ConfigSchema.parse(process.env);
-    // Use JWT_SECRET as fallback for ENCRYPTION_KEY to maintain backward compatibility
-    if (!parsed.ENCRYPTION_KEY) {
-      parsed.ENCRYPTION_KEY = parsed.JWT_SECRET;
-    }
-    return parsed;
+    // Ensure ENCRYPTION_KEY is set (fallback to JWT_SECRET if not provided)
+    const config = {
+      ...parsed,
+      ENCRYPTION_KEY: parsed.ENCRYPTION_KEY || parsed.JWT_SECRET,
+    };
+    return config;
   } catch (error) {
     if (error instanceof z.ZodError) {
       error.issues.forEach((_err) => {
