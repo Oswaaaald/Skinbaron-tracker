@@ -340,27 +340,40 @@ export class Store {
       this.db.exec(`
         BEGIN TRANSACTION;
         
+        -- Drop old indices if they exist
+        DROP INDEX IF EXISTS idx_users_email;
+        DROP INDEX IF EXISTS idx_users_username;
+        
         -- Create new users table without legacy columns
         CREATE TABLE users_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          email TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          username TEXT UNIQUE NOT NULL CHECK(length(username) >= 3 AND length(username) <= 20),
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          is_admin BOOLEAN DEFAULT 0,
+          is_super_admin BOOLEAN DEFAULT 0,
           is_approved BOOLEAN DEFAULT 0,
           totp_enabled BOOLEAN DEFAULT 0,
           totp_secret_encrypted TEXT,
           recovery_codes_encrypted TEXT
         );
         
-        -- Copy data from old table (excluding legacy columns)
-        INSERT INTO users_new (id, username, email, password, created_at, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted)
-        SELECT id, username, email, password, created_at, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted
+        -- Copy data from old table (excluding legacy columns totp_secret and recovery_codes)
+        INSERT INTO users_new (id, username, email, password_hash, created_at, updated_at, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted)
+        SELECT id, username, email, password_hash, created_at, updated_at, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted
         FROM users;
         
-        -- Drop old table and rename new one
+        -- Drop old table
         DROP TABLE users;
+        
+        -- Rename new table
         ALTER TABLE users_new RENAME TO users;
+        
+        -- Create indices on the new table
+        CREATE INDEX idx_users_email ON users(email);
+        CREATE INDEX idx_users_username ON users(username);
         
         COMMIT;
       `);
