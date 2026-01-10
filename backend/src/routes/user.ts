@@ -497,6 +497,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
         recovery_codes: JSON.stringify(recoveryCodes),
       });
 
+      // Audit log
+      store.createAuditLog(
+        userId,
+        '2fa_enabled',
+        undefined,
+        request.ip,
+        request.headers['user-agent']
+      );
+
       return reply.status(200).send({
         success: true,
         message: '2FA enabled successfully',
@@ -567,6 +576,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
         totp_enabled: 0,
         recovery_codes: null,
       });
+
+      // Audit log
+      store.createAuditLog(
+        userId,
+        '2fa_disabled',
+        undefined,
+        request.ip,
+        request.headers['user-agent']
+      );
 
       return reply.status(200).send({
         success: true,

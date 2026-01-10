@@ -261,6 +261,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
           store.updateUser(user.id!, {
             recovery_codes: JSON.stringify(recoveryCodes),
           });
+
+          // Audit log
+          store.createAuditLog(
+            user.id!,
+            '2fa_recovery_code_used',
+            JSON.stringify({ remaining_codes: recoveryCodes.length }),
+            request.ip,
+            request.headers['user-agent']
+          );
         }
       }
 

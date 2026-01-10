@@ -330,6 +330,68 @@ export class Store {
       }
     }
 
+    // Migration: Drop legacy plaintext 2FA columns
+    const hasLegacyTotpSecret = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret'
+    `).get() as { count: number };
+
+    if (hasLegacyTotpSecret.count > 0) {
+      // SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+      this.db.exec(`
+        BEGIN TRANSACTION;
+        
+        -- Create new users table without legacy columns
+        CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          is_approved BOOLEAN DEFAULT 0,
+          totp_enabled BOOLEAN DEFAULT 0,
+          totp_secret_encrypted TEXT,
+          recovery_codes_encrypted TEXT
+        );
+        
+        -- Copy data from old table (excluding legacy columns)
+        INSERT INTO users_new (id, username, email, password, created_at, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted)
+        SELECT id, username, email, password, created_at, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted
+        FROM users;
+        
+        -- Drop old table and rename new one
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+        
+        COMMIT;
+      `);
+      console.log('✅ Migration: Dropped legacy plaintext 2FA columns from users table');
+    }
+
+    // Migration: Create audit_log table if it doesn't exist
+    const hasAuditLog = this.db.prepare(`
+      SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name='audit_log'
+    `).get() as { count: number };
+
+    if (hasAuditLog.count === 0) {
+      this.db.exec(`
+        CREATE TABLE audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          event_type TEXT NOT NULL,
+          event_data TEXT,
+          ip_address TEXT,
+          user_agent TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX idx_audit_log_user_id ON audit_log(user_id);
+        CREATE INDEX idx_audit_log_event_type ON audit_log(event_type);
+        CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
+      `);
+      console.log('✅ Migration: Created audit_log table');
+    }
+
     // Create admin actions audit log table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS admin_actions (
@@ -920,10 +982,14 @@ export class Store {
 
   // Generic encryption utilities (used for webhooks and 2FA secrets)
   private encryptData(data: string): string {
-    const secretKey = appConfig.JWT_SECRET;
+    const secretKey = appConfig.ENCRYPTION_KEY;
+    
+    if (!secretKey) {
+      throw new Error('ENCRYPTION_KEY not configured');
+    }
     
     try {
-      // Derive key from JWT_SECRET using SHA-256
+      // Derive key from ENCRYPTION_KEY using SHA-256
       const key = crypto.createHash('sha256').update(secretKey).digest();
       const iv = crypto.randomBytes(16);
       
@@ -939,7 +1005,7 @@ export class Store {
   }
 
   private decryptData(encryptedData: string): string {
-    const secretKey = appConfig.JWT_SECRET;
+    const secretKey = appConfig.ENCRYPTION_KEY;
     
     if (!encryptedData || !secretKey) {
       return '';
@@ -955,7 +1021,7 @@ export class Store {
       const iv = Buffer.from(parts[0], 'hex');
       const encryptedText = parts[1];
       
-      // Derive key from JWT_SECRET using SHA-256
+      // Derive key from ENCRYPTION_KEY using SHA-256
       const key = crypto.createHash('sha256').update(secretKey).digest();
       
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
@@ -974,42 +1040,7 @@ export class Store {
   }
 
   private decryptWebhookUrl(encryptedUrl: string): string {
-    const secretKey = appConfig.JWT_SECRET;
-    
-    if (!encryptedUrl || !secretKey) {
-      return '';
-    }
-    
-    try {
-      // Split IV and encrypted data
-      const parts = encryptedUrl.split(':');
-      if (parts.length !== 2 || !parts[0] || !parts[1]) {
-        return '';
-      }
-      
-      const iv = Buffer.from(parts[0], 'hex');
-      const encryptedText = parts[1];
-      
-      // Derive key from JWT_SECRET using SHA-256
-      const key = crypto.createHash('sha256').update(secretKey).digest();
-      
-      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-      const decryptedBuffer = decipher.update(encryptedText, 'hex', 'utf8');
-      const decrypted = decryptedBuffer + decipher.final('utf8');
-      
-      // Validate that we got a proper URL back
-      if (!decrypted || decrypted.length === 0) {
-        return '';
-      }
-      
-      if (!decrypted.startsWith('http')) {
-        return '';
-      }
-      
-      return decrypted;
-    } catch (error) {
-      return '';
-    }
+    return this.decryptData(encryptedUrl);
   }
 
   // User webhook CRUD operations
@@ -1313,6 +1344,30 @@ export class Store {
 
   close() {
     this.db.close();
+  }
+  // Audit log methods
+  createAuditLog(
+    userId: number,
+    eventType: string,
+    eventData?: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO audit_log (user_id, event_type, event_data, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(userId, eventType, eventData || null, ipAddress || null, userAgent || null);
+  }
+
+  getAuditLogsByUserId(userId: number, limit: number = 100): any[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM audit_log 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT ?
+    `);
+    return stmt.all(userId, limit) as any[];
   }
 }
 

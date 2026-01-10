@@ -23,6 +23,8 @@ const ConfigSchema = z.object({
   
   // Authentication
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+  // Encryption key for sensitive data (defaults to JWT_SECRET for backward compatibility)
+  ENCRYPTION_KEY: z.string().optional(),
   
   // Polling
   POLL_CRON: z.string().default('*/5 * * * *'),
@@ -39,7 +41,12 @@ const ConfigSchema = z.object({
 // Parse and validate configuration
 function loadConfig() {
   try {
-    return ConfigSchema.parse(process.env);
+    const parsed = ConfigSchema.parse(process.env);
+    // Use JWT_SECRET as fallback for ENCRYPTION_KEY to maintain backward compatibility
+    if (!parsed.ENCRYPTION_KEY) {
+      parsed.ENCRYPTION_KEY = parsed.JWT_SECRET;
+    }
+    return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
       error.issues.forEach((_err) => {

@@ -11,6 +11,7 @@ services:
       PORT: 8080
       SB_API_KEY: ${SB_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${JWT_SECRET}}
       SQLITE_PATH: /app/data/alerts.db
       POLL_CRON: ${POLL_CRON:-*/5 * * * *}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
