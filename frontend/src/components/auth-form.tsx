@@ -101,7 +101,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     setError('')
 
     try {
-      const result = mode === 'login' 
+      const result: { success: boolean; error?: string; requires2FA?: boolean } = mode === 'login' 
         ? await login(formData.email, formData.password)
         : await register(formData.username, formData.email, formData.password)
 
