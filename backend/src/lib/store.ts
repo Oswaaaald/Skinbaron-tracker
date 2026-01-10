@@ -44,6 +44,9 @@ export const CreateUserSchema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
   password_hash: z.string(),
+  totp_secret_encrypted: z.string().nullable().optional(),
+  totp_enabled: z.number().optional(),
+  recovery_codes_encrypted: z.string().nullable().optional(),
 });
 
 export const UserSchema = z.object({
@@ -54,6 +57,9 @@ export const UserSchema = z.object({
   is_admin: z.number().default(0),
   is_super_admin: z.number().default(0),
   is_approved: z.number().default(0),
+  totp_secret_encrypted: z.string().nullable().optional(),
+  totp_enabled: z.number().default(0).optional(),
+  recovery_codes_encrypted: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -80,7 +86,10 @@ export const UserWebhookSchema = z.object({
 // Types inferred from schemas
 export type Rule = z.infer<typeof RuleSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
-export type User = z.infer<typeof UserSchema>;
+export type User = z.infer<typeof UserSchema> & {
+  totp_secret?: string | null;      // Decrypted (not stored)
+  recovery_codes?: string | null;   // Decrypted (not stored)
+};
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 export type CreateRule = Omit<Rule, 'id' | 'created_at' | 'updated_at'>;
 export type CreateAlert = Omit<Alert, 'id' | 'sent_at'>;
@@ -264,6 +273,61 @@ export class Store {
         WHERE stattrak_filter IS NULL OR souvenir_filter IS NULL
       `);
       console.log('✅ Migration: Migrated old stattrak/souvenir values to new filter format');
+    }
+
+    // Migration: Add 2FA columns if they don't exist
+    const hasTotpSecret = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret'
+    `).get() as { count: number };
+
+    if (hasTotpSecret.count === 0) {
+      this.db.exec(`ALTER TABLE users ADD COLUMN totp_secret TEXT`);
+      this.db.exec(`ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN DEFAULT 0`);
+      this.db.exec(`ALTER TABLE users ADD COLUMN recovery_codes TEXT`);
+      console.log('✅ Migration: Added 2FA columns to users table');
+    }
+
+    // Migration: Add encrypted 2FA columns and migrate existing data
+    const hasEncryptedSecret = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret_encrypted'
+    `).get() as { count: number };
+
+    if (hasEncryptedSecret.count === 0) {
+      this.db.exec(`ALTER TABLE users ADD COLUMN totp_secret_encrypted TEXT`);
+      this.db.exec(`ALTER TABLE users ADD COLUMN recovery_codes_encrypted TEXT`);
+      
+      // Encrypt existing plain-text secrets
+      const usersWithTotp = this.db.prepare(`
+        SELECT id, totp_secret, recovery_codes 
+        FROM users 
+        WHERE (totp_secret IS NOT NULL AND totp_secret != '') 
+           OR (recovery_codes IS NOT NULL AND recovery_codes != '')
+      `).all() as any[];
+
+      let encryptedCount = 0;
+      for (const user of usersWithTotp) {
+        if (user.totp_secret) {
+          const encryptedSecret = this.encryptData(user.totp_secret);
+          this.db.prepare(`
+            UPDATE users 
+            SET totp_secret_encrypted = ?, totp_secret = NULL 
+            WHERE id = ?
+          `).run(encryptedSecret, user.id);
+        }
+        if (user.recovery_codes) {
+          const encryptedCodes = this.encryptData(user.recovery_codes);
+          this.db.prepare(`
+            UPDATE users 
+            SET recovery_codes_encrypted = ?, recovery_codes = NULL 
+            WHERE id = ?
+          `).run(encryptedCodes, user.id);
+        }
+        encryptedCount++;
+      }
+      
+      if (encryptedCount > 0) {
+        console.log(`✅ Migration: Encrypted 2FA secrets for ${encryptedCount} users`);
+      }
     }
 
     // Create admin actions audit log table
@@ -758,31 +822,71 @@ export class Store {
     }
   }
 
+  // Helper to decrypt 2FA secrets in user object
+  private decrypt2FASecrets(user: User): User {
+    if (user.totp_secret_encrypted) {
+      user.totp_secret = this.decryptData(user.totp_secret_encrypted);
+    }
+    if (user.recovery_codes_encrypted) {
+      user.recovery_codes = this.decryptData(user.recovery_codes_encrypted);
+    }
+    return user;
+  }
+
   getUserById(id: number): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
     const row = stmt.get(id) as any;
-    return row ? UserSchema.parse(row) : null;
+    if (!row) return null;
+    const user = UserSchema.parse(row);
+    return this.decrypt2FASecrets(user);
   }
 
   getUserByEmail(email: string): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
     const row = stmt.get(email) as any;
-    return row ? UserSchema.parse(row) : null;
+    if (!row) return null;
+    const user = UserSchema.parse(row);
+    return this.decrypt2FASecrets(user);
   }
 
   getUserByUsername(username: string): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
     const row = stmt.get(username) as any;
-    return row ? UserSchema.parse(row) : null;
+    if (!row) return null;
+    const user = UserSchema.parse(row);
+    return this.decrypt2FASecrets(user);
   }
 
-  updateUser(id: number, updates: Partial<CreateUser>): User {
+  updateUser(id: number, updates: Partial<CreateUser> & { totp_secret?: string | null, recovery_codes?: string | null }): User {
     const currentUser = this.getUserById(id);
     if (!currentUser) {
       throw new Error('User not found');
     }
 
-    const validatedUpdates = CreateUserSchema.partial().parse(updates);
+    // Convert plaintext 2FA fields to encrypted versions
+    const processedUpdates: any = { ...updates };
+    
+    // Handle totp_secret encryption
+    if ('totp_secret' in updates) {
+      if (updates.totp_secret) {
+        processedUpdates.totp_secret_encrypted = this.encryptData(updates.totp_secret);
+      } else {
+        processedUpdates.totp_secret_encrypted = null;
+      }
+      delete processedUpdates.totp_secret;
+    }
+    
+    // Handle recovery_codes encryption
+    if ('recovery_codes' in updates) {
+      if (updates.recovery_codes) {
+        processedUpdates.recovery_codes_encrypted = this.encryptData(updates.recovery_codes);
+      } else {
+        processedUpdates.recovery_codes_encrypted = null;
+      }
+      delete processedUpdates.recovery_codes;
+    }
+
+    const validatedUpdates = CreateUserSchema.partial().parse(processedUpdates);
     
     const fields = Object.keys(validatedUpdates).filter(key => key !== 'updated_at');
     if (fields.length === 0) {
@@ -814,8 +918,8 @@ export class Store {
     return result.changes > 0;
   }
 
-  // Webhook encryption utilities
-  private encryptWebhookUrl(url: string): string {
+  // Generic encryption utilities (used for webhooks and 2FA secrets)
+  private encryptData(data: string): string {
     const secretKey = appConfig.JWT_SECRET;
     
     try {
@@ -824,14 +928,49 @@ export class Store {
       const iv = crypto.randomBytes(16);
       
       const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-      let encrypted = cipher.update(url, 'utf8', 'hex');
+      let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
       
       // Return IV + encrypted data
       return iv.toString('hex') + ':' + encrypted;
     } catch (error) {
-      throw new Error('Failed to encrypt webhook URL');
+      throw new Error('Failed to encrypt data');
     }
+  }
+
+  private decryptData(encryptedData: string): string {
+    const secretKey = appConfig.JWT_SECRET;
+    
+    if (!encryptedData || !secretKey) {
+      return '';
+    }
+    
+    try {
+      // Split IV and encrypted data
+      const parts = encryptedData.split(':');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        return '';
+      }
+      
+      const iv = Buffer.from(parts[0], 'hex');
+      const encryptedText = parts[1];
+      
+      // Derive key from JWT_SECRET using SHA-256
+      const key = crypto.createHash('sha256').update(secretKey).digest();
+      
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  // Webhook encryption utilities (using generic methods)
+  private encryptWebhookUrl(url: string): string {
+    return this.encryptData(url);
   }
 
   private decryptWebhookUrl(encryptedUrl: string): string {

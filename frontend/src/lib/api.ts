@@ -154,7 +154,10 @@ class ApiClient {
 
       return data;
     } catch (error) {
-      console.error('API Error:', error);
+      // Log errors in development only (React Query also logs)
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('API request failed:', (error as Error).message);
+      }
       throw error;
     }
   }

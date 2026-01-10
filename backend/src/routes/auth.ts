@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { getStore } from '../lib/store.js';
+import { authenticator } from 'otplib';
 
 // Extend FastifyInstance type
 declare module 'fastify' {
@@ -159,6 +160,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         properties: {
           email: { type: 'string', format: 'email' },
           password: { type: 'string' },
+          totp_code: { type: 'string' },
         },
       },
       response: {
@@ -176,6 +178,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 is_admin: { type: 'boolean' },
                 is_super_admin: { type: 'boolean' },
                 token: { type: 'string' },
+                requires_2fa: { type: 'boolean' },
               },
             },
           },
@@ -220,6 +223,47 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
+      // Check if 2FA is enabled
+      if (user.totp_enabled) {
+        const { totp_code } = request.body as any;
+
+        // If no code provided, return requires_2fa flag
+        if (!totp_code) {
+          return reply.status(200).send({
+            success: true,
+            data: {
+              requires_2fa: true,
+            },
+          });
+        }
+
+        // Verify TOTP code
+        const isValidTotp = authenticator.verify({
+          token: totp_code,
+          secret: user.totp_secret!,
+        });
+
+        // If invalid, try recovery codes
+        if (!isValidTotp) {
+          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) : [];
+          const codeIndex = recoveryCodes.indexOf(totp_code);
+
+          if (codeIndex === -1) {
+            return reply.status(401).send({
+              success: false,
+              error: 'Invalid 2FA code',
+              message: '2FA code is incorrect',
+            });
+          }
+
+          // Remove used recovery code
+          recoveryCodes.splice(codeIndex, 1);
+          store.updateUser(user.id!, {
+            recovery_codes: JSON.stringify(recoveryCodes),
+          });
+        }
+      }
+
       // Generate token
       const token = AuthService.generateToken(user.id!);
 
@@ -233,6 +277,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           is_admin: Boolean(user.is_admin),
           is_super_admin: Boolean(user.is_super_admin),
           token,
+          requires_2fa: false,
         },
       });
 

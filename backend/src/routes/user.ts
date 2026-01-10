@@ -1,6 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
 import { AuthService } from '../lib/auth.js';
+import { authenticator } from 'otplib';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
 import { z } from 'zod';
 
 const UpdateProfileSchema = z.object({
@@ -359,6 +362,272 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({
         success: false,
         error: 'Failed to delete account',
+      });
+    }
+  });
+
+  /**
+   * POST /api/user/2fa/setup - Generate 2FA setup (secret + QR code)
+   */
+  fastify.post('/2fa/setup', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Generate 2FA setup credentials',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                secret: { type: 'string' },
+                qrCode: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const user = store.getUserById(userId);
+
+      if (!user) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Generate secret
+      const secret = authenticator.generateSecret();
+      
+      // Generate OTP auth URL
+      const otpauth = authenticator.keyuri(
+        user.email,
+        'SkinBaron Alerts',
+        secret
+      );
+
+      // Generate QR code
+      const qrCode = await QRCode.toDataURL(otpauth);
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          secret,
+          qrCode,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to generate 2FA setup');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to generate 2FA setup',
+      });
+    }
+  });
+
+  /**
+   * POST /api/user/2fa/enable - Verify code and enable 2FA
+   */
+  fastify.post('/2fa/enable', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Verify code and enable 2FA',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          secret: { type: 'string' },
+          code: { type: 'string' },
+        },
+        required: ['secret', 'code'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                recovery_codes: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const { secret, code } = request.body as { secret: string; code: string };
+
+      // Verify the code
+      const isValid = authenticator.verify({
+        token: code,
+        secret,
+      });
+
+      if (!isValid) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Invalid verification code',
+        });
+      }
+
+      // Generate 10 recovery codes
+      const recoveryCodes = Array.from({ length: 10 }, () => 
+        crypto.randomBytes(4).toString('hex').toUpperCase()
+      );
+
+      // Save to database
+      store.updateUser(userId, {
+        totp_secret: secret,
+        totp_enabled: 1,
+        recovery_codes: JSON.stringify(recoveryCodes),
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: '2FA enabled successfully',
+        data: {
+          recovery_codes: recoveryCodes,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to enable 2FA');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to enable 2FA',
+      });
+    }
+  });
+
+  /**
+   * POST /api/user/2fa/disable - Disable 2FA
+   */
+  fastify.post('/2fa/disable', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Disable 2FA',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          password: { type: 'string' },
+        },
+        required: ['password'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const { password } = request.body as { password: string };
+
+      const user = store.getUserById(userId);
+      if (!user) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Verify password
+      const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
+      if (!isValidPassword) {
+        return reply.status(401).send({
+          success: false,
+          error: 'Invalid password',
+        });
+      }
+
+      // Disable 2FA
+      store.updateUser(userId, {
+        totp_secret: null,
+        totp_enabled: 0,
+        recovery_codes: null,
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: '2FA disabled successfully',
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to disable 2FA');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to disable 2FA',
+      });
+    }
+  });
+
+  /**
+   * GET /api/user/2fa/status - Check 2FA status
+   */
+  fastify.get('/2fa/status', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Get 2FA status for current user',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                enabled: { type: 'boolean' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const user = store.getUserById(userId);
+
+      if (!user) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          enabled: Boolean(user.totp_enabled),
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get 2FA status');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to get 2FA status',
       });
     }
   });

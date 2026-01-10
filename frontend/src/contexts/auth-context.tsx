@@ -18,7 +18,7 @@ export interface AuthContextType {
   isLoading: boolean
   isAuthenticated: boolean
   isReady: boolean // New flag to indicate auth state is fully initialized
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (email: string, password: string, totpCode?: string) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
   updateUser: (userData: Partial<User>) => void
@@ -209,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsReady(false)
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, totpCode?: string) => {
     try {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
       
@@ -218,12 +218,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, totp_code: totpCode }),
       })
 
       const data = await response.json()
 
       if (data.success && data.data) {
+        // Check if 2FA is required
+        if (data.data.requires_2fa) {
+          return { success: false, requires2FA: true }
+        }
+        
         const { token, ...userData } = data.data
         await saveAuthState(token, userData)
         return { success: true }

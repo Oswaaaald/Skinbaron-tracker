@@ -17,9 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity } from 'lucide-react'
+import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
+import { TwoFactorSetup } from '@/components/two-factor-setup'
 
 interface UserStats {
   rules_count: number
@@ -39,6 +40,9 @@ export function ProfileSettings() {
   
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [twoFactorDialog, setTwoFactorDialog] = useState(false)
+  const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
+  const [twoFactorPassword, setTwoFactorPassword] = useState('')
   
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -119,6 +123,33 @@ export function ProfileSettings() {
       setErrorMessage(error.message || 'Failed to delete account')
       setDeleteDialog(false)
       setDeleteConfirmText('')
+    },
+  })
+
+  // 2FA status query
+  const { data: twoFactorStatus } = useQuery({
+    queryKey: ['2fa-status'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/user/2fa/status')
+      return response.data as { enabled: boolean }
+    },
+  })
+
+  // Disable 2FA mutation
+  const disableTwoFactorMutation = useMutation({
+    mutationFn: async (password: string) => {
+      return await apiClient.post('/api/user/2fa/disable', { password })
+    },
+    onSuccess: () => {
+      setSuccessMessage('Two-factor authentication disabled successfully')
+      setErrorMessage('')
+      setDisableTwoFactorDialog(false)
+      setTwoFactorPassword('')
+      queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
+    },
+    onError: (error: any) => {
+      setErrorMessage(error.message || 'Failed to disable 2FA')
+      setSuccessMessage('')
     },
   })
 
@@ -342,6 +373,61 @@ export function ProfileSettings() {
         </CardContent>
       </Card>
 
+      {/* Two-Factor Authentication */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            Two-Factor Authentication
+          </CardTitle>
+          <CardDescription>Add an extra layer of security to your account</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Status:</span>
+                {twoFactorStatus?.enabled ? (
+                  <Badge variant="default" className="gap-1">
+                    <Shield className="h-3 w-3" />
+                    Enabled
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Disabled</Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {twoFactorStatus?.enabled 
+                  ? 'Your account is protected with 2FA' 
+                  : 'Use an authenticator app for extra security'}
+              </p>
+            </div>
+            
+            {twoFactorStatus?.enabled ? (
+              <Button 
+                variant="destructive" 
+                onClick={() => setDisableTwoFactorDialog(true)}
+              >
+                Disable 2FA
+              </Button>
+            ) : (
+              <Button onClick={() => setTwoFactorDialog(true)}>
+                Enable 2FA
+              </Button>
+            )}
+          </div>
+
+          {twoFactorStatus?.enabled && (
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                You'll be asked for a verification code when logging in. Keep your authenticator app accessible.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Danger Zone */}
       <Card className="border-destructive/50">
         <CardHeader>
@@ -368,6 +454,67 @@ export function ProfileSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* 2FA Setup Dialog */}
+      <TwoFactorSetup open={twoFactorDialog} onOpenChange={setTwoFactorDialog} />
+
+      {/* Disable 2FA Dialog */}
+      <Dialog open={disableTwoFactorDialog} onOpenChange={setDisableTwoFactorDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disable Two-Factor Authentication?</DialogTitle>
+            <DialogDescription>
+              Enter your password to confirm disabling 2FA
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Your account will be less secure without 2FA protection.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="space-y-2">
+              <Label htmlFor="2fa-password">Password</Label>
+              <Input
+                id="2fa-password"
+                type="password"
+                value={twoFactorPassword}
+                onChange={(e) => setTwoFactorPassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDisableTwoFactorDialog(false)
+                setTwoFactorPassword('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => disableTwoFactorMutation.mutate(twoFactorPassword)}
+              disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}
+            >
+              {disableTwoFactorMutation.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Disabling...
+                </>
+              ) : (
+                'Disable 2FA'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
