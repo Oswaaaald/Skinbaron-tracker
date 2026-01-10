@@ -209,7 +209,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsReady(false)
   }
 
-  const login = async (email: string, password: string, totpCode?: string) => {
+  const login = async (email: string, password: string, totpCode?: string): Promise<{
+    success: boolean;
+    error?: string;
+    requires2FA?: boolean;
+  }> => {
     try {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
       
@@ -231,17 +235,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const { token, ...userData } = data.data
         await saveAuthState(token, userData)
-        return { success: true }
+        return { success: true, requires2FA: false }
       } else {
         return { 
-          success: false, 
+          success: false,
+          requires2FA: false,
           error: data.message || data.error || 'Login failed' 
         }
       }
     } catch (error) {
       console.error('Login error:', error)
       return { 
-        success: false, 
+        success: false,
+        requires2FA: false,
         error: 'Network error. Please try again.' 
       }
     }
