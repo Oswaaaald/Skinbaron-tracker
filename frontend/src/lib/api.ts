@@ -64,6 +64,7 @@ export interface ApiResponse<T> {
   error?: string;
   message?: string;
   details?: any;
+  requires2FA?: boolean;  // For 2FA login flow
 }
 
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {
@@ -350,15 +351,16 @@ class ApiClient {
   }
 
   // Authentication endpoints
-  async login(email: string, password: string): Promise<ApiResponse<{
+  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{
     id: number;
     username: string;
     email: string;
     token: string;
+    requires2FA?: boolean;
   }>> {
     return this.request('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, totp_code: totpCode }),
     });
   }
 
