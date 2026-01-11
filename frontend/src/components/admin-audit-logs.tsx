@@ -72,6 +72,7 @@ const EVENT_CONFIG: Record<string, {
 };
 
 function formatDate(dateString: string): string {
+  // Parse as UTC and convert to local time
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -93,6 +94,7 @@ function formatDate(dateString: string): string {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
+      timeZone: 'Europe/Paris',
     });
   }
 
@@ -102,6 +104,7 @@ function formatDate(dateString: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   });
 
   return `${relative} • ${fullDate}`;
@@ -171,6 +174,7 @@ export function AdminAuditLogs() {
       user_id: userId ? parseInt(userId) : undefined,
     }),
     refetchInterval: 30000, // Refresh every 30 seconds
+    refetchOnMount: 'always', // Force refresh to get new backend data
   });
 
   const handleClearFilters = () => {
@@ -343,10 +347,10 @@ export function AdminAuditLogs() {
                                 {log.email}
                               </span>
                             )}
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(log.created_at)}
-                            </span>
                           </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDate(log.created_at)}
+                          </span>
                           {(log.ip_address || log.user_agent) && (
                             <Button
                               variant="ghost"
