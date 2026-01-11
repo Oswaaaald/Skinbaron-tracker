@@ -21,6 +21,7 @@ import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, S
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { TwoFactorSetup } from '@/components/two-factor-setup'
+import { SecurityHistory } from '@/components/security-history'
 
 interface UserStats {
   rules_count: number
@@ -576,6 +577,9 @@ export function ProfileSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Security History - Non-intrusive placement at bottom */}
+      <SecurityHistory />
     </div>
   )
 }

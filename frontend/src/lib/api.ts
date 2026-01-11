@@ -85,6 +85,16 @@ export interface SystemStats {
   };
 }
 
+export interface AuditLog {
+  id: number;
+  user_id: number;
+  event_type: string;
+  event_data: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+}
+
 class ApiClient {
   private baseURL: string;
   private getAuthToken: (() => string | null) | null = null;
@@ -469,6 +479,32 @@ class ApiClient {
   // Force scheduler run (super admin only)
   async forceSchedulerRun(): Promise<ApiResponse<{ message: string }>> {
     return this.post(`/api/admin/scheduler/force-run`);
+  }
+
+  // Get user's own audit logs
+  async getUserAuditLogs(limit: number = 100): Promise<ApiResponse<AuditLog[]>> {
+    return this.get(`/api/user/audit-logs?limit=${limit}`);
+  }
+
+  // Get all audit logs (super admin only)
+  async getAllAuditLogs(params?: {
+    limit?: number;
+    event_type?: string;
+    user_id?: number;
+  }): Promise<ApiResponse<AuditLog[]>> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.event_type) query.append('event_type', params.event_type);
+    if (params?.user_id) query.append('user_id', params.user_id.toString());
+    return this.get(`/api/admin/audit-logs?${query.toString()}`);
+  }
+
+  // Get audit logs for specific user (admin only)
+  async getUserAuditLogsById(userId: number, limit: number = 100): Promise<ApiResponse<{
+    user: { id: number; username: string; email: string };
+    logs: AuditLog[];
+  }>> {
+    return this.get(`/api/admin/audit-logs/${userId}?limit=${limit}`);
   }
 }
 
