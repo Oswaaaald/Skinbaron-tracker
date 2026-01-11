@@ -33,7 +33,7 @@ import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 const EVENT_TYPES = [
-  { value: "", label: "All Events" },
+  { value: "all", label: "All Events" },
   { value: "login_success", label: "Login Success" },
   { value: "login_failed", label: "Login Failed" },
   { value: "2fa_enabled", label: "2FA Enabled" },
@@ -81,7 +81,7 @@ function formatDate(dateString: string): string {
 }
 
 export function AdminAuditLogs() {
-  const [eventType, setEventType] = useState<string>("");
+  const [eventType, setEventType] = useState<string>("all");
   const [userId, setUserId] = useState<string>("");
   const [limit, setLimit] = useState<number>(100);
 
@@ -89,14 +89,14 @@ export function AdminAuditLogs() {
     queryKey: ['admin-audit-logs', eventType, userId, limit],
     queryFn: () => apiClient.getAllAuditLogs({
       limit,
-      event_type: eventType || undefined,
+      event_type: eventType === "all" ? undefined : eventType,
       user_id: userId ? parseInt(userId) : undefined,
     }),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const handleClearFilters = () => {
-    setEventType("");
+    setEventType("all");
     setUserId("");
     setLimit(100);
   };
