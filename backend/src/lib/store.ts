@@ -335,53 +335,16 @@ export class Store {
     }
 
     // Migration: Drop legacy plaintext 2FA columns
+    // IMPORTANT: This migration is DISABLED to prevent data loss in production
+    // The legacy columns (totp_secret, recovery_codes) will remain NULL but won't be dropped
+    // to avoid triggering CASCADE DELETE on foreign key relationships
     const hasLegacyTotpSecret = this.db.prepare(`
       SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret'
     `).get() as { count: number };
 
     if (hasLegacyTotpSecret.count > 0) {
-      // SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
-      this.db.exec(`
-        BEGIN TRANSACTION;
-        
-        -- Drop old indices if they exist
-        DROP INDEX IF EXISTS idx_users_email;
-        DROP INDEX IF EXISTS idx_users_username;
-        
-        -- Create new users table without legacy columns
-        CREATE TABLE users_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT UNIQUE NOT NULL CHECK(length(username) >= 3 AND length(username) <= 20),
-          email TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          is_admin BOOLEAN DEFAULT 0,
-          is_super_admin BOOLEAN DEFAULT 0,
-          is_approved BOOLEAN DEFAULT 0,
-          totp_enabled BOOLEAN DEFAULT 0,
-          totp_secret_encrypted TEXT,
-          recovery_codes_encrypted TEXT
-        );
-        
-        -- Copy data from old table (excluding legacy columns totp_secret and recovery_codes)
-        INSERT INTO users_new (id, username, email, password_hash, created_at, updated_at, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted)
-        SELECT id, username, email, password_hash, created_at, updated_at, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted
-        FROM users;
-        
-        -- Drop old table
-        DROP TABLE users;
-        
-        -- Rename new table
-        ALTER TABLE users_new RENAME TO users;
-        
-        -- Create indices on the new table
-        CREATE INDEX idx_users_email ON users(email);
-        CREATE INDEX idx_users_username ON users(username);
-        
-        COMMIT;
-      `);
-      console.log('✅ Migration: Dropped legacy plaintext 2FA columns from users table');
+      console.log('ℹ️  Migration: Legacy 2FA columns detected but NOT dropped to preserve data integrity');
+      console.log('ℹ️  Columns totp_secret and recovery_codes are NULL and unused, only encrypted columns are active');
     }
 
     // Migration: Create audit_log table if it doesn't exist
