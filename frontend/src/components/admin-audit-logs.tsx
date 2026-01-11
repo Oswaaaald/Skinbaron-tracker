@@ -72,8 +72,10 @@ const EVENT_CONFIG: Record<string, {
 };
 
 function formatDate(dateString: string): string {
-  // Parse as UTC and convert to local time
-  const date = new Date(dateString);
+  // SQLite returns dates without timezone (e.g., "2026-01-11 23:37:14")
+  // We need to append 'Z' to treat it as UTC, then convert to local time
+  const utcDate = dateString.includes('Z') ? dateString : dateString.replace(' ', 'T') + 'Z';
+  const date = new Date(utcDate);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
@@ -94,7 +96,6 @@ function formatDate(dateString: string): string {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-      timeZone: 'Europe/Paris',
     });
   }
 
@@ -104,7 +105,6 @@ function formatDate(dateString: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Paris',
   });
 
   return `${relative} • ${fullDate}`;
@@ -168,13 +168,22 @@ export function AdminAuditLogs() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-audit-logs', eventType, userId, limit],
-    queryFn: () => apiClient.getAllAuditLogs({
-      limit,
-      event_type: eventType === "all" ? undefined : eventType,
-      user_id: userId ? parseInt(userId) : undefined,
-    }),
+    queryFn: async () => {
+      const result = await apiClient.getAllAuditLogs({
+        limit,
+        event_type: eventType === "all" ? undefined : eventType,
+        user_id: userId ? parseInt(userId) : undefined,
+      });
+      // Debug: log first item to check if username is present
+      if (result.data && result.data.length > 0) {
+        console.log('First audit log:', result.data[0]);
+      }
+      return result;
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchOnMount: 'always', // Force refresh to get new backend data
+    staleTime: 0, // Always consider data stale
+    cacheTime: 0, // Don't cache
   });
 
   const handleClearFilters = () => {
