@@ -232,7 +232,6 @@ export function AdminAuditLogs() {
                 };
                 
                 const Icon = config.icon;
-                const eventData = log.event_data ? JSON.parse(log.event_data) : {};
 
                 return (
                   <div key={log.id}>
