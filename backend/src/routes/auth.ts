@@ -193,6 +193,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Find user by email
       const user = await store.getUserByEmail(loginData.email);
       if (!user) {
+        // Audit log for failed login attempt
+        store.createAuditLog(
+          0, // No user ID for unknown email
+          'login_failed',
+          JSON.stringify({ email: loginData.email, reason: 'unknown_email' }),
+          request.ip,
+          request.headers['user-agent']
+        );
         return reply.status(401).send({
           success: false,
           error: 'Invalid credentials',
@@ -207,6 +215,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       );
 
       if (!isValidPassword) {
+        // Audit log for failed login (wrong password)
+        store.createAuditLog(
+          user.id!,
+          'login_failed',
+          JSON.stringify({ reason: 'invalid_password' }),
+          request.ip,
+          request.headers['user-agent']
+        );
         return reply.status(401).send({
           success: false,
           error: 'Invalid credentials',
@@ -249,6 +265,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const codeIndex = recoveryCodes.indexOf(totp_code);
 
           if (codeIndex === -1) {
+            // Audit log for failed 2FA
+            store.createAuditLog(
+              user.id!,
+              'login_failed',
+              JSON.stringify({ reason: 'invalid_2fa_code' }),
+              request.ip,
+              request.headers['user-agent']
+            );
             return reply.status(401).send({
               success: false,
               error: 'Invalid 2FA code',
@@ -275,6 +299,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Generate token
       const token = AuthService.generateToken(user.id!);
+
+      // Audit log for successful login
+      store.createAuditLog(
+        user.id!,
+        'login_success',
+        JSON.stringify({ method: user.totp_enabled ? '2fa' : 'password' }),
+        request.ip,
+        request.headers['user-agent']
+      );
 
       return reply.status(200).send({
         success: true,

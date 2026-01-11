@@ -168,6 +168,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       // Log admin action
       store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
 
+      // Create audit log
+      store.createAuditLog(
+        id,
+        'user_deleted',
+        JSON.stringify({ 
+          deleted_by_admin_id: adminId,
+          username: user.username,
+          email: user.email 
+        }),
+        request.ip,
+        request.headers['user-agent']
+      );
+
       return reply.status(200).send({
         success: true,
         message: `User ${user.username} deleted successfully`,
@@ -269,6 +282,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const action = is_admin ? 'grant_admin' : 'revoke_admin';
       const details = `${is_admin ? 'Granted' : 'Revoked'} admin privileges for ${user.username}`;
       store.logAdminAction(adminId, action, id, details);
+
+      // Create audit log
+      const eventType = is_admin ? 'user_promoted' : 'user_demoted';
+      store.createAuditLog(
+        id,
+        eventType,
+        JSON.stringify({ 
+          admin_id: adminId,
+          is_admin 
+        }),
+        request.ip,
+        request.headers['user-agent']
+      );
 
       return reply.status(200).send({
         success: true,
@@ -428,6 +454,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       // Log admin action
       store.logAdminAction(request.user!.id, 'APPROVE_USER', id, `Approved user ID ${id}`);
 
+      // Create audit log
+      store.createAuditLog(
+        id,
+        'user_approved',
+        JSON.stringify({ 
+          approved_by_admin_id: request.user!.id 
+        }),
+        request.ip,
+        request.headers['user-agent']
+      );
+
       return reply.status(200).send({
         success: true,
         message: 'User approved successfully',
@@ -531,6 +568,159 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to execute scheduler',
+      });
+    }
+  });
+
+  /**
+   * GET /api/admin/audit-logs/:userId - Get audit logs for specific user (admin only)
+   */
+  fastify.get('/audit-logs/:userId', {
+    preHandler: [fastify.requireAdmin],
+    schema: {
+      description: 'Get security audit logs for a specific user (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          userId: { type: 'number' },
+        },
+        required: ['userId'],
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', default: 100, maximum: 500 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                user: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'number' },
+                    username: { type: 'string' },
+                    email: { type: 'string' },
+                  },
+                },
+                logs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'number' },
+                      event_type: { type: 'string' },
+                      event_data: { type: 'string', nullable: true },
+                      ip_address: { type: 'string', nullable: true },
+                      user_agent: { type: 'string', nullable: true },
+                      created_at: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { userId } = request.params as { userId: number };
+      const { limit = 100 } = request.query as { limit?: number };
+
+      const user = store.getUserById(userId);
+      if (!user) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      const logs = store.getAuditLogsByUserId(userId, limit);
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+          },
+          logs,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get user audit logs');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to get audit logs',
+      });
+    }
+  });
+
+  /**
+   * GET /api/admin/audit-logs - Get all audit logs (super admin only)
+   */
+  fastify.get('/audit-logs', {
+    preHandler: [fastify.requireSuperAdmin],
+    schema: {
+      description: 'Get all security audit logs (super admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', default: 100, maximum: 1000 },
+          event_type: { type: 'string' },
+          user_id: { type: 'number' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  user_id: { type: 'number' },
+                  event_type: { type: 'string' },
+                  event_data: { type: 'string', nullable: true },
+                  ip_address: { type: 'string', nullable: true },
+                  user_agent: { type: 'string', nullable: true },
+                  created_at: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { limit = 100, event_type, user_id } = request.query as { limit?: number; event_type?: string; user_id?: number };
+
+      const logs = store.getAllAuditLogs(limit, event_type, user_id);
+
+      return reply.status(200).send({
+        success: true,
+        data: logs,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get all audit logs');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to get audit logs',
       });
     }
   });

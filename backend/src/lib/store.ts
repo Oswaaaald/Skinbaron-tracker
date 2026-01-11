@@ -1354,6 +1354,44 @@ export class Store {
     `);
     return stmt.all(userId, limit) as any[];
   }
+
+  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): any[] {
+    let query = 'SELECT * FROM audit_log WHERE 1=1';
+    const params: any[] = [];
+
+    if (eventType) {
+      query += ' AND event_type = ?';
+      params.push(eventType);
+    }
+
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(userId);
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(query);
+    return stmt.all(...params) as any[];
+  }
+
+  /**
+   * Clean old audit logs according to retention policy (GDPR compliance)
+   */
+  cleanOldAuditLogs(retentionDays: number): { deleted: number } {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+    const cutoffTimestamp = cutoffDate.toISOString();
+
+    const stmt = this.db.prepare(`
+      DELETE FROM audit_log 
+      WHERE created_at < ?
+    `);
+    
+    const result = stmt.run(cutoffTimestamp);
+    return { deleted: result.changes };
+  }
 }
 
 // Singleton instance

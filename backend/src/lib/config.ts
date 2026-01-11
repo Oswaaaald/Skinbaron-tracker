@@ -36,6 +36,9 @@ const ConfigSchema = z.object({
   
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  
+  // Audit logs retention (GDPR compliance)
+  AUDIT_LOG_RETENTION_DAYS: z.coerce.number().default(365),
 });
 
 // Parse and validate configuration

@@ -88,6 +88,18 @@ export class AlertScheduler {
     this.stats.totalRuns++;
 
     try {
+      // Clean old audit logs (GDPR compliance) - run once per day
+      if (this.stats.totalRuns % 288 === 1) { // Every 288 runs at 5min intervals = ~1 day
+        try {
+          const result = this.store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
+          if (result.deleted > 0) {
+            console.log(`[Scheduler] Cleaned ${result.deleted} old audit logs (retention: ${appConfig.AUDIT_LOG_RETENTION_DAYS} days)`);
+          }
+        } catch (error) {
+          console.error('[Scheduler] Failed to clean old audit logs:', error);
+        }
+      }
+
       // Get all enabled rules
       const rules = this.store.getEnabledRules();
       if (rules.length === 0) {

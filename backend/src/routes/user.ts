@@ -208,7 +208,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Update user profile
+      const changedFields = Object.keys(updates);
       store.updateUser(userId, updates);
+      
+      // Audit log for profile update
+      store.createAuditLog(
+        userId,
+        updates.email ? 'email_changed' : 'profile_updated',
+        JSON.stringify({ fields: changedFields, new_email: updates.email }),
+        request.ip,
+        request.headers['user-agent']
+      );
       
       // Get updated user data
       const updatedUser = store.getUserById(userId);
@@ -646,6 +656,149 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({
         success: false,
         error: 'Failed to get 2FA status',
+      });
+    }
+  });
+
+  /**
+   * POST /api/user/change-password - Change password
+   */
+  fastify.post('/change-password', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Change password for current user',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          current_password: { type: 'string' },
+          new_password: { type: 'string', minLength: 6 },
+        },
+        required: ['current_password', 'new_password'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const { current_password, new_password } = request.body as { current_password: string; new_password: string };
+
+      const user = store.getUserById(userId);
+      if (!user) {
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      // Verify current password
+      const isValidPassword = await AuthService.verifyPassword(current_password, user.password_hash);
+      if (!isValidPassword) {
+        // Audit log for failed password change attempt
+        store.createAuditLog(
+          userId,
+          'password_change_failed',
+          JSON.stringify({ reason: 'invalid_current_password' }),
+          request.ip,
+          request.headers['user-agent']
+        );
+        return reply.status(401).send({
+          success: false,
+          error: 'Invalid current password',
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await AuthService.hashPassword(new_password);
+      
+      // Update password
+      store.updateUser(userId, { password_hash: hashedPassword });
+
+      // Audit log for successful password change
+      store.createAuditLog(
+        userId,
+        'password_changed',
+        undefined,
+        request.ip,
+        request.headers['user-agent']
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Password changed successfully',
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to change password');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to change password',
+      });
+    }
+  });
+
+  /**
+   * GET /api/user/audit-logs - Get current user's audit logs
+   */
+  fastify.get('/audit-logs', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Get security audit logs for current user',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', default: 100, maximum: 500 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  event_type: { type: 'string' },
+                  event_data: { type: 'string', nullable: true },
+                  ip_address: { type: 'string', nullable: true },
+                  user_agent: { type: 'string', nullable: true },
+                  created_at: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const { limit = 100 } = request.query as { limit?: number };
+
+      const logs = store.getAuditLogsByUserId(userId, limit);
+
+      return reply.status(200).send({
+        success: true,
+        data: logs,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to get audit logs');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to get audit logs',
       });
     }
   });
