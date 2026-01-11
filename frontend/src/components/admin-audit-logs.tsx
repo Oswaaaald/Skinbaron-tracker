@@ -183,7 +183,7 @@ export function AdminAuditLogs() {
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchOnMount: 'always', // Force refresh to get new backend data
     staleTime: 0, // Always consider data stale
-    cacheTime: 0, // Don't cache
+    gcTime: 0, // Don't cache (was cacheTime in v4)
   });
 
   const handleClearFilters = () => {
