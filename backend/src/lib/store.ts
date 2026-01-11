@@ -1356,20 +1356,28 @@ export class Store {
   }
 
   getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): any[] {
-    let query = 'SELECT * FROM audit_log WHERE 1=1';
+    let query = `
+      SELECT 
+        audit_log.*,
+        users.username,
+        users.email
+      FROM audit_log
+      LEFT JOIN users ON audit_log.user_id = users.id
+      WHERE 1=1
+    `;
     const params: any[] = [];
 
     if (eventType) {
-      query += ' AND event_type = ?';
+      query += ' AND audit_log.event_type = ?';
       params.push(eventType);
     }
 
     if (userId) {
-      query += ' AND user_id = ?';
+      query += ' AND audit_log.user_id = ?';
       params.push(userId);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ?';
+    query += ' ORDER BY audit_log.created_at DESC LIMIT ?';
     params.push(limit);
 
     const stmt = this.db.prepare(query);

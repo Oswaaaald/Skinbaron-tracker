@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
+import { getClientIp } from '../lib/middleware.js';
 
 /**
  * Admin routes - All routes require admin privileges
@@ -177,7 +178,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email 
         }),
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 
@@ -292,7 +293,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           admin_id: adminId,
           is_admin 
         }),
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 
@@ -461,7 +462,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         JSON.stringify({ 
           approved_by_admin_id: request.user!.id 
         }),
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 

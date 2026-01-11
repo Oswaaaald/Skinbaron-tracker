@@ -15,6 +15,33 @@ declare module 'fastify' {
 }
 
 /**
+ * Extract the real client IP address from request headers
+ * Handles X-Forwarded-For, X-Real-IP, and falls back to request.ip
+ */
+export function getClientIp(request: FastifyRequest): string {
+  // Check X-Forwarded-For header (proxy chain)
+  const xForwardedFor = request.headers['x-forwarded-for'];
+  if (xForwardedFor) {
+    // Take the first IP in the chain (the original client)
+    const ips = typeof xForwardedFor === 'string' 
+      ? xForwardedFor.split(',').map(ip => ip.trim())
+      : xForwardedFor;
+    if (ips.length > 0 && ips[0]) {
+      return ips[0];
+    }
+  }
+
+  // Check X-Real-IP header
+  const xRealIp = request.headers['x-real-ip'];
+  if (xRealIp && typeof xRealIp === 'string') {
+    return xRealIp;
+  }
+
+  // Fall back to Fastify's request.ip
+  return request.ip;
+}
+
+/**
  * Authentication middleware
  */
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {

@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
 import { AuthService } from '../lib/auth.js';
+import { getClientIp } from '../lib/middleware.js';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
@@ -216,7 +217,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         userId,
         updates.email ? 'email_changed' : 'profile_updated',
         JSON.stringify({ fields: changedFields, new_email: updates.email }),
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
       
@@ -512,7 +513,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         userId,
         '2fa_enabled',
         undefined,
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 
@@ -592,7 +593,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         userId,
         '2fa_disabled',
         undefined,
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 
@@ -708,7 +709,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           userId,
           'password_change_failed',
           JSON.stringify({ reason: 'invalid_current_password' }),
-          request.ip,
+          getClientIp(request),
           request.headers['user-agent']
         );
         return reply.status(401).send({
@@ -728,7 +729,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         userId,
         'password_changed',
         undefined,
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 

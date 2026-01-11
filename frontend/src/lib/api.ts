@@ -88,6 +88,8 @@ export interface SystemStats {
 export interface AuditLog {
   id: number;
   user_id: number;
+  username?: string;  // Enriched by backend JOIN
+  email?: string;     // Enriched by backend JOIN
   event_type: string;
   event_data: string | null;
   ip_address: string | null;

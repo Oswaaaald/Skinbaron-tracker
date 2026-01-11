@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { getStore } from '../lib/store.js';
+import { getClientIp } from '../lib/middleware.js';
 import { authenticator } from 'otplib';
 
 // Extend FastifyInstance type
@@ -198,7 +199,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           0, // No user ID for unknown email
           'login_failed',
           JSON.stringify({ email: loginData.email, reason: 'unknown_email' }),
-          request.ip,
+          getClientIp(request),
           request.headers['user-agent']
         );
         return reply.status(401).send({
@@ -220,7 +221,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           user.id!,
           'login_failed',
           JSON.stringify({ reason: 'invalid_password' }),
-          request.ip,
+          getClientIp(request),
           request.headers['user-agent']
         );
         return reply.status(401).send({
@@ -270,7 +271,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
               user.id!,
               'login_failed',
               JSON.stringify({ reason: 'invalid_2fa_code' }),
-              request.ip,
+              getClientIp(request),
               request.headers['user-agent']
             );
             return reply.status(401).send({
@@ -291,7 +292,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             user.id!,
             '2fa_recovery_code_used',
             JSON.stringify({ remaining_codes: recoveryCodes.length }),
-            request.ip,
+            getClientIp(request),
             request.headers['user-agent']
           );
         }
@@ -305,7 +306,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         user.id!,
         'login_success',
         JSON.stringify({ method: user.totp_enabled ? '2fa' : 'password' }),
-        request.ip,
+        getClientIp(request),
         request.headers['user-agent']
       );
 

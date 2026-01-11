@@ -335,9 +335,14 @@ export function AdminAuditLogs() {
                             <Badge variant={config.variant} className="font-medium">
                               {config.label}
                             </Badge>
-                            <Badge variant="secondary" className="font-mono">
-                              User #{log.user_id}
+                            <Badge variant="secondary" className="font-semibold">
+                              {log.username || `User #${log.user_id}`}
                             </Badge>
+                            {log.email && (
+                              <span className="text-xs text-muted-foreground">
+                                {log.email}
+                              </span>
+                            )}
                             <span className="text-xs text-muted-foreground">
                               {formatDate(log.created_at)}
                             </span>
