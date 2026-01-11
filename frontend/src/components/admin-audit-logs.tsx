@@ -343,28 +343,26 @@ export function AdminAuditLogs() {
                         <Icon className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={config.variant} className="font-medium">
-                              {config.label}
-                            </Badge>
-                            <Badge variant="secondary" className="font-semibold">
-                              {log.username || `User #${log.user_id}`}
-                            </Badge>
-                            {log.email && (
-                              <span className="text-xs text-muted-foreground">
-                                {log.email}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={config.variant} className="font-medium">
+                            {config.label}
+                          </Badge>
+                          <Badge variant="secondary" className="font-semibold">
+                            {log.username || `User #${log.user_id}`}
+                          </Badge>
+                          {log.email && (
+                            <span className="text-xs text-muted-foreground">
+                              {log.email}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-auto">
                             {formatDate(log.created_at)}
                           </span>
                           {(log.ip_address || log.user_agent) && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-2"
+                              className="h-6 px-2 ml-2"
                               onClick={() => toggleExpanded(log.id)}
                             >
                               {isExpanded ? (
