@@ -27,7 +27,9 @@ import {
   ShieldOff,
   AlertCircle,
   Search,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -71,19 +73,95 @@ const EVENT_CONFIG: Record<string, {
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleString('fr-FR', {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  let relative = "";
+  if (diffMins < 1) {
+    relative = "À l'instant";
+  } else if (diffMins < 60) {
+    relative = `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+  } else if (diffHours < 24) {
+    relative = `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+  } else if (diffDays < 7) {
+    relative = `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+  } else {
+    relative = date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  const fullDate = date.toLocaleString('fr-FR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  return `${relative} • ${fullDate}`;
+}
+
+function formatEventData(eventType: string, eventDataJson: string | null): string {
+  if (!eventDataJson) return "";
+
+  try {
+    const data = JSON.parse(eventDataJson);
+
+    switch (eventType) {
+      case "login_success":
+        return data.method === "2fa" ? "Connexion avec 2FA" : "Connexion par mot de passe";
+      
+      case "login_failed":
+        if (data.reason === "unknown_email") return "Échec : email inconnu";
+        if (data.reason === "invalid_password") return "Échec : mot de passe incorrect";
+        if (data.reason === "invalid_2fa_code") return "Échec : code 2FA incorrect";
+        return `Échec : ${data.reason}`;
+      
+      case "2fa_recovery_code_used":
+        return `Code de récupération utilisé (${data.remaining_codes} restant${data.remaining_codes > 1 ? 's' : ''})`;
+      
+      case "email_changed":
+        return `Nouvel email : ${data.new_email}`;
+      
+      case "profile_updated":
+        return `Champs modifiés : ${data.fields?.join(', ') || 'profil'}`;
+      
+      case "password_change_failed":
+        return data.reason === "invalid_current_password" 
+          ? "Échec : mot de passe actuel incorrect" 
+          : `Échec : ${data.reason}`;
+      
+      case "user_approved":
+        return `Approuvé par admin #${data.approved_by_admin_id}`;
+      
+      case "user_promoted":
+        return `Promu admin par #${data.admin_id}`;
+      
+      case "user_demoted":
+        return `Rétrogradé par admin #${data.admin_id}`;
+      
+      case "user_deleted":
+        return `Supprimé par admin #${data.deleted_by_admin_id} (${data.username} - ${data.email})`;
+      
+      default:
+        return eventDataJson;
+    }
+  } catch {
+    return eventDataJson;
+  }
 }
 
 export function AdminAuditLogs() {
   const [eventType, setEventType] = useState<string>("all");
   const [userId, setUserId] = useState<string>("");
   const [limit, setLimit] = useState<number>(100);
+  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-audit-logs', eventType, userId, limit],
@@ -99,6 +177,16 @@ export function AdminAuditLogs() {
     setEventType("all");
     setUserId("");
     setLimit(100);
+  };
+
+  const toggleExpanded = (logId: number) => {
+    const newExpanded = new Set(expandedLogs);
+    if (newExpanded.has(logId)) {
+      newExpanded.delete(logId);
+    } else {
+      newExpanded.add(logId);
+    }
+    setExpandedLogs(newExpanded);
   };
 
   if (isLoading) {
@@ -232,6 +320,8 @@ export function AdminAuditLogs() {
                 };
                 
                 const Icon = config.icon;
+                const isExpanded = expandedLogs.has(log.id);
+                const contextualMessage = formatEventData(log.event_type, log.event_data);
 
                 return (
                   <div key={log.id}>
@@ -240,30 +330,50 @@ export function AdminAuditLogs() {
                         <Icon className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={config.variant}>
-                            {config.label}
-                          </Badge>
-                          <Badge variant="outline">
-                            User #{log.user_id}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(log.created_at)}
-                          </span>
-                        </div>
-                        {log.event_data && (
-                          <p className="text-sm text-muted-foreground font-mono text-xs">
-                            {log.event_data}
-                          </p>
-                        )}
-                        <div className="flex gap-4 text-xs text-muted-foreground/60">
-                          {log.ip_address && <span>IP: {log.ip_address}</span>}
-                          {log.user_agent && (
-                            <span className="truncate max-w-md" title={log.user_agent}>
-                              {log.user_agent}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={config.variant} className="font-medium">
+                              {config.label}
+                            </Badge>
+                            <Badge variant="secondary" className="font-mono">
+                              User #{log.user_id}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(log.created_at)}
                             </span>
+                          </div>
+                          {(log.ip_address || log.user_agent) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2"
+                              onClick={() => toggleExpanded(log.id)}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              )}
+                            </Button>
                           )}
                         </div>
+                        {contextualMessage && (
+                          <p className="text-sm text-foreground">
+                            {contextualMessage}
+                          </p>
+                        )}
+                        {isExpanded && (
+                          <div className="flex flex-col gap-1 pt-1 text-xs text-muted-foreground/60">
+                            {log.ip_address && (
+                              <span className="font-mono">IP: {log.ip_address}</span>
+                            )}
+                            {log.user_agent && (
+                              <span className="font-mono break-all">
+                                {log.user_agent}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {index < logs.length - 1 && <Separator className="mt-4" />}
