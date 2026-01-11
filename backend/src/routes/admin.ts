@@ -695,6 +695,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
                 properties: {
                   id: { type: 'number' },
                   user_id: { type: 'number' },
+                  username: { type: 'string', nullable: true },
+                  email: { type: 'string', nullable: true },
                   event_type: { type: 'string' },
                   event_data: { type: 'string', nullable: true },
                   ip_address: { type: 'string', nullable: true },
