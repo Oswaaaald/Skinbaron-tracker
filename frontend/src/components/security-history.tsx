@@ -116,7 +116,10 @@ const EVENT_CONFIG: Record<string, {
 };
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+  // SQLite returns dates without timezone (e.g., "2026-01-11 23:37:14")
+  // We need to append 'Z' to treat it as UTC, then convert to local time
+  const utcDate = dateString.includes('Z') ? dateString : dateString.replace(' ', 'T') + 'Z';
+  const date = new Date(utcDate);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   
