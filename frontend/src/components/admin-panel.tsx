@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { AdminAuditLogs } from '@/components/admin-audit-logs'
 
 interface UserStats {
   rules_count: number
@@ -582,6 +583,9 @@ export function AdminPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Super Admin Audit Logs Section */}
+      {currentUser?.is_super_admin && <AdminAuditLogs />}
     </div>
   )
 }
