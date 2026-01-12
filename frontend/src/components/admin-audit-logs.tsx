@@ -153,6 +153,19 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
       case "user_deleted":
         // Note: admin_username is not in event_data, it's in the log.username (since the log belongs to the admin)
         return "";  // We'll show admin info separately
+      
+      default:
+        return eventDataJson;
+    }
+  } catch {
+    return eventDataJson;
+  }
+}
+
+export function AdminAuditLogs() {
+  const [eventType, setEventType] = useState<string>("all");
+  const [userSearch, setUserSearch] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<{ id: number; username: string; email: string } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [limit, setLimit] = useState<number>(100);
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
