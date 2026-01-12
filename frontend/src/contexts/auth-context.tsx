@@ -101,86 +101,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, []) // Run only once on mount
 
-  // Check token validity periodically and refresh if needed
-  useEffect(() => {
-    if (!token || !user) return
+    // Check token validity periodically and refresh if needed
+    useEffect(() => {
+      if (!token || !user) return
 
-    const isVisible = () => typeof document === 'undefined' ? true : document.visibilityState === 'visible'
+      const isVisible = () => typeof document === 'undefined' ? true : document.visibilityState === 'visible'
 
-    const checkTokenValidity = async () => {
-      if (!isVisible()) return
-      try {
-        // Try to make a simple authenticated request
-        const response = await apiClient.getHealth()
-        if (!response.success) {
-          // Token might be invalid, logout user
-          console.warn('Token validation failed, logging out')
-          logout()
-        }
-      } catch (error) {
-        console.error('Token check failed:', error)
-        // If it's an auth error, logout
-        if (error instanceof Error && error.message.includes('token')) {
-          logout()
-        }
-      }
-    }
-
-    const checkUserProfile = async () => {
-      if (!isVisible()) return
-      try {
-        // Check if user profile has changed (e.g., admin status)
-        const response = await apiClient.getUserProfile()
-        if (response.success && response.data) {
-          // Get the latest user from localStorage to avoid stale closure
-          const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-          if (!stored) return
-          
-          const authData: AuthStorage = JSON.parse(stored)
-          const currentUser = authData.user
-          const serverUser = response.data
-          
-          // Check if critical fields have changed
-          if (currentUser.is_admin !== serverUser.is_admin ||
-              currentUser.is_super_admin !== serverUser.is_super_admin ||
-              currentUser.username !== serverUser.username ||
-              currentUser.email !== serverUser.email ||
-              currentUser.avatar_url !== serverUser.avatar_url) {
-            updateUser({
-              username: serverUser.username,
-              email: serverUser.email,
-              avatar_url: serverUser.avatar_url,
-              is_admin: serverUser.is_admin,
-              is_super_admin: serverUser.is_super_admin,
-            })
+      const checkTokenValidity = async () => {
+        if (!isVisible()) return
+        try {
+          // Try to make a simple authenticated request
+          const response = await apiClient.getHealth()
+          if (!response.success) {
+            // Token might be invalid, logout user
+            console.warn('Token validation failed, logging out')
+            logout()
+          }
+        } catch (error) {
+          console.error('Token check failed:', error)
+          // If it's an auth error, logout
+          if (error instanceof Error && error.message.includes('token')) {
+            logout()
           }
         }
-      } catch (error) {
-        console.error('Profile check failed:', error)
       }
-    }
 
-    // Listen for custom event when admin status changes
-    const handleProfileChanged = () => {
+      const checkUserProfile = async () => {
+        if (!isVisible()) return
+        try {
+          // Check if user profile has changed (e.g., admin status)
+          const response = await apiClient.getUserProfile()
+          if (response.success && response.data) {
+            // Get the latest user from localStorage to avoid stale closure
+            const stored = localStorage.getItem(AUTH_STORAGE_KEY)
+            if (!stored) return
+            
+            const authData: AuthStorage = JSON.parse(stored)
+            const currentUser = authData.user
+            const serverUser = response.data
+            
+            // Check if critical fields have changed
+            if (currentUser.is_admin !== serverUser.is_admin ||
+                currentUser.is_super_admin !== serverUser.is_super_admin ||
+                currentUser.username !== serverUser.username ||
+                currentUser.email !== serverUser.email ||
+                currentUser.avatar_url !== serverUser.avatar_url) {
+              updateUser({
+                username: serverUser.username,
+                email: serverUser.email,
+                avatar_url: serverUser.avatar_url,
+                is_admin: serverUser.is_admin,
+                is_super_admin: serverUser.is_super_admin,
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Profile check failed:', error)
+        }
+      }
+
+      // Listen for custom event when admin status changes
+      const handleProfileChanged = () => {
+        checkUserProfile()
+      }
+      window.addEventListener('user-profile-changed', handleProfileChanged)
+
+      // Check token every 5 minutes
+      const tokenInterval = setInterval(checkTokenValidity, 5 * 60 * 1000)
+      // Check profile on window focus instead of constant interval to reduce spam
+      const handleFocus = () => checkUserProfile()
+      window.addEventListener('focus', handleFocus)
+      
+      // Initial checks
+      checkTokenValidity()
       checkUserProfile()
-    }
-    window.addEventListener('user-profile-changed', handleProfileChanged)
 
-    // Check token every 5 minutes
-    const tokenInterval = setInterval(checkTokenValidity, 5 * 60 * 1000)
-    // Check profile every 10 seconds for real-time updates
-    const profileInterval = setInterval(checkUserProfile, 10 * 1000)
-    
-    // Check both immediately
-    checkTokenValidity()
-    checkUserProfile()
-
-    return () => {
-      clearInterval(tokenInterval)
-      clearInterval(profileInterval)
-      window.removeEventListener('user-profile-changed', handleProfileChanged)
-    }
-  }, [token]) // Only depend on token
+      return () => {
+        clearInterval(tokenInterval)
+        window.removeEventListener('user-profile-changed', handleProfileChanged)
+        window.removeEventListener('focus', handleFocus)
+      }
+    }, [token]) // Only depend on token
 
   const saveAuthState = async (token: string, user: User) => {
     // JWT tokens from our backend expire in 7 days
