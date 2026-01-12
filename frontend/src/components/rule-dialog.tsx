@@ -42,10 +42,10 @@ import { ItemCombobox } from "@/components/ui/item-combobox"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
-  min_price: z.number().min(0, "Prix minimum doit être positif").optional(),
-  max_price: z.number().min(0, "Prix maximum doit être positif").optional(),
-  min_wear: z.number().min(0, "Wear minimum doit être entre 0 et 100").max(100, "Wear minimum doit être entre 0 et 100").optional(),
-  max_wear: z.number().min(0, "Wear maximum doit être entre 0 et 100").max(100, "Wear maximum doit être entre 0 et 100").optional(),
+  min_price: z.number().min(0, "Minimum price must be positive").optional(),
+  max_price: z.number().min(0, "Maximum price must be positive").optional(),
+  min_wear: z.number().min(0, "Min wear must be between 0 and 100").max(100, "Min wear must be between 0 and 100").optional(),
+  max_wear: z.number().min(0, "Max wear must be between 0 and 100").max(100, "Max wear must be between 0 and 100").optional(),
   stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   souvenir_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   allow_stickers: z.boolean().default(true),
@@ -337,7 +337,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      Prix minimum en euros. Laissez vide pour ignorer.
+                      Minimum price in euros. Leave blank to ignore.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -398,7 +398,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      Prix maximum en euros. Laissez vide pour ignorer.
+                      Maximum price in euros. Leave blank to ignore.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -462,7 +462,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      Entre 0 et 100. Laissez vide pour ignorer.
+                      Between 0 and 100. Leave blank to ignore.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -523,7 +523,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      Entre 0 et 100. Laissez vide pour ignorer.
+                      Between 0 and 100. Leave blank to ignore.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -543,17 +543,17 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner..." />
+                            <SelectValue placeholder="Select..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="all">✓ Tout accepter</SelectItem>
-                          <SelectItem value="only">⭐ Uniquement StatTrak™</SelectItem>
-                          <SelectItem value="exclude">✗ Exclure StatTrak™</SelectItem>
+                          <SelectItem value="all">✓ Accept all</SelectItem>
+                          <SelectItem value="only">⭐ Only StatTrak™</SelectItem>
+                          <SelectItem value="exclude">✗ Exclude StatTrak™</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Filtrer les items StatTrak™
+                        Filter StatTrak™ items
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -569,17 +569,17 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner..." />
+                            <SelectValue placeholder="Select..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="all">✓ Tout accepter</SelectItem>
-                          <SelectItem value="only">🏆 Uniquement Souvenir</SelectItem>
-                          <SelectItem value="exclude">✗ Exclure Souvenir</SelectItem>
+                          <SelectItem value="all">✓ Accept all</SelectItem>
+                          <SelectItem value="only">🏆 Only Souvenir</SelectItem>
+                          <SelectItem value="exclude">✗ Exclude Souvenir</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Filtrer les items Souvenir
+                        Filter Souvenir items
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -593,9 +593,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <FormLabel>Autoriser les Stickers</FormLabel>
+                      <FormLabel>Allow Stickers</FormLabel>
                       <FormDescription className="text-sm">
-                        Inclure les items avec des stickers
+                        Include items with stickers
                       </FormDescription>
                     </div>
                     <FormControl>
