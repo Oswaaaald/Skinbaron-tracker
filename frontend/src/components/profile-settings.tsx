@@ -232,6 +232,13 @@ export function ProfileSettings() {
     }
   }
 
+  const handleDisable2FA = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (twoFactorPassword) {
+      disableTwoFactorMutation.mutate(twoFactorPassword)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Success/Error Messages */}
@@ -540,59 +547,62 @@ export function ProfileSettings() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            {twoFactorError && (
+          <form onSubmit={handleDisable2FA}>
+            <div className="space-y-4">
+              {twoFactorError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{twoFactorError}</AlertDescription>
+                </Alert>
+              )}
+              
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{twoFactorError}</AlertDescription>
+                <AlertDescription>
+                  Your account will be less secure without 2FA protection.
+                </AlertDescription>
               </Alert>
-            )}
-            
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Your account will be less secure without 2FA protection.
-              </AlertDescription>
-            </Alert>
-            
-            <div className="space-y-2">
-              <Label htmlFor="2fa-password">Password</Label>
-              <Input
-                id="2fa-password"
-                type="password"
-                value={twoFactorPassword}
-                onChange={(e) => setTwoFactorPassword(e.target.value)}
-                placeholder="Enter your password"
-              />
+              
+              <div className="space-y-2">
+                <Label htmlFor="2fa-password">Password</Label>
+                <Input
+                  id="2fa-password"
+                  type="password"
+                  value={twoFactorPassword}
+                  onChange={(e) => setTwoFactorPassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
+              </div>
             </div>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setDisableTwoFactorDialog(false)
-                setTwoFactorPassword('')
-                setTwoFactorError('')
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => disableTwoFactorMutation.mutate(twoFactorPassword)}
-              disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}
-            >
-              {disableTwoFactorMutation.isPending ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Disabling...
-                </>
-              ) : (
-                'Disable 2FA'
-              )}
-            </Button>
-          </DialogFooter>
+            
+            <DialogFooter className="mt-4">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => {
+                  setDisableTwoFactorDialog(false)
+                  setTwoFactorPassword('')
+                  setTwoFactorError('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}
+              >
+                {disableTwoFactorMutation.isPending ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Disabling...
+                  </>
+                ) : (
+                  'Disable 2FA'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
