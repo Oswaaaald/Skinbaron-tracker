@@ -103,7 +103,7 @@ export function AdminPanel() {
   const deleteUserMutation = useApiMutation(
     (userId: number) => apiClient.delete(`/api/admin/users/${userId}`),
     {
-      invalidateKeys: [['admin', 'users'], ['admin', 'stats']],
+      invalidateKeys: [['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
         setDeleteDialog({ open: false, user: null })
       },
@@ -115,7 +115,7 @@ export function AdminPanel() {
     ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) =>
       apiClient.patch(`/api/admin/users/${userId}/admin`, { is_admin: isAdmin }),
     {
-      invalidateKeys: [['admin', 'users'], ['admin', 'stats']],
+      invalidateKeys: [['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
         // Force all connected users to refresh their profile immediately
         window.dispatchEvent(new CustomEvent('user-profile-changed'))
@@ -128,7 +128,7 @@ export function AdminPanel() {
   const approveUserMutation = useApiMutation(
     (userId: number) => apiClient.approveUser(userId),
     {
-      invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'users'], ['admin', 'stats']],
+      invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
         setpendingUserDialog({ open: false, userId: null, action: 'approve' })
       },
@@ -139,7 +139,7 @@ export function AdminPanel() {
   const rejectUserMutation = useApiMutation(
     (userId: number) => apiClient.rejectUser(userId),
     {
-      invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'stats']],
+      invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
         setpendingUserDialog({ open: false, userId: null, action: 'reject' })
       },
