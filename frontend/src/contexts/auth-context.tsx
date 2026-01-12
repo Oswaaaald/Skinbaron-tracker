@@ -146,10 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               currentUser.username !== serverUser.username ||
               currentUser.email !== serverUser.email ||
               currentUser.avatar_url !== serverUser.avatar_url) {
-            console.log('User profile changed, updating...', {
-              old: currentUser,
-              new: serverUser
-            })
             updateUser({
               username: serverUser.username,
               email: serverUser.email,
@@ -166,7 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for custom event when admin status changes
     const handleProfileChanged = () => {
-      console.log('Profile change event received, checking profile...')
       checkUserProfile()
     }
     window.addEventListener('user-profile-changed', handleProfileChanged)
