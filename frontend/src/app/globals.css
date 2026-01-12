@@ -119,4 +119,14 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Ensure hover shows clickable cursor on all buttons/interactive elements */
+  button,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
 }
