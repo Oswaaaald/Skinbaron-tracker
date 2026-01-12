@@ -443,6 +443,11 @@ export function AdminAuditLogs() {
                               {log.email}
                             </span>
                           )}
+                          {contextualMessage && (
+                            <span className="text-sm text-foreground">
+                              {contextualMessage}
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground ml-auto">
                             {formatDate(log.created_at)}
                           </span>
@@ -461,11 +466,6 @@ export function AdminAuditLogs() {
                             </Button>
                           )}
                         </div>
-                        {contextualMessage && (
-                          <p className="text-sm text-foreground">
-                            {contextualMessage}
-                          </p>
-                        )}
                         {isExpanded && (
                           <div className="flex flex-col gap-1 pt-1 text-xs text-muted-foreground/60">
                             {log.ip_address && (
