@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { 
@@ -14,7 +16,9 @@ import {
   User,
   ShieldCheck,
   ShieldOff,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -23,96 +27,20 @@ const EVENT_CONFIG: Record<string, {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   variant: "default" | "secondary" | "destructive" | "outline";
-  description: (data: any) => string;
 }> = {
-  login_success: {
-    icon: LogIn,
-    label: "Connexion réussie",
-    variant: "default",
-    description: (data) => data?.method === "2fa" ? "avec 2FA" : "par mot de passe",
-  },
-  login_failed: {
-    icon: ShieldAlert,
-    label: "Connexion échouée",
-    variant: "destructive",
-    description: (data) => {
-      if (data?.reason === "invalid_password") return "mot de passe incorrect";
-      if (data?.reason === "invalid_2fa_code") return "code 2FA incorrect";
-      if (data?.reason === "unknown_email") return "email inconnu";
-      return "raison inconnue";
-    },
-  },
-  "2fa_enabled": {
-    icon: ShieldCheck,
-    label: "2FA activée",
-    variant: "default",
-    description: () => "Authentification à deux facteurs activée",
-  },
-  "2fa_disabled": {
-    icon: ShieldOff,
-    label: "2FA désactivée",
-    variant: "secondary",
-    description: () => "Authentification à deux facteurs désactivée",
-  },
-  "2fa_recovery_code_used": {
-    icon: Key,
-    label: "Code de récupération utilisé",
-    variant: "outline",
-    description: (data) => `${data?.remaining_codes || 0} code(s) restant(s)`,
-  },
-  email_changed: {
-    icon: Mail,
-    label: "Email modifié",
-    variant: "outline",
-    description: (data) => `Nouvel email: ${data?.new_email || "N/A"}`,
-  },
-  profile_updated: {
-    icon: User,
-    label: "Profil mis à jour",
-    variant: "outline",
-    description: (data) => {
-      const fields = data?.fields || [];
-      return fields.length > 0 ? `Champs: ${fields.join(", ")}` : "Modifications du profil";
-    },
-  },
-  password_changed: {
-    icon: Key,
-    label: "Mot de passe modifié",
-    variant: "default",
-    description: () => "Mot de passe changé avec succès",
-  },
-  password_change_failed: {
-    icon: AlertCircle,
-    label: "Changement de mot de passe échoué",
-    variant: "destructive",
-    description: (data) => data?.reason === "invalid_current_password" 
-      ? "mot de passe actuel incorrect" 
-      : "erreur inconnue",
-  },
-  user_approved: {
-    icon: ShieldCheck,
-    label: "Compte approuvé",
-    variant: "default",
-    description: () => "Votre compte a été approuvé par un administrateur",
-  },
-  user_promoted: {
-    icon: Shield,
-    label: "Privilèges administrateur accordés",
-    variant: "default",
-    description: () => "Vous avez reçu des privilèges administrateur",
-  },
-  user_demoted: {
-    icon: ShieldOff,
-    label: "Privilèges administrateur retirés",
-    variant: "secondary",
-    description: () => "Vos privilèges administrateur ont été retirés",
-  },
-  user_deleted: {
-    icon: ShieldAlert,
-    label: "Compte supprimé",
-    variant: "destructive",
-    description: () => "Votre compte a été supprimé",
-  },
+  login_success: { icon: LogIn, label: "Connexion réussie", variant: "default" },
+  login_failed: { icon: ShieldAlert, label: "Connexion échouée", variant: "destructive" },
+  "2fa_enabled": { icon: ShieldCheck, label: "2FA activée", variant: "default" },
+  "2fa_disabled": { icon: ShieldOff, label: "2FA désactivée", variant: "secondary" },
+  "2fa_recovery_code_used": { icon: Key, label: "Code de récupération utilisé", variant: "outline" },
+  email_changed: { icon: Mail, label: "Email modifié", variant: "outline" },
+  profile_updated: { icon: User, label: "Profil mis à jour", variant: "outline" },
+  password_changed: { icon: Key, label: "Mot de passe modifié", variant: "default" },
+  password_change_failed: { icon: AlertCircle, label: "Changement de mot de passe échoué", variant: "destructive" },
+  user_approved: { icon: ShieldCheck, label: "Compte approuvé", variant: "default" },
+  user_promoted: { icon: Shield, label: "Privilèges admin accordés", variant: "default" },
+  user_demoted: { icon: ShieldOff, label: "Privilèges admin retirés", variant: "secondary" },
+  user_deleted: { icon: ShieldAlert, label: "Compte supprimé", variant: "destructive" },
 };
 
 function formatDate(dateString: string): string {
@@ -123,45 +51,106 @@ function formatDate(dateString: string): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   
-  // Less than 1 minute
-  if (diff < 60000) {
-    return "À l'instant";
+  const diffMins = Math.floor(diff / 60000);
+  const diffHours = Math.floor(diff / 3600000);
+  const diffDays = Math.floor(diff / 86400000);
+
+  let relative = "";
+  if (diffMins < 1) {
+    relative = "À l'instant";
+  } else if (diffMins < 60) {
+    relative = `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+  } else if (diffHours < 24) {
+    relative = `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+  } else if (diffDays < 7) {
+    relative = `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+  } else {
+    relative = date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   }
-  
-  // Less than 1 hour
-  if (diff < 3600000) {
-    const minutes = Math.floor(diff / 60000);
-    return `Il y a ${minutes} minute${minutes > 1 ? 's' : ''}`;
-  }
-  
-  // Less than 24 hours
-  if (diff < 86400000) {
-    const hours = Math.floor(diff / 3600000);
-    return `Il y a ${hours} heure${hours > 1 ? 's' : ''}`;
-  }
-  
-  // Less than 7 days
-  if (diff < 604800000) {
-    const days = Math.floor(diff / 86400000);
-    return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
-  }
-  
-  // Format as date
-  return date.toLocaleDateString('fr-FR', {
-    day: 'numeric',
+
+  const fullDate = date.toLocaleString('fr-FR', {
+    day: '2-digit',
     month: 'short',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  return `${relative} • ${fullDate}`;
+}
+
+function formatEventData(eventType: string, eventDataJson: string | null): string {
+  if (!eventDataJson) return "";
+
+  try {
+    const data = JSON.parse(eventDataJson);
+
+    switch (eventType) {
+      case "login_success":
+        return data.method === "2fa" ? "Connexion avec 2FA" : "Connexion par mot de passe";
+      
+      case "login_failed":
+        if (data.reason === "unknown_email") return "Échec : email inconnu";
+        if (data.reason === "invalid_password") return "Échec : mot de passe incorrect";
+        if (data.reason === "invalid_2fa_code") return "Échec : code 2FA incorrect";
+        return `Échec : ${data.reason}`;
+      
+      case "2fa_recovery_code_used":
+        return `Code de récupération utilisé (${data.remaining_codes} restant${data.remaining_codes > 1 ? 's' : ''})`;
+      
+      case "email_changed":
+        return `Nouvel email : ${data.new_email}`;
+      
+      case "profile_updated":
+        return `Champs modifiés : ${data.fields?.join(', ') || 'profil'}`;
+      
+      case "password_change_failed":
+        return data.reason === "invalid_current_password" 
+          ? "Échec : mot de passe actuel incorrect" 
+          : `Échec : ${data.reason}`;
+      
+      case "user_approved":
+        return `Approuvé par admin #${data.approved_by_admin_id}`;
+      
+      case "user_promoted":
+        return `Promu admin par #${data.admin_id}`;
+      
+      case "user_demoted":
+        return `Rétrogradé par admin #${data.admin_id}`;
+      
+      case "user_deleted":
+        return `Supprimé par admin #${data.deleted_by_admin_id}`;
+      
+      default:
+        return eventDataJson;
+    }
+  } catch {
+    return eventDataJson;
+  }
 }
 
 export function SecurityHistory() {
+  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['user-audit-logs'],
     queryFn: () => apiClient.getUserAuditLogs(50),
     refetchInterval: 60000, // Refresh every minute
   });
+
+  const toggleExpanded = (logId: number) => {
+    const newExpanded = new Set(expandedLogs);
+    if (newExpanded.has(logId)) {
+      newExpanded.delete(logId);
+    } else {
+      newExpanded.add(logId);
+    }
+    setExpandedLogs(newExpanded);
+  };
 
   if (isLoading) {
     return (
@@ -230,11 +219,11 @@ export function SecurityHistory() {
                   icon: AlertCircle,
                   label: log.event_type,
                   variant: "outline" as const,
-                  description: () => "Événement inconnu",
                 };
                 
                 const Icon = config.icon;
-                const eventData = log.event_data ? JSON.parse(log.event_data) : {};
+                const isExpanded = expandedLogs.has(log.id);
+                const contextualMessage = formatEventData(log.event_type, log.event_data);
 
                 return (
                   <div key={log.id}>
@@ -243,21 +232,44 @@ export function SecurityHistory() {
                         <Icon className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={config.variant}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={config.variant} className="font-medium">
                             {config.label}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground ml-auto">
                             {formatDate(log.created_at)}
                           </span>
+                          {(log.ip_address || log.user_agent) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 ml-2"
+                              onClick={() => toggleExpanded(log.id)}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              )}
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {config.description(eventData)}
-                        </p>
-                        {log.ip_address && (
-                          <p className="text-xs text-muted-foreground/60">
-                            IP: {log.ip_address}
+                        {contextualMessage && (
+                          <p className="text-sm text-foreground">
+                            {contextualMessage}
                           </p>
+                        )}
+                        {isExpanded && (
+                          <div className="flex flex-col gap-1 pt-1 text-xs text-muted-foreground/60">
+                            {log.ip_address && (
+                              <span className="font-mono">IP: {log.ip_address}</span>
+                            )}
+                            {log.user_agent && (
+                              <span className="font-mono break-all">
+                                {log.user_agent}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
