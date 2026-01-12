@@ -301,6 +301,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearAuthState()
   }
 
+  // Proactively logout shortly before token expiry to avoid stale sessions
+  useEffect(() => {
+    if (!token) return
+
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!stored) return
+
+    try {
+      const authData: AuthStorage = JSON.parse(stored)
+      const msLeft = authData.expiresAt - Date.now()
+
+      // Logout 5 minutes before expiry, but never schedule negative timeouts
+      const timeoutMs = Math.max(msLeft - 5 * 60 * 1000, 0)
+
+      const timer = setTimeout(() => {
+        logout()
+        // Redirect to login/home to prompt re-auth
+        window.location.href = '/'
+      }, timeoutMs)
+
+      return () => clearTimeout(timer)
+    } catch (_err) {
+      // If storage is corrupted, force logout
+      logout()
+    }
+
+    return undefined
+  }, [token])
+
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData }
