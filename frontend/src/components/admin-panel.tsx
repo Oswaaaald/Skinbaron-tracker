@@ -70,6 +70,9 @@ export function AdminPanel() {
       const response = await apiClient.get('/api/admin/users')
       return response.data as AdminUser[]
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 
   // Fetch pending users
@@ -79,6 +82,9 @@ export function AdminPanel() {
       const response = await apiClient.getPendingUsers()
       return response.data
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 
   // Fetch global stats
@@ -88,6 +94,9 @@ export function AdminPanel() {
       const response = await apiClient.get('/api/admin/stats')
       return response.data as GlobalStats
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 
   // Delete user mutation
