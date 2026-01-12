@@ -47,6 +47,8 @@ export function ProfileSettings() {
   
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
 
   // Sync local state with user context when user data changes
   useEffect(() => {
@@ -100,8 +102,8 @@ export function ProfileSettings() {
       return await apiClient.patch('/api/user/password', data)
     },
     onSuccess: () => {
-      setSuccessMessage('Password updated successfully')
-      setErrorMessage('')
+      setPasswordSuccess('Password updated successfully')
+      setPasswordError('')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -109,8 +111,8 @@ export function ProfileSettings() {
     onError: (error: any) => {
       // Extract error message from API response
       const errorMsg = error?.message || error?.error || 'Failed to update password'
-      setErrorMessage(errorMsg)
-      setSuccessMessage('')
+      setPasswordError(errorMsg)
+      setPasswordSuccess('')
     },
   })
 
@@ -172,21 +174,21 @@ export function ProfileSettings() {
     e.preventDefault()
     
     // Clear previous messages
-    setErrorMessage('')
-    setSuccessMessage('')
+    setPasswordError('')
+    setPasswordSuccess('')
     
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setErrorMessage('All fields are required')
+      setPasswordError('All fields are required')
       return
     }
     
     if (newPassword !== confirmPassword) {
-      setErrorMessage('Passwords do not match')
+      setPasswordError('Passwords do not match')
       return
     }
     
     if (newPassword.length < 8) {
-      setErrorMessage('Password must be at least 8 characters')
+      setPasswordError('Password must be at least 8 characters')
       return
     }
     
@@ -334,6 +336,21 @@ export function ProfileSettings() {
           <CardDescription>Update your password to keep your account secure</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Password change messages */}
+          {passwordSuccess && (
+            <Alert className="border-green-500/50 bg-green-500/10 mb-4">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertDescription className="text-green-500">{passwordSuccess}</AlertDescription>
+            </Alert>
+          )}
+          
+          {passwordError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{passwordError}</AlertDescription>
+            </Alert>
+          )}
+          
           <form onSubmit={handleUpdatePassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="current-password">Current Password</Label>
