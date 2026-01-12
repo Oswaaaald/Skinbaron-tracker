@@ -28,7 +28,8 @@ import {
   AlertCircle,
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  RefreshCw
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -187,7 +188,7 @@ export function AdminAuditLogs() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showSuggestions]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['admin-audit-logs', eventType, selectedUser?.id, limit],
     queryFn: async () => {
       const result = await apiClient.getAllAuditLogs({
@@ -199,6 +200,8 @@ export function AdminAuditLogs() {
     },
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchOnMount: 'always', // Force refresh to get new backend data
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     staleTime: 0, // Always consider data stale
     gcTime: 0, // Don't cache (was cacheTime in v4)
   });
@@ -237,7 +240,9 @@ export function AdminAuditLogs() {
     setExpandedLogs(newExpanded);
   };
 
-  if (isLoading) {
+  const initialLoading = isLoading && !data;
+
+  if (initialLoading) {
     return (
       <Card>
         <CardHeader>
@@ -292,6 +297,9 @@ export function AdminAuditLogs() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isFetching && (
+          <div className="text-xs text-muted-foreground">Refreshing...</div>
+        )}
         {/* Filters */}
         <div className="flex flex-wrap gap-4">
           <div className="space-y-2 flex-1 min-w-[200px]">
@@ -379,9 +387,12 @@ export function AdminAuditLogs() {
             </Select>
           </div>
 
-          <div className="space-y-2 flex-shrink-0 w-auto min-w-[140px]">
-            <Label>&nbsp;</Label>
-            <Button onClick={handleClearFilters} variant="outline" className="w-full">
+          <div className="space-y-2 flex-shrink-0 w-auto min-w-[220px] flex items-end gap-2">
+            <Button onClick={() => refetch()} variant="outline" className="flex-1" disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh results
+            </Button>
+            <Button onClick={handleClearFilters} variant="outline" className="flex-1">
               <X className="h-4 w-4 mr-2" />
               Clear Filters
             </Button>
