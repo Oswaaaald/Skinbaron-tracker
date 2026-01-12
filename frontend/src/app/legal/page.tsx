@@ -13,7 +13,12 @@ export default function LegalNotice() {
         <h2 className="text-xl font-semibold">Publisher</h2>
         <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
           <li>Operator: Personal project (individual, not ASBL/company).</li>
-          <li>Contact email: <a className="underline" href="mailto:contact@example.com">contact@example.com</a> (replace with your real contact).</li>
+          <li>
+            Contact email:{" "}
+            <a className="underline" href="mailto:admin@oswaaaald.be">
+              admin@oswaaaald.be
+            </a>
+          </li>
           <li>Country: Belgium.</li>
           <li>Purpose: hobby project providing non-commercial alerts.</li>
         </ul>
@@ -22,7 +27,7 @@ export default function LegalNotice() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Hosting</h2>
         <p className="text-muted-foreground">
-          Infrastructure is hosted in the EU. Fill in your hosting provider details here (name, address/URL) once finalized.
+          Hosting provider: OVHcloud (EU infrastructure).
         </p>
       </section>
 
@@ -39,6 +44,13 @@ export default function LegalNotice() {
         <h2 className="text-xl font-semibold">Intellectual property</h2>
         <p className="text-muted-foreground">
           The project branding and UI are provided for personal use. Do not reuse or redistribute without permission.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Disclaimer</h2>
+        <p className="text-muted-foreground">
+          This project is not affiliated with, endorsed by, or sponsored by SkinBaron, Valve, or Counter-Strike 2.
         </p>
       </section>
 
