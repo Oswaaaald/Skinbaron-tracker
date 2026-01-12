@@ -156,24 +156,15 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Delete user (CASCADE will handle rules, alerts, webhooks)
-      const deleted = store.deleteUser(id);
-
-      if (!deleted) {
-        return reply.status(500).send({
-          success: false,
-          error: 'Failed to delete user',
-        });
-      }
-
-      // Log admin action
+      // Log admin action BEFORE deleting user (for audit trail)
       store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
 
-      // Create audit log
+      // Create audit log for the ADMIN who performed the deletion
       store.createAuditLog(
-        id,
+        adminId,  // Use admin's ID, not the deleted user's ID
         'user_deleted',
         JSON.stringify({ 
+          deleted_user_id: id,
           deleted_by_admin_id: adminId,
           username: user.username,
           email: user.email 
