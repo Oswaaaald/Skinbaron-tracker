@@ -133,6 +133,13 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     }
   }
 
+  const handleKeyDownSubmit = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit(e as unknown as React.FormEvent)
+    }
+  }
+
   const isLogin = mode === 'login'
 
   return (
@@ -154,7 +161,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} onKeyDown={handleKeyDownSubmit} className="space-y-4">
             {requires2FA ? (
               // 2FA Code Input
               <div className="space-y-4">
