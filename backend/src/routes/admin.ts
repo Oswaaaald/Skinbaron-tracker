@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getClientIp } from '../lib/middleware.js';
+import { handleError, Errors } from '../lib/errors.js';
 
 /**
  * Admin routes - All routes require admin privileges
@@ -85,11 +86,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: usersWithStats,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to list users');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to list users',
-      });
+      return handleError(error, request, reply, 'Failed to list users');
     }
   });
 
@@ -117,42 +114,27 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Prevent deleting yourself
       if (id === adminId) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Cannot delete yourself',
-          message: 'You cannot delete your own account',
-        });
+        throw Errors.forbidden('You cannot delete your own account');
       }
 
       // Check if user exists
       const user = store.getUserById(id);
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw Errors.notFound('User');
       }
 
       // Only super admins can delete admins
       if (user.is_admin) {
         const currentAdmin = store.getUserById(adminId);
         if (!currentAdmin?.is_super_admin) {
-          return reply.status(403).send({
-            success: false,
-            error: 'Permission denied',
-            message: 'Only super administrators can delete other administrators',
-          });
+          throw Errors.forbidden('Only super administrators can delete other administrators');
         }
 
         const allUsers = store.getAllUsers();
         const adminCount = allUsers.filter(u => u.is_admin).length;
         
         if (adminCount <= 1) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Cannot delete last admin',
-            message: 'You cannot delete the last administrator account',
-          });
+          throw Errors.badRequest('You cannot delete the last administrator account');
         }
       }
 
@@ -181,10 +163,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const deleted = store.deleteUser(id);
 
       if (!deleted) {
-        return reply.status(500).send({
-          success: false,
-          error: 'Failed to delete user',
-        });
+        throw Errors.internal('Failed to delete user');
       }
 
       return reply.status(200).send({
@@ -192,11 +171,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: `User ${user.username} deleted successfully`,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to delete user');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to delete user',
-      });
+      return handleError(error, request, reply, 'Failed to delete user');
     }
   });
 
@@ -232,31 +207,20 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Prevent modifying your own admin status
       if (id === adminId) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Cannot modify your own admin status',
-          message: 'You cannot change your own administrator privileges',
-        });
+        throw Errors.forbidden('You cannot change your own administrator privileges');
       }
 
       // Check if user exists
       const user = store.getUserById(id);
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw Errors.notFound('User');
       }
 
       // Only super admins can grant or revoke admin status to/from admins
       if (user.is_admin || is_admin) {
         const currentAdmin = store.getUserById(adminId);
         if (!currentAdmin?.is_super_admin) {
-          return reply.status(403).send({
-            success: false,
-            error: 'Permission denied',
-            message: 'Only super administrators can manage admin privileges',
-          });
+          throw Errors.forbidden('Only super administrators can manage admin privileges');
         }
       }
 
@@ -266,11 +230,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         const adminCount = allUsers.filter(u => u.is_admin).length;
         
         if (adminCount <= 1) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Cannot remove last admin',
-            message: 'You cannot remove administrator privileges from the last admin',
-          });
+          throw Errors.badRequest('You cannot remove administrator privileges from the last admin');
         }
       }
 
@@ -278,10 +238,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const updated = store.toggleUserAdmin(id, is_admin);
 
       if (!updated) {
-        return reply.status(500).send({
-          success: false,
-          error: 'Failed to update admin status',
-        });
+        throw Errors.internal('Failed to update admin status');
       }
 
       // Log admin action
@@ -308,11 +265,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: { is_admin },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to toggle admin status');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to update admin status',
-      });
+      return handleError(error, request, reply, 'Failed to toggle admin status');
     }
   });
 
@@ -330,11 +283,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: stats,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get global stats');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve statistics',
-      });
+      return handleError(error, request, reply, 'Failed to get global stats');
     }
   });
 
@@ -364,11 +313,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: logs,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get admin logs');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve logs',
-      });
+      return handleError(error, request, reply, 'Failed to get admin logs');
     }
   });
 
@@ -411,11 +356,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: pendingUsers,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get pending users');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve pending users',
-      });
+      return handleError(error, request, reply, 'Failed to get pending users');
     }
   });
 
@@ -451,10 +392,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const success = store.approveUser(id);
 
       if (!success) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw Errors.notFound('User');
       }
 
       // Log admin action
@@ -476,11 +414,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'User approved successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to approve user');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to approve user',
-      });
+      return handleError(error, request, reply, 'Failed to approve user');
     }
   });
 
@@ -516,10 +450,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const success = store.rejectUser(id);
 
       if (!success) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw Errors.notFound('User');
       }
 
       // Log admin action
@@ -530,11 +461,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'User rejected and deleted successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to reject user');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to reject user',
-      });
+      return handleError(error, request, reply, 'Failed to reject user');
     }
   });
 
@@ -570,11 +497,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'Scheduler executed successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to force scheduler run');
-      return reply.status(500).send({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute scheduler',
-      });
+      return handleError(error, request, reply, 'Failed to force scheduler run');
     }
   });
 
@@ -643,10 +566,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       const user = store.getUserById(userId);
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw Errors.notFound('User');
       }
 
       const logs = store.getAuditLogsByUserId(userId, limit);
@@ -663,11 +583,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get user audit logs');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to get audit logs',
-      });
+      return handleError(error, request, reply, 'Failed to get user audit logs');
     }
   });
 
@@ -725,11 +641,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: logs,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get all audit logs');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to get audit logs',
-      });
+      return handleError(error, request, reply, 'Failed to get all audit logs');
     }
   });
 
@@ -779,11 +691,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: users,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to search users');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to search users',
-      });
+      return handleError(error, request, reply, 'Failed to search users');
     }
   });
 }
