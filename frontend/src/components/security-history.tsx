@@ -123,7 +123,8 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
         return `Demoted by ${data.admin_username || `admin #${data.admin_id}`}`;
       
       case "user_deleted":
-        return `Deleted by ${data.admin_username || `admin #${data.deleted_by_admin_id}`}`;
+        // We'll show admin info separately
+        return "";
       
       default:
         return eventDataJson;
@@ -225,6 +226,21 @@ export function SecurityHistory() {
                 const isExpanded = expandedLogs.has(log.id);
                 const contextualMessage = formatEventData(log.event_type, log.event_data);
 
+                // For user_deleted events, extract deleted user info from event_data
+                let displayUsername = null;
+                let displayEmail = null;
+                let adminUsername = null;
+                if (log.event_type === 'user_deleted') {
+                  try {
+                    const data = JSON.parse(log.event_data || '{}');
+                    displayUsername = data.username;
+                    displayEmail = data.email;
+                    // For user_deleted, the current log user is the admin who did the deletion
+                    // We need to get admin info from a different source since this is the user's own audit log
+                    adminUsername = data.admin_username || null;
+                  } catch {}
+                }
+
                 return (
                   <div key={log.id}>
                     <div 
@@ -239,6 +255,26 @@ export function SecurityHistory() {
                           <Badge variant={config.variant} className="font-medium">
                             {config.label}
                           </Badge>
+                          {log.event_type === 'user_deleted' && displayUsername && (
+                            <>
+                              <Badge variant="secondary" className="font-semibold">
+                                {displayUsername}
+                              </Badge>
+                              {displayEmail && (
+                                <span className="text-xs text-muted-foreground">
+                                  {displayEmail}
+                                </span>
+                              )}
+                              {adminUsername && (
+                                <>
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-sm text-foreground">
+                                    Deleted by {adminUsername}
+                                  </span>
+                                </>
+                              )}
+                            </>
+                          )}
                           {contextualMessage && (
                             <>
                               <ArrowRight className="h-3 w-3 text-muted-foreground" />

@@ -159,6 +159,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       // Log admin action BEFORE deleting user (for audit trail)
       store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
 
+      // Get admin info for the audit log
+      const admin = store.getUserById(adminId);
+
       // Create audit log for the ADMIN who performed the deletion
       store.createAuditLog(
         adminId,  // Use admin's ID, not the deleted user's ID
@@ -166,6 +169,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         JSON.stringify({ 
           deleted_user_id: id,
           deleted_by_admin_id: adminId,
+          admin_username: admin?.username,
           username: user.username,
           email: user.email 
         }),
