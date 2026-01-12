@@ -962,10 +962,7 @@ export class Store {
     
     // Delete all related data first to avoid foreign key constraints
     try {
-      // Delete user's alerts first (via rule_id since alerts don't have user_id)
-      this.db.prepare('DELETE FROM alerts WHERE rule_id IN (SELECT id FROM rules WHERE user_id = ?)').run(id);
-      
-      // Delete user's rules
+      // Delete user's rules (CASCADE will auto-delete related alerts)
       this.db.prepare('DELETE FROM rules WHERE user_id = ?').run(id);
       
       // Delete user's webhooks
