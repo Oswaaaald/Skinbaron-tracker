@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
 import * as z from "zod"
 import {
   Dialog,
@@ -39,6 +38,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { ItemCombobox } from "@/components/ui/item-combobox"
+import { useApiMutation } from "@/hooks/use-api-mutation"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
@@ -64,7 +64,6 @@ interface RuleDialogProps {
 export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
-  const queryClient = useQueryClient()
   useAuth()
   const { syncStats } = useSyncStats()
   const isEditing = !!rule
@@ -154,46 +153,48 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     form.setValue('webhook_ids', selectedWebhooks)
   }, [selectedWebhooks, form])
 
-  const createRuleMutation = useMutation({
-    mutationFn: (data: CreateRuleData) => apiClient.createRule(data),
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success("Rule created successfully!")
-        queryClient.invalidateQueries({ queryKey: ['rules'] })
-        queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-        syncStats() // Sync stats immediately after rule creation
-        onOpenChange(false)
-      } else {
-        toast.error(result.error || "Failed to create rule")
-      }
-      setIsSubmitting(false)
-    },
-    onError: (error) => {
-      toast.error(`Failed to create rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      setIsSubmitting(false)
-    },
-  })
+  const createRuleMutation = useApiMutation(
+    (data: CreateRuleData) => apiClient.createRule(data),
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      onSuccess: (result) => {
+        if (result.success) {
+          toast.success("Rule created successfully!")
+          syncStats() // Sync stats immediately after rule creation
+          onOpenChange(false)
+        } else {
+          toast.error(result.error || "Failed to create rule")
+        }
+        setIsSubmitting(false)
+      },
+      onError: (error) => {
+        toast.error(`Failed to create rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        setIsSubmitting(false)
+      },
+    }
+  )
 
-  const updateRuleMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: CreateRuleData }) =>
+  const updateRuleMutation = useApiMutation(
+    ({ id, data }: { id: number; data: CreateRuleData }) =>
       apiClient.updateRule(id, data),
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success("Rule updated successfully!")
-        queryClient.invalidateQueries({ queryKey: ['rules'] })
-        queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-        syncStats() // Sync stats immediately after rule update
-        onOpenChange(false)
-      } else {
-        toast.error(result.error || "Failed to update rule")
-      }
-      setIsSubmitting(false)
-    },
-    onError: (error) => {
-      toast.error(`Failed to update rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      setIsSubmitting(false)
-    },
-  })
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      onSuccess: (result) => {
+        if (result.success) {
+          toast.success("Rule updated successfully!")
+          syncStats() // Sync stats immediately after rule update
+          onOpenChange(false)
+        } else {
+          toast.error(result.error || "Failed to update rule")
+        }
+        setIsSubmitting(false)
+      },
+      onError: (error) => {
+        toast.error(`Failed to update rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        setIsSubmitting(false)
+      },
+    }
+  )
 
   const onSubmit = async (data: RuleFormData) => {
     if (isSubmitting) return

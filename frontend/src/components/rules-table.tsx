@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import {
   Table,
   TableBody,
@@ -23,17 +23,16 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
-import { toast } from "sonner"
 import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
+import { useApiMutation } from "@/hooks/use-api-mutation"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const queryClient = useQueryClient()
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
 
@@ -87,8 +86,8 @@ export function RulesTable() {
     )
   }
 
-  const toggleRuleMutation = useMutation({
-    mutationFn: ({ rule, enabled }: { rule: Rule; enabled: boolean }) => {
+  const toggleRuleMutation = useApiMutation(
+    ({ rule, enabled }: { rule: Rule; enabled: boolean }) => {
       // Ensure rule.id exists
       if (!rule.id) {
         throw new Error('Rule ID is required');
@@ -111,29 +110,27 @@ export function RulesTable() {
       };
       return apiClient.updateRule(rule.id, updateData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rules'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-      syncStats() // Sync stats immediately after rule change
-      toast.success('Rule updated successfully')
-    },
-    onError: (error) => {
-      toast.error(`Failed to update rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    },
-  })
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      successMessage: 'Rule updated successfully',
+      errorMessage: 'Failed to update rule',
+      onSuccess: () => {
+        syncStats() // Sync stats immediately after rule change
+      },
+    }
+  )
 
-  const deleteRuleMutation = useMutation({
-    mutationFn: (id: number) => apiClient.deleteRule(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rules'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-      syncStats() // Sync stats immediately after rule deletion
-      toast.success('Rule deleted successfully')
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    },
-  })
+  const deleteRuleMutation = useApiMutation(
+    (id: number) => apiClient.deleteRule(id),
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      successMessage: 'Rule deleted successfully',
+      errorMessage: 'Failed to delete rule',
+      onSuccess: () => {
+        syncStats() // Sync stats immediately after rule deletion
+      },
+    }
+  )
 
   const handleEdit = (rule: Rule) => {
     setEditingRule(rule)

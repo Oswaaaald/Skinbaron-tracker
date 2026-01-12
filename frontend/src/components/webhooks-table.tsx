@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,9 +14,9 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Edit, Trash2, Shield } from 'lucide-react'
-import { toast } from 'sonner'
 import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
+import { useApiMutation } from '@/hooks/use-api-mutation'
 
 interface WebhookFormData {
   name: string
@@ -38,7 +38,6 @@ export function WebhooksTable() {
   const [formData, setFormData] = useState<WebhookFormData>(initialFormData)
   const [error, setError] = useState('')
 
-  const queryClient = useQueryClient()
   const { isReady, isAuthenticated } = useAuth()
 
   // Fetch webhooks
@@ -53,58 +52,56 @@ export function WebhooksTable() {
   })
 
   // Create webhook mutation
-  const createWebhookMutation = useMutation({
-    mutationFn: async (data: WebhookFormData) => {
-      const result = await apiClient.createWebhook(data)
+  const createWebhookMutation = useApiMutation(
+    (data: WebhookFormData) => apiClient.createWebhook(data).then(result => {
       if (!result.success) throw new Error(result.error)
       return result.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-      setIsDialogOpen(false)
-      resetForm()
-      toast.success('Webhook created successfully')
-    },
-    onError: (error: Error) => {
-      setError(error.message)
-    },
-  })
+    }),
+    {
+      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      successMessage: 'Webhook created successfully',
+      onSuccess: () => {
+        setIsDialogOpen(false)
+        resetForm()
+      },
+      onError: (error: Error) => {
+        setError(error.message)
+      },
+    }
+  )
 
   // Update webhook mutation
-  const updateWebhookMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<WebhookFormData> }) => {
-      const result = await apiClient.updateWebhook(id, data)
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-      setIsDialogOpen(false)
-      resetForm()
-      toast.success('Webhook updated successfully')
-    },
-    onError: (error: Error) => {
-      setError(error.message)
-    },
-  })
+  const updateWebhookMutation = useApiMutation(
+    ({ id, data }: { id: number; data: Partial<WebhookFormData> }) => 
+      apiClient.updateWebhook(id, data).then(result => {
+        if (!result.success) throw new Error(result.error)
+        return result.data
+      }),
+    {
+      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      successMessage: 'Webhook updated successfully',
+      onSuccess: () => {
+        setIsDialogOpen(false)
+        resetForm()
+      },
+      onError: (error: Error) => {
+        setError(error.message)
+      },
+    }
+  )
 
   // Delete webhook mutation
-  const deleteWebhookMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const result = await apiClient.deleteWebhook(id)
+  const deleteWebhookMutation = useApiMutation(
+    (id: number) => apiClient.deleteWebhook(id).then(result => {
       if (!result.success) throw new Error(result.error)
       return result.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] })
-      toast.success('Webhook deleted successfully')
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete webhook: ${error.message}`)
-    },
-  })
+    }),
+    {
+      invalidateKeys: [['webhooks']],
+      successMessage: 'Webhook deleted successfully',
+      errorMessage: 'Failed to delete webhook',
+    }
+  )
 
   const resetForm = () => {
     setFormData(initialFormData)

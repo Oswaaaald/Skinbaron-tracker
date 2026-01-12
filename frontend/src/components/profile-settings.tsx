@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { TwoFactorSetup } from '@/components/two-factor-setup'
 import { SecurityHistory } from '@/components/security-history'
 import { useFormState } from '@/hooks/use-form-state'
+import { useApiMutation } from '@/hooks/use-api-mutation'
 
 interface UserStats {
   rules_count: number
@@ -32,7 +33,6 @@ interface UserStats {
 
 export function ProfileSettings() {
   const { user, logout, updateUser } = useAuth()
-  const queryClient = useQueryClient()
   const { state: formState, setError, setSuccess, clear } = useFormState()
   
   const [username, setUsername] = useState(user?.username || '')
@@ -65,65 +65,64 @@ export function ProfileSettings() {
   })
 
   // Update profile mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: { username?: string; email?: string }) => {
-      return await apiClient.patch('/api/user/profile', data)
-    },
-    onSuccess: (response) => {
-      setSuccess('profile', 'Profile updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-      // Also invalidate admin queries so admin panel updates
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
-      // Update auth context with data from backend (includes updated avatar_url)
-      if (response?.data) {
-        const userData = response.data
-        updateUser({
-          id: userData.id,
-          username: userData.username,
-          email: userData.email,
-          avatar_url: userData.avatar_url,
-          is_admin: userData.is_admin,
-        })
-      }
-    },
-    onError: (error: any) => {
-      const errorMsg = error?.message || error?.error || 'Failed to update profile'
-      setError('profile', errorMsg)
-    },
-  })
+  const updateProfileMutation = useApiMutation(
+    (data: { username?: string; email?: string }) => apiClient.patch('/api/user/profile', data),
+    {
+      invalidateKeys: [['user', 'profile'], ['admin', 'users']],
+      successMessage: 'Profile updated successfully',
+      onSuccess: (response) => {
+        // Update auth context with data from backend (includes updated avatar_url)
+        if (response?.data) {
+          const userData = response.data
+          updateUser({
+            id: userData.id,
+            username: userData.username,
+            email: userData.email,
+            avatar_url: userData.avatar_url,
+            is_admin: userData.is_admin,
+          })
+        }
+        setSuccess('profile', 'Profile updated successfully')
+      },
+      onError: (error: any) => {
+        const errorMsg = error?.message || error?.error || 'Failed to update profile'
+        setError('profile', errorMsg)
+      },
+    }
+  )
 
   // Update password mutation
-  const updatePasswordMutation = useMutation({
-    mutationFn: async (data: { current_password: string; new_password: string }) => {
-      return await apiClient.patch('/api/user/password', data)
-    },
-    onSuccess: () => {
-      setSuccess('password', 'Password updated successfully')
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-    },
-    onError: (error: any) => {
-      // Extract error message from API response
-      const errorMsg = error?.message || error?.error || 'Failed to update password'
-      setError('password', errorMsg)
-    },
-  })
+  const updatePasswordMutation = useApiMutation(
+    (data: { current_password: string; new_password: string }) => apiClient.patch('/api/user/password', data),
+    {
+      successMessage: 'Password updated successfully',
+      onSuccess: () => {
+        setSuccess('password', 'Password updated successfully')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      },
+      onError: (error: any) => {
+        const errorMsg = error?.message || error?.error || 'Failed to update password'
+        setError('password', errorMsg)
+      },
+    }
+  )
 
   // Delete account mutation
-  const deleteAccountMutation = useMutation({
-    mutationFn: async () => {
-      return await apiClient.delete('/api/user/account')
-    },
-    onSuccess: () => {
-      logout()
-    },
-    onError: (error: any) => {
-      setError('general', error.message || 'Failed to delete account')
-      setDeleteDialog(false)
-      setDeleteConfirmText('')
-    },
-  })
+  const deleteAccountMutation = useApiMutation(
+    () => apiClient.delete('/api/user/account'),
+    {
+      onSuccess: () => {
+        logout()
+      },
+      onError: (error: any) => {
+        setError('general', error.message || 'Failed to delete account')
+        setDeleteDialog(false)
+        setDeleteConfirmText('')
+      },
+    }
+  )
 
   // 2FA status query
   const { data: twoFactorStatus } = useQuery({
@@ -135,22 +134,23 @@ export function ProfileSettings() {
   })
 
   // Disable 2FA mutation
-  const disableTwoFactorMutation = useMutation({
-    mutationFn: async (password: string) => {
-      return await apiClient.post('/api/user/2fa/disable', { password })
-    },
-    onSuccess: () => {
-      setSuccess('general', 'Two-factor authentication disabled successfully')
-      clear('twoFactor')
-      setDisableTwoFactorDialog(false)
-      setTwoFactorPassword('')
-      queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
-    },
-    onError: (error: any) => {
-      const errorMsg = error?.message || error?.error || 'Failed to disable 2FA'
-      setError('twoFactor', errorMsg)
-    },
-  })
+  const disableTwoFactorMutation = useApiMutation(
+    (password: string) => apiClient.post('/api/user/2fa/disable', { password }),
+    {
+      invalidateKeys: [['2fa-status']],
+      successMessage: 'Two-factor authentication disabled successfully',
+      onSuccess: () => {
+        setSuccess('general', 'Two-factor authentication disabled successfully')
+        clear('twoFactor')
+        setDisableTwoFactorDialog(false)
+        setTwoFactorPassword('')
+      },
+      onError: (error: any) => {
+        const errorMsg = error?.message || error?.error || 'Failed to disable 2FA'
+        setError('twoFactor', errorMsg)
+      },
+    }
+  )
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault()

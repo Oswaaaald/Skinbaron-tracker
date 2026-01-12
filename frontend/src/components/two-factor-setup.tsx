@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AlertCircle, CheckCircle, Copy, Shield } from 'lucide-react'
 import { apiClient } from '@/lib/api'
+import { useApiMutation } from '@/hooks/use-api-mutation'
 
 interface TwoFactorSetupProps {
   open: boolean
@@ -24,7 +25,6 @@ interface TwoFactorSetupProps {
 }
 
 export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
-  const queryClient = useQueryClient()
   const [step, setStep] = useState<'qr' | 'verify' | 'codes'>('qr')
   const [verificationCode, setVerificationCode] = useState('')
   const [secret, setSecret] = useState('')
@@ -48,8 +48,8 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   })
 
   // Enable 2FA mutation
-  const enableMutation = useMutation({
-    mutationFn: async () => {
+  const enableMutation = useApiMutation(
+    async () => {
       const response = await apiClient.post('/api/user/2fa/enable', {
         secret,
         code: verificationCode,
@@ -59,18 +59,20 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
       }
       return response
     },
-    onSuccess: (response) => {
-      if (response.success && response.data?.recovery_codes) {
-        setRecoveryCodes(response.data.recovery_codes)
-        setStep('codes')
-        setError('')
-        queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
-      }
-    },
-    onError: (error: any) => {
-      setError(error.message || 'Invalid verification code')
-    },
-  })
+    {
+      invalidateKeys: [['2fa-status']],
+      onSuccess: (response) => {
+        if (response.success && response.data?.recovery_codes) {
+          setRecoveryCodes(response.data.recovery_codes)
+          setStep('codes')
+          setError('')
+        }
+      },
+      onError: (error: any) => {
+        setError(error.message || 'Invalid verification code')
+      },
+    }
+  )
 
   const handleVerify = () => {
     if (verificationCode.length === 6 || verificationCode.length === 8) {
