@@ -299,6 +299,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Verify current password
       const isValidPassword = await AuthService.verifyPassword(passwordData.current_password, user.password_hash);
       if (!isValidPassword) {
+        // Audit log for failed password change attempt
+        store.createAuditLog(
+          userId,
+          'password_change_failed',
+          JSON.stringify({ reason: 'invalid_current_password' }),
+          getClientIp(request),
+          request.headers['user-agent']
+        );
         return reply.status(401).send({
           success: false,
           error: 'Current password is incorrect',
@@ -308,6 +316,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Check if new password is same as current password
       const isSamePassword = await AuthService.verifyPassword(passwordData.new_password, user.password_hash);
       if (isSamePassword) {
+        store.createAuditLog(
+          userId,
+          'password_change_failed',
+          JSON.stringify({ reason: 'same_password' }),
+          getClientIp(request),
+          request.headers['user-agent']
+        );
         return reply.status(400).send({
           success: false,
           error: 'Validation failed',
@@ -320,6 +335,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Update password
       store.updateUser(userId, { password_hash: newPasswordHash });
+
+      // Audit log for successful password change
+      store.createAuditLog(
+        userId,
+        'password_changed',
+        undefined,
+        getClientIp(request),
+        request.headers['user-agent']
+      );
 
       return reply.status(200).send({
         success: true,
@@ -675,124 +699,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({
         success: false,
         error: 'Failed to get 2FA status',
-      });
-    }
-  });
-
-  /**
-   * POST /api/user/change-password - Change password
-   */
-  fastify.post('/change-password', {
-    preHandler: [fastify.authenticate],
-    schema: {
-      description: 'Change password for current user',
-      tags: ['User'],
-      security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        properties: {
-          current_password: { type: 'string' },
-          new_password: { type: 'string', minLength: 6 },
-        },
-        required: ['current_password', 'new_password'],
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      const userId = request.user!.id;
-      
-      // Validate input with Zod
-      const passwordData = PasswordChangeSchema.parse(request.body);
-
-      const user = store.getUserById(userId);
-      if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
-      }
-
-      // Verify current password
-      const isValidPassword = await AuthService.verifyPassword(passwordData.current_password, user.password_hash);
-      if (!isValidPassword) {
-        // Audit log for failed password change attempt
-        store.createAuditLog(
-          userId,
-          'password_change_failed',
-          JSON.stringify({ reason: 'invalid_current_password' }),
-          getClientIp(request),
-          request.headers['user-agent']
-        );
-        return reply.status(401).send({
-          success: false,
-          error: 'Invalid current password',
-        });
-      }
-
-      // Check if new password is same as current password
-      const isSamePassword = await AuthService.verifyPassword(passwordData.new_password, user.password_hash);
-      if (isSamePassword) {
-        store.createAuditLog(
-          userId,
-          'password_change_failed',
-          JSON.stringify({ reason: 'same_password' }),
-          getClientIp(request),
-          request.headers['user-agent']
-        );
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation failed',
-          message: 'New password must be different from current password',
-        });
-      }
-
-      // Hash new password
-      const hashedPassword = await AuthService.hashPassword(passwordData.new_password);
-      
-      // Update password
-      store.updateUser(userId, { password_hash: hashedPassword });
-
-      // Audit log for successful password change
-      store.createAuditLog(
-        userId,
-        'password_changed',
-        undefined,
-        getClientIp(request),
-        request.headers['user-agent']
-      );
-
-      return reply.status(200).send({
-        success: true,
-        message: 'Password changed successfully',
-      });
-    } catch (error) {
-      request.log.error({ error }, 'Failed to change password');
-      
-      // Handle Zod validation errors
-      if (error && typeof error === 'object' && 'issues' in error) {
-        const zodError = error as { issues: Array<{ message: string }> };
-        const firstIssue = zodError.issues?.[0];
-        if (firstIssue?.message) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation failed',
-            message: firstIssue.message,
-          });
-        }
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to change password',
       });
     }
   });
