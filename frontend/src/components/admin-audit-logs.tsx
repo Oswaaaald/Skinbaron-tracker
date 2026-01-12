@@ -293,8 +293,8 @@ export function AdminAuditLogs() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="space-y-2">
+        <div className="flex flex-wrap gap-4">
+          <div className="space-y-2 flex-1 min-w-[200px]">
             <Label htmlFor="event-type">Event Type</Label>
             <Select value={eventType} onValueChange={setEventType}>
               <SelectTrigger id="event-type">
@@ -310,7 +310,7 @@ export function AdminAuditLogs() {
             </Select>
           </div>
 
-          <div className="space-y-2 relative">
+          <div className="space-y-2 relative flex-1 min-w-[200px]">
             <Label htmlFor="user-search">Search User</Label>
             <div className="relative">
               <Input
@@ -325,6 +325,10 @@ export function AdminAuditLogs() {
                 }}
                 className={selectedUser ? "pr-8" : ""}
                 autoComplete="off"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                name="user-search-filter"
               />
               {selectedUser && (
                 <button
@@ -359,7 +363,7 @@ export function AdminAuditLogs() {
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1 min-w-[150px]">
             <Label htmlFor="limit">Limit</Label>
             <Select value={limit.toString()} onValueChange={(v) => setLimit(parseInt(v))}>
               <SelectTrigger id="limit">
@@ -375,7 +379,7 @@ export function AdminAuditLogs() {
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex-shrink-0 w-auto min-w-[140px]">
             <Label>&nbsp;</Label>
             <Button onClick={handleClearFilters} variant="outline" className="w-full">
               <X className="h-4 w-4 mr-2" />
