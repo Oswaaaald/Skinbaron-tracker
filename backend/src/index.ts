@@ -264,7 +264,7 @@ async function registerRoutes() {
 // Initialize application
 async function initializeApp() {
   try {
-    fastify.log.info('🚀 Initializing SkinBaron Alerts API...');
+    fastify.log.info('🚀 Initializing SkinBaron Tracker API...');
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');
@@ -297,7 +297,7 @@ async function initializeApp() {
     scheduler.start();
     fastify.log.info('⏰ Scheduler auto-started');
 
-    fastify.log.info('✅ SkinBaron Alerts API initialized successfully!');
+    fastify.log.info('✅ SkinBaron Tracker API initialized successfully!');
     
   } catch (error) {
     fastify.log.fatal({ error }, 'Failed to initialize application');

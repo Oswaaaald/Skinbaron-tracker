@@ -1,4 +1,4 @@
-# Frontend .dockerignore for SkinBaron Alerts
+# Frontend .dockerignore for SkinBaron Tracker
 node_modules
 npm-debug.log
 .next

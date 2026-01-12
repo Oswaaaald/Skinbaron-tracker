@@ -1,4 +1,4 @@
-# Backend .dockerignore for SkinBaron Alerts
+# Backend .dockerignore for SkinBaron Tracker
 node_modules
 npm-debug.log
 dist

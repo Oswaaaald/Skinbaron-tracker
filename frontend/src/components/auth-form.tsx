@@ -153,8 +153,8 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             {requires2FA 
               ? 'Enter the code from your authenticator app' 
               : (isLogin 
-                ? 'Sign in to your SkinBaron Alerts account' 
-                : 'Get started with SkinBaron Alerts'
+                ? 'Sign in to your SkinBaron Tracker account' 
+                : 'Get started with SkinBaron Tracker'
               )
             }
           </CardDescription>

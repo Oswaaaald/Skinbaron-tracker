@@ -15,7 +15,7 @@ const ConfigSchema = z.object({
   
   // Discord
   DISCORD_WEBHOOK: z.string().url().optional().or(z.literal('')),
-  DISCORD_BOT_NAME: z.string().default('🔔 SkinBaron Alerts'),
+  DISCORD_BOT_NAME: z.string().default('🔔 SkinBaron Tracker'),
   DISCORD_BOT_AVATAR: z.string().url().default('https://skinbaron.de/favicon.png'),
   
   // Database

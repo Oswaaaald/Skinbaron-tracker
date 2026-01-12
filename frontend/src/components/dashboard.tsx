@@ -94,7 +94,7 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">SkinBaron Alerts</h1>
+          <h1 className="text-3xl font-bold tracking-tight">SkinBaron Tracker</h1>
           <p className="text-muted-foreground">
             Monitor CS2 skins with custom alerts and Discord notifications
           </p>

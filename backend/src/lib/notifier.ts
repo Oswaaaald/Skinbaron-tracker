@@ -97,7 +97,7 @@ export class NotificationService {
       color: this.getEmbedColor(alertType),
       timestamp: new Date().toISOString(),
       footer: {
-        text: 'SkinBaron Alerts • CS2 Skin Monitoring By Oswaaaald',
+        text: 'SkinBaron Tracker • CS2 Skin Monitoring By Oswaaaald',
         icon_url: this.botAvatar,
       },
       fields: [],
@@ -223,7 +223,7 @@ export class NotificationService {
     try {
       const testEmbed: DiscordEmbed = {
         title: '🧪 Test Notification',
-        description: 'SkinBaron Alerts is working correctly!',
+        description: 'SkinBaron Tracker is working correctly!',
         color: DISCORD_COLORS.MATCH,
         timestamp: new Date().toISOString(),
         footer: {
@@ -234,7 +234,7 @@ export class NotificationService {
       const payload: DiscordWebhookPayload = {
         username: this.botName,
         avatar_url: this.botAvatar,
-        content: '✅ **Test notification from SkinBaron Alerts**',
+        content: '✅ **Test notification from SkinBaron Tracker**',
         embeds: [testEmbed],
       };
 
@@ -242,7 +242,7 @@ export class NotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'SkinBaron-Alerts/1.0',
+          'User-Agent': 'SkinBaron-Tracker/1.0',
         },
         body: JSON.stringify(payload),
       });
@@ -259,7 +259,7 @@ export class NotificationService {
   async sendErrorNotification(webhookUrl: string, error: string): Promise<boolean> {
     try {
       const errorEmbed: DiscordEmbed = {
-        title: '⚠️ SkinBaron Alerts Error',
+        title: '⚠️ SkinBaron Tracker Error',
         description: `An error occurred while monitoring:\n\`\`\`${error}\`\`\``,
         color: DISCORD_COLORS.ERROR,
         timestamp: new Date().toISOString(),
@@ -279,7 +279,7 @@ export class NotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'SkinBaron-Alerts/1.0',
+          'User-Agent': 'SkinBaron-Tracker/1.0',
         },
         body: JSON.stringify(payload),
       });

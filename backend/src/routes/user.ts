@@ -420,7 +420,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Generate OTP auth URL
       const otpauth = authenticator.keyuri(
         user.email,
-        'SkinBaron Alerts',
+        'SkinBaron Tracker',
         secret
       );
 

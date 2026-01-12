@@ -1,8 +1,8 @@
 {
-  "name": "skinbaron-alerts-backend",
+  "name": "skinbaron-tracker-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "Backend API for SkinBaron Alerts - CS2 skin monitoring and alerting system",
+  "description": "Backend API for SkinBaron Tracker - CS2 skin monitoring and alerting system",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -22,7 +22,7 @@
     "fastify",
     "typescript"
   ],
-  "author": "SkinBaron Alerts",
+  "author": "SkinBaron Tracker",
   "license": "MIT",
   "dependencies": {
     "@fastify/cors": "^9.0.1",

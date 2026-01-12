@@ -98,7 +98,7 @@ export class SkinBaronClient {
         headers: {
           'Content-Type': 'application/json',
           'x-requested-with': 'XMLHttpRequest',
-          'User-Agent': 'SkinBaron-Alerts/1.0',
+          'User-Agent': 'SkinBaron-Tracker/1.0',
         },
         body: JSON.stringify(requestBody),
       });
