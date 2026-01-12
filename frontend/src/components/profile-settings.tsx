@@ -49,6 +49,8 @@ export function ProfileSettings() {
   const [errorMessage, setErrorMessage] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [profileError, setProfileError] = useState('')
+  const [profileSuccess, setProfileSuccess] = useState('')
 
   // Sync local state with user context when user data changes
   useEffect(() => {
@@ -73,8 +75,8 @@ export function ProfileSettings() {
       return await apiClient.patch('/api/user/profile', data)
     },
     onSuccess: (response) => {
-      setSuccessMessage('Profile updated successfully')
-      setErrorMessage('')
+      setProfileSuccess('Profile updated successfully')
+      setProfileError('')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
       // Also invalidate admin queries so admin panel updates
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -91,8 +93,9 @@ export function ProfileSettings() {
       }
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Failed to update profile')
-      setSuccessMessage('')
+      const errorMsg = error?.message || error?.error || 'Failed to update profile'
+      setProfileError(errorMsg)
+      setProfileSuccess('')
     },
   })
 
@@ -160,14 +163,37 @@ export function ProfileSettings() {
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Clear previous messages
+    setProfileError('')
+    setProfileSuccess('')
+    
     const updates: { username?: string; email?: string } = {}
     
-    if (username !== user?.username) updates.username = username
-    if (email !== user?.email) updates.email = email
-    
-    if (Object.keys(updates).length > 0) {
-      updateProfileMutation.mutate(updates)
+    if (username !== user?.username) {
+      // Validate username format (same as backend: alphanumeric + underscore only)
+      const usernameRegex = /^[a-zA-Z0-9_]+$/
+      if (!usernameRegex.test(username)) {
+        setProfileError('Username can only contain letters, numbers and underscores')
+        return
+      }
+      if (username.length < 3 || username.length > 20) {
+        setProfileError('Username must be between 3 and 20 characters')
+        return
+      }
+      updates.username = username
     }
+    
+    if (email !== user?.email) {
+      updates.email = email
+    }
+    
+    if (Object.keys(updates).length === 0) {
+      setProfileError('No changes to save')
+      return
+    }
+    
+    updateProfileMutation.mutate(updates)
   }
 
   const handleUpdatePassword = (e: React.FormEvent) => {
@@ -264,6 +290,21 @@ export function ProfileSettings() {
           <CardDescription>Update your account details</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Profile update messages */}
+          {profileSuccess && (
+            <Alert className="border-green-500/50 bg-green-500/10 mb-4">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertDescription className="text-green-500">{profileSuccess}</AlertDescription>
+            </Alert>
+          )}
+          
+          {profileError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{profileError}</AlertDescription>
+            </Alert>
+          )}
+          
           <form onSubmit={handleUpdateProfile} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
@@ -311,7 +352,7 @@ export function ProfileSettings() {
             
             <Button 
               type="submit" 
-              disabled={updateProfileMutation.isPending || (username === user?.username && email === user?.email)}
+              disabled={updateProfileMutation.isPending}
             >
               {updateProfileMutation.isPending ? (
                 <>
