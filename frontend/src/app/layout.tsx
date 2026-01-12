@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
@@ -52,8 +53,8 @@ export default function RootLayout({
                   <div className="container mx-auto px-4 py-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span>© 2026 SkinBaron Tracker</span>
                     <div className="flex gap-4">
-                      <a className="underline" href="/privacy">Privacy Policy</a>
-                      <a className="underline" href="/legal">Legal Notice</a>
+                      <Link className="underline" href="/privacy">Privacy Policy</Link>
+                      <Link className="underline" href="/legal">Legal Notice</Link>
                     </div>
                   </div>
                 </footer>
