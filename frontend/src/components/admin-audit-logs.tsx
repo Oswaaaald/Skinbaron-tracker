@@ -324,6 +324,7 @@ export function AdminAuditLogs() {
                   if (userSearch.length >= 2) setShowSuggestions(true);
                 }}
                 className={selectedUser ? "pr-8" : ""}
+                autoComplete="off"
               />
               {selectedUser && (
                 <button
