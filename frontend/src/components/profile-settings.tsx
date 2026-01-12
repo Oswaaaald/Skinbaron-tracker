@@ -51,6 +51,7 @@ export function ProfileSettings() {
   const [passwordSuccess, setPasswordSuccess] = useState('')
   const [profileError, setProfileError] = useState('')
   const [profileSuccess, setProfileSuccess] = useState('')
+  const [twoFactorError, setTwoFactorError] = useState('')
 
   // Sync local state with user context when user data changes
   useEffect(() => {
@@ -151,13 +152,14 @@ export function ProfileSettings() {
     onSuccess: () => {
       setSuccessMessage('Two-factor authentication disabled successfully')
       setErrorMessage('')
+      setTwoFactorError('')
       setDisableTwoFactorDialog(false)
       setTwoFactorPassword('')
       queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Failed to disable 2FA')
-      setSuccessMessage('')
+      const errorMsg = error?.message || error?.error || 'Failed to disable 2FA'
+      setTwoFactorError(errorMsg)
     },
   })
 
@@ -539,6 +541,13 @@ export function ProfileSettings() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {twoFactorError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{twoFactorError}</AlertDescription>
+              </Alert>
+            )}
+            
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -564,6 +573,7 @@ export function ProfileSettings() {
               onClick={() => {
                 setDisableTwoFactorDialog(false)
                 setTwoFactorPassword('')
+                setTwoFactorError('')
               }}
             >
               Cancel

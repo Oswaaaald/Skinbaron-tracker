@@ -96,7 +96,8 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   }
 
   const copyRecoveryCodes = () => {
-    navigator.clipboard.writeText(recoveryCodes.join('\n'))
+    // Format: one code per line with visual separation
+    navigator.clipboard.writeText(recoveryCodes.join('\n\n'))
     setCopiedCodes(true)
     setTimeout(() => setCopiedCodes(false), 2000)
   }
