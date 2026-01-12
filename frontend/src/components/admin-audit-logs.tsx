@@ -142,16 +142,16 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
           : `Failed: ${data.reason}`;
       
       case "user_approved":
-        return `Approved by admin #${data.approved_by_admin_id}`;
+        return `Approved by ${data.admin_username || `admin #${data.approved_by_admin_id}`}`;
       
       case "user_promoted":
-        return `Promoted to admin by #${data.admin_id}`;
+        return `Promoted to admin by ${data.admin_username || `#${data.admin_id}`}`;
       
       case "user_demoted":
-        return `Demoted by admin #${data.admin_id}`;
+        return `Demoted by ${data.admin_username || `admin #${data.admin_id}`}`;
       
       case "user_deleted":
-        return `Deleted by admin #${data.deleted_by_admin_id} (${data.username} - ${data.email})`;
+        return `Deleted by ${data.admin_username || `admin #${data.deleted_by_admin_id}`}`;
       
       default:
         return eventDataJson;

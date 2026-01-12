@@ -1362,7 +1362,35 @@ export class Store {
       ORDER BY created_at DESC 
       LIMIT ?
     `);
-    return stmt.all(userId, limit) as any[];
+    const logs = stmt.all(userId, limit) as any[];
+    
+    // Enrich logs with admin usernames from event_data
+    return logs.map(log => {
+      if (log.event_data) {
+        try {
+          const data = JSON.parse(log.event_data);
+          
+          // Extract admin_id from various possible fields
+          const adminId = data.admin_id || data.approved_by_admin_id || data.deleted_by_admin_id;
+          
+          if (adminId) {
+            const adminStmt = this.db.prepare('SELECT username FROM users WHERE id = ?');
+            const admin = adminStmt.get(adminId) as { username: string } | undefined;
+            
+            if (admin) {
+              // Add admin_username to the parsed event_data
+              log.event_data = JSON.stringify({
+                ...data,
+                admin_username: admin.username
+              });
+            }
+          }
+        } catch (e) {
+          // If event_data is not valid JSON, leave it as is
+        }
+      }
+      return log;
+    });
   }
 
   getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): any[] {
@@ -1391,7 +1419,35 @@ export class Store {
     params.push(limit);
 
     const stmt = this.db.prepare(query);
-    return stmt.all(...params) as any[];
+    const logs = stmt.all(...params) as any[];
+    
+    // Enrich logs with admin usernames from event_data
+    return logs.map(log => {
+      if (log.event_data) {
+        try {
+          const data = JSON.parse(log.event_data);
+          
+          // Extract admin_id from various possible fields
+          const adminId = data.admin_id || data.approved_by_admin_id || data.deleted_by_admin_id;
+          
+          if (adminId) {
+            const adminStmt = this.db.prepare('SELECT username FROM users WHERE id = ?');
+            const admin = adminStmt.get(adminId) as { username: string } | undefined;
+            
+            if (admin) {
+              // Add admin_username to the parsed event_data
+              log.event_data = JSON.stringify({
+                ...data,
+                admin_username: admin.username
+              });
+            }
+          }
+        } catch (e) {
+          // If event_data is not valid JSON, leave it as is
+        }
+      }
+      return log;
+    });
   }
 
   /**
