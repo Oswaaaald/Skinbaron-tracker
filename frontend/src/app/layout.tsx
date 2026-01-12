@@ -9,7 +9,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SkinBaron Tracker",
+  title: "SkinBaron-Tracker",
   description: "Monitor CS2 skins on SkinBaron with custom alerts and Discord notifications",
 };
 
