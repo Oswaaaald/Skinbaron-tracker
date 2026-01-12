@@ -5,6 +5,22 @@ import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import crypto from 'crypto';
 
+/**
+ * DELETION POLICY
+ * ===============
+ * All user deletions are handled by database CASCADE constraints.
+ * 
+ * Rules:
+ * - Personal data (rules, alerts, webhooks, audit logs) → CASCADE (deleted with user)
+ * - Admin actions performed by user → CASCADE (deleted with admin)
+ * - Admin actions targeting user → CASCADE (deleted with target)
+ * 
+ * To add a new feature:
+ * 1. Add FOREIGN KEY with appropriate ON DELETE action (CASCADE or SET NULL)
+ * 2. No code change needed in deleteUser() - it only deletes the user record
+ * 3. Test user deletion to verify cascade behavior
+ */
+
 // Schema validation with Zod
 export const RuleSchema = z.object({
   id: z.number().optional(),
@@ -381,7 +397,8 @@ export class Store {
         target_user_id INTEGER,
         details TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
 
@@ -389,6 +406,48 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_admin_actions_admin ON admin_actions(admin_user_id);
       CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at);
     `);
+
+    // Migration: Add FK constraint on target_user_id if not exists
+    const hasTargetUserFK = this.db.prepare(`
+      SELECT COUNT(*) as count FROM pragma_foreign_key_list('admin_actions')
+      WHERE "from" = 'target_user_id'
+    `).get() as { count: number };
+
+    if (hasTargetUserFK.count === 0) {
+      console.log('🔄 Migration: Adding FK constraint on admin_actions.target_user_id');
+      
+      // SQLite doesn't support ALTER TABLE ADD CONSTRAINT, so we need to recreate the table
+      this.db.exec(`
+        -- Create new table with FK constraint
+        CREATE TABLE admin_actions_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          admin_user_id INTEGER NOT NULL,
+          action TEXT NOT NULL,
+          target_user_id INTEGER,
+          details TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        -- Copy existing data
+        INSERT INTO admin_actions_new (id, admin_user_id, action, target_user_id, details, created_at)
+        SELECT id, admin_user_id, action, target_user_id, details, created_at
+        FROM admin_actions;
+
+        -- Drop old table
+        DROP TABLE admin_actions;
+
+        -- Rename new table
+        ALTER TABLE admin_actions_new RENAME TO admin_actions;
+
+        -- Recreate indexes
+        CREATE INDEX idx_admin_actions_admin ON admin_actions(admin_user_id);
+        CREATE INDEX idx_admin_actions_created ON admin_actions(created_at);
+      `);
+      
+      console.log('✅ Migration: FK constraint added successfully');
+    }
 
     // Migration: Add CASCADE delete for orphaned data
     // Check if we need to migrate rules table to add user_id constraint
@@ -960,24 +1019,12 @@ export class Store {
       throw new Error('Cannot delete super admin');
     }
     
-    // Delete all related data first to avoid foreign key constraints
+    // Delete user - CASCADE constraints handle all related data:
+    // - rules (and their alerts via rule_id CASCADE)
+    // - user_webhooks
+    // - audit_log
+    // - admin_actions (both as admin and as target)
     try {
-      // Delete user's rules (CASCADE will auto-delete related alerts)
-      this.db.prepare('DELETE FROM rules WHERE user_id = ?').run(id);
-      
-      // Delete user's webhooks
-      this.db.prepare('DELETE FROM user_webhooks WHERE user_id = ?').run(id);
-      
-      // Delete user's audit logs
-      this.db.prepare('DELETE FROM audit_log WHERE user_id = ?').run(id);
-      
-      // Delete admin actions performed by this user
-      this.db.prepare('DELETE FROM admin_actions WHERE admin_user_id = ?').run(id);
-      
-      // Delete admin actions targeting this user
-      this.db.prepare('DELETE FROM admin_actions WHERE target_user_id = ?').run(id);
-      
-      // Finally delete the user
       const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
       const result = stmt.run(id);
       return result.changes > 0;
