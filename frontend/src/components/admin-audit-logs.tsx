@@ -118,39 +118,39 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
 
     switch (eventType) {
       case "login_success":
-        return data.method === "2fa" ? "Connexion avec 2FA" : "Connexion par mot de passe";
+        return data.method === "2fa" ? "Login with 2FA" : "Login with password";
       
       case "login_failed":
-        if (data.reason === "unknown_email") return "Échec : email inconnu";
-        if (data.reason === "invalid_password") return "Échec : mot de passe incorrect";
-        if (data.reason === "invalid_2fa_code") return "Échec : code 2FA incorrect";
-        return `Échec : ${data.reason}`;
+        if (data.reason === "unknown_email") return "Failed: unknown email";
+        if (data.reason === "invalid_password") return "Failed: invalid password";
+        if (data.reason === "invalid_2fa_code") return "Failed: invalid 2FA code";
+        return `Failed: ${data.reason}`;
       
       case "2fa_recovery_code_used":
-        return `Code de récupération utilisé (${data.remaining_codes} restant${data.remaining_codes > 1 ? 's' : ''})`;
+        return `Recovery code used (${data.remaining_codes} remaining)`;
       
       case "email_changed":
-        return `Nouvel email : ${data.new_email}`;
+        return `New email: ${data.new_email}`;
       
       case "profile_updated":
-        return `Champs modifiés : ${data.fields?.join(', ') || 'profil'}`;
+        return `Updated fields: ${data.fields?.join(', ') || 'profile'}`;
       
       case "password_change_failed":
         return data.reason === "invalid_current_password" 
-          ? "Échec : mot de passe actuel incorrect" 
-          : `Échec : ${data.reason}`;
+          ? "Failed: invalid current password" 
+          : `Failed: ${data.reason}`;
       
       case "user_approved":
-        return `Approuvé par admin #${data.approved_by_admin_id}`;
+        return `Approved by admin #${data.approved_by_admin_id}`;
       
       case "user_promoted":
-        return `Promu admin par #${data.admin_id}`;
+        return `Promoted to admin by #${data.admin_id}`;
       
       case "user_demoted":
-        return `Rétrogradé par admin #${data.admin_id}`;
+        return `Demoted by admin #${data.admin_id}`;
       
       case "user_deleted":
-        return `Supprimé par admin #${data.deleted_by_admin_id} (${data.username} - ${data.email})`;
+        return `Deleted by admin #${data.deleted_by_admin_id} (${data.username} - ${data.email})`;
       
       default:
         return eventDataJson;
