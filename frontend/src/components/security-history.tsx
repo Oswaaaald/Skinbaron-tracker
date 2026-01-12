@@ -18,7 +18,8 @@ import {
   ShieldOff,
   AlertCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ArrowRight
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
@@ -237,9 +238,12 @@ export function SecurityHistory() {
                             {config.label}
                           </Badge>
                           {contextualMessage && (
-                            <span className="text-sm text-foreground">
-                              {contextualMessage}
-                            </span>
+                            <>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm text-foreground">
+                                {contextualMessage}
+                              </span>
+                            </>
                           )}
                           <span className="text-xs text-muted-foreground ml-auto">
                             {formatDate(log.created_at)}
