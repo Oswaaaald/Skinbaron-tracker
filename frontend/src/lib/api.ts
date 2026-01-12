@@ -488,6 +488,11 @@ class ApiClient {
     return this.get(`/api/user/audit-logs?limit=${limit}`);
   }
 
+  // Search users by username or email (admin only)
+  async searchUsers(query: string): Promise<ApiResponse<Array<{ id: number; username: string; email: string }>>> {
+    return this.get(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
+  }
+
   // Get all audit logs (super admin only)
   async getAllAuditLogs(params?: {
     limit?: number;

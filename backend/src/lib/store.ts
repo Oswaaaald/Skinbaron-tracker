@@ -1217,6 +1217,16 @@ export class Store {
     }>;
   }
 
+  searchUsers(query: string) {
+    const searchTerm = `%${query}%`;
+    const stmt = this.db.prepare('SELECT id, username, email FROM users WHERE username LIKE ? OR email LIKE ? ORDER BY username ASC LIMIT 20');
+    return stmt.all(searchTerm, searchTerm) as Array<{
+      id: number;
+      username: string;
+      email: string;
+    }>;
+  }
+
   getPendingUsers() {
     const stmt = this.db.prepare('SELECT id, username, email, created_at FROM users WHERE is_approved = 0 ORDER BY created_at DESC');
     return stmt.all() as Array<{

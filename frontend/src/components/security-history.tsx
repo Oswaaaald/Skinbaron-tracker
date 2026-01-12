@@ -28,19 +28,19 @@ const EVENT_CONFIG: Record<string, {
   label: string;
   variant: "default" | "secondary" | "destructive" | "outline";
 }> = {
-  login_success: { icon: LogIn, label: "Connexion réussie", variant: "default" },
-  login_failed: { icon: ShieldAlert, label: "Connexion échouée", variant: "destructive" },
-  "2fa_enabled": { icon: ShieldCheck, label: "2FA activée", variant: "default" },
-  "2fa_disabled": { icon: ShieldOff, label: "2FA désactivée", variant: "secondary" },
-  "2fa_recovery_code_used": { icon: Key, label: "Code de récupération utilisé", variant: "outline" },
-  email_changed: { icon: Mail, label: "Email modifié", variant: "outline" },
-  profile_updated: { icon: User, label: "Profil mis à jour", variant: "outline" },
-  password_changed: { icon: Key, label: "Mot de passe modifié", variant: "default" },
-  password_change_failed: { icon: AlertCircle, label: "Changement de mot de passe échoué", variant: "destructive" },
-  user_approved: { icon: ShieldCheck, label: "Compte approuvé", variant: "default" },
-  user_promoted: { icon: Shield, label: "Privilèges admin accordés", variant: "default" },
-  user_demoted: { icon: ShieldOff, label: "Privilèges admin retirés", variant: "secondary" },
-  user_deleted: { icon: ShieldAlert, label: "Compte supprimé", variant: "destructive" },
+  login_success: { icon: LogIn, label: "Login Success", variant: "default" },
+  login_failed: { icon: ShieldAlert, label: "Login Failed", variant: "destructive" },
+  "2fa_enabled": { icon: ShieldCheck, label: "2FA Enabled", variant: "default" },
+  "2fa_disabled": { icon: ShieldOff, label: "2FA Disabled", variant: "secondary" },
+  "2fa_recovery_code_used": { icon: Key, label: "Recovery Code Used", variant: "outline" },
+  email_changed: { icon: Mail, label: "Email Changed", variant: "outline" },
+  profile_updated: { icon: User, label: "Profile Updated", variant: "outline" },
+  password_changed: { icon: Key, label: "Password Changed", variant: "default" },
+  password_change_failed: { icon: AlertCircle, label: "Password Change Failed", variant: "destructive" },
+  user_approved: { icon: ShieldCheck, label: "Account Approved", variant: "default" },
+  user_promoted: { icon: Shield, label: "Promoted to Admin", variant: "default" },
+  user_demoted: { icon: ShieldOff, label: "Admin Privileges Revoked", variant: "secondary" },
+  user_deleted: { icon: ShieldAlert, label: "Account Deleted", variant: "destructive" },
 };
 
 function formatDate(dateString: string): string {
@@ -57,22 +57,22 @@ function formatDate(dateString: string): string {
 
   let relative = "";
   if (diffMins < 1) {
-    relative = "À l'instant";
+    relative = "Just now";
   } else if (diffMins < 60) {
-    relative = `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    relative = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
   } else if (diffHours < 24) {
-    relative = `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+    relative = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
   } else if (diffDays < 7) {
-    relative = `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    relative = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   } else {
-    relative = date.toLocaleDateString('fr-FR', {
+    relative = date.toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
   }
 
-  const fullDate = date.toLocaleString('fr-FR', {
+  const fullDate = date.toLocaleString('en-US', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -158,10 +158,10 @@ export function SecurityHistory() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Historique de sécurité
+            Security History
           </CardTitle>
           <CardDescription>
-            Vos 50 derniers événements de sécurité
+            Your last 50 security events
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,12 +179,12 @@ export function SecurityHistory() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Historique de sécurité
+            Security History
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Impossible de charger l'historique de sécurité
+            Unable to load security history
           </p>
         </CardContent>
       </Card>
@@ -198,18 +198,18 @@ export function SecurityHistory() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
-          Historique de sécurité
+          Security History
         </CardTitle>
         <CardDescription>
           {logs.length > 0 
-            ? `Vos ${logs.length} derniers événements de sécurité (conservés ${process.env.NEXT_PUBLIC_AUDIT_RETENTION_DAYS || 365} jours)`
-            : "Aucun événement enregistré"}
+            ? `Your last ${logs.length} security events (retained for ${process.env.NEXT_PUBLIC_AUDIT_RETENTION_DAYS || 365} days)`
+            : "No events recorded"}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Aucun événement de sécurité enregistré
+            No security events recorded
           </p>
         ) : (
           <ScrollArea className="h-[400px] pr-4">

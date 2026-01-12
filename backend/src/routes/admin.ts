@@ -727,4 +727,58 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     }
   });
+
+  /**
+   * GET /api/admin/users/search - Search users by username or email
+   */
+  fastify.get('/users/search', {
+    preHandler: [fastify.requireAdmin],
+    schema: {
+      description: 'Search users by username or email (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', minLength: 1 },
+        },
+        required: ['q'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { q } = request.query as { q: string };
+      const users = store.searchUsers(q);
+
+      return reply.status(200).send({
+        success: true,
+        data: users,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to search users');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to search users',
+      });
+    }
+  });
 }

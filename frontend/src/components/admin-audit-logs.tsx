@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -26,7 +26,6 @@ import {
   ShieldCheck,
   ShieldOff,
   AlertCircle,
-  Search,
   X,
   ChevronDown,
   ChevronUp
@@ -162,18 +161,39 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
 
 export function AdminAuditLogs() {
   const [eventType, setEventType] = useState<string>("all");
-  const [userIdInput, setUserIdInput] = useState<string>("");
-  const [userIdFilter, setUserIdFilter] = useState<string>("");
+  const [userSearch, setUserSearch] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<{ id: number; username: string; email: string } | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [limit, setLimit] = useState<number>(100);
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
 
+  // Search users with debounce
+  const { data: searchResults } = useQuery({
+    queryKey: ['search-users', userSearch],
+    queryFn: async () => {
+      if (userSearch.length < 2) return { success: true, data: [] };
+      return await apiClient.searchUsers(userSearch);
+    },
+    enabled: userSearch.length >= 2,
+    staleTime: 30000,
+  });
+
+  // Hide suggestions when clicking outside
+  useEffect(() => {
+    if (!showSuggestions) return;
+    
+    const handleClickOutside = () => setShowSuggestions(false);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showSuggestions]);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-audit-logs', eventType, userIdFilter, limit],
+    queryKey: ['admin-audit-logs', eventType, selectedUser?.id, limit],
     queryFn: async () => {
       const result = await apiClient.getAllAuditLogs({
         limit,
         event_type: eventType === "all" ? undefined : eventType,
-        user_id: userIdFilter ? parseInt(userIdFilter) : undefined,
+        user_id: selectedUser?.id,
       });
       return result;
     },
@@ -185,19 +205,21 @@ export function AdminAuditLogs() {
 
   const handleClearFilters = () => {
     setEventType("all");
-    setUserIdInput("");
-    setUserIdFilter("");
+    setUserSearch("");
+    setSelectedUser(null);
     setLimit(100);
   };
 
-  const handleApplyUserIdFilter = () => {
-    setUserIdFilter(userIdInput);
+  const handleSelectUser = (user: { id: number; username: string; email: string }) => {
+    setSelectedUser(user);
+    setUserSearch(`${user.username} (${user.email})`);
+    setShowSuggestions(false);
   };
 
-  const handleUserIdKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleApplyUserIdFilter();
-    }
+  const handleUserSearchChange = (value: string) => {
+    setUserSearch(value);
+    if (!value) setSelectedUser(null);
+    setShowSuggestions(true);
   };
 
   const toggleExpanded = (logId: number) => {
@@ -283,16 +305,37 @@ export function AdminAuditLogs() {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="user-id">User ID</Label>
+          <div className="space-y-2 relative">
+            <Label htmlFor="user-search">Search User</Label>
             <Input
-              id="user-id"
-              type="number"
-              placeholder="Filter by user ID (press Enter)"
-              value={userIdInput}
-              onChange={(e) => setUserIdInput(e.target.value)}
-              onKeyPress={handleUserIdKeyPress}
+              id="user-search"
+              type="text"
+              placeholder="Search by username or email..."
+              value={userSearch}
+              onChange={(e) => handleUserSearchChange(e.target.value)}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (userSearch.length >= 2) setShowSuggestions(true);
+              }}
             />
+            {showSuggestions && searchResults?.data && searchResults.data.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                {searchResults.data.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer border-b last:border-b-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectUser(user);
+                    }}
+                  >
+                    <div className="font-medium">{user.username}</div>
+                    <div className="text-xs text-muted-foreground">{user.email}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -313,14 +356,10 @@ export function AdminAuditLogs() {
 
           <div className="space-y-2">
             <Label>&nbsp;</Label>
-            <div className="flex gap-2">
-              <Button onClick={handleApplyUserIdFilter} variant="outline" size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
-              <Button onClick={handleClearFilters} variant="outline" size="icon">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button onClick={handleClearFilters} variant="outline" className="w-full">
+              <X className="h-4 w-4 mr-2" />
+              Clear Filters
+            </Button>
           </div>
         </div>
 
