@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { 
@@ -228,7 +227,10 @@ export function SecurityHistory() {
 
                 return (
                   <div key={log.id}>
-                    <div className="flex items-start gap-4">
+                    <div 
+                      className={`flex items-start gap-4 ${(log.ip_address || log.user_agent) ? 'cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors' : ''}`}
+                      onClick={(log.ip_address || log.user_agent) ? () => toggleExpanded(log.id) : undefined}
+                    >
                       <div className="mt-0.5">
                         <Icon className="h-4 w-4 text-muted-foreground" />
                       </div>
@@ -249,18 +251,13 @@ export function SecurityHistory() {
                             {formatDate(log.created_at)}
                           </span>
                           {(log.ip_address || log.user_agent) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 ml-2"
-                              onClick={() => toggleExpanded(log.id)}
-                            >
+                            <div className="h-6 px-2 ml-2 flex items-center">
                               {isExpanded ? (
                                 <ChevronUp className="h-3 w-3" />
                               ) : (
                                 <ChevronDown className="h-3 w-3" />
                               )}
-                            </Button>
+                            </div>
                           )}
                         </div>
                         {isExpanded && (
