@@ -63,7 +63,7 @@ export class AuthService {
     return jwt.sign(
       { userId },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
   }
 

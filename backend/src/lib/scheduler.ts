@@ -3,6 +3,7 @@ import { appConfig } from './config.js';
 import { getStore, type Rule, type CreateAlert } from './store.js';
 import { getSkinBaronClient, type SkinBaronItem } from './sbclient.js';
 import { getNotificationService } from './notifier.js';
+import pino from 'pino';
 
 export interface SchedulerStats {
   isRunning: boolean;
@@ -15,6 +16,7 @@ export interface SchedulerStats {
 }
 
 export class AlertScheduler {
+  private logger = pino({ level: appConfig.LOG_LEVEL });
   private cronJob: CronJob | null = null;
   private store = getStore();
   private notificationService = getNotificationService();
@@ -93,10 +95,10 @@ export class AlertScheduler {
         try {
           const result = this.store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
           if (result.deleted > 0) {
-            console.log(`[Scheduler] Cleaned ${result.deleted} old audit logs (retention: ${appConfig.AUDIT_LOG_RETENTION_DAYS} days)`);
+            this.logger.info({ deleted: result.deleted, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old audit logs');
           }
         } catch (error) {
-          console.error('[Scheduler] Failed to clean old audit logs:', error);
+          this.logger.error({ error }, '[Scheduler] Failed to clean old audit logs');
         }
       }
 

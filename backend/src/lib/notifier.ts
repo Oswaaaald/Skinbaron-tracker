@@ -1,4 +1,3 @@
-import { request } from 'undici';
 import { z } from 'zod';
 import { DISCORD_COLORS, appConfig } from './config.js';
 import type { Rule } from './store.js';
@@ -238,7 +237,7 @@ export class NotificationService {
         embeds: [testEmbed],
       };
 
-      const { statusCode } = await request(webhookUrl, {
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +246,7 @@ export class NotificationService {
         body: JSON.stringify(payload),
       });
 
-      return statusCode === 204;
+      return response.status === 204;
     } catch (error) {
       return false;
     }
@@ -275,7 +274,7 @@ export class NotificationService {
         embeds: [errorEmbed],
       };
 
-      const { statusCode } = await request(webhookUrl, {
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -284,7 +283,7 @@ export class NotificationService {
         body: JSON.stringify(payload),
       });
 
-      return statusCode === 204;
+      return response.status === 204;
     } catch (sendError) {
       return false;
     }

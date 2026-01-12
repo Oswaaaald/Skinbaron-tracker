@@ -45,7 +45,16 @@ const ConfigSchema = z.object({
 function loadConfig() {
   try {
     const parsed = ConfigSchema.parse(process.env);
-    // Ensure ENCRYPTION_KEY is set (fallback to JWT_SECRET if not provided)
+    // Enforce encryption hygiene: require a distinct key in production
+    if (parsed.NODE_ENV === 'production') {
+      if (!parsed.ENCRYPTION_KEY) {
+        throw new Error('ENCRYPTION_KEY is required in production and must differ from JWT_SECRET');
+      }
+      if (parsed.ENCRYPTION_KEY === parsed.JWT_SECRET) {
+        throw new Error('ENCRYPTION_KEY must not equal JWT_SECRET in production');
+      }
+    }
+
     const config = {
       ...parsed,
       ENCRYPTION_KEY: parsed.ENCRYPTION_KEY || parsed.JWT_SECRET,

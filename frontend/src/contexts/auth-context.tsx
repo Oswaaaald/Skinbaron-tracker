@@ -184,8 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [token]) // Only depend on token
 
   const saveAuthState = async (token: string, user: User) => {
-    // JWT tokens from our backend expire in 7 days
-    const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000)
+    // JWT tokens now expire in 24h to limit exposure window
+    const expiresAt = Date.now() + (24 * 60 * 60 * 1000)
     
     const authData: AuthStorage = {
       token,

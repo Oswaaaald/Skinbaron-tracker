@@ -171,7 +171,7 @@ export class Store {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS rules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
         search_item TEXT NOT NULL,
         min_price REAL,
         max_price REAL,
@@ -477,6 +477,53 @@ export class Store {
       `);
       
       console.log('✅ Migration: FK constraint added successfully');
+    }
+
+    // Migration: Ensure rules.user_id column uses INTEGER type
+    const userIdColumn = this.db.prepare(`
+      SELECT type FROM pragma_table_info('rules') WHERE name='user_id'
+    `).get() as { type?: string } | undefined;
+
+    if (userIdColumn && userIdColumn.type && userIdColumn.type.toUpperCase() !== 'INTEGER') {
+      console.log('🔄 Migration: Rebuilding rules table to use INTEGER user_id');
+
+      this.db.exec(`
+        DROP TABLE IF EXISTS rules_type_fix;
+
+        CREATE TABLE rules_type_fix (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          search_item TEXT NOT NULL,
+          min_price REAL,
+          max_price REAL,
+          min_wear REAL CHECK (min_wear >= 0 AND min_wear <= 1),
+          max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
+          stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
+          souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
+          allow_stickers BOOLEAN DEFAULT 1,
+          webhook_ids TEXT,
+          enabled BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        INSERT INTO rules_type_fix (id, user_id, search_item, min_price, max_price, min_wear, max_wear,
+                                     stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled,
+                                     created_at, updated_at)
+        SELECT id, user_id, search_item, min_price, max_price, min_wear, max_wear,
+               stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled,
+               created_at, updated_at
+        FROM rules;
+
+        DROP TABLE rules;
+        ALTER TABLE rules_type_fix RENAME TO rules;
+
+        CREATE INDEX IF NOT EXISTS idx_rules_user_id ON rules(user_id);
+        CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules(enabled);
+      `);
+
+      console.log('✅ Migration: rules.user_id now INTEGER with enforced FK');
     }
 
     // Migration: Add CASCADE delete for orphaned data

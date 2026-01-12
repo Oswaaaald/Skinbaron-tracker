@@ -26,7 +26,6 @@ import { WebhooksTable } from "@/components/webhooks-table"
 import { AdminPanel } from "@/components/admin-panel"
 import { ProfileSettings } from "@/components/profile-settings"
 import { apiClient } from "@/lib/api"
-import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 
@@ -50,8 +49,6 @@ export function Dashboard() {
       setActiveTab('rules')
     }
   }, [user?.is_admin, activeTab])
-  
-  useSyncStats()
 
   // Save active tab to localStorage when it changes
   useEffect(() => {
@@ -79,16 +76,6 @@ export function Dashboard() {
     notifyOnChangeProps: ['data', 'error'],
   })
 
-  // Fetch health status
-  useQuery({
-    queryKey: ['health'],
-    queryFn: () => apiClient.getHealth(),
-    enabled: isReady && isAuthenticated && isVisible && activeTab === 'system',
-    staleTime: 30_000,
-    refetchInterval: isVisible && activeTab === 'system' ? 30_000 : false,
-    refetchOnWindowFocus: activeTab === 'system',
-    notifyOnChangeProps: ['data', 'error'],
-  })
 
 
 
