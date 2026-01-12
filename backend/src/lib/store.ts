@@ -969,7 +969,7 @@ export class Store {
       this.db.prepare('DELETE FROM alerts WHERE user_id = ?').run(id);
       
       // Delete user's webhooks
-      this.db.prepare('DELETE FROM webhooks WHERE user_id = ?').run(id);
+      this.db.prepare('DELETE FROM user_webhooks WHERE user_id = ?').run(id);
       
       // Delete user's audit logs
       this.db.prepare('DELETE FROM audit_log WHERE user_id = ?').run(id);
