@@ -960,9 +960,28 @@ export class Store {
       throw new Error('Cannot delete super admin');
     }
     
-    const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
+    // Delete all related data first to avoid foreign key constraints
+    try {
+      // Delete user's rules
+      this.db.prepare('DELETE FROM rules WHERE user_id = ?').run(id);
+      
+      // Delete user's alerts
+      this.db.prepare('DELETE FROM alerts WHERE user_id = ?').run(id);
+      
+      // Delete user's webhooks
+      this.db.prepare('DELETE FROM webhooks WHERE user_id = ?').run(id);
+      
+      // Delete user's audit logs
+      this.db.prepare('DELETE FROM audit_log WHERE user_id = ?').run(id);
+      
+      // Finally delete the user
+      const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+      const result = stmt.run(id);
+      return result.changes > 0;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
   }
 
   // Generic encryption utilities (used for webhooks and 2FA secrets)
