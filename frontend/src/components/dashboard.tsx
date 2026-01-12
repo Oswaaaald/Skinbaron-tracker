@@ -67,8 +67,7 @@ export function Dashboard() {
   const { data: userStats, isLoading: _isLoadingUserStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
-    refetchInterval: 10 * 1000, // Refresh every 10 seconds (same as alert-stats)
-    refetchIntervalInBackground: true, // Keep refreshing in background
+    refetchInterval: 30 * 1000, // Refresh every 30 seconds
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
@@ -76,7 +75,7 @@ export function Dashboard() {
   useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 30 * 1000, // Refresh every 30 seconds
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 

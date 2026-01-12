@@ -35,8 +35,7 @@ export function SystemStats() {
   useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    refetchInterval: 10000, // 10 seconds for real-time stats
-    refetchIntervalInBackground: true, // Keep refreshing in background
+    refetchInterval: 30000, // 30 seconds for stats
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
