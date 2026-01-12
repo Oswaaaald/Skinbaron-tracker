@@ -162,22 +162,19 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
 
 export function AdminAuditLogs() {
   const [eventType, setEventType] = useState<string>("all");
-  const [userId, setUserId] = useState<string>("");
+  const [userIdInput, setUserIdInput] = useState<string>("");
+  const [userIdFilter, setUserIdFilter] = useState<string>("");
   const [limit, setLimit] = useState<number>(100);
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['admin-audit-logs', eventType, userId, limit],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['admin-audit-logs', eventType, userIdFilter, limit],
     queryFn: async () => {
       const result = await apiClient.getAllAuditLogs({
         limit,
         event_type: eventType === "all" ? undefined : eventType,
-        user_id: userId ? parseInt(userId) : undefined,
+        user_id: userIdFilter ? parseInt(userIdFilter) : undefined,
       });
-      // Debug: log first item to check if username is present
-      if (result.data && result.data.length > 0) {
-        console.log('First audit log:', result.data[0]);
-      }
       return result;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -188,8 +185,19 @@ export function AdminAuditLogs() {
 
   const handleClearFilters = () => {
     setEventType("all");
-    setUserId("");
+    setUserIdInput("");
+    setUserIdFilter("");
     setLimit(100);
+  };
+
+  const handleApplyUserIdFilter = () => {
+    setUserIdFilter(userIdInput);
+  };
+
+  const handleUserIdKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleApplyUserIdFilter();
+    }
   };
 
   const toggleExpanded = (logId: number) => {
@@ -280,9 +288,10 @@ export function AdminAuditLogs() {
             <Input
               id="user-id"
               type="number"
-              placeholder="Filter by user ID"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              placeholder="Filter by user ID (press Enter)"
+              value={userIdInput}
+              onChange={(e) => setUserIdInput(e.target.value)}
+              onKeyPress={handleUserIdKeyPress}
             />
           </div>
 
@@ -305,7 +314,7 @@ export function AdminAuditLogs() {
           <div className="space-y-2">
             <Label>&nbsp;</Label>
             <div className="flex gap-2">
-              <Button onClick={() => refetch()} variant="outline" size="icon">
+              <Button onClick={handleApplyUserIdFilter} variant="outline" size="icon">
                 <Search className="h-4 w-4" />
               </Button>
               <Button onClick={handleClearFilters} variant="outline" size="icon">
