@@ -205,8 +205,7 @@ export function AdminAuditLogs() {
 
   const handleClearFilters = () => {
     setEventType("all");
-    setUserSearch("");
-    setSelectedUser(null);
+    handleClearUserFilter();
     setLimit(100);
   };
 
@@ -218,8 +217,14 @@ export function AdminAuditLogs() {
 
   const handleUserSearchChange = (value: string) => {
     setUserSearch(value);
-    if (!value) setSelectedUser(null);
+    // Don't clear selectedUser while typing - only when explicitly cleared
     setShowSuggestions(true);
+  };
+
+  const handleClearUserFilter = () => {
+    setUserSearch("");
+    setSelectedUser(null);
+    setShowSuggestions(false);
   };
 
   const toggleExpanded = (logId: number) => {
@@ -307,17 +312,32 @@ export function AdminAuditLogs() {
 
           <div className="space-y-2 relative">
             <Label htmlFor="user-search">Search User</Label>
-            <Input
-              id="user-search"
-              type="text"
-              placeholder="Search by username or email..."
-              value={userSearch}
-              onChange={(e) => handleUserSearchChange(e.target.value)}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (userSearch.length >= 2) setShowSuggestions(true);
-              }}
-            />
+            <div className="relative">
+              <Input
+                id="user-search"
+                type="text"
+                placeholder="Search by username or email..."
+                value={userSearch}
+                onChange={(e) => handleUserSearchChange(e.target.value)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (userSearch.length >= 2) setShowSuggestions(true);
+                }}
+                className={selectedUser ? "pr-8" : ""}
+              />
+              {selectedUser && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearUserFilter();
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             {showSuggestions && searchResults?.data && searchResults.data.length > 0 && (
               <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
                 {searchResults.data.map((user) => (
