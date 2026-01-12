@@ -29,9 +29,20 @@ export default function RootLayout({
         >
           <AuthProvider>
             <QueryProvider>
-              <main className="min-h-screen bg-background">
-                {children}
-              </main>
+              <div className="min-h-screen bg-background flex flex-col">
+                <main className="flex-1">
+                  {children}
+                </main>
+                <footer className="border-t border-border/50 bg-muted/30">
+                  <div className="container mx-auto px-4 py-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span>SkinBaron Alerts (personal, non-commercial).</span>
+                    <div className="flex gap-4">
+                      <a className="underline" href="/privacy">Privacy Policy</a>
+                      <a className="underline" href="/legal">Legal Notice</a>
+                    </div>
+                  </div>
+                </footer>
+              </div>
               <Toaster position="bottom-right" />
             </QueryProvider>
           </AuthProvider>
