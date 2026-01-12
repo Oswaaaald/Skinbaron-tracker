@@ -12,7 +12,8 @@ import {
   Bell, 
   Settings, 
   Moon, 
-  Sun
+  Sun,
+  Monitor
 } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -113,8 +114,15 @@ export function Dashboard() {
             }}
             title={theme === "system" ? "Theme: Auto" : theme === "dark" ? "Theme: Dark" : "Theme: Light"}
           >
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            {/* Light theme icon */}
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:scale-0 [html[data-theme='system']_&]:scale-0" />
+            
+            {/* Dark theme icon */}
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 transition-all dark:scale-100 dark:[html[data-theme='system']_&]:scale-0" />
+            
+            {/* System/Auto theme icon */}
+            <Monitor className="absolute h-[1.2rem] w-[1.2rem] scale-0 transition-all [html[data-theme='system']_&]:scale-100" />
+            
             <span className="sr-only">Toggle theme</span>
           </Button>
           <UserNav onTabChange={setActiveTab} />
