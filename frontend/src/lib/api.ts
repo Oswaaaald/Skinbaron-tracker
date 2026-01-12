@@ -2,6 +2,21 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+export class ApiError extends Error {
+  status: number;
+  body: any;
+  url: string;
+  method: string;
+
+  constructor(message: string, status: number, url: string, method: string, body: any) {
+    super(message);
+    this.status = status;
+    this.body = body;
+    this.url = url;
+    this.method = method;
+  }
+}
+
 // Types matching backend schemas
 export interface Rule {
   id?: number;
@@ -66,6 +81,15 @@ export interface ApiResponse<T> {
   details?: any;
   requires2FA?: boolean;  // For 2FA login flow
 }
+
+export type UserProfile = {
+  id: number;
+  username: string;
+  email: string;
+  avatar_url?: string;
+  is_admin?: boolean;
+  is_super_admin?: boolean;
+};
 
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   pagination?: {
@@ -147,13 +171,20 @@ class ApiClient {
         ...options,
       });
 
-      const data = await response.json();
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (_err) {
+        // Non-JSON response
+        const message = `Invalid JSON response (status ${response.status})`;
+        throw new ApiError(message, response.status, url, options.method || 'GET', null);
+      }
 
       if (!response.ok) {
-        // Handle authentication errors
+        const message = data?.message || data?.error || `HTTP ${response.status}`;
+
         if (response.status === 401 || response.status === 403) {
-          // Check if it's a deleted/non-existent user error
-          if (data.message?.includes('non-existent user') || data.error?.includes('non-existent user')) {
+          if (data?.message?.includes('non-existent user') || data?.error?.includes('non-existent user')) {
             console.error('User no longer exists, logging out...');
             if (this.onLogout) {
               this.onLogout();
@@ -162,10 +193,11 @@ class ApiClient {
             console.warn('Authentication error, token may be invalid');
           }
         }
-        throw new Error(data.message || data.error || `HTTP ${response.status}`);
+
+        throw new ApiError(message, response.status, url, options.method || 'GET', data);
       }
 
-      return data;
+      return data as ApiResponse<T>;
     } catch (error) {
       // Log errors in development only (React Query also logs)
       if (process.env.NODE_ENV === 'development') {
@@ -173,6 +205,27 @@ class ApiClient {
       }
       throw error;
     }
+  }
+
+  // Auth endpoints
+  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token: string } & UserProfile>> {
+    return this.request(`/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, totp_code: totpCode }),
+    });
+  }
+
+  async register(username: string, email: string, password: string): Promise<ApiResponse<{ token?: string } & Partial<UserProfile>>> {
+    return this.request(`/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, email, password }),
+    });
   }
 
   // Health and System endpoints

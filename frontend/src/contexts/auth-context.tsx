@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { apiClient } from '@/lib/api'
+import { apiClient, ApiError } from '@/lib/api'
 
 export interface User {
   id: number
@@ -215,85 +215,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     requires2FA?: boolean;
   }> => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-      
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, totp_code: totpCode }),
-      })
-
-      const data = await response.json()
+      const data = await apiClient.login(email, password, totpCode)
 
       if (data.success && data.data) {
-        // Check if 2FA is required
-        if (data.data.requires_2fa) {
+        if ((data.data as any).requires_2fa) {
           return { success: false, requires2FA: true }
         }
-        
-        const { token, ...userData } = data.data
+
+        const { token, ...userData } = data.data as any
         await saveAuthState(token, userData)
         return { success: true, requires2FA: false }
-      } else {
-        return { 
-          success: false,
-          requires2FA: false,
-          error: data.message || data.error || 'Login failed' 
-        }
       }
-    } catch (error) {
-      console.error('Login error:', error)
-      return { 
+
+      return {
         success: false,
         requires2FA: false,
-        error: 'Network error. Please try again.' 
+        error: data.message || data.error || 'Login failed',
       }
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'
+      console.error('Login error:', error)
+      return { success: false, requires2FA: false, error: message }
     }
   }
 
   const register = async (username: string, email: string, password: string) => {
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-      
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, email, password }),
-      })
-
-      const data = await response.json()
+      const data = await apiClient.register(username, email, password)
 
       if (data.success) {
-        // Check if user needs approval (no token provided)
-        if (data.data && !data.data.token) {
-          return { 
+        if (data.data && !(data.data as any).token) {
+          return {
             success: true,
-            error: data.message || 'Registration successful! Your account is awaiting admin approval.'
+            error: data.message || 'Registration successful! Your account is awaiting admin approval.',
           }
         }
-        
-        // User approved, has token
-        if (data.data && data.data.token) {
-          const { token, ...userData } = data.data
+
+        if (data.data && (data.data as any).token) {
+          const { token, ...userData } = data.data as any
           await saveAuthState(token, userData)
           return { success: true }
         }
       }
-      
-      return { 
-        success: false, 
-        error: data.message || data.error || 'Registration failed' 
+
+      return {
+        success: false,
+        error: data.message || data.error || 'Registration failed',
       }
     } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'
       console.error('Registration error:', error)
-      return { 
-        success: false, 
-        error: 'Network error. Please try again.' 
-      }
+      return { success: false, error: message }
     }
   }
 
