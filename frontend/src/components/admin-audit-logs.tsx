@@ -198,7 +198,8 @@ export function AdminAuditLogs() {
       });
       return result;
     },
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 30000, // Refresh every 30 seconds
+    notifyOnChangeProps: ['data', 'error'],
     refetchOnMount: 'always', // Force refresh to get new backend data
     refetchOnWindowFocus: false,
     placeholderData: (prev) => prev,

@@ -74,7 +74,9 @@ export function AlertsGrid() {
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }),
     enabled: isReady && isAuthenticated,
-    refetchInterval: 30000,
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true,
+    notifyOnChangeProps: ['data', 'error'],
   })
 
   useEffect(() => {

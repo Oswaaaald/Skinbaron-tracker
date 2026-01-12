@@ -78,7 +78,9 @@ export function AlertsTable() {
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }),
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchIntervalInBackground: true,
+    notifyOnChangeProps: ['data', 'error'],
   })
 
   // Sync stats when alerts data changes
