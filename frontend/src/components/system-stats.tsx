@@ -15,36 +15,36 @@ import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 
-export function SystemStats() {
+export function SystemStats({ enabled = true }: { enabled?: boolean }) {
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    enabled: isReady && isAuthenticated && isVisible,
+    enabled: enabled && isReady && isAuthenticated && isVisible,
     staleTime: 30_000,
-    refetchInterval: isVisible ? 30_000 : false,
-    refetchOnWindowFocus: true,
+    refetchInterval: enabled && isVisible ? 30_000 : false,
+    refetchOnWindowFocus: enabled,
   })
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    enabled: isReady && isAuthenticated && isVisible,
+    enabled: enabled && isReady && isAuthenticated && isVisible,
     staleTime: 5 * 60 * 1000,
-    refetchInterval: isVisible ? 5 * 60 * 1000 : false,
-    refetchOnWindowFocus: true,
+    refetchInterval: enabled && isVisible ? 5 * 60 * 1000 : false,
+    refetchOnWindowFocus: enabled,
   })
 
   // Alerts statistics - used for real-time updates
   useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    enabled: isReady && isAuthenticated && isVisible,
+    enabled: enabled && isReady && isAuthenticated && isVisible,
     staleTime: 10_000,
-    refetchInterval: isVisible ? 10_000 : false,
-    refetchOnWindowFocus: true,
+    refetchInterval: enabled && isVisible ? 10_000 : false,
+    refetchOnWindowFocus: enabled,
     notifyOnChangeProps: ['data', 'error'],
   })
 

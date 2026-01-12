@@ -62,10 +62,10 @@ export function Dashboard() {
   const { data: systemStatus, isLoading: _isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    enabled: isReady && isAuthenticated && isVisible,
+    enabled: isReady && isAuthenticated && isVisible && activeTab === 'system',
     staleTime: 5 * 60 * 1000,
-    refetchInterval: isVisible ? 5 * 60 * 1000 : false,
-    refetchOnWindowFocus: true,
+    refetchInterval: isVisible && activeTab === 'system' ? 5 * 60 * 1000 : false,
+    refetchOnWindowFocus: activeTab === 'system',
   })
 
   // Fetch user statistics
@@ -83,10 +83,10 @@ export function Dashboard() {
   useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    enabled: isReady && isAuthenticated && isVisible,
+    enabled: isReady && isAuthenticated && isVisible && activeTab === 'system',
     staleTime: 30_000,
-    refetchInterval: isVisible ? 30_000 : false,
-    refetchOnWindowFocus: true,
+    refetchInterval: isVisible && activeTab === 'system' ? 30_000 : false,
+    refetchOnWindowFocus: activeTab === 'system',
     notifyOnChangeProps: ['data', 'error'],
   })
 
@@ -269,7 +269,7 @@ export function Dashboard() {
                 Monitor system health and performance
               </p>
             </div>
-            <SystemStats />
+              <SystemStats enabled={activeTab === 'system'} />
           </TabsContent>
         )}
       </Tabs>
