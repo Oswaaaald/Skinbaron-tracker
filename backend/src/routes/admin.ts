@@ -123,6 +123,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         throw Errors.notFound('User');
       }
 
+      // Prevent operating on pending users (they belong to the approvals flow)
+      if (!user.is_approved) {
+        throw Errors.forbidden('Pending users must be approved or rejected before they can be managed');
+      }
+
       // Only super admins can delete admins
       if (user.is_admin) {
         const currentAdmin = store.getUserById(adminId);
@@ -214,6 +219,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const user = store.getUserById(id);
       if (!user) {
         throw Errors.notFound('User');
+      }
+
+      // Pending users should be handled via approval flow, not admin toggles
+      if (!user.is_approved) {
+        throw Errors.forbidden('Cannot change admin status for a pending user');
       }
 
       // Only super admins can grant or revoke admin status to/from admins

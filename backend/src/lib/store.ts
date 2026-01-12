@@ -1300,7 +1300,7 @@ export class Store {
 
   // Admin methods
   getAllUsers() {
-    const stmt = this.db.prepare('SELECT id, username, email, is_admin, is_super_admin, is_approved, created_at, updated_at FROM users ORDER BY created_at DESC');
+    const stmt = this.db.prepare('SELECT id, username, email, is_admin, is_super_admin, is_approved, created_at, updated_at FROM users WHERE is_approved = 1 ORDER BY created_at DESC');
     return stmt.all() as Array<{
       id: number;
       username: string;
@@ -1315,7 +1315,7 @@ export class Store {
 
   searchUsers(query: string) {
     const searchTerm = `%${query}%`;
-    const stmt = this.db.prepare('SELECT id, username, email FROM users WHERE username LIKE ? OR email LIKE ? ORDER BY username ASC LIMIT 20');
+    const stmt = this.db.prepare('SELECT id, username, email FROM users WHERE is_approved = 1 AND (username LIKE ? OR email LIKE ?) ORDER BY username ASC LIMIT 20');
     return stmt.all(searchTerm, searchTerm) as Array<{
       id: number;
       username: string;
@@ -1381,11 +1381,11 @@ export class Store {
   }
 
   getGlobalStats() {
-    const usersStmt = this.db.prepare('SELECT COUNT(*) as count FROM users');
+    const usersStmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_approved = 1');
     const rulesStmt = this.db.prepare('SELECT COUNT(*) as count FROM rules');
     const alertsStmt = this.db.prepare('SELECT COUNT(*) as count FROM alerts');
     const webhooksStmt = this.db.prepare('SELECT COUNT(*) as count FROM user_webhooks');
-    const adminsStmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1');
+    const adminsStmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1 AND is_approved = 1');
 
     return {
       total_users: (usersStmt.get() as any).count,
