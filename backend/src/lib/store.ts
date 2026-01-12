@@ -136,6 +136,36 @@ export class Store {
     this.initializeUserTables(); // Add multi-user support
   }
 
+  /**
+   * Helper method to execute a query that returns a single row
+   * @param sql SQL query string
+   * @param params Query parameters
+   * @returns Single row or undefined
+   */
+  private query<T>(sql: string, ...params: any[]): T | undefined {
+    return this.db.prepare(sql).get(...params) as T | undefined;
+  }
+
+  /**
+   * Helper method to execute a query that returns multiple rows
+   * @param sql SQL query string
+   * @param params Query parameters
+   * @returns Array of rows
+   */
+  private queryAll<T>(sql: string, ...params: any[]): T[] {
+    return this.db.prepare(sql).all(...params) as T[];
+  }
+
+  /**
+   * Helper method to execute a query that modifies data (INSERT, UPDATE, DELETE)
+   * @param sql SQL query string
+   * @param params Query parameters
+   * @returns RunResult with changes, lastInsertRowid, etc.
+   */
+  private execute(sql: string, ...params: any[]): Database.RunResult {
+    return this.db.prepare(sql).run(...params);
+  }
+
   private initializeTables() {
     // Create rules table
     this.db.exec(`
@@ -770,14 +800,13 @@ export class Store {
   }
 
   getAlertsByUserId(userId: number, limit: number = 50, offset: number = 0): Alert[] {
-    const stmt = this.db.prepare(`
+    const rows = this.queryAll<any>(`
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
       WHERE r.user_id = ? 
       ORDER BY a.sent_at DESC 
       LIMIT ? OFFSET ?
-    `);
-    const rows = stmt.all(userId.toString(), limit, offset) as any[];
+    `, userId.toString(), limit, offset);
     
     return rows.map(row => ({
       ...row,
@@ -787,12 +816,11 @@ export class Store {
   }
 
   getAlertByIdForUser(alertId: number, userId: number): Alert | null {
-    const stmt = this.db.prepare(`
+    const row = this.query<any>(`
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
       WHERE a.id = ? AND r.user_id = ?
-    `);
-    const row = stmt.get(alertId, userId.toString()) as any;
+    `, alertId, userId.toString());
     
     if (!row) return null;
 
@@ -804,14 +832,13 @@ export class Store {
   }
 
   getAlertsByRuleIdForUser(ruleId: number, userId: number, limit: number = 50, offset: number = 0): Alert[] {
-    const stmt = this.db.prepare(`
+    const rows = this.queryAll<any>(`
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
       WHERE a.rule_id = ? AND r.user_id = ? 
       ORDER BY a.sent_at DESC 
       LIMIT ? OFFSET ?
-    `);
-    const rows = stmt.all(ruleId, userId.toString(), limit, offset) as any[];
+    `, ruleId, userId.toString(), limit, offset);
     
     return rows.map(row => ({
       ...row,
@@ -874,32 +901,29 @@ export class Store {
 
   // Cleanup old alerts for a specific user (keep last 7 days)
   cleanupUserOldAlerts(userId: number): number {
-    const stmt = this.db.prepare(`
+    const result = this.execute(`
       DELETE FROM alerts 
       WHERE sent_at < DATE('now', '-7 days')
         AND rule_id IN (SELECT id FROM rules WHERE user_id = ?)
-    `);
-    const result = stmt.run(userId.toString());
+    `, userId.toString());
     return result.changes;
   }
 
   // Delete all alerts for a specific user
   deleteAllUserAlerts(userId: number): number {
-    const stmt = this.db.prepare(`
+    const result = this.execute(`
       DELETE FROM alerts 
       WHERE rule_id IN (SELECT id FROM rules WHERE user_id = ?)
-    `);
-    const result = stmt.run(userId.toString());
+    `, userId.toString());
     return result.changes;
   }
 
   // Cleanup old alerts globally (admin only - keep last 30 days)
   cleanupOldAlerts(): number {
-    const stmt = this.db.prepare(`
+    const result = this.execute(`
       DELETE FROM alerts 
       WHERE sent_at < DATE('now', '-30 days')
     `);
-    const result = stmt.run();
     return result.changes;
   }
 
@@ -1025,8 +1049,7 @@ export class Store {
     // - audit_log
     // - admin_actions (both as admin and as target)
     try {
-      const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
-      const result = stmt.run(id);
+      const result = this.execute('DELETE FROM users WHERE id = ?', id);
       return result.changes > 0;
     } catch (error: any) {
       console.error('Error deleting user:', {
