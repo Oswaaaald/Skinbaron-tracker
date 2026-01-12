@@ -13,32 +13,39 @@ import {
 } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
+import { usePageVisible } from "@/hooks/use-page-visible"
 
 export function SystemStats() {
   const { isReady, isAuthenticated } = useAuth()
+  const isVisible = usePageVisible()
 
   const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 30000, // 30 seconds
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 30_000,
+    refetchInterval: isVisible ? 30_000 : false,
+    refetchOnWindowFocus: true,
   })
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: isVisible ? 5 * 60 * 1000 : false,
+    refetchOnWindowFocus: true,
   })
 
   // Alerts statistics - used for real-time updates
   useQuery({
     queryKey: ['alert-stats'],
     queryFn: () => apiClient.getAlertStats(),
-    refetchInterval: 10000, // 10 seconds for real-time stats
-    refetchIntervalInBackground: true,
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 10_000,
+    refetchInterval: isVisible ? 10_000 : false,
+    refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
 

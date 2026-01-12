@@ -12,6 +12,7 @@ import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
+import { usePageVisible } from "@/hooks/use-page-visible"
 
 const ALERT_TYPE_CONFIG = {
   match: {
@@ -42,6 +43,7 @@ export function AlertsGrid() {
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
+  const isVisible = usePageVisible()
 
   const handleClearAllAlerts = async () => {
     if (isClearingAll) return
@@ -73,9 +75,10 @@ export function AlertsGrid() {
       offset: page * limit,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }),
-    enabled: isReady && isAuthenticated,
-    refetchInterval: 10000,
-    refetchIntervalInBackground: true,
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 15_000,
+    refetchInterval: isVisible ? 10_000 : false,
+    refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
 

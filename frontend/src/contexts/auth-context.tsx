@@ -105,7 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!token || !user) return
 
+    const isVisible = () => typeof document === 'undefined' ? true : document.visibilityState === 'visible'
+
     const checkTokenValidity = async () => {
+      if (!isVisible()) return
       try {
         // Try to make a simple authenticated request
         const response = await apiClient.getHealth()
@@ -124,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const checkUserProfile = async () => {
+      if (!isVisible()) return
       try {
         // Check if user profile has changed (e.g., admin status)
         const response = await apiClient.getUserProfile()

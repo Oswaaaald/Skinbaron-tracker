@@ -28,11 +28,13 @@ import { ProfileSettings } from "@/components/profile-settings"
 import { apiClient } from "@/lib/api"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useAuth } from "@/contexts/auth-context"
+import { usePageVisible } from "@/hooks/use-page-visible"
 
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const { isReady, isAuthenticated, user } = useAuth()
+  const isVisible = usePageVisible()
   
   // Restore active tab from localStorage on mount
   const [activeTab, setActiveTab] = useState(() => {
@@ -60,27 +62,32 @@ export function Dashboard() {
   const { data: systemStatus, isLoading: _isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: () => apiClient.getSystemStatus(),
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: isVisible ? 5 * 60 * 1000 : false,
+    refetchOnWindowFocus: true,
   })
 
   // Fetch user statistics
   const { data: userStats, isLoading: _isLoadingUserStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: () => apiClient.getUserStats(),
-    refetchInterval: 10 * 1000, // Refresh every 10 seconds
-    refetchIntervalInBackground: true,
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 30_000,
+    refetchInterval: isVisible ? 30_000 : false,
+    refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
   // Fetch health status
   useQuery({
     queryKey: ['health'],
     queryFn: () => apiClient.getHealth(),
-    refetchInterval: 30 * 1000, // Refresh every 30 seconds
+    enabled: isReady && isAuthenticated && isVisible,
+    staleTime: 30_000,
+    refetchInterval: isVisible ? 30_000 : false,
+    refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
 
