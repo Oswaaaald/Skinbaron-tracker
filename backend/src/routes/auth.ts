@@ -132,6 +132,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
     } catch (error) {
       request.log.error({ error }, 'Registration failed');
       
+      // Handle Zod validation errors
+      if (error && typeof error === 'object' && 'issues' in error) {
+        const zodError = error as any;
+        const firstIssue = zodError.issues?.[0];
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation error',
+          message: firstIssue?.message || 'Invalid input data',
+        });
+      }
+      
       if (error instanceof Error && error.message.includes('validation')) {
         return reply.status(400).send({
           success: false,
@@ -326,6 +337,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     } catch (error) {
       request.log.error({ error }, 'Login failed');
+      
+      // Handle Zod validation errors
+      if (error && typeof error === 'object' && 'issues' in error) {
+        const zodError = error as { issues: Array<{ message: string }> };
+        const firstIssue = zodError.issues?.[0];
+        if (firstIssue?.message) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Validation failed',
+            message: firstIssue.message,
+          });
+        }
+      }
       
       return reply.status(500).send({
         success: false,

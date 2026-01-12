@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
-import { AuthService } from '../lib/auth.js';
+import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
 import { getClientIp } from '../lib/middleware.js';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
@@ -12,11 +12,6 @@ const UpdateProfileSchema = z.object({
   email: z.string().email().optional(),
 }).refine(data => data.username || data.email, {
   message: 'At least one field must be provided',
-});
-
-const UpdatePasswordSchema = z.object({
-  current_password: z.string().min(1),
-  new_password: z.string().min(8),
 });
 
 /**
@@ -290,7 +285,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const { current_password, new_password } = UpdatePasswordSchema.parse(request.body);
+      const passwordData = PasswordChangeSchema.parse(request.body);
 
       // Get user
       const user = store.getUserById(userId);
@@ -302,7 +297,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Verify current password
-      const isValidPassword = await AuthService.verifyPassword(current_password, user.password_hash);
+      const isValidPassword = await AuthService.verifyPassword(passwordData.current_password, user.password_hash);
       if (!isValidPassword) {
         return reply.status(401).send({
           success: false,
@@ -311,7 +306,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Hash new password
-      const newPasswordHash = await AuthService.hashPassword(new_password);
+      const newPasswordHash = await AuthService.hashPassword(passwordData.new_password);
 
       // Update password
       store.updateUser(userId, { password_hash: newPasswordHash });
@@ -322,6 +317,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to update password');
+
+      // Handle Zod validation errors
+      if (error && typeof error === 'object' && 'issues' in error) {
+        const zodError = error as { issues: Array<{ message: string }> };
+        const firstIssue = zodError.issues?.[0];
+        if (firstIssue?.message) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Validation failed',
+            message: firstIssue.message,
+          });
+        }
+      }
 
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
@@ -691,7 +699,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const { current_password, new_password } = request.body as { current_password: string; new_password: string };
+      
+      // Validate input with Zod
+      const passwordData = PasswordChangeSchema.parse(request.body);
 
       const user = store.getUserById(userId);
       if (!user) {
@@ -702,7 +712,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Verify current password
-      const isValidPassword = await AuthService.verifyPassword(current_password, user.password_hash);
+      const isValidPassword = await AuthService.verifyPassword(passwordData.current_password, user.password_hash);
       if (!isValidPassword) {
         // Audit log for failed password change attempt
         store.createAuditLog(
@@ -719,7 +729,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Hash new password
-      const hashedPassword = await AuthService.hashPassword(new_password);
+      const hashedPassword = await AuthService.hashPassword(passwordData.new_password);
       
       // Update password
       store.updateUser(userId, { password_hash: hashedPassword });
@@ -739,6 +749,20 @@ export default async function userRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       request.log.error({ error }, 'Failed to change password');
+      
+      // Handle Zod validation errors
+      if (error && typeof error === 'object' && 'issues' in error) {
+        const zodError = error as { issues: Array<{ message: string }> };
+        const firstIssue = zodError.issues?.[0];
+        if (firstIssue?.message) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Validation failed',
+            message: firstIssue.message,
+          });
+        }
+      }
+      
       return reply.status(500).send({
         success: false,
         error: 'Failed to change password',

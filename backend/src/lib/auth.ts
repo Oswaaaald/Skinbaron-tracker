@@ -16,6 +16,12 @@ export const UserLoginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const PasswordChangeSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(8, 'Password must be at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number'),
+});
+
 export const WebhookSchema = z.object({
   id: z.number().optional(),
   user_id: z.number(),
