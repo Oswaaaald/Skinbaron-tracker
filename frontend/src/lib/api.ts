@@ -415,32 +415,6 @@ class ApiClient {
     return this.request<Webhook[]>('/api/webhooks/active');
   }
 
-  // Authentication endpoints
-  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{
-    id: number;
-    username: string;
-    email: string;
-    token: string;
-    requires2FA?: boolean;
-  }>> {
-    return this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, totp_code: totpCode }),
-    });
-  }
-
-  async register(username: string, email: string, password: string): Promise<ApiResponse<{
-    id: number;
-    username: string;
-    email: string;
-    token: string;
-  }>> {
-    return this.request('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ username, email, password }),
-    });
-  }
-
   async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
     return this.request('/api/auth/change-password', {
       method: 'POST',
