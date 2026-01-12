@@ -124,7 +124,7 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
       case "login_failed":
         if (data.reason === "unknown_email") return "Failed: unknown email";
         if (data.reason === "invalid_password") return "Failed: invalid password";
-        if (data.reason === "invalid_2fa_code") return "Failed: invalid 2FA code";
+        if (data.reason === "invalid_2fa_code") return "Failed: 2FA code";
         return `Failed: ${data.reason}`;
       
       case "2fa_recovery_code_used":
@@ -151,20 +151,8 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
         return `Demoted by ${data.admin_username || `admin #${data.admin_id}`}`;
       
       case "user_deleted":
-        return `Deleted by ${data.admin_username || `admin #${data.deleted_by_admin_id}`}`;
-      
-      default:
-        return eventDataJson;
-    }
-  } catch {
-    return eventDataJson;
-  }
-}
-
-export function AdminAuditLogs() {
-  const [eventType, setEventType] = useState<string>("all");
-  const [userSearch, setUserSearch] = useState<string>("");
-  const [selectedUser, setSelectedUser] = useState<{ id: number; username: string; email: string } | null>(null);
+        // Note: admin_username is not in event_data, it's in the log.username (since the log belongs to the admin)
+        return "";  // We'll show admin info separately
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [limit, setLimit] = useState<number>(100);
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
@@ -425,6 +413,17 @@ export function AdminAuditLogs() {
                 const isExpanded = expandedLogs.has(log.id);
                 const contextualMessage = formatEventData(log.event_type, log.event_data);
 
+                // For user_deleted events, extract deleted user info from event_data
+                let displayUsername = log.username;
+                let displayEmail = log.email;
+                if (log.event_type === 'user_deleted') {
+                  try {
+                    const data = JSON.parse(log.event_data || '{}');
+                    displayUsername = data.username || log.username;
+                    displayEmail = data.email || log.email;
+                  } catch {}
+                }
+
                 return (
                   <div key={log.id}>
                     <div 
@@ -440,11 +439,11 @@ export function AdminAuditLogs() {
                             {config.label}
                           </Badge>
                           <Badge variant="secondary" className="font-semibold">
-                            {log.username || `User #${log.user_id}`}
+                            {displayUsername || `User #${log.user_id}`}
                           </Badge>
-                          {log.email && (
+                          {displayEmail && (
                             <span className="text-xs text-muted-foreground">
-                              {log.email}
+                              {displayEmail}
                             </span>
                           )}
                           {contextualMessage && (
@@ -452,6 +451,14 @@ export function AdminAuditLogs() {
                               <ArrowRight className="h-3 w-3 text-muted-foreground" />
                               <span className="text-sm text-foreground">
                                 {contextualMessage}
+                              </span>
+                            </>
+                          )}
+                          {log.event_type === 'user_deleted' && (
+                            <>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm text-foreground">
+                                Deleted by {log.username || `admin #${log.user_id}`}
                               </span>
                             </>
                           )}
