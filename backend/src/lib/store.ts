@@ -974,6 +974,9 @@ export class Store {
       // Delete admin actions performed by this user
       this.db.prepare('DELETE FROM admin_actions WHERE admin_user_id = ?').run(id);
       
+      // Delete admin actions targeting this user
+      this.db.prepare('DELETE FROM admin_actions WHERE target_user_id = ?').run(id);
+      
       // Finally delete the user
       const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
       const result = stmt.run(id);
