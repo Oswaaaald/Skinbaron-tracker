@@ -305,6 +305,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
         });
       }
 
+      // Check if new password is same as current password
+      const isSamePassword = await AuthService.verifyPassword(passwordData.new_password, user.password_hash);
+      if (isSamePassword) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation failed',
+          message: 'New password must be different from current password',
+        });
+      }
+
       // Hash new password
       const newPasswordHash = await AuthService.hashPassword(passwordData.new_password);
 
@@ -725,6 +735,23 @@ export default async function userRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({
           success: false,
           error: 'Invalid current password',
+        });
+      }
+
+      // Check if new password is same as current password
+      const isSamePassword = await AuthService.verifyPassword(passwordData.new_password, user.password_hash);
+      if (isSamePassword) {
+        store.createAuditLog(
+          userId,
+          'password_change_failed',
+          JSON.stringify({ reason: 'same_password' }),
+          getClientIp(request),
+          request.headers['user-agent']
+        );
+        return reply.status(400).send({
+          success: false,
+          error: 'Validation failed',
+          message: 'New password must be different from current password',
         });
       }
 
