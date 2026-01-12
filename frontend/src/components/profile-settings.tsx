@@ -107,7 +107,9 @@ export function ProfileSettings() {
       setConfirmPassword('')
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Failed to update password')
+      // Extract error message from API response
+      const errorMsg = error?.message || error?.error || 'Failed to update password'
+      setErrorMessage(errorMsg)
       setSuccessMessage('')
     },
   })
@@ -168,6 +170,15 @@ export function ProfileSettings() {
 
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Clear previous messages
+    setErrorMessage('')
+    setSuccessMessage('')
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setErrorMessage('All fields are required')
+      return
+    }
     
     if (newPassword !== confirmPassword) {
       setErrorMessage('Passwords do not match')
@@ -359,7 +370,7 @@ export function ProfileSettings() {
             
             <Button 
               type="submit" 
-              disabled={updatePasswordMutation.isPending || !currentPassword || !newPassword || !confirmPassword}
+              disabled={updatePasswordMutation.isPending}
             >
               {updatePasswordMutation.isPending ? (
                 <>
