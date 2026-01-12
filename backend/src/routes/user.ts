@@ -183,6 +183,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
         });
       }
 
+      // Check if username is already taken by another user
+      if (updates.username) {
+        const existingUser = store.getUserByUsername(updates.username);
+        if (existingUser && existingUser.id !== userId) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Validation failed',
+            message: 'Username already taken',
+          });
+        }
+      }
+
       // Non-admin users cannot change their email
       if (updates.email && !currentUser.is_admin) {
         return reply.status(403).send({
@@ -198,7 +210,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         if (existingUser && existingUser.id !== userId) {
           return reply.status(400).send({
             success: false,
-            error: 'Email already in use',
+            error: 'Validation failed',
+            message: 'Email already in use',
           });
         }
       }
