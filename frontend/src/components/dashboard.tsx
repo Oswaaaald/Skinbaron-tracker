@@ -115,13 +115,19 @@ export function Dashboard() {
             title={theme === "system" ? "Theme: Auto" : theme === "dark" ? "Theme: Dark" : "Theme: Light"}
           >
             {/* Light theme icon */}
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:scale-0 [html[data-theme='system']_&]:scale-0" />
+            {theme === "light" && (
+              <Sun className="h-[1.2rem] w-[1.2rem] transition-all" />
+            )}
             
             {/* Dark theme icon */}
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 transition-all dark:scale-100 dark:[html[data-theme='system']_&]:scale-0" />
+            {theme === "dark" && (
+              <Moon className="h-[1.2rem] w-[1.2rem] transition-all" />
+            )}
             
             {/* System/Auto theme icon */}
-            <Monitor className="absolute h-[1.2rem] w-[1.2rem] scale-0 transition-all [html[data-theme='system']_&]:scale-100" />
+            {theme === "system" && (
+              <Monitor className="h-[1.2rem] w-[1.2rem] transition-all" />
+            )}
             
             <span className="sr-only">Toggle theme</span>
           </Button>
