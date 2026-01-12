@@ -981,8 +981,12 @@ export class Store {
       const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
       const result = stmt.run(id);
       return result.changes > 0;
-    } catch (error) {
-      console.error('Error deleting user:', error);
+    } catch (error: any) {
+      console.error('Error deleting user:', {
+        message: error.message,
+        code: error.code,
+        userId: id
+      });
       throw error;
     }
   }
