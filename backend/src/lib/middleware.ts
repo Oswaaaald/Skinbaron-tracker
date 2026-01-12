@@ -16,9 +16,21 @@ declare module 'fastify' {
 
 /**
  * Extract the real client IP address from request headers
- * Handles X-Forwarded-For, X-Real-IP, and falls back to request.ip
+ * Handles CF-Connecting-IP (Cloudflare), X-Real-IP, X-Forwarded-For, and falls back to request.ip
  */
 export function getClientIp(request: FastifyRequest): string {
+  // Check CF-Connecting-IP header (Cloudflare specific - most reliable)
+  const cfConnectingIp = request.headers['cf-connecting-ip'];
+  if (cfConnectingIp && typeof cfConnectingIp === 'string') {
+    return cfConnectingIp;
+  }
+
+  // Check X-Real-IP header
+  const xRealIp = request.headers['x-real-ip'];
+  if (xRealIp && typeof xRealIp === 'string') {
+    return xRealIp;
+  }
+
   // Check X-Forwarded-For header (proxy chain)
   const xForwardedFor = request.headers['x-forwarded-for'];
   if (xForwardedFor) {
@@ -29,12 +41,6 @@ export function getClientIp(request: FastifyRequest): string {
     if (ips.length > 0 && ips[0]) {
       return ips[0];
     }
-  }
-
-  // Check X-Real-IP header
-  const xRealIp = request.headers['x-real-ip'];
-  if (xRealIp && typeof xRealIp === 'string') {
-    return xRealIp;
   }
 
   // Fall back to Fastify's request.ip
