@@ -12,7 +12,7 @@ import {
   Bell, 
   Settings, 
   Moon, 
-  Sun 
+  Sun
 } from "lucide-react"
 import { useTheme } from "next-themes"
 

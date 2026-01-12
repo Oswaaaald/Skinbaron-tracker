@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Edit, Trash2, Shield } from 'lucide-react'
+import { Edit, Trash2, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
@@ -188,10 +188,9 @@ export function WebhooksTable() {
             Manage your encrypted webhook endpoints for notifications
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Webhook
-        </Button>
+          <Button onClick={() => handleOpenDialog()}>
+            Add Webhook
+          </Button>
       </div>
 
       {!webhooks?.length ? (
@@ -202,10 +201,9 @@ export function WebhooksTable() {
             <p className="text-muted-foreground text-center mb-4">
               Create your first webhook to receive encrypted notifications
             </p>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Webhook
-            </Button>
+              <Button onClick={() => handleOpenDialog()}>
+                Add Your First Webhook
+              </Button>
           </CardContent>
         </Card>
       ) : (
