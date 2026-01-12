@@ -173,6 +173,16 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         request.headers['user-agent']
       );
 
+      // Delete user (CASCADE will handle rules, alerts, webhooks)
+      const deleted = store.deleteUser(id);
+
+      if (!deleted) {
+        return reply.status(500).send({
+          success: false,
+          error: 'Failed to delete user',
+        });
+      }
+
       return reply.status(200).send({
         success: true,
         message: `User ${user.username} deleted successfully`,
