@@ -22,6 +22,7 @@ import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { TwoFactorSetup } from '@/components/two-factor-setup'
 import { SecurityHistory } from '@/components/security-history'
+import { useFormState } from '@/hooks/use-form-state'
 
 interface UserStats {
   rules_count: number
@@ -32,6 +33,7 @@ interface UserStats {
 export function ProfileSettings() {
   const { user, logout, updateUser } = useAuth()
   const queryClient = useQueryClient()
+  const { state: formState, setError, setSuccess, clear } = useFormState()
   
   const [username, setUsername] = useState(user?.username || '')
   const [email, setEmail] = useState(user?.email || '')
@@ -44,14 +46,6 @@ export function ProfileSettings() {
   const [twoFactorDialog, setTwoFactorDialog] = useState(false)
   const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
   const [twoFactorPassword, setTwoFactorPassword] = useState('')
-  
-  const [successMessage, setSuccessMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [passwordSuccess, setPasswordSuccess] = useState('')
-  const [profileError, setProfileError] = useState('')
-  const [profileSuccess, setProfileSuccess] = useState('')
-  const [twoFactorError, setTwoFactorError] = useState('')
 
   // Sync local state with user context when user data changes
   useEffect(() => {
@@ -76,8 +70,7 @@ export function ProfileSettings() {
       return await apiClient.patch('/api/user/profile', data)
     },
     onSuccess: (response) => {
-      setProfileSuccess('Profile updated successfully')
-      setProfileError('')
+      setSuccess('profile', 'Profile updated successfully')
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
       // Also invalidate admin queries so admin panel updates
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
@@ -95,8 +88,7 @@ export function ProfileSettings() {
     },
     onError: (error: any) => {
       const errorMsg = error?.message || error?.error || 'Failed to update profile'
-      setProfileError(errorMsg)
-      setProfileSuccess('')
+      setError('profile', errorMsg)
     },
   })
 
@@ -106,8 +98,7 @@ export function ProfileSettings() {
       return await apiClient.patch('/api/user/password', data)
     },
     onSuccess: () => {
-      setPasswordSuccess('Password updated successfully')
-      setPasswordError('')
+      setSuccess('password', 'Password updated successfully')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -115,8 +106,7 @@ export function ProfileSettings() {
     onError: (error: any) => {
       // Extract error message from API response
       const errorMsg = error?.message || error?.error || 'Failed to update password'
-      setPasswordError(errorMsg)
-      setPasswordSuccess('')
+      setError('password', errorMsg)
     },
   })
 
@@ -129,7 +119,7 @@ export function ProfileSettings() {
       logout()
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Failed to delete account')
+      setError('general', error.message || 'Failed to delete account')
       setDeleteDialog(false)
       setDeleteConfirmText('')
     },
@@ -150,16 +140,15 @@ export function ProfileSettings() {
       return await apiClient.post('/api/user/2fa/disable', { password })
     },
     onSuccess: () => {
-      setSuccessMessage('Two-factor authentication disabled successfully')
-      setErrorMessage('')
-      setTwoFactorError('')
+      setSuccess('general', 'Two-factor authentication disabled successfully')
+      clear('twoFactor')
       setDisableTwoFactorDialog(false)
       setTwoFactorPassword('')
       queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
     },
     onError: (error: any) => {
       const errorMsg = error?.message || error?.error || 'Failed to disable 2FA'
-      setTwoFactorError(errorMsg)
+      setError('twoFactor', errorMsg)
     },
   })
 
@@ -167,8 +156,7 @@ export function ProfileSettings() {
     e.preventDefault()
     
     // Clear previous messages
-    setProfileError('')
-    setProfileSuccess('')
+    clear('profile')
     
     const updates: { username?: string; email?: string } = {}
     
@@ -176,11 +164,11 @@ export function ProfileSettings() {
       // Validate username format (same as backend: alphanumeric + underscore only)
       const usernameRegex = /^[a-zA-Z0-9_]+$/
       if (!usernameRegex.test(username)) {
-        setProfileError('Username can only contain letters, numbers and underscores')
+        setError('profile', 'Username can only contain letters, numbers and underscores')
         return
       }
       if (username.length < 3 || username.length > 20) {
-        setProfileError('Username must be between 3 and 20 characters')
+        setError('profile', 'Username must be between 3 and 20 characters')
         return
       }
       updates.username = username
@@ -191,7 +179,7 @@ export function ProfileSettings() {
     }
     
     if (Object.keys(updates).length === 0) {
-      setProfileError('No changes to save')
+      setError('profile', 'No changes to save')
       return
     }
     
@@ -202,21 +190,20 @@ export function ProfileSettings() {
     e.preventDefault()
     
     // Clear previous messages
-    setPasswordError('')
-    setPasswordSuccess('')
+    clear('password')
     
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All fields are required')
+      setError('password', 'All fields are required')
       return
     }
     
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match')
+      setError('password', 'Passwords do not match')
       return
     }
     
     if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters')
+      setError('password', 'Password must be at least 8 characters')
       return
     }
     
@@ -242,17 +229,17 @@ export function ProfileSettings() {
   return (
     <div className="space-y-6">
       {/* Success/Error Messages */}
-      {successMessage && (
+      {formState.general.success && (
         <Alert className="border-green-500/50 bg-green-500/10">
           <CheckCircle className="h-4 w-4 text-green-500" />
-          <AlertDescription className="text-green-500">{successMessage}</AlertDescription>
+          <AlertDescription className="text-green-500">{formState.general.success}</AlertDescription>
         </Alert>
       )}
       
-      {errorMessage && (
+      {formState.general.error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{errorMessage}</AlertDescription>
+          <AlertDescription>{formState.general.error}</AlertDescription>
         </Alert>
       )}
 
@@ -300,17 +287,17 @@ export function ProfileSettings() {
         </CardHeader>
         <CardContent>
           {/* Profile update messages */}
-          {profileSuccess && (
+          {formState.profile.success && (
             <Alert className="border-green-500/50 bg-green-500/10 mb-4">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-500">{profileSuccess}</AlertDescription>
+              <AlertDescription className="text-green-500">{formState.profile.success}</AlertDescription>
             </Alert>
           )}
           
-          {profileError && (
+          {formState.profile.error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{profileError}</AlertDescription>
+              <AlertDescription>{formState.profile.error}</AlertDescription>
             </Alert>
           )}
           
@@ -387,17 +374,17 @@ export function ProfileSettings() {
         </CardHeader>
         <CardContent>
           {/* Password change messages */}
-          {passwordSuccess && (
+          {formState.password.success && (
             <Alert className="border-green-500/50 bg-green-500/10 mb-4">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-500">{passwordSuccess}</AlertDescription>
+              <AlertDescription className="text-green-500">{formState.password.success}</AlertDescription>
             </Alert>
           )}
           
-          {passwordError && (
+          {formState.password.error && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{passwordError}</AlertDescription>
+              <AlertDescription>{formState.password.error}</AlertDescription>
             </Alert>
           )}
           
@@ -549,10 +536,10 @@ export function ProfileSettings() {
           
           <form onSubmit={handleDisable2FA}>
             <div className="space-y-4">
-              {twoFactorError && (
+              {formState.twoFactor.error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{twoFactorError}</AlertDescription>
+                  <AlertDescription>{formState.twoFactor.error}</AlertDescription>
                 </Alert>
               )}
               
@@ -582,7 +569,7 @@ export function ProfileSettings() {
                 onClick={() => {
                   setDisableTwoFactorDialog(false)
                   setTwoFactorPassword('')
-                  setTwoFactorError('')
+                  clear('twoFactor')
                 }}
               >
                 Cancel
