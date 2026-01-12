@@ -215,16 +215,16 @@ export function RulesTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                                            {rule.min_wear !== undefined && rule.min_wear !== null && (
-                        <div className="text-xs text-muted-foreground">
+                    <div className="flex gap-1 flex-wrap items-center">
+                      {rule.min_wear !== undefined && rule.min_wear !== null && (
+                        <Badge variant="secondary" className="text-xs">
                           Min Wear: {formatWearPercentage(rule.min_wear)}
-                        </div>
+                        </Badge>
                       )}
                       {rule.max_wear !== undefined && rule.max_wear !== null && (
-                        <div className="text-xs text-muted-foreground">
+                        <Badge variant="secondary" className="text-xs">
                           Max Wear: {formatWearPercentage(rule.max_wear)}
-                        </div>
+                        </Badge>
                       )}
                       {rule.stattrak_filter === 'only' && (
                         <Badge variant="outline" className="text-xs">
