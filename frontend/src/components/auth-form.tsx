@@ -225,20 +225,6 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                     Enter 6-digit code or 8-character recovery code
                   </p>
                 </div>
-                
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setRequires2FA(false)
-                    setTotpCode('')
-                    setError('')
-                  }}
-                  disabled={isLoading}
-                >
-                  Back to Login
-                </Button>
               </div>
             ) : (
               // Regular Login/Register Form
@@ -368,23 +354,39 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             )}
             
             {requires2FA && (
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading || totpCode.length < 6}
-              >
-                {isLoading ? (
-                  <>
-                    <LoadingSpinner className="mr-2 h-4 w-4" />
-                    Verifying...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Verify Code
-                  </>
-                )}
-              </Button>
+              <>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isLoading || totpCode.length < 6}
+                >
+                  {isLoading ? (
+                    <>
+                      <LoadingSpinner className="mr-2 h-4 w-4" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Verify Code
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setRequires2FA(false)
+                    setTotpCode('')
+                    setError('')
+                  }}
+                  disabled={isLoading}
+                >
+                  Back to Login
+                </Button>
+              </>
             )}
           </form>
         </CardContent>
