@@ -39,10 +39,7 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent
-        onEscapeKeyDown={() => onOpenChange(false)}
-        onPointerDownOutside={() => onOpenChange(false)}
-      >
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
