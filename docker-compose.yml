@@ -22,7 +22,7 @@ services:
       APP_VERSION: ${APP_VERSION:-dev}
 
     volumes:
-      - backend_data:/app/data
+      - ${DATA_PATH:-./data}:/app/data
 
     read_only: true
     tmpfs:
@@ -79,9 +79,6 @@ services:
 
     networks:
       - skinbaron_network
-
-volumes:
-  backend_data:
 
 networks:
   skinbaron_network:
