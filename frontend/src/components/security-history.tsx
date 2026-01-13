@@ -30,6 +30,7 @@ const EVENT_CONFIG: Record<string, {
 }> = {
   login_success: { icon: LogIn, label: "Login Success", variant: "default" },
   login_failed: { icon: ShieldAlert, label: "Login Failed", variant: "destructive" },
+  logout: { icon: LogIn, label: "Logout", variant: "secondary" },
   "2fa_enabled": { icon: ShieldCheck, label: "2FA Enabled", variant: "default" },
   "2fa_disabled": { icon: ShieldOff, label: "2FA Disabled", variant: "secondary" },
   "2fa_recovery_code_used": { icon: Key, label: "Recovery Code Used", variant: "outline" },
@@ -125,6 +126,9 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
       case "user_deleted":
         // We'll show admin info separately
         return "";
+      
+      case "logout":
+        return data.reason === "user_logout" ? "User logout" : "Logged out";
       
       default:
         return eventDataJson;

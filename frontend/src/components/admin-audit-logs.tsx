@@ -39,6 +39,7 @@ const EVENT_TYPES = [
   { value: "all", label: "All Events" },
   { value: "login_success", label: "Login Success" },
   { value: "login_failed", label: "Login Failed" },
+  { value: "logout", label: "Logout" },
   { value: "2fa_enabled", label: "2FA Enabled" },
   { value: "2fa_disabled", label: "2FA Disabled" },
   { value: "2fa_recovery_code_used", label: "2FA Recovery Used" },
@@ -59,6 +60,7 @@ const EVENT_CONFIG: Record<string, {
 }> = {
   login_success: { icon: LogIn, label: "Login Success", variant: "default" },
   login_failed: { icon: ShieldAlert, label: "Login Failed", variant: "destructive" },
+  logout: { icon: LogIn, label: "Logout", variant: "secondary" },
   "2fa_enabled": { icon: ShieldCheck, label: "2FA Enabled", variant: "default" },
   "2fa_disabled": { icon: ShieldOff, label: "2FA Disabled", variant: "secondary" },
   "2fa_recovery_code_used": { icon: Key, label: "Recovery Code Used", variant: "outline" },
@@ -153,6 +155,9 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
       case "user_deleted":
         // Note: admin_username is not in event_data, it's in the log.username (since the log belongs to the admin)
         return "";  // We'll show admin info separately
+      
+      case "logout":
+        return data.reason === "user_logout" ? "User logout" : "Logged out";
       
       default:
         return eventDataJson;
