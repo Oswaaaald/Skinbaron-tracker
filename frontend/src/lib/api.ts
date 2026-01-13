@@ -138,6 +138,8 @@ class ApiClient {
   private baseURL: string;
   private onLogout: (() => void) | null = null;
   private onRefresh: ((expiresAt: number) => void) | null = null;
+  private refreshPromise: Promise<{ success: boolean; expiresAt?: number }> | null = null;
+  private hasCalledLogout: boolean = false;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
@@ -212,10 +214,13 @@ class ApiClient {
             if (this.onRefresh && refreshResult.expiresAt) {
               this.onRefresh(refreshResult.expiresAt);
             }
+            // Reset logout flag since we successfully refreshed
+            this.hasCalledLogout = false;
             return this.request<T>(endpoint, options, false);
           }
-          // Only trigger logout callback if refresh failed (not on initial anonymous 401)
-          if (this.onLogout) {
+          // Only trigger logout callback once if refresh failed
+          if (this.onLogout && !this.hasCalledLogout) {
+            this.hasCalledLogout = true;
             this.onLogout();
           }
         }
@@ -241,33 +246,49 @@ class ApiClient {
   }
 
   private async tryRefreshToken(): Promise<{ success: boolean; expiresAt?: number }> {
-    try {
-      const url = `${this.baseURL}/api/auth/refresh`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}),
-        credentials: 'include',
-      });
-
-      if (!response.ok) return { success: false };
-      const data = await response.json();
-      return {
-        success: Boolean(data?.success),
-        expiresAt: data?.data?.token_expires_at,
-      };
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.warn('Token refresh failed:', (error as Error).message);
-      }
-      return { success: false };
+    // If a refresh is already in progress, wait for it instead of starting a new one
+    if (this.refreshPromise) {
+      return this.refreshPromise;
     }
+
+    // Start a new refresh and store the promise
+    this.refreshPromise = (async () => {
+      try {
+        const url = `${this.baseURL}/api/auth/refresh`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          return { success: false };
+        }
+        const data = await response.json();
+        return {
+          success: Boolean(data?.success),
+          expiresAt: data?.data?.token_expires_at,
+        };
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          logger.warn('Token refresh failed:', (error as Error).message);
+        }
+        return { success: false };
+      } finally {
+        // Clear the promise after completion (success or failure)
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   // Auth endpoints
   async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token_expires_at?: number } & UserProfile>> {
+    this.hasCalledLogout = false; // Reset logout flag on new login
     return this.request(`/api/auth/login`, {
       method: 'POST',
       headers: {
@@ -278,6 +299,7 @@ class ApiClient {
   }
 
   async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number } & Partial<UserProfile>>> {
+    this.hasCalledLogout = false; // Reset logout flag on new register
     return this.request(`/api/auth/register`, {
       method: 'POST',
       headers: {
