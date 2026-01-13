@@ -57,13 +57,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
-        // If SSR already checked and found no session, skip probing
-        if (initialAuth === null) {
-          setIsLoading(false)
-          setIsReady(true)
-          return
-        }
-
+        // Always probe for session on client mount (cookies sent via credentials: 'include')
         const me = await apiClient.getUserProfile({ allowRefresh: true })
         if (me.success && me.data) {
           setUser(me.data as User)

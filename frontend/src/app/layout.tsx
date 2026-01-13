@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
-import { getServerSession } from "@/lib/server-api";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,7 +19,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialAuth = await getServerSession();
+  // Skip SSR session check - cookies are cross-subdomain and client will handle auth
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -45,7 +44,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider initialAuth={initialAuth}>
+          <AuthProvider initialAuth={undefined}>
             <QueryProvider>
               <div className="min-h-screen bg-background flex flex-col">
                 <main className="flex-1">
