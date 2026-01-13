@@ -15,199 +15,103 @@ export interface User {
 export interface AuthContextType {
   user: User | null
   token: string | null
+  refreshToken: string | null
   isLoading: boolean
   isAuthenticated: boolean
   isReady: boolean // New flag to indicate auth state is fully initialized
   login: (email: string, password: string, totpCode?: string) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  logout: () => void
+  logout: () => Promise<void>
   updateUser: (userData: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const AUTH_STORAGE_KEY = 'skinbaron_auth'
-
-interface AuthStorage {
-  token: string
+type InitialAuthState = {
   user: User
-  expiresAt: number
+  token: string
+  refreshToken: string | null
+  expiresAt: number | null
+  refreshExpiresAt: number | null
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+export function AuthProvider({ children, initialAuth }: { children: ReactNode; initialAuth?: InitialAuthState | null }) {
+  const [user, setUser] = useState<User | null>(initialAuth?.user ?? null)
   const [token, setToken] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isReady, setIsReady] = useState(false)
+  const [accessExpiry, setAccessExpiry] = useState<number | null>(initialAuth?.expiresAt ?? null)
 
-  const isAuthenticated = !!user && !!token
+  const isAuthenticated = !!user
 
-  // Load auth state from localStorage on mount
+  // Initialize auth state from server session or fetch /me if cookies exist
   useEffect(() => {
-    const loadAuthState = async () => {
+    const loadSession = async () => {
       try {
-        const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-        if (stored) {
-          const authData: AuthStorage = JSON.parse(stored)
-          
-          // Check if token is expired
-          if (authData.expiresAt > Date.now()) {
-            setUser(authData.user)
-            setToken(authData.token)
-            // Wait a bit to ensure state updates are processed
-            await new Promise(resolve => setTimeout(resolve, 50))
-          } else {
-            // Token expired, clear storage
-            localStorage.removeItem(AUTH_STORAGE_KEY)
-          }
+        if (initialAuth?.user) {
+          setUser(initialAuth.user)
+          setAccessExpiry(initialAuth.expiresAt ?? null)
+          setIsLoading(false)
+          setIsReady(true)
+          return
         }
-      } catch (error) {
-        console.error('Failed to load auth state:', error)
-        localStorage.removeItem(AUTH_STORAGE_KEY)
+
+        const me = await apiClient.getUserProfile()
+        if (me.success && me.data) {
+          setUser(me.data as User)
+        }
+      } catch (_err) {
+        setUser(null)
       } finally {
         setIsLoading(false)
         setIsReady(true)
       }
     }
 
-    loadAuthState()
-  }, [])
+    loadSession()
+  }, [initialAuth])
 
-  // Setup API client with auth token getter
+  // Setup logout callback for when user is deleted/invalid
   useEffect(() => {
-    apiClient.setAuthTokenGetter(() => {
-      // Always read from localStorage to get the latest token
-      // This avoids React state timing issues
-      try {
-        const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-        if (stored) {
-          const authData: AuthStorage = JSON.parse(stored)
-          // Check if token is still valid
-          if (authData.expiresAt > Date.now()) {
-            return authData.token
-          }
-        }
-      } catch (error) {
-        // Silent fail
-      }
-      return null
-    })
-    
-    // Setup logout callback for when user is deleted/invalid
     apiClient.setLogoutCallback(() => {
-      clearAuthState()
-      // Redirect to home page (auth form is there)
+      setUser(null)
+      setToken(null)
+      setRefreshToken(null)
+      setAccessExpiry(null)
       window.location.href = '/'
     })
-  }, []) // Run only once on mount
+  }, [])
 
-    // Check token validity periodically and refresh if needed
-    useEffect(() => {
-      if (!token || !user) return
+  // Keep a lightweight profile refresh on focus when authenticated
+  useEffect(() => {
+    if (!user) return
 
-      const isVisible = () => typeof document === 'undefined' ? true : document.visibilityState === 'visible'
-
-      const checkTokenValidity = async () => {
-        if (!isVisible()) return
-        try {
-          // Try to make a simple authenticated request
-          const response = await apiClient.getHealth()
-          if (!response.success) {
-            // Token might be invalid, logout user
-            console.warn('Token validation failed, logging out')
-            logout()
-          }
-        } catch (error) {
-          console.error('Token check failed:', error)
-          // If it's an auth error, logout
-          if (error instanceof Error && error.message.includes('token')) {
-            logout()
-          }
+    const checkUserProfile = async () => {
+      try {
+        const response = await apiClient.getUserProfile()
+        if (response.success && response.data) {
+          updateUser({
+            username: response.data.username,
+            email: response.data.email,
+            avatar_url: response.data.avatar_url,
+            is_admin: response.data.is_admin,
+            is_super_admin: response.data.is_super_admin,
+          })
         }
+      } catch (_error) {
+        // Ignore failures; will retry on next focus
       }
-
-      const checkUserProfile = async () => {
-        if (!isVisible()) return
-        try {
-          // Check if user profile has changed (e.g., admin status)
-          const response = await apiClient.getUserProfile()
-          if (response.success && response.data) {
-            // Get the latest user from localStorage to avoid stale closure
-            const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-            if (!stored) return
-            
-            const authData: AuthStorage = JSON.parse(stored)
-            const currentUser = authData.user
-            const serverUser = response.data
-            
-            // Check if critical fields have changed
-            if (currentUser.is_admin !== serverUser.is_admin ||
-                currentUser.is_super_admin !== serverUser.is_super_admin ||
-                currentUser.username !== serverUser.username ||
-                currentUser.email !== serverUser.email ||
-                currentUser.avatar_url !== serverUser.avatar_url) {
-              updateUser({
-                username: serverUser.username,
-                email: serverUser.email,
-                avatar_url: serverUser.avatar_url,
-                is_admin: serverUser.is_admin,
-                is_super_admin: serverUser.is_super_admin,
-              })
-            }
-          }
-        } catch (error) {
-          console.error('Profile check failed:', error)
-        }
-      }
-
-      // Listen for custom event when admin status changes
-      const handleProfileChanged = () => {
-        checkUserProfile()
-      }
-      window.addEventListener('user-profile-changed', handleProfileChanged)
-
-      // Check token every 5 minutes
-      const tokenInterval = setInterval(checkTokenValidity, 5 * 60 * 1000)
-      // Check profile on window focus instead of constant interval to reduce spam
-      const handleFocus = () => checkUserProfile()
-      window.addEventListener('focus', handleFocus)
-      
-      // Initial checks
-      checkTokenValidity()
-      checkUserProfile()
-
-      return () => {
-        clearInterval(tokenInterval)
-        window.removeEventListener('user-profile-changed', handleProfileChanged)
-        window.removeEventListener('focus', handleFocus)
-      }
-    }, [token]) // Only depend on token
-
-  const saveAuthState = async (token: string, user: User) => {
-    // JWT tokens now expire in 24h to limit exposure window
-    const expiresAt = Date.now() + (24 * 60 * 60 * 1000)
-    
-    const authData: AuthStorage = {
-      token,
-      user,
-      expiresAt
     }
 
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
-    setUser(user)
-    setToken(token)
-    
-    // Wait for state updates to propagate BEFORE setting isReady
-    await new Promise(resolve => setTimeout(resolve, 100))
-    setIsReady(true)
-  }
+    const handleFocus = () => checkUserProfile()
+    window.addEventListener('focus', handleFocus)
+    checkUserProfile()
 
-  const clearAuthState = () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY)
-    setUser(null)
-    setToken(null)
-    setIsReady(false)
-  }
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [user])
 
   const login = async (email: string, password: string, totpCode?: string): Promise<{
     success: boolean;
@@ -222,8 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { success: false, requires2FA: true }
         }
 
-        const { token, ...userData } = data.data as any
-        await saveAuthState(token, userData)
+        const { token_expires_at: _exp, ...userData } = data.data as any
+        setUser(userData)
+        setAccessExpiry(_exp ?? null)
+        setIsReady(true)
         return { success: true, requires2FA: false }
       }
 
@@ -252,8 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (data.data && (data.data as any).token) {
-          const { token, ...userData } = data.data as any
-          await saveAuthState(token, userData)
+          const { token_expires_at: _exp, ...userData } = data.data as any
+          setUser(userData as User)
+          setAccessExpiry(_exp ?? null)
+          setIsReady(true)
           return { success: true }
         }
       }
@@ -269,59 +177,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = () => {
-    clearAuthState()
+  const logout = async () => {
+    try {
+      await apiClient.logout()
+    } catch (error) {
+      // Best-effort logout
+    }
+    setUser(null)
+    setToken(null)
+    setRefreshToken(null)
+    setAccessExpiry(null)
+    setIsReady(true)
   }
 
-  // Proactively logout shortly before token expiry to avoid stale sessions
+  // Proactively refresh shortly before access expiry using HttpOnly cookies
   useEffect(() => {
-    if (!token) return
+    if (!user || !accessExpiry) return
 
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!stored) return
+    const now = Date.now()
+    const msToRefresh = Math.max(accessExpiry - now - 60_000, 0)
 
-    try {
-      const authData: AuthStorage = JSON.parse(stored)
-      const msLeft = authData.expiresAt - Date.now()
+    const timer = setTimeout(async () => {
+      try {
+        const refreshed = await apiClient.refresh()
+        if (refreshed.success && refreshed.data?.token_expires_at) {
+          setAccessExpiry(refreshed.data.token_expires_at)
+        } else if (!refreshed.success) {
+          setUser(null)
+          setAccessExpiry(null)
+        }
+      } catch (_err) {
+        setUser(null)
+        setAccessExpiry(null)
+      }
+    }, msToRefresh)
 
-      // Logout 5 minutes before expiry, but never schedule negative timeouts
-      const timeoutMs = Math.max(msLeft - 5 * 60 * 1000, 0)
-
-      const timer = setTimeout(() => {
-        logout()
-        // Redirect to login/home to prompt re-auth
-        window.location.href = '/'
-      }, timeoutMs)
-
-      return () => clearTimeout(timer)
-    } catch (_err) {
-      // If storage is corrupted, force logout
-      logout()
-    }
-
-    return undefined
-  }, [token])
+    return () => clearTimeout(timer)
+  }, [user, accessExpiry])
 
   const updateUser = (userData: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...userData }
       setUser(updatedUser)
-      
-      // Update localStorage too if we have a token
-      if (token) {
-        const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-        if (stored) {
-          const authData: AuthStorage = JSON.parse(stored)
-          authData.user = updatedUser
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData))
-        }
-      }
     }
   }
 
   const contextValue: AuthContextType = {
     user,
     token,
+    refreshToken,
     isLoading,
     isAuthenticated,
     isReady,

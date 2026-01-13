@@ -1,5 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import '@fastify/cookie';
 import { AuthService } from './auth.js';
+import { getStore } from './store.js';
 
 type CachedUser = {
   user: any;
@@ -30,6 +32,9 @@ function setCachedUser(id: number, user: any) {
   }
   userCache.set(id, { user, expiresAt: Date.now() + USER_CACHE_TTL_MS });
 }
+
+export const ACCESS_COOKIE = 'sb_access'
+export const REFRESH_COOKIE = 'sb_refresh'
 
 // Extend FastifyRequest to include user info
 declare module 'fastify' {
@@ -77,13 +82,19 @@ export function getClientIp(request: FastifyRequest): string {
   return request.ip;
 }
 
+function extractToken(request: FastifyRequest): string | null {
+  const cookieToken = (request.cookies && request.cookies[ACCESS_COOKIE]) as string | undefined
+  if (cookieToken) return cookieToken
+  const authHeader = request.headers.authorization
+  return AuthService.extractTokenFromHeader(authHeader)
+}
+
 /**
  * Authentication middleware
  */
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
   try {
-    const authHeader = request.headers.authorization;
-    const token = AuthService.extractTokenFromHeader(authHeader);
+    const token = extractToken(request);
     
     if (!token) {
       return reply.status(401).send({
@@ -93,12 +104,21 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       });
     }
 
-    const payload = AuthService.verifyToken(token);
+    const payload = AuthService.verifyToken(token, 'access');
     if (!payload) {
       return reply.status(401).send({
         success: false,
         error: 'Invalid token',
         message: 'Token is invalid or expired',
+      });
+    }
+
+    const store = getStore();
+    if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) {
+      return reply.status(401).send({
+        success: false,
+        error: 'Token revoked',
+        message: 'Token has been revoked',
       });
     }
 
@@ -188,21 +208,23 @@ export async function requireSuperAdminMiddleware(request: FastifyRequest, reply
  */
 export async function optionalAuthMiddleware(request: FastifyRequest, _reply: FastifyReply) {
   try {
-    const authHeader = request.headers.authorization;
-    const token = AuthService.extractTokenFromHeader(authHeader);
+    const token = extractToken(request);
     
     if (token) {
-      const payload = AuthService.verifyToken(token);
+      const payload = AuthService.verifyToken(token, 'access');
       if (payload) {
-        const user = await getUserById(payload.userId);
-        if (user) {
-          request.user = {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            is_admin: user.is_admin || false,
-            is_super_admin: user.is_super_admin || false,
-          };
+        const store = getStore();
+        if (!payload.jti || !store.isAccessTokenBlacklisted(payload.jti)) {
+          const user = await getUserById(payload.userId);
+          if (user) {
+            request.user = {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              is_admin: user.is_admin || false,
+              is_super_admin: user.is_super_admin || false,
+            };
+          }
         }
       }
     }

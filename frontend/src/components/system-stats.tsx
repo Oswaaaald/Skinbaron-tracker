@@ -11,57 +11,46 @@ import {
   CheckCircle,
   Clock
 } from "lucide-react"
-import { apiClient } from "@/lib/api"
+import { apiClient, type ApiResponse, type SystemStats as SystemStatsType } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 
-export function SystemStats({ enabled = true }: { enabled?: boolean }) {
+export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean; prefetched?: ApiResponse<SystemStatsType> | null }) {
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
-  const { data: healthResponse, isLoading: isLoadingHealth } = useQuery({
-    queryKey: ['health'],
-    queryFn: () => apiClient.getHealth(),
-    enabled: enabled && isReady && isAuthenticated && isVisible,
-    staleTime: 30_000,
-    refetchInterval: enabled && isVisible ? 30_000 : false,
-    refetchOnWindowFocus: enabled,
-  })
+  const STATUS_POLL_MS = 30_000
+  const ALERT_POLL_MS = 10_000
+
+  const shouldFetch = enabled && isReady && isAuthenticated && isVisible && !prefetched
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['system-status'],
-    queryFn: () => apiClient.getSystemStatus(),
-    enabled: enabled && isReady && isAuthenticated && isVisible,
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: enabled && isVisible ? 5 * 60 * 1000 : false,
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getSystemStatus(), 'Failed to load system status'),
+    enabled: shouldFetch,
+    staleTime: STATUS_POLL_MS,
+    refetchInterval: shouldFetch ? STATUS_POLL_MS : false,
     refetchOnWindowFocus: enabled,
   })
 
   // Alerts statistics - used for real-time updates
   useQuery({
     queryKey: ['alert-stats'],
-    queryFn: () => apiClient.getAlertStats(),
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlertStats(), 'Failed to load alert stats'),
     enabled: enabled && isReady && isAuthenticated && isVisible,
-    staleTime: 10_000,
-    refetchInterval: enabled && isVisible ? 10_000 : false,
+    staleTime: ALERT_POLL_MS,
+    refetchInterval: enabled && isVisible ? ALERT_POLL_MS : false,
     refetchOnWindowFocus: enabled,
     notifyOnChangeProps: ['data', 'error'],
   })
 
 
-
-  if (isLoadingHealth || isLoadingStatus) {
+  if (shouldFetch && isLoadingStatus) {
     return <LoadingSpinner />
   }
 
-  const healthData = healthResponse?.success ? (healthResponse as any) : null
-  const health = healthData ? {
-    status: healthData.status,
-    services: healthData.services,
-    stats: healthData.stats,
-    timestamp: healthData.timestamp
-  } : null
-  const status = statusResponse?.data
+  const status = prefetched?.data || statusResponse?.data
+  const health = status?.health
 
   const formatUptime = (uptimeSeconds?: number) => {
     if (!uptimeSeconds) return 'N/A'

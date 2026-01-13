@@ -25,12 +25,14 @@ const ConfigSchema = z.object({
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   // Encryption key for sensitive data (defaults to JWT_SECRET for backward compatibility)
   ENCRYPTION_KEY: z.string().optional(),
+  APP_VERSION: z.string().default('dev'),
   
   // Polling
   POLL_CRON: z.string().default('*/5 * * * *'),
   
   // API
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  CORS_ORIGINS: z.string().optional(),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_WINDOW: z.coerce.number().default(60000),
   

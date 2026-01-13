@@ -175,7 +175,7 @@ export function AdminAuditLogs() {
     queryKey: ['search-users', userSearch],
     queryFn: async () => {
       if (userSearch.length < 2) return { success: true, data: [] };
-      return await apiClient.searchUsers(userSearch);
+      return apiClient.ensureSuccess(await apiClient.searchUsers(userSearch), 'Failed to search users');
     },
     enabled: userSearch.length >= 2,
     staleTime: 30000,
@@ -193,11 +193,11 @@ export function AdminAuditLogs() {
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['admin-audit-logs', eventType, selectedUser?.id, limit],
     queryFn: async () => {
-      const result = await apiClient.getAllAuditLogs({
+      const result = apiClient.ensureSuccess(await apiClient.getAllAuditLogs({
         limit,
         event_type: eventType === "all" ? undefined : eventType,
         user_id: selectedUser?.id,
-      });
+      }), 'Failed to load audit logs');
       return result;
     },
     refetchInterval: 30000, // Refresh every 30 seconds

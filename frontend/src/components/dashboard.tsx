@@ -42,7 +42,6 @@ export function Dashboard() {
     }
     return 'rules'
   })
-  
   // Reset tab to 'rules' if user loses admin access while on admin/system tab
   useEffect(() => {
     if (!user?.is_admin && (activeTab === 'admin' || activeTab === 'system')) {
@@ -56,9 +55,9 @@ export function Dashboard() {
   }, [activeTab])
 
   // Fetch system status
-  const { data: systemStatus, isLoading: _isLoadingStatus } = useQuery({
+  const { data: systemStatus } = useQuery({
     queryKey: ['system-status'],
-    queryFn: () => apiClient.getSystemStatus(),
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getSystemStatus(), 'Failed to load system status'),
     enabled: isReady && isAuthenticated && isVisible && activeTab === 'system',
     staleTime: 5 * 60 * 1000,
     refetchInterval: isVisible && activeTab === 'system' ? 5 * 60 * 1000 : false,
@@ -68,7 +67,7 @@ export function Dashboard() {
   // Fetch user statistics
   const { data: userStats, isLoading: _isLoadingUserStats } = useQuery({
     queryKey: ['user-stats'],
-    queryFn: () => apiClient.getUserStats(),
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserStats(), 'Failed to load user stats'),
     enabled: isReady && isAuthenticated && isVisible,
     staleTime: 30_000,
     refetchInterval: isVisible ? 30_000 : false,

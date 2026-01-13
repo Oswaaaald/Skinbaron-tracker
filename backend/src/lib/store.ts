@@ -115,6 +115,25 @@ export type UserWebhook = z.infer<typeof UserWebhookSchema> & {
 };
 export type CreateUserWebhook = z.infer<typeof CreateUserWebhookSchema>;
 
+export type RefreshTokenRecord = {
+  id: number;
+  user_id: number;
+  token_hash: string;
+  token_jti: string;
+  expires_at: string;
+  revoked_at?: string | null;
+  replaced_by_jti?: string | null;
+  created_at: string;
+};
+
+export type AccessTokenBlacklistRecord = {
+  jti: string;
+  user_id: number;
+  expires_at: string;
+  reason?: string | null;
+  created_at: string;
+};
+
 export class Store {
   private db: Database.Database;
 
@@ -435,6 +454,39 @@ export class Store {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_admin_actions_admin ON admin_actions(admin_user_id);
       CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at);
+    `);
+
+    // Token tables for refresh + blacklist support
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT UNIQUE NOT NULL,
+        token_jti TEXT UNIQUE NOT NULL,
+        expires_at DATETIME NOT NULL,
+        revoked_at DATETIME,
+        replaced_by_jti TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expiry ON refresh_tokens(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked ON refresh_tokens(revoked_at);
+    `);
+
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS access_token_blacklist (
+        jti TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        expires_at DATETIME NOT NULL,
+        reason TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_token_blacklist_expiry ON access_token_blacklist(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_token_blacklist_user ON access_token_blacklist(user_id);
     `);
 
     // Migration: Add FK constraint on target_user_id if not exists
@@ -1108,6 +1160,10 @@ export class Store {
     }
   }
 
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
   // Generic encryption utilities (used for webhooks and 2FA secrets)
   private encryptData(data: string): string {
     const secretKey = appConfig.ENCRYPTION_KEY;
@@ -1160,6 +1216,71 @@ export class Store {
     } catch (error) {
       return '';
     }
+  }
+
+  // Refresh token management
+  addRefreshToken(userId: number, token: string, tokenJti: string, expiresAt: number): RefreshTokenRecord {
+    const tokenHash = this.hashToken(token);
+    const stmt = this.db.prepare(`
+      INSERT INTO refresh_tokens (user_id, token_hash, token_jti, expires_at)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    stmt.run(userId, tokenHash, tokenJti, new Date(expiresAt).toISOString());
+    return this.getRefreshTokenByHash(tokenHash)!;
+  }
+
+  getRefreshTokenByHash(tokenHash: string): RefreshTokenRecord | null {
+    const row = this.db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ?').get(tokenHash) as any;
+    if (!row) return null;
+    return row as RefreshTokenRecord;
+  }
+
+  getRefreshToken(token: string): RefreshTokenRecord | null {
+    const tokenHash = this.hashToken(token);
+    return this.getRefreshTokenByHash(tokenHash);
+  }
+
+  revokeRefreshToken(token: string, replacedByJti?: string) {
+    const tokenHash = this.hashToken(token);
+    this.db.prepare(`
+      UPDATE refresh_tokens
+      SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP), replaced_by_jti = COALESCE(?, replaced_by_jti)
+      WHERE token_hash = ?
+    `).run(replacedByJti ?? null, tokenHash);
+  }
+
+  revokeAllRefreshTokensForUser(userId: number) {
+    this.db.prepare(`
+      UPDATE refresh_tokens
+      SET revoked_at = CURRENT_TIMESTAMP, replaced_by_jti = COALESCE(replaced_by_jti, 'logout_all')
+      WHERE user_id = ? AND revoked_at IS NULL
+    `).run(userId);
+  }
+
+  cleanupRefreshTokens() {
+    this.db.prepare(`
+      DELETE FROM refresh_tokens
+      WHERE (revoked_at IS NOT NULL) OR (expires_at < CURRENT_TIMESTAMP)
+    `).run();
+  }
+
+  // Access token blacklist helpers
+  blacklistAccessToken(jti: string, userId: number, expiresAt: number, reason?: string) {
+    this.db.prepare(`
+      INSERT INTO access_token_blacklist (jti, user_id, expires_at, reason)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(jti) DO UPDATE SET expires_at = excluded.expires_at, reason = COALESCE(excluded.reason, access_token_blacklist.reason)
+    `).run(jti, userId, new Date(expiresAt).toISOString(), reason ?? null);
+  }
+
+  isAccessTokenBlacklisted(jti: string): boolean {
+    this.db.prepare(`
+      DELETE FROM access_token_blacklist WHERE expires_at < CURRENT_TIMESTAMP
+    `).run();
+
+    const row = this.db.prepare('SELECT 1 FROM access_token_blacklist WHERE jti = ?').get(jti) as any;
+    return Boolean(row);
   }
 
   // Webhook encryption utilities (using generic methods)

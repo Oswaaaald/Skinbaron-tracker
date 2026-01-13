@@ -80,6 +80,7 @@ export interface ApiResponse<T> {
   message?: string;
   details?: any;
   requires2FA?: boolean;  // For 2FA login flow
+  status?: number;
 }
 
 export type UserProfile = {
@@ -107,6 +108,16 @@ export interface SystemStats {
     totalRuns: number;
     totalAlerts: number;
   };
+  health?: {
+    status: string;
+    timestamp: string;
+    services: Record<string, string>;
+    stats: {
+      uptime: number;
+      memory: NodeJS.MemoryUsage;
+      version: string;
+    };
+  };
 }
 
 export interface AuditLog {
@@ -123,16 +134,18 @@ export interface AuditLog {
 
 class ApiClient {
   private baseURL: string;
-  private getAuthToken: (() => string | null) | null = null;
   private onLogout: (() => void) | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
   }
 
-  // Method to set the auth token getter (will be called from auth context)
-  setAuthTokenGetter(getter: () => string | null) {
-    this.getAuthToken = getter;
+  ensureSuccess<T>(response: ApiResponse<T>, fallbackMessage?: string): ApiResponse<T> {
+    if (!response.success) {
+      const message = response.message || response.error || fallbackMessage || 'Request failed';
+      throw new Error(message);
+    }
+    return response;
   }
 
   // Method to set logout callback
@@ -142,32 +155,22 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    allowRefresh: boolean = true
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`;
-      
+
       // Build headers
       const headers: Record<string, string> = {};
-      
-      // Add Content-Type header if there's a body
-      if (options.body) {
-        headers['Content-Type'] = 'application/json';
-      }
-      
-      // Add Authorization header if we have a token
-      if (this.getAuthToken) {
-        const token = this.getAuthToken();
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      }
-      
+      if (options.body) headers['Content-Type'] = 'application/json';
+
       const response = await fetch(url, {
         headers: {
           ...headers,
           ...options.headers,
         },
+        credentials: 'include',
         ...options,
       });
 
@@ -183,32 +186,57 @@ class ApiClient {
       if (!response.ok) {
         const message = data?.message || data?.error || `HTTP ${response.status}`;
 
-        if (response.status === 401 || response.status === 403) {
-          if (data?.message?.includes('non-existent user') || data?.error?.includes('non-existent user')) {
-            console.error('User no longer exists, logging out...');
-            if (this.onLogout) {
-              this.onLogout();
-            }
-          } else {
-            console.warn('Authentication error, token may be invalid');
+        if ((response.status === 401 || response.status === 403) && allowRefresh) {
+          const refreshed = await this.tryRefreshToken();
+          if (refreshed) {
+            return this.request<T>(endpoint, options, false);
+          }
+          if (this.onLogout) {
+            this.onLogout();
           }
         }
 
-        throw new ApiError(message, response.status, url, options.method || 'GET', data);
+        return {
+          success: false,
+          error: message,
+          message,
+          details: data,
+          status: response.status,
+        };
       }
 
-      return data as ApiResponse<T>;
+      const parsed = data as ApiResponse<T>;
+      return { ...parsed, success: parsed?.success ?? true };
     } catch (error) {
-      // Log errors in development only (React Query also logs)
+      const message = (error as Error).message || 'Network error';
       if (process.env.NODE_ENV === 'development') {
-        console.warn('API request failed:', (error as Error).message);
+        console.warn('API request failed:', message);
       }
-      throw error;
+      return { success: false, error: message, message } as ApiResponse<T>;
+    }
+  }
+
+  private async tryRefreshToken(): Promise<boolean> {
+    try {
+      const url = `${this.baseURL}/api/auth/refresh`;
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) return false;
+      const data = await response.json();
+      return Boolean(data?.success);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Token refresh failed:', (error as Error).message);
+      }
+      return false;
     }
   }
 
   // Auth endpoints
-  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token: string } & UserProfile>> {
+  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token_expires_at?: number } & UserProfile>> {
     return this.request(`/api/auth/login`, {
       method: 'POST',
       headers: {
@@ -218,7 +246,7 @@ class ApiClient {
     });
   }
 
-  async register(username: string, email: string, password: string): Promise<ApiResponse<{ token?: string } & Partial<UserProfile>>> {
+  async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number } & Partial<UserProfile>>> {
     return this.request(`/api/auth/register`, {
       method: 'POST',
       headers: {
@@ -226,6 +254,18 @@ class ApiClient {
       },
       body: JSON.stringify({ username, email, password }),
     });
+  }
+
+  async refresh() {
+    return this.request<{ token_expires_at?: number }>(`/api/auth/refresh`, {
+      method: 'POST',
+    }, false);
+  }
+
+  async logout() {
+    return this.request<{ message: string }>(`/api/auth/logout`, {
+      method: 'POST',
+    }, false);
   }
 
   // Health and System endpoints

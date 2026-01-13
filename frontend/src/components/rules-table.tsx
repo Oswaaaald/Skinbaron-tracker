@@ -38,7 +38,7 @@ export function RulesTable() {
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
-    queryFn: () => apiClient.getRules(),
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getRules(), 'Failed to load rules'),
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 

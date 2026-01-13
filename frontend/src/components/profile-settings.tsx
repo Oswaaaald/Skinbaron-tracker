@@ -59,7 +59,7 @@ export function ProfileSettings() {
   const { data: stats } = useQuery({
     queryKey: ['user', 'stats'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/user/stats')
+      const response = apiClient.ensureSuccess(await apiClient.get('/api/user/stats'), 'Failed to load user stats')
       return response.data as UserStats
     },
   })
@@ -128,7 +128,7 @@ export function ProfileSettings() {
   const { data: twoFactorStatus } = useQuery({
     queryKey: ['2fa-status'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/user/2fa/status')
+      const response = apiClient.ensureSuccess(await apiClient.get('/api/user/2fa/status'), 'Failed to load 2FA status')
       return response.data as { enabled: boolean }
     },
   })

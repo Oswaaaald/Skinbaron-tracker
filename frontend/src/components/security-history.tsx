@@ -139,7 +139,7 @@ export function SecurityHistory() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['user-audit-logs'],
-    queryFn: () => apiClient.getUserAuditLogs(50),
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserAuditLogs(50), 'Failed to load audit logs'),
     refetchInterval: 60000, // Refresh every minute
   });
 

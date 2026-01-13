@@ -70,11 +70,11 @@ export function AlertsGrid() {
 
   const { data: alertsResponse, isLoading, error } = useQuery({
     queryKey: ['alerts', page, alertTypeFilter],
-    queryFn: () => apiClient.getAlerts({
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlerts({
       limit,
       offset: page * limit,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
-    }),
+    }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated && isVisible,
     staleTime: 15_000,
     refetchInterval: isVisible ? 10_000 : false,

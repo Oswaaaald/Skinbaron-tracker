@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { getStore } from '../lib/store.js';
-import { getClientIp } from '../lib/middleware.js';
+import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/middleware.js';
+import { appConfig } from '../lib/config.js';
 import { authenticator } from 'otplib';
 
 // Extend FastifyInstance type
@@ -16,6 +17,24 @@ declare module 'fastify' {
  */
 export default async function authRoutes(fastify: FastifyInstance) {
   const store = getStore();
+
+  const cookieOptions = (expiresAt?: number) => ({
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    path: '/',
+    secure: appConfig.NODE_ENV === 'production',
+    expires: expiresAt ? new Date(expiresAt) : undefined,
+  });
+
+  const setAuthCookies = (reply: any, accessToken: { token: string; expiresAt: number }, refreshToken: { token: string; expiresAt: number }) => {
+    reply.setCookie(ACCESS_COOKIE, accessToken.token, cookieOptions(accessToken.expiresAt));
+    reply.setCookie(REFRESH_COOKIE, refreshToken.token, cookieOptions(refreshToken.expiresAt));
+  };
+
+  const clearAuthCookies = (reply: any) => {
+    reply.setCookie(ACCESS_COOKIE, '', { ...cookieOptions(), expires: new Date(0) });
+    reply.setCookie(REFRESH_COOKIE, '', { ...cookieOptions(), expires: new Date(0) });
+  };
 
   /**
    * Register new user
@@ -38,6 +57,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
+            message: { type: 'string' },
             data: {
               type: 'object',
               properties: {
@@ -47,7 +67,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
                 is_super_admin: { type: 'boolean' },
-                token: { type: 'string' },
+                token_expires_at: { type: 'number' },
+                pending_approval: { type: 'boolean' },
               },
             },
           },
@@ -113,8 +134,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Generate token (only for approved users)
-      const token = AuthService.generateToken(user.id);
+      // Generate tokens (only for approved users)
+      const accessToken = AuthService.generateAccessToken(user.id);
+      const refreshToken = AuthService.generateRefreshToken(user.id);
+      store.addRefreshToken(user.id!, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+
+      setAuthCookies(reply, accessToken, refreshToken);
 
       return reply.status(201).send({
         success: true,
@@ -125,7 +150,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           avatar_url: AuthService.getGravatarUrl(user.email),
           is_admin: Boolean(user.is_admin),
           is_super_admin: Boolean(user.is_super_admin),
-          token,
+          token_expires_at: accessToken.expiresAt,
         },
       });
 
@@ -189,7 +214,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
                 is_super_admin: { type: 'boolean' },
-                token: { type: 'string' },
+                token_expires_at: { type: 'number' },
                 requires_2fa: { type: 'boolean' },
               },
             },
@@ -309,8 +334,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Generate token
-      const token = AuthService.generateToken(user.id!);
+      // Generate tokens
+      const accessToken = AuthService.generateAccessToken(user.id!);
+      const refreshToken = AuthService.generateRefreshToken(user.id!);
+      store.addRefreshToken(user.id!, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log for successful login
       store.createAuditLog(
@@ -321,7 +349,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         request.headers['user-agent']
       );
 
-      return reply.status(200).send({
+        return reply.status(200).send({
         success: true,
         data: {
           id: user.id!,
@@ -330,7 +358,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           avatar_url: AuthService.getGravatarUrl(user.email),
           is_admin: Boolean(user.is_admin),
           is_super_admin: Boolean(user.is_super_admin),
-          token,
+          token_expires_at: accessToken.expiresAt,
           requires_2fa: false,
         },
       });
@@ -439,5 +467,106 @@ export default async function authRoutes(fastify: FastifyInstance) {
         created_at: user.created_at!,
       },
     });
+  });
+
+  fastify.post('/refresh', {
+    schema: {
+      description: 'Refresh access token using a valid refresh token',
+      tags: ['Authentication'],
+      body: {
+        type: 'object',
+        properties: {
+          refresh_token: { type: 'string' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { refresh_token: refreshFromBody } = request.body as { refresh_token?: string };
+    const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
+
+    if (!refresh_token) {
+      return reply.status(400).send({ success: false, error: 'Refresh token required' });
+    }
+
+    const payload = AuthService.verifyToken(refresh_token, 'refresh');
+    if (!payload || !payload.jti) {
+      return reply.status(401).send({ success: false, error: 'Invalid refresh token' });
+    }
+
+    const tokenRecord = store.getRefreshToken(refresh_token);
+    const isExpired = tokenRecord ? new Date(tokenRecord.expires_at).getTime() <= Date.now() : true;
+    if (!tokenRecord || tokenRecord.revoked_at || isExpired) {
+      return reply.status(401).send({ success: false, error: 'Refresh token expired or revoked' });
+    }
+
+    // Rotate refresh token
+    const newAccess = AuthService.generateAccessToken(payload.userId);
+    const newRefresh = AuthService.generateRefreshToken(payload.userId);
+
+    store.revokeRefreshToken(refresh_token, newRefresh.jti);
+    store.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
+    store.cleanupRefreshTokens();
+
+    store.createAuditLog(
+      payload.userId,
+      'token_refreshed',
+      JSON.stringify({ previous_jti: payload.jti, new_jti: newRefresh.jti }),
+      getClientIp(request),
+      request.headers['user-agent']
+    );
+
+    setAuthCookies(reply, newAccess, newRefresh);
+
+    return reply.status(200).send({
+      success: true,
+      data: {
+        token_expires_at: newAccess.expiresAt,
+      },
+    });
+  });
+
+  fastify.post('/logout', {
+    schema: {
+      description: 'Logout user and revoke tokens',
+      tags: ['Authentication'],
+      body: {
+        type: 'object',
+        properties: {
+          refresh_token: { type: 'string' },
+        },
+      },
+      security: [{ bearerAuth: [] }],
+    },
+  }, async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    const accessToken = AuthService.extractTokenFromHeader(authHeader ?? '') || (request.cookies?.[ACCESS_COOKIE] as string | undefined);
+    const { refresh_token: refreshFromBody } = request.body as { refresh_token?: string };
+    const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
+
+    const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
+    if (accessPayload?.jti) {
+      const exp = accessPayload.exp ? accessPayload.exp * 1000 : Date.now();
+      store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
+    }
+
+    if (refresh_token) {
+      store.revokeRefreshToken(refresh_token, 'logout');
+    } else if (accessPayload) {
+      store.revokeAllRefreshTokensForUser(accessPayload.userId);
+    }
+
+    if (accessPayload) {
+      store.createAuditLog(
+        accessPayload.userId,
+        'logout',
+        JSON.stringify({ reason: 'user_logout' }),
+        getClientIp(request),
+        request.headers['user-agent']
+      );
+    }
+
+    clearAuthCookies(reply);
+
+    return reply.status(200).send({ success: true, message: 'Logged out' });
   });
 }

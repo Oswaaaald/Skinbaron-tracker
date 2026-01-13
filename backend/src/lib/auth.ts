@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import { z } from 'zod';
 import crypto from 'crypto';
 
@@ -38,6 +38,16 @@ import { appConfig } from './config.js';
 
 // JWT secret from config
 const JWT_SECRET = appConfig.JWT_SECRET;
+const ACCESS_TOKEN_TTL = '10m';
+const REFRESH_TOKEN_TTL = '14d';
+
+type TokenType = 'access' | 'refresh';
+
+export type TokenPayload = JwtPayload & {
+  userId: number;
+  jti: string;
+  type: TokenType;
+};
 
 export class AuthService {
   
@@ -57,22 +67,56 @@ export class AuthService {
   }
 
   /**
-   * Generate JWT token
+   * Generate short-lived access token with unique JTI
    */
-  static generateToken(userId: number): string {
-    return jwt.sign(
-      { userId },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+  static generateAccessToken(userId: number): { token: string; jti: string; expiresAt: number } {
+    const jti = crypto.randomUUID();
+    const token = jwt.sign({ userId, jti, type: 'access' satisfies TokenType }, JWT_SECRET, {
+      expiresIn: ACCESS_TOKEN_TTL,
+    });
+    const payload = this.decodeToken(token);
+    return {
+      token,
+      jti,
+      expiresAt: payload?.exp ? payload.exp * 1000 : Date.now() + 15 * 60 * 1000,
+    };
+  }
+
+  /**
+   * Generate refresh token with rotation JTI
+   */
+  static generateRefreshToken(userId: number): { token: string; jti: string; expiresAt: number } {
+    const jti = crypto.randomUUID();
+    const token = jwt.sign({ userId, jti, type: 'refresh' satisfies TokenType }, JWT_SECRET, {
+      expiresIn: REFRESH_TOKEN_TTL,
+    });
+    const payload = this.decodeToken(token);
+    return {
+      token,
+      jti,
+      expiresAt: payload?.exp ? payload.exp * 1000 : Date.now() + 30 * 24 * 60 * 60 * 1000,
+    };
   }
 
   /**
    * Verify JWT token
    */
-  static verifyToken(token: string): { userId: number } | null {
+  static verifyToken(token: string, expectedType?: TokenType): TokenPayload | null {
     try {
-      return jwt.verify(token, JWT_SECRET) as { userId: number };
+      const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+      if (expectedType && payload.type !== expectedType) return null;
+      return payload;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Decode token without verification (used for expiry computation)
+   */
+  static decodeToken(token: string): TokenPayload | null {
+    try {
+      return jwt.decode(token) as TokenPayload | null;
     } catch {
       return null;
     }

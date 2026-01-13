@@ -2,6 +2,7 @@ import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import cookie from '@fastify/cookie';
 import { appConfig } from './lib/config.js';
 import { getStore } from './lib/store.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
@@ -16,6 +17,9 @@ const fastify = Fastify({
     level: appConfig.LOG_LEVEL,
   },
 });
+
+// Attach Fastify logger to scheduler for unified logging
+getScheduler().setLogger(fastify.log);
 
 // Graceful shutdown function
 const gracefulShutdown = async (signal: string) => {
@@ -58,6 +62,10 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Register plugins
 async function registerPlugins() {
+  await fastify.register(cookie, {
+    hook: 'onRequest',
+  });
+
   // Security middleware
   await fastify.register(helmet, {
     contentSecurityPolicy: false, // Disable for API
@@ -66,12 +74,15 @@ async function registerPlugins() {
   // CORS
   await fastify.register(cors, {
     origin: (origin, callback) => {
-      // In production, allow configured frontend origin
-      const allowedOrigins = [
+      const configuredOrigins = appConfig.CORS_ORIGINS
+        ? appConfig.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+        : [];
+      const allowedOrigins = Array.from(new Set([
         appConfig.CORS_ORIGIN,
+        ...configuredOrigins,
         'https://skinbaron-tracker.oswaaaald.be',
         'http://localhost:3000',
-      ];
+      ]));
       
       // Allow requests with no origin (e.g., mobile apps, Postman)
       if (!origin) {
@@ -119,103 +130,100 @@ async function registerPlugins() {
   });
 }
 
+async function buildSystemSnapshot() {
+  const store = getStore();
+  const scheduler = getScheduler();
+
+  // Check database health
+  let dbHealth = 'healthy';
+  try {
+    await store.getStats();
+  } catch (_error) {
+    dbHealth = 'unhealthy';
+  }
+
+  // Scheduler health and stats
+  let schedulerHealth = 'unhealthy';
+  let simplifiedScheduler: Record<string, any> = {};
+  try {
+    const schedulerStats = scheduler.getStats();
+    schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
+    simplifiedScheduler = {
+      isRunning: schedulerStats.isRunning,
+      lastRunTime: schedulerStats.lastRunTime,
+      nextRunTime: schedulerStats.nextRunTime,
+      totalRuns: schedulerStats.totalRuns,
+      totalAlerts: schedulerStats.totalAlerts,
+    };
+  } catch (_error) {
+    schedulerHealth = 'unhealthy';
+  }
+
+  // SkinBaron API health (lightweight check)
+  let skinbaronHealth = 'unhealthy';
+  try {
+    const skinbaronClient = getSkinBaronClient();
+    const healthStatus = skinbaronClient.getHealthStatus();
+    if (healthStatus === 'unknown') {
+      const isConnected = await skinbaronClient.testConnection();
+      skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
+    } else {
+      skinbaronHealth = healthStatus;
+    }
+  } catch (_error) {
+    skinbaronHealth = 'unhealthy';
+  }
+
+  const services = {
+    database: dbHealth,
+    skinbaron_api: skinbaronHealth,
+    scheduler: schedulerHealth,
+  } as const;
+
+  const isHealthy = (service: string, status: string) => {
+    if (service === 'scheduler') return status === 'running' || status === 'healthy';
+    return status === 'healthy';
+  };
+
+  const allServicesHealthy = Object.entries(services).every(([service, status]) =>
+    isHealthy(service, status)
+  );
+
+  const health = {
+    status: allServicesHealthy ? 'healthy' : 'degraded',
+    timestamp: new Date().toISOString(),
+    services,
+    stats: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: appConfig.APP_VERSION,
+    },
+  };
+
+  return { health, scheduler: simplifiedScheduler };
+}
+
 // Health check endpoint
 async function setupHealthCheck() {
   fastify.get('/api/health', {
-    logLevel: 'warn' // Reduce logging for frequent health checks
+    logLevel: 'warn'
   }, async (_request, reply) => {
-    const store = getStore();
-    const _scheduler = getScheduler();
-    
-    // Check database health
-    let dbHealth = 'healthy';
-    try {
-      await store.getStats(); // Simple check to see if DB is accessible
-    } catch (_error) {
-      dbHealth = 'unhealthy';
-    }
-    
-    // Check scheduler health
-    let schedulerHealth = 'unhealthy';
-    try {
-      const schedulerStats = _scheduler.getStats();
-      schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
-    } catch (error) {
-      schedulerHealth = 'unhealthy';
-    }
-
-    // Check SkinBaron API health (lightweight check)
-    let skinbaronHealth = 'unhealthy';
-    try {
-      const skinbaronClient = getSkinBaronClient();
-      const healthStatus = skinbaronClient.getHealthStatus();
-      
-      if (healthStatus === 'unknown') {
-        // Only do actual test if we don't have recent data
-        const isConnected = await skinbaronClient.testConnection();
-        skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
-      } else {
-        skinbaronHealth = healthStatus;
-      }
-    } catch (error) {
-      skinbaronHealth = 'unhealthy';
-    }
-    
-    // Determine overall status
-    const services = {
-      database: dbHealth,
-      skinbaron_api: skinbaronHealth,
-      scheduler: schedulerHealth
-    };
-    
-    // Consider 'running' as healthy for scheduler, 'healthy' for others
-    const isHealthy = (service: string, status: string) => {
-      if (service === 'scheduler') return status === 'running' || status === 'healthy';
-      return status === 'healthy';
-    };
-    
-    const allServicesHealthy = Object.entries(services).every(([service, status]) => 
-      isHealthy(service, status)
-    );
-    
-    const status = allServicesHealthy ? 'healthy' : 'degraded';
-
-    return reply.status(200).send({
-      success: true,
-      status,
-      timestamp: new Date().toISOString(),
-      services,
-      stats: {
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        version: '2.0.0',
-      },
-    });
+    const snapshot = await buildSystemSnapshot();
+    const { health } = snapshot;
+    return reply.status(200).send({ success: true, ...health });
   });
 }
 
-// System status endpoint - Simplified for users
+// System status endpoint - now includes health snapshot
 async function setupSystemStatus() {
   fastify.get('/api/system/status', async (request, reply) => {
     try {
-      const scheduler = getScheduler();
-
-      // Get simplified scheduler status (read-only for users)
-      const schedulerStats = scheduler.getStats();
-      
-      // Only return essential information for users
-      const simplifiedStatus = {
-        isRunning: schedulerStats.isRunning,
-        lastRunTime: schedulerStats.lastRunTime,
-        nextRunTime: schedulerStats.nextRunTime,
-        totalRuns: schedulerStats.totalRuns,
-        totalAlerts: schedulerStats.totalAlerts,
-      };
-
+      const snapshot = await buildSystemSnapshot();
       return reply.status(200).send({
         success: true,
         data: {
-          scheduler: simplifiedStatus,
+          scheduler: snapshot.scheduler,
+          health: snapshot.health,
         },
       });
     } catch (error) {

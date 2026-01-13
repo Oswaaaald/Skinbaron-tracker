@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
+import { getServerSession } from "@/lib/server-api";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,11 +15,12 @@ export const metadata: Metadata = {
   description: "Monitor CS2 skins on SkinBaron with custom alerts and Discord notifications",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialAuth = await getServerSession();
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -43,7 +45,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
+          <AuthProvider initialAuth={initialAuth ?? undefined}>
             <QueryProvider>
               <div className="min-h-screen bg-background flex flex-col">
                 <main className="flex-1">

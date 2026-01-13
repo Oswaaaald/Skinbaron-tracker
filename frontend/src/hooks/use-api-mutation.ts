@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ApiResponse } from '@/lib/api';
 
 /**
  * Options for useApiMutation hook
@@ -72,8 +73,17 @@ export function useApiMutation<TData = unknown, TVariables = void, TError = Erro
     mutationOptions = {},
   } = options;
 
+  const wrappedMutationFn = async (variables: TVariables) => {
+    const result = await mutationFn(variables);
+    const maybeApi = result as ApiResponse<unknown>;
+    if (maybeApi && typeof maybeApi === 'object' && 'success' in maybeApi && maybeApi.success === false) {
+      throw new Error(maybeApi.message || maybeApi.error || 'Request failed');
+    }
+    return result;
+  };
+
   return useMutation<TData, TError, TVariables>({
-    mutationFn,
+    mutationFn: wrappedMutationFn as unknown as (variables: TVariables) => Promise<TData>,
     onSuccess: (data, variables) => {
       // Invalidate queries
       const keysArray = Array.isArray(invalidateKeys[0]) 

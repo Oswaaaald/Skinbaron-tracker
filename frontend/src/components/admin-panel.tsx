@@ -67,7 +67,7 @@ export function AdminPanel() {
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/admin/users')
+      const response = apiClient.ensureSuccess(await apiClient.get('/api/admin/users'), 'Failed to load users')
       return response.data as AdminUser[]
     },
     staleTime: 0,
@@ -79,7 +79,7 @@ export function AdminPanel() {
   const { data: pendingUsersData } = useQuery({
     queryKey: ['admin', 'pendingUsers'],
     queryFn: async () => {
-      const response = await apiClient.getPendingUsers()
+      const response = apiClient.ensureSuccess(await apiClient.getPendingUsers(), 'Failed to load pending users')
       return response.data
     },
     staleTime: 0,
@@ -91,7 +91,7 @@ export function AdminPanel() {
   const { data: statsData } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
-      const response = await apiClient.get('/api/admin/stats')
+      const response = apiClient.ensureSuccess(await apiClient.get('/api/admin/stats'), 'Failed to load stats')
       return response.data as GlobalStats
     },
     staleTime: 0,
