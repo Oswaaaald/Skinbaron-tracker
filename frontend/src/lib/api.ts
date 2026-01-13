@@ -186,10 +186,20 @@ class ApiClient {
       if (!response.ok) {
         const message = data?.message || data?.error || `HTTP ${response.status}`;
 
-        // Do not attempt refresh/logout on the public profile call (avoids kicking unauthenticated users)
         const isPublicProfileProbe = endpoint === '/api/user/profile' && options?.method === undefined;
+        const isAuthLogin = endpoint.startsWith('/api/auth/login');
+        const isAuthRegister = endpoint.startsWith('/api/auth/register');
+        const isAuthLogout = endpoint.startsWith('/api/auth/logout');
 
-        if (!isPublicProfileProbe && (response.status === 401 || response.status === 403) && allowRefresh) {
+        const shouldAttemptRefresh =
+          !isPublicProfileProbe &&
+          !isAuthLogin &&
+          !isAuthRegister &&
+          !isAuthLogout &&
+          (response.status === 401 || response.status === 403) &&
+          allowRefresh;
+
+        if (shouldAttemptRefresh) {
           const refreshed = await this.tryRefreshToken();
           if (refreshed) {
             return this.request<T>(endpoint, options, false);
@@ -246,7 +256,7 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password, totp_code: totpCode }),
-    });
+      }, false);
   }
 
   async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number } & Partial<UserProfile>>> {
@@ -256,7 +266,7 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ username, email, password }),
-    });
+      }, false);
   }
 
   async refresh() {
