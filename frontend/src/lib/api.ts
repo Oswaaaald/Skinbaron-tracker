@@ -137,6 +137,7 @@ export interface AuditLog {
 class ApiClient {
   private baseURL: string;
   private onLogout: (() => void) | null = null;
+  private onRefresh: ((expiresAt: number) => void) | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
@@ -153,6 +154,11 @@ class ApiClient {
   // Method to set logout callback
   setLogoutCallback(callback: () => void) {
     this.onLogout = callback;
+  }
+
+  // Method to set refresh callback
+  setRefreshCallback(callback: (expiresAt: number) => void) {
+    this.onRefresh = callback;
   }
 
   private async request<T>(
@@ -200,8 +206,12 @@ class ApiClient {
           allowRefresh;
 
         if (shouldAttemptRefresh) {
-          const refreshed = await this.tryRefreshToken();
-          if (refreshed) {
+          const refreshResult = await this.tryRefreshToken();
+          if (refreshResult.success) {
+            // Notify that token was refreshed
+            if (this.onRefresh && refreshResult.expiresAt) {
+              this.onRefresh(refreshResult.expiresAt);
+            }
             return this.request<T>(endpoint, options, false);
           }
           // Only trigger logout callback if refresh failed (not on initial anonymous 401)
@@ -230,7 +240,7 @@ class ApiClient {
     }
   }
 
-  private async tryRefreshToken(): Promise<boolean> {
+  private async tryRefreshToken(): Promise<{ success: boolean; expiresAt?: number }> {
     try {
       const url = `${this.baseURL}/api/auth/refresh`;
       const response = await fetch(url, {
@@ -242,14 +252,17 @@ class ApiClient {
         credentials: 'include',
       });
 
-      if (!response.ok) return false;
+      if (!response.ok) return { success: false };
       const data = await response.json();
-      return Boolean(data?.success);
+      return {
+        success: Boolean(data?.success),
+        expiresAt: data?.data?.token_expires_at,
+      };
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         logger.warn('Token refresh failed:', (error as Error).message);
       }
-      return false;
+      return { success: false };
     }
   }
 

@@ -10,11 +10,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, isReady } = useAuth()
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
 
   // Show loading spinner while checking authentication status
-  if (isLoading) {
+  if (isLoading || !isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  // Show auth form if not authenticated
+  // Show auth form if not authenticated (only after ready)
   if (!isAuthenticated) {
     return (
       <AuthForm 

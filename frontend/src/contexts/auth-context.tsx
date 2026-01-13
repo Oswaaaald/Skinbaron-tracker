@@ -77,19 +77,20 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   }, [initialAuth])
 
   // Setup logout callback for when user is deleted/invalid
-  // Only redirect if we were previously authenticated
+  // Just clear state, let ProtectedRoute handle navigation
   useEffect(() => {
     apiClient.setLogoutCallback(() => {
-      const wasAuthenticated = !!user
       setUser(null)
       setToken(null)
       setRefreshToken(null)
       setAccessExpiry(null)
-      if (wasAuthenticated) {
-        window.location.href = '/'
-      }
     })
-  }, [user])
+
+    // Setup refresh callback to update expiry when token is auto-refreshed
+    apiClient.setRefreshCallback((expiresAt: number) => {
+      setAccessExpiry(expiresAt)
+    })
+  }, [])
 
   // Keep a lightweight profile refresh on focus when authenticated
   useEffect(() => {
