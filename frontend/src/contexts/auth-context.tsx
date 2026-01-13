@@ -76,15 +76,19 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   }, [initialAuth])
 
   // Setup logout callback for when user is deleted/invalid
+  // Only redirect if we were previously authenticated
   useEffect(() => {
     apiClient.setLogoutCallback(() => {
+      const wasAuthenticated = !!user
       setUser(null)
       setToken(null)
       setRefreshToken(null)
       setAccessExpiry(null)
-      window.location.href = '/'
+      if (wasAuthenticated) {
+        window.location.href = '/'
+      }
     })
-  }, [])
+  }, [user])
 
   // Keep a lightweight profile refresh on focus when authenticated
   useEffect(() => {

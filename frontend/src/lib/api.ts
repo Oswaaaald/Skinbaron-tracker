@@ -186,13 +186,11 @@ class ApiClient {
       if (!response.ok) {
         const message = data?.message || data?.error || `HTTP ${response.status}`;
 
-        const isPublicProfileProbe = endpoint === '/api/user/profile' && options?.method === undefined;
         const isAuthLogin = endpoint.startsWith('/api/auth/login');
         const isAuthRegister = endpoint.startsWith('/api/auth/register');
         const isAuthLogout = endpoint.startsWith('/api/auth/logout');
 
         const shouldAttemptRefresh =
-          !isPublicProfileProbe &&
           !isAuthLogin &&
           !isAuthRegister &&
           !isAuthLogout &&
@@ -204,6 +202,7 @@ class ApiClient {
           if (refreshed) {
             return this.request<T>(endpoint, options, false);
           }
+          // Only trigger logout callback if refresh failed (not on initial anonymous 401)
           if (this.onLogout) {
             this.onLogout();
           }
