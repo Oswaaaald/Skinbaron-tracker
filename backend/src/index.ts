@@ -18,6 +18,9 @@ const fastify = Fastify({
   },
 });
 
+// Respect X-Forwarded-* headers from the reverse proxy for accurate client IPs
+fastify.setTrustProxy(true);
+
 // Attach Fastify logger to scheduler for unified logging
 getScheduler().setLogger(fastify.log);
 
@@ -104,7 +107,23 @@ async function registerPlugins() {
   await fastify.register(rateLimit, {
     max: appConfig.RATE_LIMIT_MAX,
     timeWindow: appConfig.RATE_LIMIT_WINDOW,
+    addHeaders: {
+      remaining: true,
+      limit: true,
+      reset: true,
+    },
+    keyGenerator: (request) => {
+      const forwardedFor = request.headers['x-forwarded-for'];
+      if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
+        return forwardedFor.split(',')[0].trim();
+      }
+
+      const accessToken = request.cookies?.access_token;
+      const refreshToken = request.cookies?.refresh_token;
+      return accessToken || refreshToken || request.ip;
+    },
     errorResponseBuilder: (_request, context) => ({
+      statusCode: 429,
       success: false,
       error: 'Rate limit exceeded',
       message: `Too many requests, please try again in ${Math.ceil(context.ttl / 1000)} seconds`,
