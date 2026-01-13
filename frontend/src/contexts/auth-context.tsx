@@ -67,6 +67,8 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         const me = await apiClient.getUserProfile({ allowRefresh: false })
         if (me.success && me.data) {
           setUser(me.data as User)
+        } else {
+          setUser(null)
         }
       } catch (_err) {
         setUser(null)

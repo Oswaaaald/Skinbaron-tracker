@@ -186,7 +186,10 @@ class ApiClient {
       if (!response.ok) {
         const message = data?.message || data?.error || `HTTP ${response.status}`;
 
-        if ((response.status === 401 || response.status === 403) && allowRefresh) {
+        // Do not attempt refresh/logout on the public profile call (avoids kicking unauthenticated users)
+        const isPublicProfileProbe = endpoint === '/api/user/profile' && options?.method === undefined;
+
+        if (!isPublicProfileProbe && (response.status === 401 || response.status === 403) && allowRefresh) {
           const refreshed = await this.tryRefreshToken();
           if (refreshed) {
             return this.request<T>(endpoint, options, false);
