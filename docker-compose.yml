@@ -18,6 +18,7 @@ services:
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      APP_VERSION: ${APP_VERSION:-dev}
 
     volumes:
       - backend_data:/app/data
