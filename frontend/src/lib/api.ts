@@ -312,6 +312,10 @@ class ApiClient {
   async refresh() {
     return this.request<{ token_expires_at?: number }>(`/api/auth/refresh`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
     }, false);
   }
 

@@ -476,14 +476,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
       description: 'Refresh access token using a valid refresh token',
       tags: ['Authentication'],
       body: {
-        type: 'object',
-        properties: {
-          refresh_token: { type: 'string' },
-        },
+        anyOf: [
+          { type: 'null' },
+          {
+            type: 'object',
+            properties: {
+              refresh_token: { type: 'string' },
+            },
+          },
+        ],
       },
     },
   }, async (request, reply) => {
-    const { refresh_token: refreshFromBody } = request.body as { refresh_token?: string };
+    const { refresh_token: refreshFromBody } = (request.body as { refresh_token?: string } | null) || {};
     const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
 
     if (!refresh_token) {
