@@ -20,9 +20,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   const cookieOptions = (expiresAt?: number) => ({
     httpOnly: true,
-    sameSite: 'lax' as const,
+    // Cross-subdomain (frontend vs API) needs SameSite=None
+    sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
     path: '/',
     secure: appConfig.NODE_ENV === 'production',
+    domain: appConfig.COOKIE_DOMAIN || undefined,
     expires: expiresAt ? new Date(expiresAt) : undefined,
   });
 

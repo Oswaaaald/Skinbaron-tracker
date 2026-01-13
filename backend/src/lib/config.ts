@@ -9,6 +9,7 @@ const ConfigSchema = z.object({
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(8080),
+  COOKIE_DOMAIN: z.string().optional(),
   
   // SkinBaron API
   SB_API_KEY: z.string().optional(),
