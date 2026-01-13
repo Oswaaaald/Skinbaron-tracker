@@ -19,6 +19,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { logger } from "@/lib/logger"
+import { useToast } from "@/hooks/use-toast"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
@@ -41,6 +42,7 @@ export function AlertsTable() {
   const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [isClearingAll, setIsClearingAll] = useState(false)
+  const { toast } = useToast()
   const limit = 20
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
@@ -63,11 +65,18 @@ export function AlertsTable() {
         queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
         syncStats()
         
-        alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
+        toast({
+          title: "✅ Alerts cleared",
+          description: response.data?.message || 'All alerts cleared successfully',
+        })
       }
     } catch (error) {
       logger.error('Failed to clear all alerts:', error)
-      alert('❌ Failed to clear alerts')
+      toast({
+        variant: "destructive",
+        title: "❌ Failed to clear alerts",
+        description: "An error occurred while clearing alerts",
+      })
     } finally {
       setIsClearingAll(false)
     }

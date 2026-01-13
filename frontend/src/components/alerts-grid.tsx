@@ -10,6 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ExternalLink, ChevronLeft, ChevronRight, Sparkles, TrendingDown, Bell } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { logger } from "@/lib/logger"
+import { useToast } from "@/hooks/use-toast"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
@@ -40,6 +41,7 @@ export function AlertsGrid() {
   const [page, setPage] = useState(0)
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [isClearingAll, setIsClearingAll] = useState(false)
+  const { toast } = useToast()
   const limit = 12
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
@@ -59,11 +61,18 @@ export function AlertsGrid() {
       if (response.success) {
         queryClient.invalidateQueries({ queryKey: ['alerts'] })
         syncStats()
-        alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
+        toast({
+          title: "✅ Alerts cleared",
+          description: response.data?.message || 'All alerts cleared successfully',
+        })
       }
     } catch (error) {
       logger.error('Failed to clear all alerts:', error)
-      alert('❌ Failed to clear alerts')
+      toast({
+        variant: "destructive",
+        title: "❌ Failed to clear alerts",
+        description: "An error occurred while clearing alerts",
+      })
     } finally {
       setIsClearingAll(false)
     }

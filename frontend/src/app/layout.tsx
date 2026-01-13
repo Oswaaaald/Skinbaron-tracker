@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/toaster";
 import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 
@@ -60,7 +60,7 @@ export default async function RootLayout({
                   </div>
                 </footer>
               </div>
-              <Toaster position="bottom-right" />
+              <Toaster />
             </QueryProvider>
           </AuthProvider>
         </ThemeProvider>

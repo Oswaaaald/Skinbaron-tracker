@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,7 @@ interface GlobalStats {
 
 export function AdminPanel() {
   const { user: currentUser } = useAuth()
+  const { toast } = useToast()
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: AdminUser | null }>({
     open: false,
     user: null,
@@ -158,10 +160,17 @@ export function AdminPanel() {
     {
       invalidateKeys: [['admin', 'stats']],
       onSuccess: () => {
-        alert('Scheduler executed successfully!')
+        toast({
+          title: "✅ Scheduler executed",
+          description: "Alerts have been checked successfully",
+        })
       },
       onError: (error) => {
-        alert(`Failed to run scheduler: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          variant: "destructive",
+          title: "❌ Scheduler failed",
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
       },
     }
   )
