@@ -88,7 +88,15 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   useEffect(() => {
     if (!user) return
 
+    let isChecking = false
+    let lastCheck = 0
+
     const checkUserProfile = async () => {
+      const now = Date.now()
+      if (isChecking) return
+      if (now - lastCheck < 30_000) return // throttle to once every 30s
+
+      isChecking = true
       try {
         const response = await apiClient.getUserProfile({ allowRefresh: true })
         if (response.success && response.data) {
@@ -102,12 +110,14 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         }
       } catch (_error) {
         // Ignore failures; will retry on next focus
+      } finally {
+        lastCheck = Date.now()
+        isChecking = false
       }
     }
 
     const handleFocus = () => checkUserProfile()
     window.addEventListener('focus', handleFocus)
-    checkUserProfile()
 
     return () => {
       window.removeEventListener('focus', handleFocus)
