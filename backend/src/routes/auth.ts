@@ -509,14 +509,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
     store.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
     store.cleanupRefreshTokens();
 
-    store.createAuditLog(
-      payload.userId,
-      'token_refreshed',
-      JSON.stringify({ previous_jti: payload.jti, new_jti: newRefresh.jti }),
-      getClientIp(request),
-      request.headers['user-agent']
-    );
-
     setAuthCookies(reply, newAccess, newRefresh);
 
     return reply.status(200).send({
