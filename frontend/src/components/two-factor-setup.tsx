@@ -18,6 +18,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AlertCircle, CheckCircle, Copy, Shield } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { useToast } from '@/hooks/use-toast'
 
 interface TwoFactorSetupProps {
   open: boolean
@@ -25,6 +26,7 @@ interface TwoFactorSetupProps {
 }
 
 export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
+  const { toast } = useToast()
   const [step, setStep] = useState<'qr' | 'verify' | 'codes'>('qr')
   const [verificationCode, setVerificationCode] = useState('')
   const [secret, setSecret] = useState('')
@@ -66,10 +68,19 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
           setRecoveryCodes(response.data.recovery_codes)
           setStep('codes')
           setError('')
+          toast({
+            title: "✅ 2FA enabled",
+            description: "Two-factor authentication has been enabled successfully",
+          })
         }
       },
       onError: (error: any) => {
         setError(error.message || 'Invalid verification code')
+        toast({
+          variant: "destructive",
+          title: "❌ Verification failed",
+          description: error.message || 'Invalid verification code',
+        })
       },
     }
   )

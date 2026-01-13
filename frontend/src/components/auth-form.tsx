@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
+import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +18,7 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const { login, register } = useAuth()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -112,18 +114,47 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           setError('') // Clear any previous errors
         } else if (result.error === 'Account pending approval') {
           setError('Your account is awaiting admin approval. Please check back later.')
+          toast({
+            variant: "destructive",
+            title: "❌ Account pending",
+            description: "Your account is awaiting admin approval",
+          })
         } else {
           setError(result.error || `${mode} failed`)
+          toast({
+            variant: "destructive",
+            title: `❌ ${mode === 'login' ? 'Login' : 'Registration'} failed`,
+            description: result.error || `${mode} failed`,
+          })
         }
-      } else if (mode === 'register') {
+      } else {
+        // Success toast
+        if (mode === 'login') {
+          toast({
+            title: "✅ Welcome back!",
+            description: "You have been logged in successfully",
+          })
+        }
+        
+        if (mode === 'register') {
         // Registration successful but pending approval
         if (result.error && result.error.includes('awaiting admin approval')) {
           setError('Registration successful! Your account is awaiting admin approval.')
+          toast({
+            title: "✅ Account created",
+            description: "Your account is awaiting admin approval",
+          })
           // Redirect to login after 2 seconds
           setTimeout(() => {
             onToggleMode()
           }, 2000)
+        } else {
+          toast({
+            title: "✅ Account created",
+            description: "Your account has been created successfully",
+          })
         }
+      }
       }
       // If successful login, the auth context will handle the redirect
     } catch (error) {

@@ -24,6 +24,7 @@ import { TwoFactorSetup } from '@/components/two-factor-setup'
 import { SecurityHistory } from '@/components/security-history'
 import { useFormState } from '@/hooks/use-form-state'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { useToast } from '@/hooks/use-toast'
 
 interface UserStats {
   rules_count: number
@@ -34,6 +35,7 @@ interface UserStats {
 export function ProfileSettings() {
   const { user, logout, updateUser } = useAuth()
   const { state: formState, setError, setSuccess, clear } = useFormState()
+  const { toast } = useToast()
   
   const [username, setUsername] = useState(user?.username || '')
   const [email, setEmail] = useState(user?.email || '')
@@ -82,10 +84,19 @@ export function ProfileSettings() {
             is_admin: userData.is_admin,
           })
         }
+        toast({
+          title: "✅ Profile updated",
+          description: "Your profile has been updated successfully",
+        })
         setSuccess('profile', 'Profile updated successfully')
       },
       onError: (error: any) => {
         const errorMsg = error?.message || error?.error || 'Failed to update profile'
+        toast({
+          variant: "destructive",
+          title: "❌ Update failed",
+          description: errorMsg,
+        })
         setError('profile', errorMsg)
       },
     }
@@ -97,6 +108,10 @@ export function ProfileSettings() {
     {
       successMessage: 'Password updated successfully',
       onSuccess: () => {
+        toast({
+          title: "✅ Password changed",
+          description: "Your password has been updated successfully",
+        })
         setSuccess('password', 'Password updated successfully')
         setCurrentPassword('')
         setNewPassword('')
@@ -104,6 +119,11 @@ export function ProfileSettings() {
       },
       onError: (error: any) => {
         const errorMsg = error?.message || error?.error || 'Failed to update password'
+        toast({
+          variant: "destructive",
+          title: "❌ Password update failed",
+          description: errorMsg,
+        })
         setError('password', errorMsg)
       },
     }
@@ -114,6 +134,10 @@ export function ProfileSettings() {
     () => apiClient.delete('/api/user/account'),
     {
       onSuccess: () => {
+        toast({
+          title: "✅ Account deleted",
+          description: "Your account has been permanently deleted",
+        })
         logout()
       },
       onError: (error: any) => {
@@ -140,6 +164,10 @@ export function ProfileSettings() {
       invalidateKeys: [['2fa-status']],
       successMessage: 'Two-factor authentication disabled successfully',
       onSuccess: () => {
+        toast({
+          title: "✅ 2FA disabled",
+          description: "Two-factor authentication has been disabled",
+        })
         setSuccess('general', 'Two-factor authentication disabled successfully')
         clear('twoFactor')
         setDisableTwoFactorDialog(false)
@@ -147,6 +175,11 @@ export function ProfileSettings() {
       },
       onError: (error: any) => {
         const errorMsg = error?.message || error?.error || 'Failed to disable 2FA'
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to disable 2FA",
+          description: errorMsg,
+        })
         setError('twoFactor', errorMsg)
       },
     }
