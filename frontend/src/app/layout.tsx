@@ -45,7 +45,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider initialAuth={initialAuth ?? undefined}>
+          <AuthProvider initialAuth={initialAuth}>
             <QueryProvider>
               <div className="min-h-screen bg-background flex flex-col">
                 <main className="flex-1">
