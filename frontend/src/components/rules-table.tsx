@@ -29,12 +29,14 @@ import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import { useToast } from "@/hooks/use-toast"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
+  const { toast } = useToast()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
     queryKey: ['rules'],
@@ -112,10 +114,21 @@ export function RulesTable() {
     },
     {
       invalidateKeys: [['rules'], ['admin', 'stats']],
-      successMessage: 'Rule updated successfully',
-      errorMessage: 'Failed to update rule',
-      onSuccess: () => {
+      onSuccess: (_, { enabled }) => {
+        toast({
+          title: enabled ? "✅ Rule enabled" : "⚠️ Rule disabled",
+          description: enabled 
+            ? "Rule is now active and monitoring items" 
+            : "Rule has been paused",
+        })
         syncStats() // Sync stats immediately after rule change
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to update rule",
+          description: error?.message || "An error occurred",
+        })
       },
     }
   )
@@ -124,10 +137,19 @@ export function RulesTable() {
     (id: number) => apiClient.deleteRule(id),
     {
       invalidateKeys: [['rules'], ['admin', 'stats']],
-      successMessage: 'Rule deleted successfully',
-      errorMessage: 'Failed to delete rule',
       onSuccess: () => {
+        toast({
+          title: "✅ Rule deleted",
+          description: "The monitoring rule has been permanently deleted",
+        })
         syncStats() // Sync stats immediately after rule deletion
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to delete rule",
+          description: error?.message || "An error occurred",
+        })
       },
     }
   )

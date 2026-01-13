@@ -107,7 +107,18 @@ export function AdminPanel() {
     {
       invalidateKeys: [['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
+        toast({
+          title: "✅ User deleted",
+          description: "User account has been permanently deleted",
+        })
         setDeleteDialog({ open: false, user: null })
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to delete user",
+          description: error?.message || "An error occurred",
+        })
       },
     }
   )
@@ -118,10 +129,23 @@ export function AdminPanel() {
       apiClient.patch(`/api/admin/users/${userId}/admin`, { is_admin: isAdmin }),
     {
       invalidateKeys: [['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
-      onSuccess: () => {
+      onSuccess: (_, { isAdmin }) => {
+        toast({
+          title: isAdmin ? "✅ Admin granted" : "✅ Admin revoked",
+          description: isAdmin 
+            ? "User has been granted admin privileges" 
+            : "Admin privileges have been revoked",
+        })
         // Force all connected users to refresh their profile immediately
         window.dispatchEvent(new CustomEvent('user-profile-changed'))
         setAdminDialog({ open: false, user: null, action: 'grant' })
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to update admin status",
+          description: error?.message || "An error occurred",
+        })
       },
     }
   )
@@ -132,7 +156,18 @@ export function AdminPanel() {
     {
       invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
+        toast({
+          title: "✅ User approved",
+          description: "User account has been approved and activated",
+        })
         setpendingUserDialog({ open: false, userId: null, action: 'approve' })
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to approve user",
+          description: error?.message || "An error occurred",
+        })
       },
     }
   )
@@ -143,7 +178,18 @@ export function AdminPanel() {
     {
       invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'stats'], ['admin-audit-logs']],
       onSuccess: () => {
+        toast({
+          title: "✅ User rejected",
+          description: "User registration has been rejected",
+        })
         setpendingUserDialog({ open: false, userId: null, action: 'reject' })
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to reject user",
+          description: error?.message || "An error occurred",
+        })
       },
     }
   )

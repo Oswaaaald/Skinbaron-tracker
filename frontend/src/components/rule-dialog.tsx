@@ -31,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { toast } from "sonner"
 import { apiClient, type Rule, type CreateRuleData } from "@/lib/api"
 import { wearToPercentage, percentageToWear } from "@/lib/wear-utils"
 import { useQuery } from "@tanstack/react-query"
@@ -39,6 +38,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { ItemCombobox } from "@/components/ui/item-combobox"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import { useToast } from "@/hooks/use-toast"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
@@ -66,6 +66,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
   useAuth()
   const { syncStats } = useSyncStats()
+  const { toast } = useToast()
   const isEditing = !!rule
 
   // Local state for display values (separate from form values)
@@ -159,16 +160,27 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       invalidateKeys: [['rules'], ['admin', 'stats']],
       onSuccess: (result) => {
         if (result.success) {
-          toast.success("Rule created successfully!")
+          toast({
+            title: "✅ Rule created",
+            description: "Your rule has been created successfully",
+          })
           syncStats() // Sync stats immediately after rule creation
           onOpenChange(false)
         } else {
-          toast.error(result.error || "Failed to create rule")
+          toast({
+            variant: "destructive",
+            title: "❌ Failed to create rule",
+            description: result.error || "Failed to create rule",
+          })
         }
         setIsSubmitting(false)
       },
       onError: (error) => {
-        toast.error(`Failed to create rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to create rule",
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
         setIsSubmitting(false)
       },
     }
@@ -181,16 +193,27 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       invalidateKeys: [['rules'], ['admin', 'stats']],
       onSuccess: (result) => {
         if (result.success) {
-          toast.success("Rule updated successfully!")
+          toast({
+            title: "✅ Rule updated",
+            description: "Your rule has been updated successfully",
+          })
           syncStats() // Sync stats immediately after rule update
           onOpenChange(false)
         } else {
-          toast.error(result.error || "Failed to update rule")
+          toast({
+            variant: "destructive",
+            title: "❌ Failed to update rule",
+            description: result.error || "Failed to update rule",
+          })
         }
         setIsSubmitting(false)
       },
       onError: (error) => {
-        toast.error(`Failed to update rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to update rule",
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
         setIsSubmitting(false)
       },
     }
@@ -221,7 +244,11 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         createRuleMutation.mutate(createData)
       }
     } catch (error) {
-      toast.error(`Failed to submit rule: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast({
+        variant: "destructive",
+        title: "❌ Failed to submit rule",
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
       setIsSubmitting(false)
     }
   }

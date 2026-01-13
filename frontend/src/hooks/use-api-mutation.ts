@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { ApiResponse } from '@/lib/api';
 
 /**
@@ -98,7 +98,10 @@ export function useApiMutation<TData = unknown, TVariables = void, TError = Erro
       
       // Show success toast
       if (successMessage) {
-        toast.success(successMessage);
+        toast({
+          title: "✅ Success",
+          description: successMessage,
+        });
       }
       
       // Call custom success callback
@@ -107,7 +110,11 @@ export function useApiMutation<TData = unknown, TVariables = void, TError = Erro
     onError: (error, variables) => {
       // Show error toast if errorMessage provided and no custom error handler
       if (errorMessage && !onError) {
-        toast.error(errorMessage);
+        toast({
+          variant: "destructive",
+          title: "❌ Error",
+          description: errorMessage,
+        });
       }
       
       // Call custom error callback
