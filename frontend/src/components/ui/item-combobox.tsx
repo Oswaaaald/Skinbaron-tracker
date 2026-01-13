@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { logger } from "@/lib/logger"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -63,7 +64,7 @@ export function ItemCombobox({
           setSuggestions([])
         }
       } catch (error) {
-        console.error("Failed to fetch item suggestions:", error)
+        logger.error("Failed to fetch item suggestions:", error)
         setSuggestions([])
       } finally {
         setIsLoading(false)

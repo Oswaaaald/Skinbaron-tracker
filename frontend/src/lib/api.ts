@@ -1,5 +1,7 @@
 // API Client for SkinBaron Tracker Backend
 
+import { logger } from './logger';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export class ApiError extends Error {
@@ -222,7 +224,7 @@ class ApiClient {
     } catch (error) {
       const message = (error as Error).message || 'Network error';
       if (process.env.NODE_ENV === 'development') {
-        console.warn('API request failed:', message);
+        logger.warn('API request failed:', message);
       }
       return { success: false, error: message, message } as ApiResponse<T>;
     }
@@ -245,7 +247,7 @@ class ApiClient {
       return Boolean(data?.success);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Token refresh failed:', (error as Error).message);
+        logger.warn('Token refresh failed:', (error as Error).message);
       }
       return false;
     }

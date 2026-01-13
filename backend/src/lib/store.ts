@@ -4,6 +4,7 @@ import { appConfig } from './config.js';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import crypto from 'crypto';
+import { migrationLogger } from './migration-logger.js';
 
 /**
  * DELETION POLICY
@@ -288,7 +289,7 @@ export class Store {
 
     if (hasIsAdmin.count === 0) {
       this.db.exec(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0`);
-      console.log('✅ Migration: Added is_admin column to users table');
+      migrationLogger.info('Migration: Added is_admin column to users table');
     }
 
     // Migration: Add is_super_admin column if it doesn't exist
@@ -298,13 +299,13 @@ export class Store {
 
     if (hasIsSuperAdmin.count === 0) {
       this.db.exec(`ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT 0`);
-      console.log('✅ Migration: Added is_super_admin column to users table');
+      migrationLogger.info('Migration: Added is_super_admin column to users table');
       
       // Make the first user a super admin if exists
       const firstUser = this.db.prepare('SELECT id FROM users ORDER BY id LIMIT 1').get() as { id: number } | undefined;
       if (firstUser) {
         this.db.prepare('UPDATE users SET is_super_admin = 1, is_admin = 1 WHERE id = ?').run(firstUser.id);
-        console.log(`✅ Migration: Made first user (ID: ${firstUser.id}) a super admin`);
+        migrationLogger.info(`Migration: Made first user (ID: ${firstUser.id}) a super admin`);
       }
     }
 
@@ -315,11 +316,11 @@ export class Store {
 
     if (hasIsApproved.count === 0) {
       this.db.exec(`ALTER TABLE users ADD COLUMN is_approved BOOLEAN DEFAULT 0`);
-      console.log('✅ Migration: Added is_approved column to users table');
+      migrationLogger.info('Migration: Added is_approved column to users table');
       
       // Approve all existing users
       this.db.prepare('UPDATE users SET is_approved = 1').run();
-      console.log('✅ Migration: Approved all existing users');
+      migrationLogger.info('Migration: Approved all existing users');
     }
 
     // Migration: Add new filter columns to rules table if they don't exist
@@ -332,7 +333,7 @@ export class Store {
       this.db.exec(`ALTER TABLE rules ADD COLUMN stattrak_filter TEXT DEFAULT 'all'`);
       this.db.exec(`ALTER TABLE rules ADD COLUMN souvenir_filter TEXT DEFAULT 'all'`);
       this.db.exec(`ALTER TABLE rules ADD COLUMN allow_stickers BOOLEAN DEFAULT 1`);
-      console.log('✅ Migration: Added filter columns to rules table');
+      migrationLogger.info('Migration: Added filter columns to rules table');
       
       // Migrate old boolean stattrak/souvenir values to new filter format
       this.db.exec(`
@@ -341,7 +342,7 @@ export class Store {
             souvenir_filter = CASE WHEN souvenir = 1 THEN 'only' ELSE 'all' END
         WHERE stattrak_filter IS NULL OR souvenir_filter IS NULL
       `);
-      console.log('✅ Migration: Migrated old stattrak/souvenir values to new filter format');
+      migrationLogger.info('Migration: Migrated old stattrak/souvenir values to new filter format');
     }
 
     // Migration: Add 2FA columns if they don't exist
@@ -353,7 +354,7 @@ export class Store {
       this.db.exec(`ALTER TABLE users ADD COLUMN totp_secret TEXT`);
       this.db.exec(`ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN DEFAULT 0`);
       this.db.exec(`ALTER TABLE users ADD COLUMN recovery_codes TEXT`);
-      console.log('✅ Migration: Added 2FA columns to users table');
+      migrationLogger.info('Migration: Added 2FA columns to users table');
     }
 
     // Migration: Add encrypted 2FA columns and migrate existing data
@@ -395,7 +396,7 @@ export class Store {
       }
       
       if (encryptedCount > 0) {
-        console.log(`✅ Migration: Encrypted 2FA secrets for ${encryptedCount} users`);
+        migrationLogger.info(`Migration: Encrypted 2FA secrets for ${encryptedCount} users`);
       }
     }
 
@@ -408,8 +409,8 @@ export class Store {
     `).get() as { count: number };
 
     if (hasLegacyTotpSecret.count > 0) {
-      console.log('ℹ️  Migration: Legacy 2FA columns detected but NOT dropped to preserve data integrity');
-      console.log('ℹ️  Columns totp_secret and recovery_codes are NULL and unused, only encrypted columns are active');
+      migrationLogger.info('Migration: Legacy 2FA columns detected but NOT dropped to preserve data integrity');
+      migrationLogger.info('Columns totp_secret and recovery_codes are NULL and unused, only encrypted columns are active');
     }
 
     // Migration: Create audit_log table if it doesn't exist
@@ -434,7 +435,7 @@ export class Store {
         CREATE INDEX idx_audit_log_event_type ON audit_log(event_type);
         CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
       `);
-      console.log('✅ Migration: Created audit_log table');
+      migrationLogger.info('Migration: Created audit_log table');
     }
 
     // Create admin actions audit log table
@@ -496,7 +497,7 @@ export class Store {
     `).get() as { count: number };
 
     if (hasTargetUserFK.count === 0) {
-      console.log('🔄 Migration: Adding FK constraint on admin_actions.target_user_id');
+      migrationLogger.info('Migration: Adding FK constraint on admin_actions.target_user_id');
       
       // SQLite doesn't support ALTER TABLE ADD CONSTRAINT, so we need to recreate the table
       this.db.exec(`
@@ -528,7 +529,7 @@ export class Store {
         CREATE INDEX idx_admin_actions_created ON admin_actions(created_at);
       `);
       
-      console.log('✅ Migration: FK constraint added successfully');
+      migrationLogger.info('Migration: FK constraint added successfully');
     }
 
     // Migration: Ensure rules.user_id column uses INTEGER type
@@ -537,7 +538,7 @@ export class Store {
     `).get() as { type?: string } | undefined;
 
     if (userIdColumn && userIdColumn.type && userIdColumn.type.toUpperCase() !== 'INTEGER') {
-      console.log('🔄 Migration: Rebuilding rules table to use INTEGER user_id');
+      migrationLogger.info('Migration: Rebuilding rules table to use INTEGER user_id');
 
       this.db.exec(`
         DROP TABLE IF EXISTS rules_type_fix;
@@ -575,7 +576,7 @@ export class Store {
         CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules(enabled);
       `);
 
-      console.log('✅ Migration: rules.user_id now INTEGER with enforced FK');
+      migrationLogger.info('Migration: rules.user_id now INTEGER with enforced FK');
     }
 
     // Migration: Add CASCADE delete for orphaned data
@@ -587,7 +588,7 @@ export class Store {
     const needsRulesConstraint = hasUserIdConstraint && !hasUserIdConstraint.sql.includes('FOREIGN KEY');
 
     if (needsRulesConstraint) {
-      console.log('🔄 Migration: Adding CASCADE constraints to rules table...');
+      migrationLogger.info('Migration: Adding CASCADE constraints to rules table...');
       
       try {
         // SQLite doesn't support ALTER TABLE for foreign keys, so we need to recreate the table
@@ -635,9 +636,9 @@ export class Store {
           CREATE INDEX idx_rules_enabled ON rules (enabled);
         `);
 
-        console.log('✅ Migration: Added CASCADE constraints to rules table');
+        migrationLogger.info('Migration: Added CASCADE constraints to rules table');
       } catch (error: any) {
-        console.error('❌ Migration failed:', error.message);
+        migrationLogger.error('Migration failed:', error);
         throw error;
       }
     }
@@ -645,7 +646,7 @@ export class Store {
     } finally {
       // Re-enable foreign keys after all migrations
       this.db.pragma('foreign_keys = ON');
-      console.log('✅ Foreign keys re-enabled');
+      migrationLogger.info('Foreign keys re-enabled');
     }
   }
 
@@ -1151,7 +1152,7 @@ export class Store {
       const result = this.execute('DELETE FROM users WHERE id = ?', id);
       return result.changes > 0;
     } catch (error: any) {
-      console.error('Error deleting user:', {
+      migrationLogger.error('Error deleting user:', {
         message: error.message,
         code: error.code,
         userId: id
@@ -1543,7 +1544,7 @@ export class Store {
       const result = stmt.run(isAdmin ? 1 : 0, new Date().toISOString(), userId);
       return result.changes > 0;
     } catch (error) {
-      console.error('Error toggling user admin:', error);
+      migrationLogger.error('Error toggling user admin:', error);
       throw error;
     }
   }
@@ -1572,7 +1573,7 @@ export class Store {
       `);
       stmt.run(adminUserId, action, targetUserId, details, new Date().toISOString());
     } catch (error) {
-      console.error('Error logging admin action:', error);
+      migrationLogger.error('Error logging admin action:', error);
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { apiClient, ApiError } from '@/lib/api'
+import { logger } from '@/lib/logger'
 
 export interface User {
   id: number
@@ -157,7 +158,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       }
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'
-      console.error('Login error:', error)
+      logger.error('Login error:', error)
       return { success: false, requires2FA: false, error: message }
     }
   }
@@ -189,7 +190,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       }
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'
-      console.error('Registration error:', error)
+      logger.error('Registration error:', error)
       return { success: false, error: message }
     }
   }

@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient } from "@/lib/api"
+import { logger } from "@/lib/logger"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
@@ -65,7 +66,7 @@ export function AlertsTable() {
         alert(`✅ ${response.data?.message || 'All alerts cleared successfully'}`)
       }
     } catch (error) {
-      console.error('Failed to clear all alerts:', error)
+      logger.error('Failed to clear all alerts:', error)
       alert('❌ Failed to clear alerts')
     } finally {
       setIsClearingAll(false)
