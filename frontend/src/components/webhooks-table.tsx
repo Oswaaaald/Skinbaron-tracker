@@ -17,6 +17,7 @@ import { Edit, Trash2, Shield } from 'lucide-react'
 import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface WebhookFormData {
   name: string
@@ -34,6 +35,8 @@ const initialFormData: WebhookFormData = {
 
 export function WebhooksTable() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null)
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null)
   const [formData, setFormData] = useState<WebhookFormData>(initialFormData)
   const [error, setError] = useState('')
@@ -150,9 +153,15 @@ export function WebhooksTable() {
   }
 
   const handleDelete = (webhook: Webhook) => {
-    if (confirm(`Are you sure you want to delete "${webhook.name}"?`)) {
-      deleteWebhookMutation.mutate(webhook.id!)
+    setWebhookToDelete(webhook)
+    setDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (webhookToDelete?.id) {
+      deleteWebhookMutation.mutate(webhookToDelete.id)
     }
+    setWebhookToDelete(null)
   }
 
   const getWebhookTypeColor = (type: string) => {
@@ -357,6 +366,16 @@ export function WebhooksTable() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Webhook"
+        description={`Are you sure you want to delete "${webhookToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

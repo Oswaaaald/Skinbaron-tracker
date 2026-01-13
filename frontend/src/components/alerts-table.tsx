@@ -24,6 +24,7 @@ import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 const ALERT_TYPE_LABELS = {
   match: 'Rule Match',
@@ -42,6 +43,7 @@ export function AlertsTable() {
   const [search, setSearch] = useState('')
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [isClearingAll, setIsClearingAll] = useState(false)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const { toast } = useToast()
   const limit = 20
   const queryClient = useQueryClient()
@@ -49,12 +51,12 @@ export function AlertsTable() {
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
-  const handleClearAllAlerts = async () => {
+  const handleClearAllAlerts = () => {
+    setClearConfirmOpen(true)
+  }
+
+  const confirmClear = async () => {
     if (isClearingAll) return
-    
-    if (!confirm('⚠️ Are you sure you want to delete ALL your alerts? This cannot be undone.')) {
-      return
-    }
     
     setIsClearingAll(true)
     try {
@@ -341,6 +343,16 @@ export function AlertsTable() {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onOpenChange={setClearConfirmOpen}
+        title="Clear All Alerts"
+        description="This will permanently delete all your alerts. This action cannot be undone."
+        confirmText="Delete All"
+        variant="destructive"
+        onConfirm={confirmClear}
+      />
     </div>
   )
 }

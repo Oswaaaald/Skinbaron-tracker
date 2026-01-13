@@ -30,10 +30,13 @@ import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useApiMutation } from "@/hooks/use-api-mutation"
 import { useToast } from "@/hooks/use-toast"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [ruleToDelete, setRuleToDelete] = useState<Rule | null>(null)
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
@@ -166,9 +169,15 @@ export function RulesTable() {
   }
 
   const handleDelete = (rule: Rule) => {
-    if (rule.id && confirm('Are you sure you want to delete this rule?')) {
-      deleteRuleMutation.mutate(rule.id)
+    setRuleToDelete(rule)
+    setDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (ruleToDelete?.id) {
+      deleteRuleMutation.mutate(ruleToDelete.id)
     }
+    setRuleToDelete(null)
   }
 
   if (isLoading) {
@@ -336,6 +345,18 @@ export function RulesTable() {
           if (!open) setEditingRule(null)
         }}
         rule={editingRule}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Rule"
+        description={`Are you sure you want to delete the rule for "${ruleToDelete?.search_item}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={confirmDelete}
       />
     </>
   )

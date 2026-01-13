@@ -13,6 +13,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,7 @@ export function AdminPanel() {
     userId: null,
     action: 'approve',
   })
+  const [schedulerConfirmOpen, setSchedulerConfirmOpen] = useState(false)
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading } = useQuery({
@@ -251,9 +253,11 @@ export function AdminPanel() {
   }
 
   const handleForceScheduler = () => {
-    if (confirm('Force the scheduler to run now? This will check all enabled rules immediately.')) {
-      forceSchedulerMutation.mutate()
-    }
+    setSchedulerConfirmOpen(true)
+  }
+
+  const confirmScheduler = () => {
+    forceSchedulerMutation.mutate()
   }
 
   if (usersLoading) {
@@ -645,6 +649,17 @@ export function AdminPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Scheduler Confirmation Dialog */}
+      <ConfirmDialog
+        open={schedulerConfirmOpen}
+        onOpenChange={setSchedulerConfirmOpen}
+        title="Run Scheduler"
+        description="Force the scheduler to run now? This will check all enabled rules immediately."
+        confirmText="Run Now"
+        variant="default"
+        onConfirm={confirmScheduler}
+      />
 
       {/* Super Admin Audit Logs Section */}
       {currentUser?.is_super_admin && <AdminAuditLogs />}
