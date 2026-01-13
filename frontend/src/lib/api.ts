@@ -265,6 +265,10 @@ class ApiClient {
   async logout() {
     return this.request<{ message: string }>(`/api/auth/logout`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
     }, false);
   }
 
