@@ -57,13 +57,6 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
-        // If no initial session is provided, avoid probing the profile endpoint while unauthenticated
-        if (!initialAuth) {
-          setIsLoading(false)
-          setIsReady(true)
-          return
-        }
-
         const me = await apiClient.getUserProfile({ allowRefresh: false })
         if (me.success && me.data) {
           setUser(me.data as User)
