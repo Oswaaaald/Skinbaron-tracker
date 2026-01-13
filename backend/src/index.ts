@@ -16,10 +16,9 @@ const fastify = Fastify({
   logger: {
     level: appConfig.LOG_LEVEL,
   },
+  // Respect X-Forwarded-* headers from the reverse proxy for accurate client IPs
+  trustProxy: true,
 });
-
-// Respect X-Forwarded-* headers from the reverse proxy for accurate client IPs
-fastify.setTrustProxy(true);
 
 // Attach Fastify logger to scheduler for unified logging
 getScheduler().setLogger(fastify.log);
@@ -108,19 +107,23 @@ async function registerPlugins() {
     max: appConfig.RATE_LIMIT_MAX,
     timeWindow: appConfig.RATE_LIMIT_WINDOW,
     addHeaders: {
-      remaining: true,
-      limit: true,
-      reset: true,
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true,
     },
     keyGenerator: (request) => {
       const forwardedFor = request.headers['x-forwarded-for'];
       if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
-        return forwardedFor.split(',')[0].trim();
+        const clientIp = forwardedFor.split(',')[0];
+        if (clientIp) {
+          return clientIp.trim();
+        }
       }
 
-      const accessToken = request.cookies?.access_token;
-      const refreshToken = request.cookies?.refresh_token;
-      return accessToken || refreshToken || request.ip;
+      const cookies = (request as any).cookies as Record<string, string | undefined> | undefined;
+      const accessToken = cookies?.access_token;
+      const refreshToken = cookies?.refresh_token;
+      return accessToken ?? refreshToken ?? request.ip ?? 'unknown';
     },
     errorResponseBuilder: (_request, context) => ({
       statusCode: 429,
