@@ -57,7 +57,8 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
-        const me = await apiClient.getUserProfile()
+        // Don't trigger refresh/logout when no session yet
+        const me = await apiClient.getUserProfile({ allowRefresh: false })
         if (me.success && me.data) {
           setUser(me.data as User)
         }
@@ -89,7 +90,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
 
     const checkUserProfile = async () => {
       try {
-        const response = await apiClient.getUserProfile()
+        const response = await apiClient.getUserProfile({ allowRefresh: true })
         if (response.success && response.data) {
           updateUser({
             username: response.data.username,

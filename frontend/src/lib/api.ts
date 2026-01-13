@@ -493,7 +493,7 @@ class ApiClient {
   }
 
   // Get current user profile
-  async getUserProfile(): Promise<ApiResponse<{
+  async getUserProfile(options?: { allowRefresh?: boolean }): Promise<ApiResponse<{
     id: number;
     username: string;
     email: string;
@@ -501,7 +501,7 @@ class ApiClient {
     is_admin: boolean;
     is_super_admin: boolean;
   }>> {
-    return this.request('/api/user/profile', { method: 'GET' });
+    return this.request('/api/user/profile', { method: 'GET' }, options?.allowRefresh ?? true);
   }
 
   // Generic DELETE method for admin endpoints
