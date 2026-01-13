@@ -112,6 +112,16 @@ async function registerPlugins() {
       'x-ratelimit-reset': true,
     },
     keyGenerator: (request) => {
+      const cfConnectingIp = request.headers['cf-connecting-ip'];
+      if (typeof cfConnectingIp === 'string' && cfConnectingIp.trim()) {
+        return cfConnectingIp.trim();
+      }
+
+      const realIp = request.headers['x-real-ip'];
+      if (typeof realIp === 'string' && realIp.trim()) {
+        return realIp.trim();
+      }
+
       const forwardedFor = request.headers['x-forwarded-for'];
       if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
         const clientIp = forwardedFor.split(',')[0];

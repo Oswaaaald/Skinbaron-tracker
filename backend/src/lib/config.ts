@@ -33,7 +33,7 @@ const ConfigSchema = z.object({
   // API
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   CORS_ORIGINS: z.string().optional(),
-  RATE_LIMIT_MAX: z.coerce.number().default(100),
+  RATE_LIMIT_MAX: z.coerce.number().default(1000),
   RATE_LIMIT_WINDOW: z.coerce.number().default(60000),
   
   // Logging
