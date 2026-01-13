@@ -487,17 +487,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
 
     if (!refresh_token) {
+      request.log.warn({ cookies: request.cookies }, 'Refresh token missing');
       return reply.status(400).send({ success: false, error: 'Refresh token required' });
     }
 
     const payload = AuthService.verifyToken(refresh_token, 'refresh');
     if (!payload || !payload.jti) {
+      request.log.warn({ hasToken: !!refresh_token }, 'Invalid refresh token signature');
       return reply.status(401).send({ success: false, error: 'Invalid refresh token' });
     }
 
     const tokenRecord = store.getRefreshToken(refresh_token);
     const isExpired = tokenRecord ? new Date(tokenRecord.expires_at).getTime() <= Date.now() : true;
     if (!tokenRecord || tokenRecord.revoked_at || isExpired) {
+      request.log.warn({ 
+        hasRecord: !!tokenRecord, 
+        isRevoked: tokenRecord?.revoked_at ? true : false,
+        isExpired,
+        jti: payload.jti 
+      }, 'Refresh token expired or revoked');
       return reply.status(401).send({ success: false, error: 'Refresh token expired or revoked' });
     }
 
