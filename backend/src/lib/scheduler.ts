@@ -199,6 +199,9 @@ export class AlertScheduler {
       let skippedAlreadyProcessed = 0;
       let skippedByFilters = 0;
       
+      // Collect all matching items first, then batch create alerts
+      const matchingItems: typeof response.items = [];
+      
       for (const item of response.items) {
         // Check if already processed for this rule
         if (this.store.isProcessed(item.saleId, rule.id)) {
@@ -210,12 +213,6 @@ export class AlertScheduler {
         // Filter StatTrak based on rule
         const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
         if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
-          this.logger.info({ 
-            ruleId: rule.id, 
-            itemName: item.itemName, 
-            itemStatTrak: item.statTrak,
-            reason: 'Not StatTrak' 
-          }, '[Scheduler] Item filtered');
           skippedByFilters++;
           continue;
         }
@@ -239,12 +236,6 @@ export class AlertScheduler {
         // allow_stickers = true means accept items with stickers
         // allow_stickers = false means reject items with stickers
         if (!rule.allow_stickers && item.hasStickers) {
-          this.logger.info({ 
-            ruleId: rule.id, 
-            itemName: item.itemName, 
-            hasStickers: item.hasStickers,
-            reason: 'Has stickers' 
-          }, '[Scheduler] Item filtered');
           skippedByFilters++;
           continue; // Skip items with stickers if not allowed
         }
@@ -259,79 +250,66 @@ export class AlertScheduler {
           statTrak: statTrakParam,
           souvenir: souvenirParam,
         })) {
-          this.logger.info({ 
-            ruleId: rule.id, 
-            itemName: item.itemName,
-            price: item.price,
-            wear: item.wearValue,
-            statTrak: item.statTrak,
-            ruleFilters: {
-              minPrice: rule.min_price,
-              maxPrice: rule.max_price,
-              minWear: rule.min_wear,
-              maxWear: rule.max_wear
-            },
-            reason: 'Failed matchesFilters check' 
-          }, '[Scheduler] Item filtered');
           skippedByFilters++;
           continue;
         }
 
-        // Create alert
-        try {
-          const alert: CreateAlert = {
-            rule_id: rule.id!,
-            sale_id: item.saleId,
-            item_name: item.itemName,
-            price: item.price,
-            wear_value: item.wearValue,
-            stattrak: item.statTrak ?? false,
-            souvenir: item.souvenir ?? false,
-            skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
-            alert_type: 'match',
-          };
+        // Item passed all filters, add to matching items
+        matchingItems.push(item);
+      }
 
-          this.store.createAlert(alert);
-          
-          // Always count the alert as created, regardless of webhook notifications
-          newAlerts++;
+      // Batch create alerts and send notifications
+      if (matchingItems.length > 0) {
+        // Get webhooks once for the rule
+        const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
+        
+        for (const item of matchingItems) {
+          try {
+            const alert: CreateAlert = {
+              rule_id: rule.id!,
+              sale_id: item.saleId,
+              item_name: item.itemName,
+              price: item.price,
+              wear_value: item.wearValue,
+              stattrak: item.statTrak ?? false,
+              souvenir: item.souvenir ?? false,
+              skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
+              alert_type: 'match',
+            };
 
-          // Get rule webhooks (secured webhook system)
-          const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
-          
-          // Send notifications to all rule webhooks with rate limiting
-          if (webhooks.length > 0) {
-            // Get the actual SkinBaron offer URL for clickable links
-            const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
-            
-            for (const webhook of webhooks) {
-              // Queue the notification with proper rate limiting per webhook URL
-              this.queueWebhookNotification(
-                webhook.webhook_url!,
-                {
-                  alertType: 'match',
-                  item,
-                  rule,
-                  skinUrl: offerUrl, // Use offer URL for links, not image URL
-                }
-              ).catch((error) => {
-                // Log notification errors but don't block alert creation
-                this.logger.warn({ 
-                  error: error instanceof Error ? error.message : 'Unknown error',
-                  webhookId: webhook.id,
-                  ruleId: rule.id,
-                  itemName: item.itemName 
-                }, 'Failed to send webhook notification');
-              });
+            this.store.createAlert(alert);
+            newAlerts++;
+
+            // Send notifications if webhooks exist
+            if (webhooks.length > 0) {
+              const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
+              
+              for (const webhook of webhooks) {
+                this.queueWebhookNotification(
+                  webhook.webhook_url!,
+                  {
+                    alertType: 'match',
+                    item,
+                    rule,
+                    skinUrl: offerUrl,
+                  }
+                ).catch((error) => {
+                  this.logger.warn({ 
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    webhookId: webhook.id,
+                    ruleId: rule.id,
+                    itemName: item.itemName 
+                  }, 'Failed to send webhook notification');
+                });
+              }
             }
-          }
 
-        } catch (error) {
-          if (error instanceof Error && error.message === 'DUPLICATE_SALE') {
-            // Already processed, skip
-            continue;
+          } catch (error) {
+            if (error instanceof Error && error.message === 'DUPLICATE_SALE') {
+              continue;
+            }
+            throw error;
           }
-          throw error;
         }
       }
 
