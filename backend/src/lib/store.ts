@@ -865,6 +865,46 @@ export class Store {
     }
   }
 
+  // Batch insert alerts (much faster for large batches)
+  createAlertsBatch(alerts: CreateAlert[]): number {
+    if (alerts.length === 0) return 0;
+
+    // Validate all alerts first
+    const validated = alerts.map(alert => 
+      AlertSchema.omit({ id: true, sent_at: true }).parse(alert)
+    );
+
+    // Build VALUES clause with placeholders
+    const placeholders = validated.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    
+    const stmt = this.db.prepare(`
+      INSERT OR IGNORE INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
+                                     stattrak, souvenir, skin_url, alert_type)
+      VALUES ${placeholders}
+    `);
+
+    // Flatten all values into a single array
+    const values = validated.flatMap(alert => [
+      alert.rule_id,
+      alert.sale_id,
+      alert.item_name,
+      alert.price,
+      alert.wear_value ?? null,
+      alert.stattrak ? 1 : 0,
+      alert.souvenir ? 1 : 0,
+      alert.skin_url,
+      alert.alert_type
+    ]);
+
+    // Execute in a transaction for maximum performance
+    const insertMany = this.db.transaction(() => {
+      return stmt.run(...values);
+    });
+
+    const result = insertMany();
+    return result.changes;
+  }
+
   getAlertById(id: number): Alert | null {
     const stmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
     const row = stmt.get(id) as any;
