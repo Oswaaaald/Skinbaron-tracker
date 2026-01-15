@@ -114,8 +114,8 @@ export class AlertScheduler {
       }
 
       // Process rules in batches to avoid rate limiting while maintaining speed
-      const BATCH_SIZE = 10; // Process 10 rules in parallel
-      const BATCH_DELAY = 2000; // 2 seconds between batches
+      const BATCH_SIZE = 30; // Process 30 rules in parallel (increased for speed)
+      const BATCH_DELAY = 500; // 500ms between batches (reduced from 2s)
       
       let totalNewAlerts = 0;
       
