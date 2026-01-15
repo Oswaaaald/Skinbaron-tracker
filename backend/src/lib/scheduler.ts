@@ -181,7 +181,7 @@ export class AlertScheduler {
         maxWear: rule.max_wear || undefined,
         statTrak: statTrakParam,
         souvenir: souvenirParam,
-        limit: 20, // Limit to prevent API overload
+        limit: 50, // Increased limit to catch more items with different wear values
       });
 
       if (!response.items || response.items.length === 0) {
