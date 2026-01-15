@@ -1021,20 +1021,16 @@ export class Store {
   }
 
   getStats() {
-    const totalRules = this.db.prepare('SELECT COUNT(*) as count FROM rules').get() as { count: number };
-    const enabledRules = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE enabled = 1').get() as { count: number };
-    const totalAlerts = this.db.prepare('SELECT COUNT(*) as count FROM alerts').get() as { count: number };
-    const todayAlerts = this.db.prepare(`
-      SELECT COUNT(*) as count FROM alerts 
-      WHERE DATE(sent_at) = DATE('now')
-    `).get() as { count: number };
+    // Single optimized query instead of 4 separate queries
+    const stats = this.db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM rules) as totalRules,
+        (SELECT COUNT(*) FROM rules WHERE enabled = 1) as enabledRules,
+        (SELECT COUNT(*) FROM alerts) as totalAlerts,
+        (SELECT COUNT(*) FROM alerts WHERE DATE(sent_at) = DATE('now')) as todayAlerts
+    `).get() as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
 
-    return {
-      totalRules: totalRules.count,
-      enabledRules: enabledRules.count,
-      totalAlerts: totalAlerts.count,
-      todayAlerts: todayAlerts.count,
-    };
+    return stats;
   }
 
   // Cleanup old alerts for a specific user (keep last 7 days)
@@ -1618,19 +1614,17 @@ export class Store {
   }
 
   getGlobalStats() {
-    const usersStmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_approved = 1');
-    const rulesStmt = this.db.prepare('SELECT COUNT(*) as count FROM rules');
-    const alertsStmt = this.db.prepare('SELECT COUNT(*) as count FROM alerts');
-    const webhooksStmt = this.db.prepare('SELECT COUNT(*) as count FROM user_webhooks');
-    const adminsStmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1 AND is_approved = 1');
+    // Single optimized query instead of 5 separate queries
+    const stats = this.db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM users WHERE is_approved = 1) as total_users,
+        (SELECT COUNT(*) FROM users WHERE is_admin = 1 AND is_approved = 1) as total_admins,
+        (SELECT COUNT(*) FROM rules) as total_rules,
+        (SELECT COUNT(*) FROM alerts) as total_alerts,
+        (SELECT COUNT(*) FROM user_webhooks) as total_webhooks
+    `).get() as { total_users: number; total_admins: number; total_rules: number; total_alerts: number; total_webhooks: number };
 
-    return {
-      total_users: (usersStmt.get() as any).count,
-      total_admins: (adminsStmt.get() as any).count,
-      total_rules: (rulesStmt.get() as any).count,
-      total_alerts: (alertsStmt.get() as any).count,
-      total_webhooks: (webhooksStmt.get() as any).count,
-    };
+    return stats;
   }
 
   logAdminAction(adminUserId: number, action: string, targetUserId: number | null, details: string) {
