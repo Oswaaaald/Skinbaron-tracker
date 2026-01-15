@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useState, useEffect, useRef } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +34,7 @@ export function Dashboard() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const { isReady, isAuthenticated, user } = useAuth()
   const isVisible = usePageVisible()
+  const queryClient = useQueryClient()
   
   // Restore active tab from localStorage on mount
   const [activeTab, setActiveTab] = useState(() => {
@@ -74,6 +75,24 @@ export function Dashboard() {
     refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
+
+  // Track previous alert counts to detect changes and invalidate alerts query
+  const prevTotalAlertsRef = useRef<number | null>(null)
+  const prevTodayAlertsRef = useRef<number | null>(null)
+  
+  useEffect(() => {
+    const currentTotal = userStats?.data?.totalAlerts ?? 0
+    const currentToday = userStats?.data?.todayAlerts ?? 0
+    
+    // If alert counts changed (and it's not the first load), invalidate alerts query
+    if (prevTotalAlertsRef.current !== null && 
+        (prevTotalAlertsRef.current !== currentTotal || prevTodayAlertsRef.current !== currentToday)) {
+      queryClient.invalidateQueries({ queryKey: ['alerts'] })
+    }
+    
+    prevTotalAlertsRef.current = currentTotal
+    prevTodayAlertsRef.current = currentToday
+  }, [userStats?.data?.totalAlerts, userStats?.data?.todayAlerts, queryClient])
 
 
 
