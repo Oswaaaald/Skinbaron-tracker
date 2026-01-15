@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Table,
@@ -97,13 +97,6 @@ export function AlertsTable() {
     refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
-
-  // Sync stats when alerts data changes
-  useEffect(() => {
-    if (alertsResponse) {
-      syncStats()
-    }
-  }, [alertsResponse, syncStats])
 
   if (isLoading) {
     return <LoadingSpinner />

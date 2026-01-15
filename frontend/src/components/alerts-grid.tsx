@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -93,12 +93,6 @@ export function AlertsGrid() {
     refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
-
-  useEffect(() => {
-    if (alertsResponse) {
-      syncStats()
-    }
-  }, [alertsResponse, syncStats])
 
   if (isLoading) {
     return <LoadingSpinner />
