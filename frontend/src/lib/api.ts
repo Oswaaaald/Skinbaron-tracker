@@ -83,6 +83,7 @@ export interface ApiResponse<T> {
   details?: any;
   requires2FA?: boolean;  // For 2FA login flow
   status?: number;
+  count?: number;  // For batch operations that return count directly
 }
 
 export type UserProfile = {
