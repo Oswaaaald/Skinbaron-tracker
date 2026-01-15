@@ -386,7 +386,7 @@ class ApiClient {
     // DEBUG
     // eslint-disable-next-line no-console
     console.log('batchEnableRules response:', response);
-    return response.data!;
+    return response;
   }
 
   async batchDisableRules(ruleIds?: number[]): Promise<{ message: string; count: number }> {
@@ -397,7 +397,7 @@ class ApiClient {
     // DEBUG
     // eslint-disable-next-line no-console
     console.log('batchDisableRules response:', response);
-    return response.data!;
+    return response;
   }
 
   async batchDeleteRules(ruleIds?: number[], confirmAll: boolean = false): Promise<{ message: string; count: number }> {
@@ -405,7 +405,7 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [], confirm_all: confirmAll }),
     });
-    return response.data!;
+    return response;
   }
 
   async testRule(id: number, webhookTest: boolean = false, webhookOnly: boolean = false): Promise<ApiResponse<{
