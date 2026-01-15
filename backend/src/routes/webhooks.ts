@@ -500,21 +500,11 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       if (!webhook_ids || webhook_ids.length === 0) {
         // Enable all webhooks for this user
         const allWebhooks = store.getUserWebhooks(userId);
-        for (const webhook of allWebhooks) {
-          if (!webhook.is_active) {
-            store.updateUserWebhook(webhook.id!, userId, { ...webhook, is_active: true });
-            updated++;
-          }
-        }
+        const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id!);
+        updated = store.enableWebhooksBatch(allIds, userId);
       } else {
-        // Enable specific webhooks
-        for (const webhookId of webhook_ids) {
-          const webhook = store.getUserWebhookById(webhookId);
-          if (webhook && webhook.user_id === userId && !webhook.is_active) {
-            store.updateUserWebhook(webhookId, userId, { ...webhook, is_active: true });
-            updated++;
-          }
-        }
+        // Enable specific webhooks (optimized batch operation)
+        updated = store.enableWebhooksBatch(webhook_ids, userId);
       }
 
       return reply.status(200).send({
@@ -572,21 +562,11 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       if (!webhook_ids || webhook_ids.length === 0) {
         // Disable all webhooks for this user
         const allWebhooks = store.getUserWebhooks(userId);
-        for (const webhook of allWebhooks) {
-          if (webhook.is_active) {
-            store.updateUserWebhook(webhook.id!, userId, { ...webhook, is_active: false });
-            updated++;
-          }
-        }
+        const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id!);
+        updated = store.disableWebhooksBatch(allIds, userId);
       } else {
-        // Disable specific webhooks
-        for (const webhookId of webhook_ids) {
-          const webhook = store.getUserWebhookById(webhookId);
-          if (webhook && webhook.user_id === userId && webhook.is_active) {
-            store.updateUserWebhook(webhookId, userId, { ...webhook, is_active: false });
-            updated++;
-          }
-        }
+        // Disable specific webhooks (optimized batch operation)
+        updated = store.disableWebhooksBatch(webhook_ids, userId);
       }
 
       return reply.status(200).send({
@@ -656,19 +636,11 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         }
         
         const allWebhooks = store.getUserWebhooks(userId);
-        for (const webhook of allWebhooks) {
-          store.deleteUserWebhook(webhook.id!, userId);
-          deleted++;
-        }
+        const allIds = allWebhooks.map(w => w.id!);
+        deleted = store.deleteWebhooksBatch(allIds, userId);
       } else {
-        // Delete specific webhooks
-        for (const webhookId of webhook_ids) {
-          const webhook = store.getUserWebhookById(webhookId);
-          if (webhook && webhook.user_id === userId) {
-            store.deleteUserWebhook(webhookId, userId);
-            deleted++;
-          }
-        }
+        // Delete specific webhooks (optimized batch operation)
+        deleted = store.deleteWebhooksBatch(webhook_ids, userId);
       }
 
       return reply.status(200).send({

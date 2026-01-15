@@ -654,6 +654,60 @@ export class Store {
   }
 
   // Rules CRUD operations
+  // Batch enable rules (optimized single query)
+  enableRulesBatch(ruleIds: number[], userId: number): number {
+    if (ruleIds.length === 0) return 0;
+    const placeholders = ruleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`UPDATE rules SET enabled = 1 WHERE id IN (${placeholders}) AND user_id = ?`);
+    const result = stmt.run(...ruleIds, userId);
+    return result.changes;
+  }
+
+  // Batch disable rules (optimized single query)
+  disableRulesBatch(ruleIds: number[], userId: number): number {
+    if (ruleIds.length === 0) return 0;
+    const placeholders = ruleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`UPDATE rules SET enabled = 0 WHERE id IN (${placeholders}) AND user_id = ?`);
+    const result = stmt.run(...ruleIds, userId);
+    return result.changes;
+  }
+
+  // Batch delete rules (optimized single query)
+  deleteRulesBatch(ruleIds: number[], userId: number): number {
+    if (ruleIds.length === 0) return 0;
+    const placeholders = ruleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`DELETE FROM rules WHERE id IN (${placeholders}) AND user_id = ?`);
+    const result = stmt.run(...ruleIds, userId);
+    return result.changes;
+  }
+
+  // Batch enable webhooks (optimized single query)
+  enableWebhooksBatch(webhookIds: number[], userId: number): number {
+    if (webhookIds.length === 0) return 0;
+    const placeholders = webhookIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`UPDATE user_webhooks SET is_active = 1 WHERE id IN (${placeholders}) AND user_id = ?`);
+    const result = stmt.run(...webhookIds, userId);
+    return result.changes;
+  }
+
+  // Batch disable webhooks (optimized single query)
+  disableWebhooksBatch(webhookIds: number[], userId: number): number {
+    if (webhookIds.length === 0) return 0;
+    const placeholders = webhookIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`UPDATE user_webhooks SET is_active = 0 WHERE id IN (${placeholders}) AND user_id = ?`);
+    const result = stmt.run(...webhookIds, userId);
+    return result.changes;
+  }
+
+  // Batch delete webhooks (optimized single query)
+  deleteWebhooksBatch(webhookIds: number[], userId: number): number {
+    if (webhookIds.length === 0) return 0;
+    const placeholders = webhookIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`DELETE FROM user_webhooks WHERE id IN (${placeholders}) AND user_id = ?`);
+    const result = stmt.run(...webhookIds, userId);
+    return result.changes;
+  }
+
   createRule(rule: CreateRule): Rule {
     const validated = CreateRuleSchema.parse(rule);
     

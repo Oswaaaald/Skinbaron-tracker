@@ -686,21 +686,11 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       if (!rule_ids || rule_ids.length === 0) {
         // Enable all rules for this user
         const allRules = store.getRulesByUserId(userId);
-        for (const rule of allRules) {
-          if (!rule.enabled) {
-            store.updateRule(rule.id!, { ...rule, enabled: true });
-            updated++;
-          }
-        }
+        const allIds = allRules.filter(r => !r.enabled).map(r => r.id!);
+        updated = store.enableRulesBatch(allIds, userId);
       } else {
-        // Enable specific rules
-        for (const ruleId of rule_ids) {
-          const rule = store.getRuleById(ruleId);
-          if (rule && rule.user_id === userId && !rule.enabled) {
-            store.updateRule(ruleId, { ...rule, enabled: true });
-            updated++;
-          }
-        }
+        // Enable specific rules (optimized batch operation)
+        updated = store.enableRulesBatch(rule_ids, userId);
       }
 
       return reply.status(200).send({
@@ -758,21 +748,11 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       if (!rule_ids || rule_ids.length === 0) {
         // Disable all rules for this user
         const allRules = store.getRulesByUserId(userId);
-        for (const rule of allRules) {
-          if (rule.enabled) {
-            store.updateRule(rule.id!, { ...rule, enabled: false });
-            updated++;
-          }
-        }
+        const allIds = allRules.filter(r => r.enabled).map(r => r.id!);
+        updated = store.disableRulesBatch(allIds, userId);
       } else {
-        // Disable specific rules
-        for (const ruleId of rule_ids) {
-          const rule = store.getRuleById(ruleId);
-          if (rule && rule.user_id === userId && rule.enabled) {
-            store.updateRule(ruleId, { ...rule, enabled: false });
-            updated++;
-          }
-        }
+        // Disable specific rules (optimized batch operation)
+        updated = store.disableRulesBatch(rule_ids, userId);
       }
 
       return reply.status(200).send({
@@ -842,19 +822,11 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         }
 
         const allRules = store.getRulesByUserId(userId);
-        for (const rule of allRules) {
-          store.deleteRule(rule.id!);
-          deleted++;
-        }
+        const allIds = allRules.map(r => r.id!);
+        deleted = store.deleteRulesBatch(allIds, userId);
       } else {
-        // Delete specific rules
-        for (const ruleId of rule_ids) {
-          const rule = store.getRuleById(ruleId);
-          if (rule && rule.user_id === userId) {
-            store.deleteRule(ruleId);
-            deleted++;
-          }
-        }
+        // Delete specific rules (optimized batch operation)
+        deleted = store.deleteRulesBatch(rule_ids, userId);
       }
 
       return reply.status(200).send({
