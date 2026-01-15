@@ -273,7 +273,7 @@ export function WebhooksTable() {
 
       {webhooks && webhooks.length > 0 && (
         <Card>
-          <CardContent className="p-4">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
@@ -307,7 +307,7 @@ export function WebhooksTable() {
                 </Button>
               </div>
             </div>
-          </CardContent>
+          </CardHeader>
         </Card>
       )}
 
