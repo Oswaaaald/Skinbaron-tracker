@@ -166,7 +166,7 @@ export function RulesTable() {
       onSuccess: (data) => {
         toast({
           title: "✅ Rules enabled",
-          description: `${data?.count || 0} rule(s) have been enabled`,
+          description: `${data?.data?.count || 0} rule(s) have been enabled`,
         })
         setSelectedRules(new Set())
         syncStats()
@@ -188,7 +188,7 @@ export function RulesTable() {
       onSuccess: (data) => {
         toast({
           title: "⚠️ Rules disabled",
-          description: `${data?.count || 0} rule(s) have been disabled`,
+          description: `${data?.data?.count || 0} rule(s) have been disabled`,
         })
         setSelectedRules(new Set())
         syncStats()
@@ -211,7 +211,7 @@ export function RulesTable() {
       onSuccess: (data) => {
         toast({
           title: "✅ Rules deleted",
-          description: `${data?.count || 0} rule(s) have been permanently deleted`,
+          description: `${data?.data?.count || 0} rule(s) have been permanently deleted`,
         })
         setSelectedRules(new Set())
         syncStats()
