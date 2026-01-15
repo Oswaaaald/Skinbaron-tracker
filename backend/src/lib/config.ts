@@ -93,4 +93,7 @@ export const DISCORD_COLORS = {
   ERROR: 0xff0000,      // Red for errors
 } as const;
 
+// User limits
+export const MAX_RULES_PER_USER = 50;
+
 export default appConfig;

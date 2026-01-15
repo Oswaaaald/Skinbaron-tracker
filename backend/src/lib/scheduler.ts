@@ -263,8 +263,14 @@ export class AlertScheduler {
                   rule,
                   skinUrl: offerUrl, // Use offer URL for links, not image URL
                 }
-              ).catch(() => {
-                // Ignore notification errors to not block alert creation
+              ).catch((error) => {
+                // Log notification errors but don't block alert creation
+                this.logger.warn({ 
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  webhookId: webhook.id,
+                  ruleId: rule.id,
+                  itemName: item.itemName 
+                }, 'Failed to send webhook notification');
               });
             }
           }

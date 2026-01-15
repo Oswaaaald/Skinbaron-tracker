@@ -234,6 +234,7 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_alerts_sale_id ON alerts (sale_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_rule_id ON alerts (rule_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_sent_at ON alerts (sent_at);
+      CREATE INDEX IF NOT EXISTS idx_alerts_rule_sent ON alerts (rule_id, sent_at);
     `);
 
   }
@@ -280,6 +281,8 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_log_user_created ON audit_log(user_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_expires ON refresh_tokens(user_id, expires_at);
     `);
 
     // Migration: Add is_admin column if it doesn't exist
@@ -691,6 +694,7 @@ export class Store {
           webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
         }
       } catch (error) {
+        migrationLogger.warn('Failed to parse webhook_ids for rule', { ruleId: row.id, error });
       }
     }
     
@@ -715,6 +719,7 @@ export class Store {
             webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
           }
         } catch (error) {
+          migrationLogger.warn('Failed to parse webhook_ids in getAllRules', { ruleId: row.id });
         }
       }
       
@@ -746,6 +751,7 @@ export class Store {
             webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
           }
         } catch (error) {
+          migrationLogger.warn('Failed to parse webhook_ids in getRulesByUserId', { ruleId: row.id, userId: row.user_id });
         }
       }
       
@@ -774,6 +780,7 @@ export class Store {
             webhookIds = parsed.filter(id => typeof id === 'number' && !isNaN(id));
           }
         } catch (error) {
+          migrationLogger.warn('Failed to parse webhook_ids in getEnabledRules', { ruleId: row.id });
         }
       }
       
@@ -1133,6 +1140,12 @@ export class Store {
     `);
 
     stmt.run(...values, id);
+    
+    // Invalidate user cache after update
+    import('./middleware.js').then(({ invalidateUserCache }) => {
+      invalidateUserCache(id);
+    }).catch(() => {});
+    
     return this.getUserById(id)!;
   }
 
@@ -1150,6 +1163,14 @@ export class Store {
     // - admin_actions (both as admin and as target)
     try {
       const result = this.execute('DELETE FROM users WHERE id = ?', id);
+      
+      // Invalidate user cache after deletion
+      if (result.changes > 0) {
+        import('./middleware.js').then(({ invalidateUserCache }) => {
+          invalidateUserCache(id);
+        }).catch(() => {});
+      }
+      
       return result.changes > 0;
     } catch (error: any) {
       migrationLogger.error('Error deleting user:', {
@@ -1174,8 +1195,10 @@ export class Store {
     }
     
     try {
-      // Derive key from ENCRYPTION_KEY using SHA-256
-      const key = crypto.createHash('sha256').update(secretKey).digest();
+      // Use a static salt for key derivation (or store per-entry salt for even better security)
+      const salt = crypto.createHash('sha256').update('skinbaron-alerts-salt-v1').digest();
+      // Derive key from ENCRYPTION_KEY using PBKDF2 (100,000 iterations)
+      const key = crypto.pbkdf2Sync(secretKey, salt, 100000, 32, 'sha256');
       const iv = crypto.randomBytes(16);
       
       const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
@@ -1206,8 +1229,10 @@ export class Store {
       const iv = Buffer.from(parts[0], 'hex');
       const encryptedText = parts[1];
       
-      // Derive key from ENCRYPTION_KEY using SHA-256
-      const key = crypto.createHash('sha256').update(secretKey).digest();
+      // Use same salt as encryption
+      const salt = crypto.createHash('sha256').update('skinbaron-alerts-salt-v1').digest();
+      // Derive key from ENCRYPTION_KEY using PBKDF2 (100,000 iterations)
+      const key = crypto.pbkdf2Sync(secretKey, salt, 100000, 32, 'sha256');
       
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
       let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
@@ -1431,6 +1456,11 @@ export class Store {
           }
         }
       } catch (error) {
+        migrationLogger.warn('Failed to cleanup rule after webhook deletion', { 
+          ruleId: rule.id, 
+          webhookId, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
       }
     }
   }
@@ -1451,11 +1481,10 @@ export class Store {
     const rule = this.getRuleById(ruleId);
     if (!rule || !rule.webhook_ids?.length) return [];
 
+    // Build parameterized query with proper placeholders
     const placeholders = rule.webhook_ids.map(() => '?').join(',');
-    const stmt = this.db.prepare(`
-      SELECT * FROM user_webhooks 
-      WHERE id IN (${placeholders}) AND is_active = 1
-    `);
+    const query = `SELECT * FROM user_webhooks WHERE id IN (${placeholders}) AND is_active = 1`;
+    const stmt = this.db.prepare(query);
     const rows = stmt.all(...rule.webhook_ids) as any[];
     
     return rows
@@ -1542,6 +1571,14 @@ export class Store {
       
       const stmt = this.db.prepare('UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?');
       const result = stmt.run(isAdmin ? 1 : 0, new Date().toISOString(), userId);
+      
+      // Invalidate user cache after admin status change
+      if (result.changes > 0) {
+        import('./middleware.js').then(({ invalidateUserCache }) => {
+          invalidateUserCache(userId);
+        }).catch(() => {});
+      }
+      
       return result.changes > 0;
     } catch (error) {
       migrationLogger.error('Error toggling user admin:', error);

@@ -33,6 +33,13 @@ function setCachedUser(id: number, user: any) {
   userCache.set(id, { user, expiresAt: Date.now() + USER_CACHE_TTL_MS });
 }
 
+/**
+ * Invalidate user cache entry (called after user updates/deletion)
+ */
+export function invalidateUserCache(userId: number): void {
+  userCache.delete(userId);
+}
+
 export const ACCESS_COOKIE = 'sb_access'
 export const REFRESH_COOKIE = 'sb_refresh'
 

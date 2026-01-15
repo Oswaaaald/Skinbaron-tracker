@@ -4,6 +4,69 @@ import { getStore } from '../lib/store.js';
 import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/middleware.js';
 import { appConfig } from '../lib/config.js';
 import { authenticator } from 'otplib';
+import crypto from 'crypto';
+
+// 2FA attempt tracking
+type TwoFAAttempt = {
+  attempts: number;
+  lockedUntil?: number;
+};
+
+const twoFAAttempts = new Map<number, TwoFAAttempt>();
+const MAX_2FA_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+function record2FAFailure(userId: number): boolean {
+  const now = Date.now();
+  const record = twoFAAttempts.get(userId);
+  
+  if (record?.lockedUntil && record.lockedUntil > now) {
+    return false; // Still locked
+  }
+  
+  const attempts = (record?.attempts || 0) + 1;
+  
+  if (attempts >= MAX_2FA_ATTEMPTS) {
+    twoFAAttempts.set(userId, {
+      attempts,
+      lockedUntil: now + LOCKOUT_DURATION_MS
+    });
+    return false; // Now locked
+  }
+  
+  twoFAAttempts.set(userId, { attempts });
+  return true; // Not locked yet
+}
+
+function reset2FAAttempts(userId: number): void {
+  twoFAAttempts.delete(userId);
+}
+
+function is2FALocked(userId: number): { locked: boolean; remainingTime?: number } {
+  const record = twoFAAttempts.get(userId);
+  if (!record?.lockedUntil) return { locked: false };
+  
+  const now = Date.now();
+  if (record.lockedUntil <= now) {
+    twoFAAttempts.delete(userId);
+    return { locked: false };
+  }
+  
+  return {
+    locked: true,
+    remainingTime: Math.ceil((record.lockedUntil - now) / 1000)
+  };
+}
+
+// Cleanup expired locks every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, record] of twoFAAttempts.entries()) {
+    if (record.lockedUntil && record.lockedUntil <= now) {
+      twoFAAttempts.delete(userId);
+    }
+  }
+}, 5 * 60 * 1000);
 
 // Extend FastifyInstance type
 declare module 'fastify' {
@@ -17,6 +80,18 @@ declare module 'fastify' {
  */
 export default async function authRoutes(fastify: FastifyInstance) {
   const store = getStore();
+
+  // Stricter rate limiting for auth endpoints (anti-brute force)
+  const authRateLimitConfig = {
+    max: 5,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many authentication attempts. Please try again in 1 minute.',
+    }),
+  };
 
   const cookieOptions = (expiresAt?: number) => ({
     httpOnly: true,
@@ -42,6 +117,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
    * Register new user
    */
   fastify.post('/register', {
+    config: {
+      rateLimit: authRateLimitConfig,
+    },
     schema: {
       description: 'Register a new user account',
       tags: ['Authentication'],
@@ -190,6 +268,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
    * Login user
    */
   fastify.post('/login', {
+    config: {
+      rateLimit: authRateLimitConfig,
+    },
     schema: {
       description: 'Login with email and password',
       tags: ['Authentication'],
@@ -282,6 +363,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (user.totp_enabled) {
         const { totp_code } = request.body as any;
 
+        // Check if user is locked out from too many failed 2FA attempts
+        const lockStatus = is2FALocked(user.id!);
+        if (lockStatus.locked) {
+          return reply.status(429).send({
+            success: false,
+            error: 'Too many failed 2FA attempts',
+            message: `Account temporarily locked. Try again in ${lockStatus.remainingTime} seconds`,
+            retry_after: lockStatus.remainingTime,
+          });
+        }
+
         // If no code provided, return requires_2fa flag
         if (!totp_code) {
           return reply.status(200).send({
@@ -293,6 +385,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Verify TOTP code
+        authenticator.options = { window: 1 }; // ±30s tolerance for clock drift
         const isValidTotp = authenticator.verify({
           token: totp_code,
           secret: user.totp_secret!,
@@ -301,21 +394,55 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // If invalid, try recovery codes
         if (!isValidTotp) {
           const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) : [];
-          const codeIndex = recoveryCodes.indexOf(totp_code);
+          
+          // Use constant-time comparison to prevent timing attacks
+          let codeIndex = -1;
+          for (let i = 0; i < recoveryCodes.length; i++) {
+            if (recoveryCodes[i].length === totp_code.length) {
+              try {
+                const a = Buffer.from(recoveryCodes[i], 'utf8');
+                const b = Buffer.from(totp_code, 'utf8');
+                if (crypto.timingSafeEqual(a, b)) {
+                  codeIndex = i;
+                  break;
+                }
+              } catch {
+                // Continue if lengths don't match exactly
+              }
+            }
+          }
 
           if (codeIndex === -1) {
+            // Record failed attempt
+            const canContinue = record2FAFailure(user.id!);
+            
             // Audit log for failed 2FA
+            const attemptsRecord = twoFAAttempts.get(user.id!);
             store.createAuditLog(
               user.id!,
               'login_failed',
-              JSON.stringify({ reason: 'invalid_2fa_code' }),
+              JSON.stringify({ 
+                reason: 'invalid_2fa_code',
+                attempts: attemptsRecord?.attempts || 1,
+                locked: !canContinue
+              }),
               getClientIp(request),
               request.headers['user-agent']
             );
+            
+            if (!canContinue) {
+              return reply.status(429).send({
+                success: false,
+                error: 'Too many failed attempts',
+                message: 'Account temporarily locked due to multiple failed 2FA attempts. Try again in 15 minutes',
+              });
+            }
+            
             return reply.status(401).send({
               success: false,
               error: 'Invalid 2FA code',
               message: '2FA code is incorrect',
+              remaining_attempts: MAX_2FA_ATTEMPTS - (attemptsRecord?.attempts || 1),
             });
           }
 
@@ -334,6 +461,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
             request.headers['user-agent']
           );
         }
+        
+        // Reset failed attempts on successful 2FA
+        reset2FAAttempts(user.id!);
       }
 
       // Generate tokens

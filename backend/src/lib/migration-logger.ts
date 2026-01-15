@@ -59,7 +59,10 @@ export class MigrationLogger {
     
     this.logs.push(logEntry);
     
-    console.error(`❌ ${message}`, error || '');
+    // Only log to console in non-production environments
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(`❌ ${message}`, error || '');
+    }
   }
 
   getLogs() {

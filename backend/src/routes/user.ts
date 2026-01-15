@@ -539,6 +539,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const { secret, code } = request.body as { secret: string; code: string };
 
       // Verify the code
+      authenticator.options = { window: 1 }; // ±30s tolerance for clock drift
       const isValid = authenticator.verify({
         token: code,
         secret,

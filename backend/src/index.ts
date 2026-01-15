@@ -70,7 +70,21 @@ async function registerPlugins() {
 
   // Security middleware
   await fastify.register(helmet, {
-    contentSecurityPolicy: false, // Disable for API
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'none'"],
+        styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+        upgradeInsecureRequests: [],
+      },
+    },
   });
 
   // CORS
@@ -82,9 +96,7 @@ async function registerPlugins() {
       const allowedOrigins = Array.from(new Set([
         appConfig.CORS_ORIGIN,
         ...configuredOrigins,
-        'https://skinbaron-tracker.oswaaaald.be',
-        'http://localhost:3000',
-      ]));
+      ])).filter(Boolean);
       
       // Allow requests with no origin (e.g., mobile apps, Postman)
       if (!origin) {

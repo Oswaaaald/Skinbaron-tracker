@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getStore, RuleSchema } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getNotificationService } from '../lib/notifier.js';
+import { MAX_RULES_PER_USER } from '../lib/config.js';
 
 // Extend FastifyInstance type for authenticate
 declare module 'fastify' {
@@ -155,6 +156,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
+      // Check max rules limit
+      const userRules = store.getRulesByUserId(request.user!.id);
+      if (userRules.length >= MAX_RULES_PER_USER) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Maximum rules limit reached',
+          message: `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`,
+        });
+      }
+      
       // Parse body but add user_id from authenticated user
       const bodyData = request.body as any;
       
