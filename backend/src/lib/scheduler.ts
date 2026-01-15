@@ -210,6 +210,12 @@ export class AlertScheduler {
         // Filter StatTrak based on rule
         const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
         if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
+          this.logger.debug({ 
+            ruleId: rule.id, 
+            itemName: item.itemName, 
+            itemStatTrak: item.statTrak,
+            reason: 'Not StatTrak' 
+          }, '[Scheduler] Item filtered');
           skippedByFilters++;
           continue;
         }
@@ -233,6 +239,12 @@ export class AlertScheduler {
         // allow_stickers = true means accept items with stickers
         // allow_stickers = false means reject items with stickers
         if (!rule.allow_stickers && item.hasStickers) {
+          this.logger.debug({ 
+            ruleId: rule.id, 
+            itemName: item.itemName, 
+            hasStickers: item.hasStickers,
+            reason: 'Has stickers' 
+          }, '[Scheduler] Item filtered');
           skippedByFilters++;
           continue; // Skip items with stickers if not allowed
         }
@@ -247,6 +259,20 @@ export class AlertScheduler {
           statTrak: statTrakParam,
           souvenir: souvenirParam,
         })) {
+          this.logger.debug({ 
+            ruleId: rule.id, 
+            itemName: item.itemName,
+            price: item.price,
+            wear: item.wearValue,
+            statTrak: item.statTrak,
+            ruleFilters: {
+              minPrice: rule.min_price,
+              maxPrice: rule.max_price,
+              minWear: rule.min_wear,
+              maxWear: rule.max_wear
+            },
+            reason: 'Failed matchesFilters check' 
+          }, '[Scheduler] Item filtered');
           skippedByFilters++;
           continue;
         }
