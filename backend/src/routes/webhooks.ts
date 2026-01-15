@@ -459,6 +459,232 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  /**
+   * POST /webhooks/batch/enable - Enable multiple or all webhooks
+   */
+  fastify.post('/batch/enable', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Enable multiple webhooks or all webhooks for authenticated user',
+      tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          webhook_ids: { 
+            type: 'array', 
+            items: { type: 'number' },
+            description: 'Array of webhook IDs to enable. If empty or not provided, enables all webhooks'
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            count: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { webhook_ids } = request.body as { webhook_ids?: number[] };
+      const userId = request.user!.id;
+
+      let updated = 0;
+      
+      if (!webhook_ids || webhook_ids.length === 0) {
+        // Enable all webhooks for this user
+        const allWebhooks = store.getUserWebhooks(userId);
+        for (const webhook of allWebhooks) {
+          if (!webhook.is_active) {
+            store.updateUserWebhook(webhook.id!, userId, { ...webhook, is_active: true });
+            updated++;
+          }
+        }
+      } else {
+        // Enable specific webhooks
+        for (const webhookId of webhook_ids) {
+          const webhook = store.getUserWebhookById(webhookId);
+          if (webhook && webhook.user_id === userId && !webhook.is_active) {
+            store.updateUserWebhook(webhookId, userId, { ...webhook, is_active: true });
+            updated++;
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully enabled ${updated} webhook(s)`,
+        count: updated,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to enable webhooks');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to enable webhooks',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /webhooks/batch/disable - Disable multiple or all webhooks
+   */
+  fastify.post('/batch/disable', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Disable multiple webhooks or all webhooks for authenticated user',
+      tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          webhook_ids: { 
+            type: 'array', 
+            items: { type: 'number' },
+            description: 'Array of webhook IDs to disable. If empty or not provided, disables all webhooks'
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            count: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { webhook_ids } = request.body as { webhook_ids?: number[] };
+      const userId = request.user!.id;
+
+      let updated = 0;
+      
+      if (!webhook_ids || webhook_ids.length === 0) {
+        // Disable all webhooks for this user
+        const allWebhooks = store.getUserWebhooks(userId);
+        for (const webhook of allWebhooks) {
+          if (webhook.is_active) {
+            store.updateUserWebhook(webhook.id!, userId, { ...webhook, is_active: false });
+            updated++;
+          }
+        }
+      } else {
+        // Disable specific webhooks
+        for (const webhookId of webhook_ids) {
+          const webhook = store.getUserWebhookById(webhookId);
+          if (webhook && webhook.user_id === userId && webhook.is_active) {
+            store.updateUserWebhook(webhookId, userId, { ...webhook, is_active: false });
+            updated++;
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully disabled ${updated} webhook(s)`,
+        count: updated,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to disable webhooks');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to disable webhooks',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /webhooks/batch/delete - Delete multiple or all webhooks
+   */
+  fastify.post('/batch/delete', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Delete multiple webhooks or all webhooks for authenticated user',
+      tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          webhook_ids: { 
+            type: 'array', 
+            items: { type: 'number' },
+            description: 'Array of webhook IDs to delete. If empty, deletes all webhooks (requires confirm_all)'
+          },
+          confirm_all: {
+            type: 'boolean',
+            description: 'Must be true to delete all webhooks',
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            count: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { webhook_ids, confirm_all } = request.body as { webhook_ids?: number[]; confirm_all?: boolean };
+      const userId = request.user!.id;
+
+      let deleted = 0;
+      
+      if (!webhook_ids || webhook_ids.length === 0) {
+        // Delete all webhooks - requires confirmation
+        if (!confirm_all) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Confirmation required',
+            message: 'Set confirm_all to true to delete all webhooks',
+          });
+        }
+        
+        const allWebhooks = store.getUserWebhooks(userId);
+        for (const webhook of allWebhooks) {
+          store.deleteUserWebhook(webhook.id!, userId);
+          deleted++;
+        }
+      } else {
+        // Delete specific webhooks
+        for (const webhookId of webhook_ids) {
+          const webhook = store.getUserWebhookById(webhookId);
+          if (webhook && webhook.user_id === userId) {
+            store.deleteUserWebhook(webhookId, userId);
+            deleted++;
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully deleted ${deleted} webhook(s)`,
+        count: deleted,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to delete webhooks');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to delete webhooks',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
 };
 
 export default webhooksRoutes;

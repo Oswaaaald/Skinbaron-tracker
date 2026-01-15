@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Edit, Trash2, Shield } from 'lucide-react'
+import { Edit, Trash2 } from 'lucide-react'
 import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
@@ -40,6 +40,8 @@ export function WebhooksTable() {
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null)
   const [formData, setFormData] = useState<WebhookFormData>(initialFormData)
   const [error, setError] = useState('')
+  const [selectedWebhooks, setSelectedWebhooks] = useState<Set<number>>(new Set())
+  const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
 
   const { isReady, isAuthenticated } = useAuth()
 
@@ -106,6 +108,34 @@ export function WebhooksTable() {
     }
   )
 
+  const batchEnableMutation = useApiMutation(
+    (webhookIds?: number[]) => apiClient.batchEnableWebhooks(webhookIds),
+    {
+      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      successMessage: 'Webhooks enabled successfully',
+    }
+  )
+
+  const batchDisableMutation = useApiMutation(
+    (webhookIds?: number[]) => apiClient.batchDisableWebhooks(webhookIds),
+    {
+      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      successMessage: 'Webhooks disabled successfully',
+    }
+  )
+
+  const batchDeleteMutation = useApiMutation(
+    ({ webhookIds, confirmAll }: { webhookIds?: number[]; confirmAll: boolean }) => 
+      apiClient.batchDeleteWebhooks(webhookIds, confirmAll),
+    {
+      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      onSuccess: () => {
+        setBatchAction(null)
+      },
+      successMessage: 'Webhooks deleted successfully',
+    }
+  )
+
   const resetForm = () => {
     setFormData(initialFormData)
     setEditingWebhook(null)
@@ -164,6 +194,48 @@ export function WebhooksTable() {
     setWebhookToDelete(null)
   }
 
+  const handleSelectAll = () => {
+    if (!webhooks) return
+    if (selectedWebhooks.size === webhooks.length) {
+      setSelectedWebhooks(new Set())
+    } else {
+      setSelectedWebhooks(new Set(webhooks.map(w => w.id!).filter(Boolean)))
+    }
+  }
+
+  const handleSelectWebhook = (webhookId: number) => {
+    const newSelection = new Set(selectedWebhooks)
+    if (newSelection.has(webhookId)) {
+      newSelection.delete(webhookId)
+    } else {
+      newSelection.add(webhookId)
+    }
+    setSelectedWebhooks(newSelection)
+  }
+
+  const handleBatchEnable = () => {
+    const webhookIds = selectedWebhooks.size > 0 ? Array.from(selectedWebhooks) : undefined
+    batchEnableMutation.mutate(webhookIds)
+    setSelectedWebhooks(new Set())
+  }
+
+  const handleBatchDisable = () => {
+    const webhookIds = selectedWebhooks.size > 0 ? Array.from(selectedWebhooks) : undefined
+    batchDisableMutation.mutate(webhookIds)
+    setSelectedWebhooks(new Set())
+  }
+
+  const handleBatchDelete = () => {
+    setBatchAction('delete')
+  }
+
+  const confirmBatchDelete = () => {
+    const webhookIds = selectedWebhooks.size > 0 ? Array.from(selectedWebhooks) : undefined
+    const confirmAll = selectedWebhooks.size === 0
+    batchDeleteMutation.mutate({ webhookIds, confirmAll })
+    setSelectedWebhooks(new Set())
+  }
+
   const getWebhookTypeColor = (type: string) => {
     switch (type) {
       case 'discord':
@@ -199,25 +271,59 @@ export function WebhooksTable() {
           </Button>
       </div>
 
-      {!webhooks?.length ? (
+      {webhooks && webhooks.length > 0 && (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No webhooks configured</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Create your first webhook to receive encrypted notifications
-            </p>
-              <Button onClick={() => handleOpenDialog()}>
-                Add Your First Webhook
-              </Button>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {selectedWebhooks.size > 0 ? `${selectedWebhooks.size} selected` : `${webhooks.length} total`}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchEnable}
+                  disabled={batchEnableMutation.isPending}
+                >
+                  {selectedWebhooks.size > 0 ? 'Enable Selected' : 'Enable All'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchDisable}
+                  disabled={batchDisableMutation.isPending}
+                >
+                  {selectedWebhooks.size > 0 ? 'Disable Selected' : 'Disable All'}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBatchDelete}
+                  disabled={batchDeleteMutation.isPending}
+                >
+                  {selectedWebhooks.size > 0 ? 'Delete Selected' : 'Delete All'}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
+      )}
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <input
+                  type="checkbox"
+                  checked={!!webhooks && selectedWebhooks.size === webhooks.length && webhooks.length > 0}
+                  onChange={handleSelectAll}
+                  className="cursor-pointer"
+                />
+              </TableHead>
+              <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
@@ -225,8 +331,16 @@ export function WebhooksTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {webhooks.map((webhook) => (
+              {webhooks?.map((webhook) => (
                 <TableRow key={webhook.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedWebhooks.has(webhook.id!)}
+                      onChange={() => handleSelectWebhook(webhook.id!)}
+                      className="cursor-pointer"
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{webhook.name}</TableCell>
                   <TableCell>
                     <Badge className={getWebhookTypeColor(webhook.webhook_type)}>
@@ -265,7 +379,6 @@ export function WebhooksTable() {
             </TableBody>
           </Table>
         </Card>
-      )}
 
       {/* Webhook Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -375,6 +488,21 @@ export function WebhooksTable() {
         confirmText="Delete"
         variant="destructive"
         onConfirm={confirmDelete}
+      />
+
+      {/* Batch Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={batchAction === 'delete'}
+        onOpenChange={(open) => !open && setBatchAction(null)}
+        title="Delete Webhooks"
+        description={
+          selectedWebhooks.size > 0
+            ? `Are you sure you want to delete ${selectedWebhooks.size} selected webhook(s)? This action cannot be undone.`
+            : `Are you sure you want to delete ALL ${webhooks?.length || 0} webhooks? This action cannot be undone and will permanently delete all your webhook configurations.`
+        }
+        confirmText="Delete"
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
       />
     </div>
   )

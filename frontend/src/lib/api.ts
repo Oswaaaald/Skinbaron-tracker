@@ -534,6 +534,27 @@ class ApiClient {
     });
   }
 
+  async batchEnableWebhooks(webhookIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>> {
+    return this.request<{ message: string; count: number }>(`/api/webhooks/batch/enable`, {
+      method: 'POST',
+      body: JSON.stringify({ webhook_ids: webhookIds || [] }),
+    });
+  }
+
+  async batchDisableWebhooks(webhookIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>> {
+    return this.request<{ message: string; count: number }>(`/api/webhooks/batch/disable`, {
+      method: 'POST',
+      body: JSON.stringify({ webhook_ids: webhookIds || [] }),
+    });
+  }
+
+  async batchDeleteWebhooks(webhookIds?: number[], confirmAll: boolean = false): Promise<ApiResponse<{ message: string; count: number }>> {
+    return this.request<{ message: string; count: number }>(`/api/webhooks/batch/delete`, {
+      method: 'POST',
+      body: JSON.stringify({ webhook_ids: webhookIds || [], confirm_all: confirmAll }),
+    });
+  }
+
   async getActiveWebhooks(): Promise<ApiResponse<Webhook[]>> {
     return this.request<Webhook[]>('/api/webhooks/active');
   }
