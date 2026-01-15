@@ -263,53 +263,46 @@ export class AlertScheduler {
         // Get webhooks once for the rule
         const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
         
-        // Create alerts individually (ensures proper duplicate handling)
-        for (const item of matchingItems) {
-          try {
-            const alert: CreateAlert = {
-              rule_id: rule.id!,
-              sale_id: item.saleId,
-              item_name: item.itemName,
-              price: item.price,
-              wear_value: item.wearValue,
-              stattrak: item.statTrak ?? false,
-              souvenir: item.souvenir ?? false,
-              skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
-              alert_type: 'match',
-            };
+        // Prepare all alerts for batch insert
+        const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
+          rule_id: rule.id!,
+          sale_id: item.saleId,
+          item_name: item.itemName,
+          price: item.price,
+          wear_value: item.wearValue,
+          stattrak: item.statTrak ?? false,
+          souvenir: item.souvenir ?? false,
+          skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
+          alert_type: 'match',
+        }));
 
-            this.store.createAlert(alert);
-            newAlerts++;
+        // Batch insert all alerts at once (much faster!)
+        const insertedCount = this.store.createAlertsBatch(alertsToCreate);
+        newAlerts += insertedCount;
 
-            // Send notifications if webhooks exist
-            if (webhooks.length > 0) {
-              const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
-              
-              for (const webhook of webhooks) {
-                this.queueWebhookNotification(
-                  webhook.webhook_url!,
-                  {
-                    alertType: 'match',
-                    item,
-                    rule,
-                    skinUrl: offerUrl,
-                  }
-                ).catch((error) => {
-                  this.logger.warn({ 
-                    error: error instanceof Error ? error.message : 'Unknown error',
-                    webhookId: webhook.id,
-                    ruleId: rule.id,
-                    itemName: item.itemName 
-                  }, 'Failed to send webhook notification');
-                });
-              }
+        // Send notifications if webhooks exist (async, don't block)
+        if (webhooks.length > 0) {
+          for (const item of matchingItems) {
+            const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
+            
+            for (const webhook of webhooks) {
+              this.queueWebhookNotification(
+                webhook.webhook_url!,
+                {
+                  alertType: 'match',
+                  item,
+                  rule,
+                  skinUrl: offerUrl,
+                }
+              ).catch((error) => {
+                this.logger.warn({ 
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  webhookId: webhook.id,
+                  ruleId: rule.id,
+                  itemName: item.itemName 
+                }, 'Failed to send webhook notification');
+              });
             }
-          } catch (error) {
-            if (error instanceof Error && error.message === 'DUPLICATE_SALE') {
-              continue;
-            }
-            // Log other errors but continue processing
-            this.logger.warn({ error, ruleId: rule.id, itemName: item.itemName }, 'Failed to create alert');
           }
         }
       }
