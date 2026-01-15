@@ -234,8 +234,7 @@ class ApiClient {
         };
       }
 
-      const parsed = data as ApiResponse<T>;
-      return { ...parsed, success: parsed?.success ?? true };
+      return data; // Return raw response instead of ApiResponse<T>
     } catch (error) {
       const message = (error as Error).message || 'Network error';
       if (process.env.NODE_ENV === 'development') {
@@ -378,7 +377,7 @@ class ApiClient {
     });
   }
 
-  async batchEnableRules(ruleIds?: number[]): Promise<{ message: string; count: number }> {
+  async batchEnableRules(ruleIds?: number[]): Promise<{ success: boolean; message: string; count: number }> {
     const response = await this.request<{ message: string; count: number }>(`/api/rules/batch/enable`, {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [] }),
@@ -389,7 +388,7 @@ class ApiClient {
     return response;
   }
 
-  async batchDisableRules(ruleIds?: number[]): Promise<{ message: string; count: number }> {
+  async batchDisableRules(ruleIds?: number[]): Promise<{ success: boolean; message: string; count: number }> {
     const response = await this.request<{ message: string; count: number }>(`/api/rules/batch/disable`, {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [] }),
@@ -400,7 +399,7 @@ class ApiClient {
     return response;
   }
 
-  async batchDeleteRules(ruleIds?: number[], confirmAll: boolean = false): Promise<{ message: string; count: number }> {
+  async batchDeleteRules(ruleIds?: number[], confirmAll: boolean = false): Promise<{ success: boolean; message: string; count: number }> {
     const response = await this.request<{ message: string; count: number }>(`/api/rules/batch/delete`, {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [], confirm_all: confirmAll }),
