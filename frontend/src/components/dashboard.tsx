@@ -58,10 +58,10 @@ export function Dashboard() {
   const { data: systemStatus } = useQuery({
     queryKey: ['system-status'],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getSystemStatus(), 'Failed to load system status'),
-    enabled: isReady && isAuthenticated && isVisible && activeTab === 'system',
+    enabled: isReady && isAuthenticated && isVisible,
     staleTime: 5 * 60 * 1000,
-    refetchInterval: isVisible && activeTab === 'system' ? 5 * 60 * 1000 : false,
-    refetchOnWindowFocus: activeTab === 'system',
+    refetchInterval: isVisible ? 5 * 60 * 1000 : false,
+    refetchOnWindowFocus: true,
   })
 
   // Fetch user statistics
