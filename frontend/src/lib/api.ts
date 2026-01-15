@@ -383,6 +383,9 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [] }),
     });
+    // DEBUG
+    // eslint-disable-next-line no-console
+    console.log('batchEnableRules response:', response);
     return response.data!;
   }
 
@@ -391,6 +394,9 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [] }),
     });
+    // DEBUG
+    // eslint-disable-next-line no-console
+    console.log('batchDisableRules response:', response);
     return response.data!;
   }
 
