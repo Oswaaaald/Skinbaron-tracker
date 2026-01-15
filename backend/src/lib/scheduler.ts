@@ -185,31 +185,55 @@ export class AlertScheduler {
       });
 
       if (!response.items || response.items.length === 0) {
+        this.logger.info({ ruleId: rule.id, searchItem: rule.search_item }, '[Scheduler] No items found from API');
         return 0;
       }
 
+      this.logger.info({ 
+        ruleId: rule.id, 
+        searchItem: rule.search_item, 
+        foundItems: response.items.length 
+      }, '[Scheduler] Items found from API');
+
       let newAlerts = 0;
+      let skippedAlreadyProcessed = 0;
+      let skippedByFilters = 0;
+      
       for (const item of response.items) {
         // Check if already processed for this rule
         if (this.store.isProcessed(item.saleId, rule.id)) {
+          skippedAlreadyProcessed++;
           continue;
         }
 
         // Apply additional filters that the API might not handle perfectly
         // Filter StatTrak based on rule
         const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
-        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) continue;
-        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) continue;
+        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
+          skippedByFilters++;
+          continue;
+        }
+        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) {
+          skippedByFilters++;
+          continue;
+        }
 
         // Filter Souvenir based on rule
         const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) continue;
-        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) continue;
+        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) {
+          skippedByFilters++;
+          continue;
+        }
+        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) {
+          skippedByFilters++;
+          continue;
+        }
 
         // Filter stickers - check if item HAS stickers applied
         // allow_stickers = true means accept items with stickers
         // allow_stickers = false means reject items with stickers
         if (!rule.allow_stickers && item.hasStickers) {
+          skippedByFilters++;
           continue; // Skip items with stickers if not allowed
         }
 
@@ -223,6 +247,7 @@ export class AlertScheduler {
           statTrak: statTrakParam,
           souvenir: souvenirParam,
         })) {
+          skippedByFilters++;
           continue;
         }
 
@@ -283,6 +308,16 @@ export class AlertScheduler {
           throw error;
         }
       }
+
+      // Log filtering summary
+      this.logger.info({
+        ruleId: rule.id,
+        searchItem: rule.search_item,
+        totalFound: response.items.length,
+        skippedAlreadyProcessed,
+        skippedByFilters,
+        newAlerts
+      }, '[Scheduler] Rule processing completed');
 
       return newAlerts;
 
