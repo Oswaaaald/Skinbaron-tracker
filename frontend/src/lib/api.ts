@@ -378,6 +378,27 @@ class ApiClient {
     });
   }
 
+  async batchEnableRules(ruleIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>> {
+    return this.request<{ message: string; count: number }>(`/api/rules/batch/enable`, {
+      method: 'POST',
+      body: JSON.stringify({ rule_ids: ruleIds || [] }),
+    });
+  }
+
+  async batchDisableRules(ruleIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>> {
+    return this.request<{ message: string; count: number }>(`/api/rules/batch/disable`, {
+      method: 'POST',
+      body: JSON.stringify({ rule_ids: ruleIds || [] }),
+    });
+  }
+
+  async batchDeleteRules(ruleIds?: number[], confirmAll: boolean = false): Promise<ApiResponse<{ message: string; count: number }>> {
+    return this.request<{ message: string; count: number }>(`/api/rules/batch/delete`, {
+      method: 'POST',
+      body: JSON.stringify({ rule_ids: ruleIds || [], confirm_all: confirmAll }),
+    });
+  }
+
   async testRule(id: number, webhookTest: boolean = false, webhookOnly: boolean = false): Promise<ApiResponse<{
     matches: any[];
     matchCount: number;

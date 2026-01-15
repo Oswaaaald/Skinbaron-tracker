@@ -37,6 +37,8 @@ export function RulesTable() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [ruleToDelete, setRuleToDelete] = useState<Rule | null>(null)
+  const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set())
+  const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
@@ -157,6 +159,73 @@ export function RulesTable() {
     }
   )
 
+  const batchEnableMutation = useApiMutation(
+    (ruleIds?: number[]) => apiClient.batchEnableRules(ruleIds),
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      onSuccess: (data) => {
+        toast({
+          title: "✅ Rules enabled",
+          description: `${data?.data?.count || 0} rule(s) have been enabled`,
+        })
+        setSelectedRules(new Set())
+        syncStats()
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to enable rules",
+          description: error?.message || "An error occurred",
+        })
+      },
+    }
+  )
+
+  const batchDisableMutation = useApiMutation(
+    (ruleIds?: number[]) => apiClient.batchDisableRules(ruleIds),
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      onSuccess: (data) => {
+        toast({
+          title: "⚠️ Rules disabled",
+          description: `${data?.data?.count || 0} rule(s) have been disabled`,
+        })
+        setSelectedRules(new Set())
+        syncStats()
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to disable rules",
+          description: error?.message || "An error occurred",
+        })
+      },
+    }
+  )
+
+  const batchDeleteMutation = useApiMutation(
+    ({ ruleIds, confirmAll }: { ruleIds?: number[]; confirmAll: boolean }) => 
+      apiClient.batchDeleteRules(ruleIds, confirmAll),
+    {
+      invalidateKeys: [['rules'], ['admin', 'stats']],
+      onSuccess: (data) => {
+        toast({
+          title: "✅ Rules deleted",
+          description: `${data?.data?.count || 0} rule(s) have been permanently deleted`,
+        })
+        setSelectedRules(new Set())
+        syncStats()
+      },
+      onError: (error: any) => {
+        toast({
+          variant: "destructive",
+          title: "❌ Failed to delete rules",
+          description: error?.message || "An error occurred",
+        })
+      },
+    }
+  )
+
   const handleEdit = (rule: Rule) => {
     setEditingRule(rule)
     setIsEditDialogOpen(true)
@@ -178,6 +247,45 @@ export function RulesTable() {
       deleteRuleMutation.mutate(ruleToDelete.id)
     }
     setRuleToDelete(null)
+  }
+
+  const handleSelectAll = () => {
+    if (selectedRules.size === rules.length) {
+      setSelectedRules(new Set())
+    } else {
+      setSelectedRules(new Set(rules.map(r => r.id!).filter(Boolean)))
+    }
+  }
+
+  const handleSelectRule = (ruleId: number) => {
+    const newSelection = new Set(selectedRules)
+    if (newSelection.has(ruleId)) {
+      newSelection.delete(ruleId)
+    } else {
+      newSelection.add(ruleId)
+    }
+    setSelectedRules(newSelection)
+  }
+
+  const handleBatchEnable = () => {
+    const ruleIds = selectedRules.size > 0 ? Array.from(selectedRules) : undefined
+    batchEnableMutation.mutate(ruleIds)
+  }
+
+  const handleBatchDisable = () => {
+    const ruleIds = selectedRules.size > 0 ? Array.from(selectedRules) : undefined
+    batchDisableMutation.mutate(ruleIds)
+  }
+
+  const handleBatchDelete = () => {
+    setBatchAction('delete')
+  }
+
+  const confirmBatchDelete = () => {
+    const ruleIds = selectedRules.size > 0 ? Array.from(selectedRules) : undefined
+    const confirmAll = selectedRules.size === 0
+    batchDeleteMutation.mutate({ ruleIds, confirmAll })
+    setBatchAction(null)
   }
 
   if (isLoading) {
@@ -214,10 +322,55 @@ export function RulesTable() {
   return (
     <>
       <Card>
+        {rules.length > 0 && (
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {selectedRules.size > 0 ? `${selectedRules.size} selected` : `${rules.length} total`}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchEnable}
+                  disabled={batchEnableMutation.isPending}
+                >
+                  {selectedRules.size > 0 ? 'Enable Selected' : 'Enable All'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBatchDisable}
+                  disabled={batchDisableMutation.isPending}
+                >
+                  {selectedRules.size > 0 ? 'Disable Selected' : 'Disable All'}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBatchDelete}
+                  disabled={batchDeleteMutation.isPending}
+                >
+                  {selectedRules.size > 0 ? 'Delete Selected' : 'Delete All'}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        )}
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedRules.size === rules.length && rules.length > 0}
+                    onChange={handleSelectAll}
+                    className="cursor-pointer"
+                  />
+                </TableHead>
                 <TableHead>Item</TableHead>
                 <TableHead>Price Range</TableHead>
                 <TableHead>Conditions</TableHead>
@@ -230,6 +383,14 @@ export function RulesTable() {
             <TableBody>
               {rules.map((rule) => (
                 <TableRow key={rule.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedRules.has(rule.id!)}
+                      onChange={() => handleSelectRule(rule.id!)}
+                      className="cursor-pointer"
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     {rule.search_item}
                   </TableCell>
@@ -357,6 +518,22 @@ export function RulesTable() {
         cancelText="Cancel"
         variant="destructive"
         onConfirm={confirmDelete}
+      />
+
+      {/* Batch Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={batchAction === 'delete'}
+        onOpenChange={(open) => !open && setBatchAction(null)}
+        title="Delete Rules"
+        description={
+          selectedRules.size > 0
+            ? `Are you sure you want to delete ${selectedRules.size} selected rule(s)? This action cannot be undone.`
+            : `Are you sure you want to delete ALL ${rules.length} rules? This action cannot be undone and will permanently delete all your monitoring rules.`
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
       />
     </>
   )
