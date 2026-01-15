@@ -995,25 +995,16 @@ export class Store {
   }
 
   getUserStats(userId: number) {
-    const userRulesCount = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE user_id = ?').get(userId.toString()) as { count: number };
-    const enabledRulesCount = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE user_id = ? AND enabled = 1').get(userId.toString()) as { count: number };
-    const userAlertsCount = this.db.prepare(`
-      SELECT COUNT(*) as count FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ?
-    `).get(userId.toString()) as { count: number };
-    const todayUserAlerts = this.db.prepare(`
-      SELECT COUNT(*) as count FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ? AND DATE(a.sent_at) = DATE('now')
-    `).get(userId.toString()) as { count: number };
+    // Single optimized query instead of 4 separate queries
+    const stats = this.db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM rules WHERE user_id = ?) as totalRules,
+        (SELECT COUNT(*) FROM rules WHERE user_id = ? AND enabled = 1) as enabledRules,
+        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ?) as totalAlerts,
+        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ? AND DATE(a.sent_at) = DATE('now')) as todayAlerts
+    `).get(userId, userId, userId, userId) as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
 
-    return {
-      totalRules: userRulesCount.count,
-      enabledRules: enabledRulesCount.count,
-      totalAlerts: userAlertsCount.count,
-      todayAlerts: todayUserAlerts.count,
-    };
+    return stats;
   }
 
   // Utility methods
