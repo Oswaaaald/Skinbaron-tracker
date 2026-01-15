@@ -181,7 +181,7 @@ export class AlertScheduler {
         maxWear: rule.max_wear || undefined,
         statTrak: statTrakParam,
         souvenir: souvenirParam,
-        limit: 50, // Increased limit to catch more items with different wear values
+        limit: 1000, // High limit to catch all matching items
       });
 
       if (!response.items || response.items.length === 0) {
