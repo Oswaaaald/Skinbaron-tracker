@@ -186,9 +186,6 @@ export function RulesTable() {
     {
       invalidateKeys: [['rules'], ['admin', 'stats']],
       onSuccess: (data) => {
-        // DEBUG: log la valeur reçue
-        // eslint-disable-next-line no-console
-        console.log('batchDisableMutation data:', data);
         toast({
           title: "⚠️ Rules disabled",
           description: `${data?.count || 0} rule(s) have been disabled`,
