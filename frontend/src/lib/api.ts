@@ -378,25 +378,28 @@ class ApiClient {
     });
   }
 
-  async batchEnableRules(ruleIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>> {
-    return this.request<{ message: string; count: number }>(`/api/rules/batch/enable`, {
+  async batchEnableRules(ruleIds?: number[]): Promise<{ message: string; count: number }> {
+    const response = await this.request<{ message: string; count: number }>(`/api/rules/batch/enable`, {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [] }),
     });
+    return response.data!;
   }
 
-  async batchDisableRules(ruleIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>> {
-    return this.request<{ message: string; count: number }>(`/api/rules/batch/disable`, {
+  async batchDisableRules(ruleIds?: number[]): Promise<{ message: string; count: number }> {
+    const response = await this.request<{ message: string; count: number }>(`/api/rules/batch/disable`, {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [] }),
     });
+    return response.data!;
   }
 
-  async batchDeleteRules(ruleIds?: number[], confirmAll: boolean = false): Promise<ApiResponse<{ message: string; count: number }>> {
-    return this.request<{ message: string; count: number }>(`/api/rules/batch/delete`, {
+  async batchDeleteRules(ruleIds?: number[], confirmAll: boolean = false): Promise<{ message: string; count: number }> {
+    const response = await this.request<{ message: string; count: number }>(`/api/rules/batch/delete`, {
       method: 'POST',
       body: JSON.stringify({ rule_ids: ruleIds || [], confirm_all: confirmAll }),
     });
+    return response.data!;
   }
 
   async testRule(id: number, webhookTest: boolean = false, webhookOnly: boolean = false): Promise<ApiResponse<{
