@@ -210,7 +210,7 @@ export class AlertScheduler {
         // Filter StatTrak based on rule
         const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
         if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
-          this.logger.debug({ 
+          this.logger.info({ 
             ruleId: rule.id, 
             itemName: item.itemName, 
             itemStatTrak: item.statTrak,
@@ -239,7 +239,7 @@ export class AlertScheduler {
         // allow_stickers = true means accept items with stickers
         // allow_stickers = false means reject items with stickers
         if (!rule.allow_stickers && item.hasStickers) {
-          this.logger.debug({ 
+          this.logger.info({ 
             ruleId: rule.id, 
             itemName: item.itemName, 
             hasStickers: item.hasStickers,
@@ -259,7 +259,7 @@ export class AlertScheduler {
           statTrak: statTrakParam,
           souvenir: souvenirParam,
         })) {
-          this.logger.debug({ 
+          this.logger.info({ 
             ruleId: rule.id, 
             itemName: item.itemName,
             price: item.price,
