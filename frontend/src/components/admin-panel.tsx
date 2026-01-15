@@ -98,7 +98,8 @@ export function AdminPanel() {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/admin/stats'), 'Failed to load stats')
       return response.data as GlobalStats
     },
-    staleTime: 0,
+    staleTime: 10_000,
+    refetchInterval: 10_000, // Auto-refresh every 10 seconds
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
   })
