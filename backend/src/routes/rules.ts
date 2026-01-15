@@ -645,6 +645,232 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  /**
+   * POST /rules/batch/enable - Enable multiple or all rules
+   */
+  fastify.post('/batch/enable', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Enable multiple rules or all rules for authenticated user',
+      tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          rule_ids: { 
+            type: 'array', 
+            items: { type: 'number' },
+            description: 'Array of rule IDs to enable. If empty or not provided, enables all rules'
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            count: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { rule_ids } = request.body as { rule_ids?: number[] };
+      const userId = request.user!.id;
+
+      let updated = 0;
+      
+      if (!rule_ids || rule_ids.length === 0) {
+        // Enable all rules for this user
+        const allRules = store.getRulesByUserId(userId);
+        for (const rule of allRules) {
+          if (!rule.enabled) {
+            store.updateRule(rule.id!, { ...rule, enabled: true });
+            updated++;
+          }
+        }
+      } else {
+        // Enable specific rules
+        for (const ruleId of rule_ids) {
+          const rule = store.getRuleById(ruleId);
+          if (rule && rule.user_id === userId && !rule.enabled) {
+            store.updateRule(ruleId, { ...rule, enabled: true });
+            updated++;
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully enabled ${updated} rule(s)`,
+        count: updated,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to enable rules');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to enable rules',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /rules/batch/disable - Disable multiple or all rules
+   */
+  fastify.post('/batch/disable', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Disable multiple rules or all rules for authenticated user',
+      tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          rule_ids: { 
+            type: 'array', 
+            items: { type: 'number' },
+            description: 'Array of rule IDs to disable. If empty or not provided, disables all rules'
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            count: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { rule_ids } = request.body as { rule_ids?: number[] };
+      const userId = request.user!.id;
+
+      let updated = 0;
+      
+      if (!rule_ids || rule_ids.length === 0) {
+        // Disable all rules for this user
+        const allRules = store.getRulesByUserId(userId);
+        for (const rule of allRules) {
+          if (rule.enabled) {
+            store.updateRule(rule.id!, { ...rule, enabled: false });
+            updated++;
+          }
+        }
+      } else {
+        // Disable specific rules
+        for (const ruleId of rule_ids) {
+          const rule = store.getRuleById(ruleId);
+          if (rule && rule.user_id === userId && rule.enabled) {
+            store.updateRule(ruleId, { ...rule, enabled: false });
+            updated++;
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully disabled ${updated} rule(s)`,
+        count: updated,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to disable rules');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to disable rules',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * POST /rules/batch/delete - Delete multiple or all rules
+   */
+  fastify.post('/batch/delete', {
+    preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Delete multiple rules or all rules for authenticated user',
+      tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          rule_ids: { 
+            type: 'array', 
+            items: { type: 'number' },
+            description: 'Array of rule IDs to delete. If empty or not provided, deletes all rules'
+          },
+          confirm_all: {
+            type: 'boolean',
+            description: 'Required confirmation when deleting all rules',
+          },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            count: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { rule_ids, confirm_all } = request.body as { rule_ids?: number[]; confirm_all?: boolean };
+      const userId = request.user!.id;
+
+      let deleted = 0;
+      
+      if (!rule_ids || rule_ids.length === 0) {
+        // Delete all rules - require confirmation
+        if (!confirm_all) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Confirmation required',
+            message: 'Set confirm_all: true to delete all rules',
+          });
+        }
+
+        const allRules = store.getRulesByUserId(userId);
+        for (const rule of allRules) {
+          store.deleteRule(rule.id!);
+          deleted++;
+        }
+      } else {
+        // Delete specific rules
+        for (const ruleId of rule_ids) {
+          const rule = store.getRuleById(ruleId);
+          if (rule && rule.user_id === userId) {
+            store.deleteRule(ruleId);
+            deleted++;
+          }
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully deleted ${deleted} rule(s)`,
+        count: deleted,
+      });
+    } catch (error) {
+      request.log.error({ error }, 'Failed to delete rules');
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to delete rules',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
 };
 
 export default rulesRoutes;
