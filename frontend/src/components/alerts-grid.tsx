@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -93,6 +93,20 @@ export function AlertsGrid() {
     refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
+
+  // Track previous alert count to detect changes
+  const prevAlertCountRef = useRef<number | null>(null)
+  
+  useEffect(() => {
+    const currentCount = alertsResponse?.data?.length ?? 0
+    
+    // If alert count changed (and it's not the first load), invalidate user stats
+    if (prevAlertCountRef.current !== null && prevAlertCountRef.current !== currentCount) {
+      queryClient.invalidateQueries({ queryKey: ['user-stats'] })
+    }
+    
+    prevAlertCountRef.current = currentCount
+  }, [alertsResponse?.data?.length, queryClient])
 
   if (isLoading) {
     return <LoadingSpinner />
