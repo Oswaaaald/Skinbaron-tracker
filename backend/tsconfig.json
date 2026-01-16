@@ -25,7 +25,10 @@
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "useUnknownInCatchVariables": true
   },
   "include": [
     "src/**/*"
