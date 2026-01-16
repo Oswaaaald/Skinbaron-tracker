@@ -267,7 +267,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
     try {
-      const userId = (request as any).user.id;
+      const userId = request.user!.id;
       const deletedCount = store.cleanupUserOldAlerts(userId);
       
       request.log.info(`User ${userId} cleaned up ${deletedCount} old alerts`);
@@ -296,7 +296,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: [fastify.authenticate],
   }, async (request, reply) => {
     try {
-      const userId = (request as any).user.id;
+      const userId = request.user!.id;
       const deletedCount = store.deleteAllUserAlerts(userId);
       
       request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);

@@ -142,7 +142,7 @@ async function registerPlugins() {
         }
       }
 
-      const cookies = (request as any).cookies as Record<string, string | undefined> | undefined;
+      const cookies = request.cookies as Record<string, string | undefined> | undefined;
       const accessToken = cookies?.access_token;
       const refreshToken = cookies?.refresh_token;
       return accessToken ?? refreshToken ?? request.ip ?? 'unknown';

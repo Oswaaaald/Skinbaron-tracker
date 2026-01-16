@@ -361,7 +361,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Check if 2FA is enabled
       if (user.totp_enabled) {
-        const { totp_code } = request.body as any;
+        const { totp_code } = request.body as { totp_code?: string };
 
         // Check if user is locked out from too many failed 2FA attempts
         const lockStatus = is2FALocked(user.id!);
@@ -500,7 +500,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       
       // Handle Zod validation errors
       if (error && typeof error === 'object' && 'issues' in error) {
-        const zodError = error as any;
+        const zodError = error as z.ZodError;
         const firstIssue = zodError.issues?.[0];
         return reply.status(400).send({
           success: false,

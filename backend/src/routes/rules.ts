@@ -167,7 +167,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       }
       
       // Parse body but add user_id from authenticated user
-      const bodyData = request.body as any;
+      const bodyData = request.body as Record<string, unknown>;
       
       const ruleData = CreateRuleRequestSchema.parse({
         ...bodyData,
@@ -392,7 +392,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // Parse body but add user_id from authenticated user (same as create)
-      const bodyData = request.body as any;
+      const bodyData = request.body as Record<string, unknown>;
       
       const updates = UpdateRuleRequestSchema.parse({
         ...bodyData,

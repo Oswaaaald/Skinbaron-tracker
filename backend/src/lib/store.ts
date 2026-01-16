@@ -100,6 +100,64 @@ export const UserWebhookSchema = z.object({
   updated_at: z.string(),
 });
 
+// Database row types (raw from SQLite)
+interface RuleRow {
+  id: number;
+  user_id: number;
+  search_item: string;
+  min_price: number | null;
+  max_price: number | null;
+  min_wear: number | null;
+  max_wear: number | null;
+  stattrak_filter: string;
+  souvenir_filter: string;
+  allow_stickers: number;
+  webhook_ids: string | null;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface AlertRow {
+  id: number;
+  rule_id: number;
+  sale_id: string;
+  item_name: string;
+  price: number;
+  wear_value: number | null;
+  stattrak: number;
+  souvenir: number;
+  skin_url: string;
+  alert_type: string;
+  sent_at: string;
+}
+
+interface UserRow {
+  id: number;
+  username: string;
+  email: string;
+  password_hash: string;
+  is_admin: number;
+  is_super_admin: number;
+  is_approved: number;
+  totp_secret_encrypted: string | null;
+  totp_enabled: number;
+  recovery_codes_encrypted: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface WebhookRow {
+  id: number;
+  user_id: number;
+  name: string;
+  webhook_url_encrypted: string;
+  webhook_type: string;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Types inferred from schemas
 export type Rule = z.infer<typeof RuleSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
@@ -375,7 +433,7 @@ export class Store {
         FROM users 
         WHERE (totp_secret IS NOT NULL AND totp_secret != '') 
            OR (recovery_codes IS NOT NULL AND recovery_codes != '')
-      `).all() as any[];
+      `).all() as Array<{ id: number; totp_secret: string | null; recovery_codes: string | null }>;
 
       let encryptedCount = 0;
       for (const user of usersWithTotp) {
@@ -736,7 +794,7 @@ export class Store {
 
   getRuleById(id: number): Rule | null {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE id = ?');
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as RuleRow | undefined;
     
     if (!row) return null;
 
@@ -760,9 +818,11 @@ export class Store {
       enabled: Boolean(row.enabled),
       webhook_ids: webhookIds,
     };
-  }getAllRules(): Rule[] {
+  }
+  
+  getAllRules(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules ORDER BY created_at DESC');
-    const rows = stmt.all() as any[];
+    const rows = stmt.all() as RuleRow[];
     
     return rows.map(row => {
       let webhookIds: number[] = [];
@@ -792,7 +852,7 @@ export class Store {
   getRulesByUserId(userId: number): Rule[] {
     // Handle both old format (TEXT user_id) and new format (INTEGER user_id)
     const stmt = this.db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY created_at DESC');
-    const rows = stmt.all(userId.toString()) as any[];
+    const rows = stmt.all(userId.toString()) as RuleRow[];
     
     return rows.map(row => {
       let webhookIds: number[] = [];
@@ -823,7 +883,7 @@ export class Store {
 
   getEnabledRules(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE enabled = 1 ORDER BY created_at DESC');
-    const rows = stmt.all() as any[];
+    const rows = stmt.all() as RuleRow[];
     
     return rows.map(row => {
       let webhookIds: number[] = [];
@@ -961,7 +1021,7 @@ export class Store {
 
   getAlertById(id: number): Alert | null {
     const stmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as AlertRow | undefined;
     
     if (!row) return null;
 
@@ -978,7 +1038,7 @@ export class Store {
       ORDER BY sent_at DESC 
       LIMIT ? OFFSET ?
     `);
-    const rows = stmt.all(limit, offset) as any[];
+    const rows = stmt.all(limit, offset) as AlertRow[];
     
     return rows.map(row => ({
       ...row,
@@ -989,7 +1049,7 @@ export class Store {
 
   getAlertsBySaleId(saleId: string): Alert | null {
     const stmt = this.db.prepare('SELECT * FROM alerts WHERE sale_id = ? LIMIT 1');
-    const row = stmt.get(saleId) as any;
+    const row = stmt.get(saleId) as AlertRow | undefined;
     
     if (!row) return null;
 
@@ -1153,7 +1213,7 @@ export class Store {
 
   getUserById(id: number): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as UserRow | undefined;
     if (!row) return null;
     const user = UserSchema.parse(row);
     return this.decrypt2FASecrets(user);
@@ -1161,7 +1221,7 @@ export class Store {
 
   getUserByEmail(email: string): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-    const row = stmt.get(email) as any;
+    const row = stmt.get(email) as UserRow | undefined;
     if (!row) return null;
     const user = UserSchema.parse(row);
     return this.decrypt2FASecrets(user);
@@ -1169,7 +1229,7 @@ export class Store {
 
   getUserByUsername(username: string): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
-    const row = stmt.get(username) as any;
+    const row = stmt.get(username) as UserRow | undefined;
     if (!row) return null;
     const user = UserSchema.parse(row);
     return this.decrypt2FASecrets(user);
@@ -1212,7 +1272,7 @@ export class Store {
     }
 
     const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const values = fields.map(field => (validatedUpdates as any)[field]);
+    const values = fields.map(field => (validatedUpdates as Record<string, unknown>)[field]);
     
     const stmt = this.db.prepare(`
       UPDATE users 
@@ -1338,9 +1398,9 @@ export class Store {
   }
 
   getRefreshTokenByHash(tokenHash: string): RefreshTokenRecord | null {
-    const row = this.db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ?').get(tokenHash) as any;
+    const row = this.db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ?').get(tokenHash) as RefreshTokenRecord | undefined;
     if (!row) return null;
-    return row as RefreshTokenRecord;
+    return row;
   }
 
   getRefreshToken(token: string): RefreshTokenRecord | null {
@@ -1386,7 +1446,7 @@ export class Store {
       DELETE FROM access_token_blacklist WHERE expires_at < CURRENT_TIMESTAMP
     `).run();
 
-    const row = this.db.prepare('SELECT 1 FROM access_token_blacklist WHERE jti = ?').get(jti) as any;
+    const row = this.db.prepare('SELECT 1 FROM access_token_blacklist WHERE jti = ?').get(jti) as { 1: number } | undefined;
     return Boolean(row);
   }
 
@@ -1422,7 +1482,7 @@ export class Store {
 
   getUserWebhookById(id: number, decrypt: boolean = false): UserWebhook | null {
     const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE id = ?');
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as WebhookRow | undefined;
     
     if (!row) return null;
 
@@ -1440,7 +1500,7 @@ export class Store {
 
   getUserWebhooksByUserId(userId: number, decrypt: boolean = false): UserWebhook[] {
     const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE user_id = ? ORDER BY created_at DESC');
-    const rows = stmt.all(userId) as any[];
+    const rows = stmt.all(userId) as WebhookRow[];
     
     return rows.map(row => {
       const webhook: UserWebhook = {
@@ -1518,7 +1578,7 @@ export class Store {
   private cleanupRulesAfterWebhookDeletion(webhookId: number, userId: number): void {
     // Get all rules for this user that might reference the deleted webhook
     const getRulesStmt = this.db.prepare('SELECT id, webhook_ids FROM rules WHERE user_id = ?');
-    const rules = getRulesStmt.all(userId) as any[];
+    const rules = getRulesStmt.all(userId) as Array<{ id: number; webhook_ids: string | null }>;
 
     for (const rule of rules) {
       try {
@@ -1566,7 +1626,14 @@ export class Store {
     const placeholders = rule.webhook_ids.map(() => '?').join(',');
     const query = `SELECT * FROM user_webhooks WHERE id IN (${placeholders}) AND is_active = 1`;
     const stmt = this.db.prepare(query);
-    const rows = stmt.all(...rule.webhook_ids) as any[];
+    const rows = stmt.all(...rule.webhook_ids) as Array<{
+      id: number;
+      user_id: number;
+      name: string;
+      webhook_url_encrypted: string;
+      webhook_type: string;
+      is_active: number;
+    }>;
     
     return rows
       .map(row => ({
@@ -1800,7 +1867,15 @@ export class Store {
     params.push(limit);
 
     const stmt = this.db.prepare(query);
-    const logs = stmt.all(...params) as any[];
+    const logs = stmt.all(...params) as Array<{
+      id: number;
+      user_id: number;
+      event_type: string;
+      event_data: string | null;
+      ip_address: string | null;
+      user_agent: string | null;
+      created_at: string;
+    }>;
     
     // Enrich logs with admin usernames from event_data
     return logs.map(log => {
