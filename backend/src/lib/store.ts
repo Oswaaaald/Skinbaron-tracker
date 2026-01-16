@@ -1608,7 +1608,7 @@ export class Store {
 
   getUserActiveWebhooks(userId: number): UserWebhook[] {
     const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC');
-    const rows = stmt.all(userId) as any[];
+    const rows = stmt.all(userId) as WebhookRow[];
     
     return rows.map(row => ({
       ...row,
@@ -1810,7 +1810,7 @@ export class Store {
       ORDER BY created_at DESC 
       LIMIT ?
     `);
-    const logs = stmt.all(userId, limit) as any[];
+    const logs = stmt.all(userId, limit) as Record<string, unknown>[];
     
     // Enrich logs with admin usernames from event_data
     return logs.map(log => {

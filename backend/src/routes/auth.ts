@@ -239,7 +239,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       
       // Handle Zod validation errors
       if (error && typeof error === 'object' && 'issues' in error) {
-        const zodError = error as any;
+        const zodError = error as z.ZodError;
         const firstIssue = zodError.issues?.[0];
         return reply.status(400).send({
           success: false,
