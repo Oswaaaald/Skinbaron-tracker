@@ -141,11 +141,11 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       const data = await apiClient.login(email, password, totpCode)
 
       if (data.success && data.data) {
-        if ((data.data as any).requires_2fa) {
+        if ((data.data as { requires_2fa?: boolean }).requires_2fa) {
           return { success: false, requires2FA: true }
         }
 
-        const { token_expires_at: _exp, ...userData } = data.data as any
+        const { token_expires_at: _exp, ...userData } = data.data as User & { token_expires_at?: number }
         setUser(userData)
         setAccessExpiry(_exp ?? null)
         setIsReady(true)
@@ -169,15 +169,15 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       const data = await apiClient.register(username, email, password)
 
       if (data.success) {
-        if (data.data && !(data.data as any).token) {
+        if (data.data && !(data.data as { token?: string }).token) {
           return {
             success: true,
             error: data.message || 'Registration successful! Your account is awaiting admin approval.',
           }
         }
 
-        if (data.data && (data.data as any).token) {
-          const { token_expires_at: _exp, ...userData } = data.data as any
+        if (data.data && (data.data as { token?: string }).token) {
+          const { token_expires_at: _exp, ...userData } = data.data as User & { token_expires_at?: number }
           setUser(userData as User)
           setAccessExpiry(_exp ?? null)
           setIsReady(true)

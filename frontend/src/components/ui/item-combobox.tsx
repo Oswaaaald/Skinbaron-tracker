@@ -117,7 +117,7 @@ export function ItemCombobox({
             className="h-11"
           />
           <CommandList 
-            ref={listRef as any}
+            ref={listRef as React.RefObject<HTMLDivElement>}
             className="max-h-[300px] overflow-y-auto overflow-x-hidden"
           >
             {isLoading ? (

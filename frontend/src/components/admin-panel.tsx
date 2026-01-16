@@ -408,7 +408,7 @@ export function AdminPanel() {
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {(deleteUserMutation.error as any).response?.data?.message || 'Failed to delete user'}
+                {(deleteUserMutation.error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete user'}
               </AlertDescription>
             </Alert>
           )}
@@ -416,7 +416,7 @@ export function AdminPanel() {
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {(toggleAdminMutation.error as any).response?.data?.message || 'Failed to update admin status'}
+                {(toggleAdminMutation.error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update admin status'}
               </AlertDescription>
             </Alert>
           )}
