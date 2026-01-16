@@ -812,6 +812,10 @@ export class Store {
     
     return {
       ...row,
+      min_price: row.min_price ?? undefined,
+      max_price: row.max_price ?? undefined,
+      min_wear: row.min_wear ?? undefined,
+      max_wear: row.max_wear ?? undefined,
       stattrak_filter: (row.stattrak_filter ?? 'all') as 'all' | 'only' | 'exclude',
       souvenir_filter: (row.souvenir_filter ?? 'all') as 'all' | 'only' | 'exclude',
       allow_stickers: Boolean(row.allow_stickers),
@@ -839,8 +843,12 @@ export class Store {
       
       return {
         ...row,
-        stattrak_filter: row.stattrak_filter ?? 'all',
-        souvenir_filter: row.souvenir_filter ?? 'all',
+        min_price: row.min_price ?? undefined,
+        max_price: row.max_price ?? undefined,
+        min_wear: row.min_wear ?? undefined,
+        max_wear: row.max_wear ?? undefined,
+        stattrak_filter: (row.stattrak_filter ?? 'all') as 'all' | 'only' | 'exclude',
+        souvenir_filter: (row.souvenir_filter ?? 'all') as 'all' | 'only' | 'exclude',
         allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
@@ -872,6 +880,10 @@ export class Store {
       return {
         ...row,
         user_id: row.user_id, // Keep original format for now
+        min_price: row.min_price ?? undefined,
+        max_price: row.max_price ?? undefined,
+        min_wear: row.min_wear ?? undefined,
+        max_wear: row.max_wear ?? undefined,
         stattrak_filter: (row.stattrak_filter ?? 'all') as 'all' | 'only' | 'exclude',
         souvenir_filter: (row.souvenir_filter ?? 'all') as 'all' | 'only' | 'exclude',
         allow_stickers: Boolean(row.allow_stickers),
@@ -900,8 +912,12 @@ export class Store {
       
       return {
         ...row,
-        stattrak_filter: row.stattrak_filter ?? 'all',
-        souvenir_filter: row.souvenir_filter ?? 'all',
+        min_price: row.min_price ?? undefined,
+        max_price: row.max_price ?? undefined,
+        min_wear: row.min_wear ?? undefined,
+        max_wear: row.max_wear ?? undefined,
+        stattrak_filter: (row.stattrak_filter ?? 'all') as 'all' | 'only' | 'exclude',
+        souvenir_filter: (row.souvenir_filter ?? 'all') as 'all' | 'only' | 'exclude',
         allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
@@ -1027,6 +1043,7 @@ export class Store {
 
     return {
       ...row,
+      wear_value: row.wear_value ?? undefined,
       alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
@@ -1043,6 +1060,7 @@ export class Store {
     
     return rows.map(row => ({
       ...row,
+      wear_value: row.wear_value ?? undefined,
       alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
@@ -1057,6 +1075,7 @@ export class Store {
 
     return {
       ...row,
+      wear_value: row.wear_value ?? undefined,
       alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
@@ -1586,6 +1605,8 @@ export class Store {
     const rules = getRulesStmt.all(userId) as Array<{ id: number; webhook_ids: string | null }>;
 
     for (const rule of rules) {
+      if (!rule.webhook_ids) continue;
+      
       try {
         const webhookIds = JSON.parse(rule.webhook_ids) as number[];
         const updatedWebhookIds = webhookIds.filter(id => id !== webhookId);
