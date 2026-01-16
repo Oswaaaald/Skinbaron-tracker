@@ -812,8 +812,8 @@ export class Store {
     
     return {
       ...row,
-      stattrak_filter: row.stattrak_filter ?? 'all',
-      souvenir_filter: row.souvenir_filter ?? 'all',
+      stattrak_filter: (row.stattrak_filter ?? 'all') as 'all' | 'only' | 'exclude',
+      souvenir_filter: (row.souvenir_filter ?? 'all') as 'all' | 'only' | 'exclude',
       allow_stickers: Boolean(row.allow_stickers),
       enabled: Boolean(row.enabled),
       webhook_ids: webhookIds,
@@ -872,8 +872,8 @@ export class Store {
       return {
         ...row,
         user_id: row.user_id, // Keep original format for now
-        stattrak_filter: row.stattrak_filter ?? 'all',
-        souvenir_filter: row.souvenir_filter ?? 'all',
+        stattrak_filter: (row.stattrak_filter ?? 'all') as 'all' | 'only' | 'exclude',
+        souvenir_filter: (row.souvenir_filter ?? 'all') as 'all' | 'only' | 'exclude',
         allow_stickers: Boolean(row.allow_stickers),
         enabled: Boolean(row.enabled),
         webhook_ids: webhookIds,
@@ -1027,6 +1027,7 @@ export class Store {
 
     return {
       ...row,
+      alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
     };
@@ -1042,6 +1043,7 @@ export class Store {
     
     return rows.map(row => ({
       ...row,
+      alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
     }));
@@ -1055,6 +1057,7 @@ export class Store {
 
     return {
       ...row,
+      alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
     };
@@ -1488,6 +1491,7 @@ export class Store {
 
     const webhook: UserWebhook = {
       ...row,
+      webhook_type: row.webhook_type as 'discord' | 'slack' | 'teams' | 'generic',
       is_active: Boolean(row.is_active),
     };
 
@@ -1505,6 +1509,7 @@ export class Store {
     return rows.map(row => {
       const webhook: UserWebhook = {
         ...row,
+        webhook_type: row.webhook_type as 'discord' | 'slack' | 'teams' | 'generic',
         is_active: Boolean(row.is_active),
       };
 
@@ -1612,8 +1617,9 @@ export class Store {
     
     return rows.map(row => ({
       ...row,
+      webhook_type: row.webhook_type as 'discord' | 'slack' | 'teams' | 'generic',
       is_active: Boolean(row.is_active),
-      webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted), // Decrypt for use
+      webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted) || '', // Decrypt for use
     }));
   }
 
@@ -1638,8 +1644,11 @@ export class Store {
     return rows
       .map(row => ({
         ...row,
+        webhook_type: row.webhook_type as 'discord' | 'slack' | 'teams' | 'generic',
         is_active: Boolean(row.is_active),
-        webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted),
+        webhook_url: this.decryptWebhookUrl(row.webhook_url_encrypted) || '',
+        created_at: '',
+        updated_at: '',
       }))
       .filter(webhook => webhook.webhook_url && webhook.webhook_url.length > 0); // Filter out failed decryptions
   }
@@ -1814,9 +1823,9 @@ export class Store {
     
     // Enrich logs with admin usernames from event_data
     return logs.map(log => {
-      if (log.event_data) {
+      if (log.event_data && typeof log.event_data === 'string') {
         try {
-          const data = JSON.parse(log.event_data);
+          const data = JSON.parse(log.event_data) as Record<string, unknown>;
           
           // Extract admin_id from various possible fields
           const adminId = data.admin_id || data.approved_by_admin_id || data.deleted_by_admin_id;
