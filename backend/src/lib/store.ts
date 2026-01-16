@@ -193,6 +193,18 @@ export type AccessTokenBlacklistRecord = {
   created_at: string;
 };
 
+export type AuditLog = {
+  id: number;
+  user_id: number;
+  event_type: string;
+  event_data: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  username?: string;
+  email?: string;
+};
+
 export class Store {
   private db: Database.Database;
 
@@ -986,8 +998,8 @@ export class Store {
       );
 
       return this.getAlertById(result.lastInsertRowid as number)!;
-    } catch (error: any) {
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         // Sale already processed for this rule
         throw new Error('DUPLICATE_SALE');
       }
@@ -1209,12 +1221,13 @@ export class Store {
     try {
       const result = stmt.run(validated.username, validated.email, validated.password_hash);
       return this.getUserById(result.lastInsertRowid as number)!;
-    } catch (error: any) {
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        if (error.message.includes('users.email')) {
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        const errorMessage = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
+        if (errorMessage.includes('users.email')) {
           throw new Error('Email already exists');
         }
-        if (error.message.includes('users.username')) {
+        if (errorMessage.includes('users.username')) {
           throw new Error('Username already taken');
         }
       }
@@ -1264,7 +1277,7 @@ export class Store {
     }
 
     // Convert plaintext 2FA fields to encrypted versions
-    const processedUpdates: any = { ...updates };
+    const processedUpdates: Record<string, string | number | null> = { ...updates } as Record<string, string | number | null>;
     
     // Handle totp_secret encryption
     if ('totp_secret' in updates) {
@@ -1305,9 +1318,9 @@ export class Store {
     stmt.run(...values, id);
     
     // Invalidate user cache after update
-    import('./middleware.js').then(({ invalidateUserCache }) => {
-      invalidateUserCache(id);
-    }).catch(() => {});
+    import('./middleware.js')
+      .then(({ invalidateUserCache }) => invalidateUserCache(id))
+      .catch((err) => migrationLogger.warn('Failed to invalidate user cache', { userId: id, error: err }));
     
     return this.getUserById(id)!;
   }
@@ -1329,16 +1342,18 @@ export class Store {
       
       // Invalidate user cache after deletion
       if (result.changes > 0) {
-        import('./middleware.js').then(({ invalidateUserCache }) => {
-          invalidateUserCache(id);
-        }).catch(() => {});
+        import('./middleware.js')
+          .then(({ invalidateUserCache }) => invalidateUserCache(id))
+          .catch((err) => migrationLogger.warn('Failed to invalidate user cache', { userId: id, error: err }));
       }
       
       return result.changes > 0;
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorCode = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
       migrationLogger.error('Error deleting user:', {
-        message: error.message,
-        code: error.code,
+        message: errorMessage,
+        code: errorCode,
         userId: id
       });
       throw error;
@@ -1549,7 +1564,7 @@ export class Store {
     const validatedUpdates = CreateUserWebhookSchema.partial().parse(updates);
     
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: (string | number)[] = [];
 
     if (validatedUpdates.name) {
       fields.push('name = ?');
@@ -1752,9 +1767,9 @@ export class Store {
       
       // Invalidate user cache after admin status change
       if (result.changes > 0) {
-        import('./middleware.js').then(({ invalidateUserCache }) => {
-          invalidateUserCache(userId);
-        }).catch(() => {});
+        import('./middleware.js')
+          .then(({ invalidateUserCache }) => invalidateUserCache(userId))
+          .catch((err) => migrationLogger.warn('Failed to invalidate user cache', { userId, error: err }));
       }
       
       return result.changes > 0;
@@ -1833,14 +1848,14 @@ export class Store {
     stmt.run(userId, eventType, eventData || null, ipAddress || null, userAgent || null);
   }
 
-  getAuditLogsByUserId(userId: number, limit: number = 100): any[] {
+  getAuditLogsByUserId(userId: number, limit: number = 100): AuditLog[] {
     const stmt = this.db.prepare(`
       SELECT * FROM audit_log 
       WHERE user_id = ? 
       ORDER BY created_at DESC 
       LIMIT ?
     `);
-    const logs = stmt.all(userId, limit) as Record<string, unknown>[];
+    const logs = stmt.all(userId, limit) as AuditLog[];
     
     // Enrich logs with admin usernames from event_data
     return logs.map(log => {
@@ -1871,7 +1886,7 @@ export class Store {
     });
   }
 
-  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): any[] {
+  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): AuditLog[] {
     let query = `
       SELECT 
         audit_log.*,
@@ -1881,7 +1896,7 @@ export class Store {
       LEFT JOIN users ON audit_log.user_id = users.id
       WHERE 1=1
     `;
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (eventType) {
       query += ' AND audit_log.event_type = ?';

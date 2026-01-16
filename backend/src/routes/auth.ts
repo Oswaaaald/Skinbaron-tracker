@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { getStore } from '../lib/store.js';
@@ -104,12 +104,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
     expires: expiresAt ? new Date(expiresAt) : undefined,
   });
 
-  const setAuthCookies = (reply: any, accessToken: { token: string; expiresAt: number }, refreshToken: { token: string; expiresAt: number }) => {
+  const setAuthCookies = (reply: FastifyReply, accessToken: { token: string; expiresAt: number }, refreshToken: { token: string; expiresAt: number }) => {
     reply.setCookie(ACCESS_COOKIE, accessToken.token, cookieOptions(accessToken.expiresAt));
     reply.setCookie(REFRESH_COOKIE, refreshToken.token, cookieOptions(refreshToken.expiresAt));
   };
 
-  const clearAuthCookies = (reply: any) => {
+  const clearAuthCookies = (reply: FastifyReply) => {
     reply.setCookie(ACCESS_COOKIE, '', { ...cookieOptions(), expires: new Date(0) });
     reply.setCookie(REFRESH_COOKIE, '', { ...cookieOptions(), expires: new Date(0) });
   };

@@ -1,10 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import '@fastify/cookie';
 import { AuthService } from './auth.js';
-import { getStore } from './store.js';
+import { getStore, User } from './store.js';
 
 type CachedUser = {
-  user: any;
+  user: User;
   expiresAt: number;
 };
 
@@ -12,7 +12,7 @@ const userCache = new Map<number, CachedUser>();
 const USER_CACHE_TTL_MS = 30_000;
 const USER_CACHE_MAX = 200;
 
-function getCachedUser(id: number): any | null {
+function getCachedUser(id: number): User | null {
   const cached = userCache.get(id);
   if (!cached) return null;
   if (cached.expiresAt < Date.now()) {
@@ -22,7 +22,7 @@ function getCachedUser(id: number): any | null {
   return cached.user;
 }
 
-function setCachedUser(id: number, user: any) {
+function setCachedUser(id: number, user: User) {
   if (userCache.size >= USER_CACHE_MAX) {
     // Drop the oldest entry (Map preserves insertion order)
     const oldestKey = userCache.keys().next().value;
