@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getStore, RuleSchema } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
@@ -594,7 +594,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
       
-      let matches: Array<Record<string, unknown>> = [];
+      let matches: unknown[] = [];
       let webhookTestResult: boolean | null = null;
       
       if (webhook_only) {

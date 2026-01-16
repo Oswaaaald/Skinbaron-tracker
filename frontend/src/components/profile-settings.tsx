@@ -75,7 +75,13 @@ export function ProfileSettings() {
       onSuccess: (response) => {
         // Update auth context with data from backend (includes updated avatar_url)
         if (response?.data) {
-          const userData = response.data
+          const userData = response.data as { 
+            id: number; 
+            username: string; 
+            email: string; 
+            avatar_url?: string; 
+            is_admin?: boolean; 
+          };
           updateUser({
             id: userData.id,
             username: userData.username,
@@ -90,8 +96,13 @@ export function ProfileSettings() {
         })
         setSuccess('profile', 'Profile updated successfully')
       },
-      onError: (error: any) => {
-        const errorMsg = error?.message || error?.error || 'Failed to update profile'
+      onError: (error: unknown) => {
+        const errorMsg =
+          (error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : undefined) || 'Failed to update profile';
         toast({
           variant: "destructive",
           title: "❌ Update failed",
@@ -117,8 +128,13 @@ export function ProfileSettings() {
         setNewPassword('')
         setConfirmPassword('')
       },
-      onError: (error: any) => {
-        const errorMsg = error?.message || error?.error || 'Failed to update password'
+      onError: (error: unknown) => {
+        const errorMsg =
+          (error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : undefined) || 'Failed to update password';
         toast({
           variant: "destructive",
           title: "❌ Password update failed",
@@ -140,8 +156,9 @@ export function ProfileSettings() {
         })
         logout()
       },
-      onError: (error: any) => {
-        setError('general', error.message || 'Failed to delete account')
+      onError: (error: unknown) => {
+        const errorMsg = error instanceof Error ? error.message : 'Failed to delete account'
+        setError('general', errorMsg)
         setDeleteDialog(false)
         setDeleteConfirmText('')
       },
@@ -173,8 +190,13 @@ export function ProfileSettings() {
         setDisableTwoFactorDialog(false)
         setTwoFactorPassword('')
       },
-      onError: (error: any) => {
-        const errorMsg = error?.message || error?.error || 'Failed to disable 2FA'
+      onError: (error: unknown) => {
+        const errorMsg =
+          (error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : undefined) || 'Failed to disable 2FA';
         toast({
           variant: "destructive",
           title: "❌ Failed to disable 2FA",

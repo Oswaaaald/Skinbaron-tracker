@@ -1,7 +1,10 @@
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import globals from 'globals';
 
 export default [
+  // Type-aware recommended rules from @typescript-eslint
+  ...tseslint.configs.recommendedTypeChecked,
   {
     files: ['src/**/*.ts'],
     languageOptions: {
@@ -11,15 +14,11 @@ export default [
         sourceType: 'module',
         project: './tsconfig.json',
       },
-    },
-    plugins: {
-      '@typescript-eslint': tseslint,
+      globals: globals.node,
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-non-null-assertion': 'warn',
     },
   },

@@ -195,7 +195,11 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const message = data?.message || data?.error || `HTTP ${response.status}`;
+        const errorPayload =
+          data && typeof data === 'object'
+            ? (data as { message?: string; error?: string })
+            : undefined;
+        const message = errorPayload?.message || errorPayload?.error || `HTTP ${response.status}`;
 
         const isAuthLogin = endpoint.startsWith('/api/auth/login');
         const isAuthRegister = endpoint.startsWith('/api/auth/register');

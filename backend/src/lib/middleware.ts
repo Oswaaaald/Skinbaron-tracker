@@ -153,8 +153,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       id: user.id,
       username: user.username,
       email: user.email,
-      is_admin: user.is_admin || false,
-      is_super_admin: user.is_super_admin || false,
+      is_admin: Boolean(user.is_admin),
+      is_super_admin: Boolean(user.is_super_admin),
     };
 
   } catch (error) {
@@ -228,8 +228,8 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
               id: user.id,
               username: user.username,
               email: user.email,
-              is_admin: user.is_admin || false,
-              is_super_admin: user.is_super_admin || false,
+              is_admin: Boolean(user.is_admin),
+              is_super_admin: Boolean(user.is_super_admin),
             };
           }
         }

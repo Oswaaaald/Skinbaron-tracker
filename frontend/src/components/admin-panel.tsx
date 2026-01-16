@@ -115,11 +115,17 @@ export function AdminPanel() {
         })
         setDeleteDialog({ open: false, user: null })
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to delete user",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -142,11 +148,17 @@ export function AdminPanel() {
         window.dispatchEvent(new CustomEvent('user-profile-changed'))
         setAdminDialog({ open: false, user: null, action: 'grant' })
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to update admin status",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -164,11 +176,17 @@ export function AdminPanel() {
         })
         setpendingUserDialog({ open: false, userId: null, action: 'approve' })
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to approve user",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -186,11 +204,17 @@ export function AdminPanel() {
         })
         setpendingUserDialog({ open: false, userId: null, action: 'reject' })
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to reject user",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -404,22 +428,40 @@ export function AdminPanel() {
           <CardDescription>Manage users and their permissions</CardDescription>
         </CardHeader>
         <CardContent>
-          {deleteUserMutation.error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {(deleteUserMutation.error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete user'}
-              </AlertDescription>
-            </Alert>
-          )}
-          {toggleAdminMutation.error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {(toggleAdminMutation.error as Error & { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update admin status'}
-              </AlertDescription>
-            </Alert>
-          )}
+          {deleteUserMutation.error
+            ? (() => {
+                const raw = deleteUserMutation.error;
+                const message =
+                  raw instanceof Error
+                    ? raw.message
+                    : typeof raw === 'object' && raw && 'error' in raw && typeof (raw as { error?: unknown }).error === 'string'
+                      ? (raw as { error?: string }).error
+                      : 'Failed to delete user';
+                return (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{message}</AlertDescription>
+                  </Alert>
+                );
+              })()
+            : null}
+          {toggleAdminMutation.error
+            ? (() => {
+                const raw = toggleAdminMutation.error;
+                const message =
+                  raw instanceof Error
+                    ? raw.message
+                    : typeof raw === 'object' && raw && 'error' in raw && typeof (raw as { error?: unknown }).error === 'string'
+                      ? (raw as { error?: string }).error
+                      : 'Failed to update admin status';
+                return (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{message}</AlertDescription>
+                  </Alert>
+                );
+              })()
+            : null}
 
           <Table>
             <TableHeader>

@@ -23,7 +23,7 @@ export class MigrationLogger {
       level: 'info',
       message,
       timestamp: new Date(),
-      ...meta,
+      ...(meta && typeof meta === 'object' ? meta : {}),
     };
     
     this.logs.push(logEntry);
@@ -39,7 +39,7 @@ export class MigrationLogger {
       level: 'warn',
       message,
       timestamp: new Date(),
-      ...meta,
+      ...(meta && typeof meta === 'object' ? meta : {}),
     };
     
     this.logs.push(logEntry);

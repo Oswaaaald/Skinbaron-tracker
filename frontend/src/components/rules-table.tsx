@@ -128,11 +128,17 @@ export function RulesTable() {
         })
         syncStats() // Sync stats immediately after rule change
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to update rule",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -149,11 +155,17 @@ export function RulesTable() {
         })
         syncStats() // Sync stats immediately after rule deletion
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to delete rule",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -171,11 +183,17 @@ export function RulesTable() {
         setSelectedRules(new Set())
         syncStats()
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to enable rules",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -193,11 +211,17 @@ export function RulesTable() {
         setSelectedRules(new Set())
         syncStats()
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to disable rules",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }
@@ -216,11 +240,17 @@ export function RulesTable() {
         setSelectedRules(new Set())
         syncStats()
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to delete rules",
-          description: error?.message || "An error occurred",
+          description: message,
         })
       },
     }

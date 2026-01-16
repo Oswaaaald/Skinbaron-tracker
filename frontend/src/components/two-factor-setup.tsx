@@ -41,8 +41,9 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     queryFn: async () => {
       const response = await apiClient.post('/api/user/2fa/setup')
       if (response.success && response.data) {
-        setSecret(response.data.secret)
-        return response.data
+        const payload = response.data as { secret: string; qrCode?: string; recovery_codes?: string[] }
+        setSecret(payload.secret)
+        return payload
       }
       throw new Error('Failed to get 2FA setup')
     },
@@ -64,8 +65,11 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     {
       invalidateKeys: [['2fa-status']],
       onSuccess: (response) => {
-        if (response.success && response.data?.recovery_codes) {
-          setRecoveryCodes(response.data.recovery_codes)
+        if (response.success && response.data) {
+          const payload = response.data as { recovery_codes?: string[] }
+          if (payload.recovery_codes) {
+            setRecoveryCodes(payload.recovery_codes)
+          }
           setStep('codes')
           setError('')
           toast({
@@ -74,12 +78,19 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
           })
         }
       },
-      onError: (error: any) => {
-        setError(error.message || 'Invalid verification code')
+      onError: (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
+              ? (error as { error?: string }).error
+              : undefined;
+        const safeMessage = message || 'Invalid verification code';
+        setError(safeMessage)
         toast({
           variant: "destructive",
           title: "❌ Verification failed",
-          description: error.message || 'Invalid verification code',
+          description: safeMessage,
         })
       },
     }

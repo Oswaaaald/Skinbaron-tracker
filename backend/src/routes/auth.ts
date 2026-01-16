@@ -72,7 +72,7 @@ setInterval(() => {
 // Extend FastifyInstance type
 declare module 'fastify' {
   interface FastifyInstance {
-    authenticate: (request: any, reply: any) => Promise<void>;
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
