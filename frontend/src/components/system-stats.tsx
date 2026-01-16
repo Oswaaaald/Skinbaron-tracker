@@ -144,12 +144,12 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status?.scheduler && Object.keys(status.scheduler).length > 0 ? (
+          {status?.['scheduler'] && Object.keys(status['scheduler']).length > 0 ? (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
-                <Badge variant={status.scheduler.isRunning ? 'default' : 'secondary'}>
-                  {status.scheduler.isRunning ? (
+                <Badge variant={status['scheduler'].isRunning ? 'default' : 'secondary'}>
+                  {status['scheduler'].isRunning ? (
                     <>
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Active
@@ -165,37 +165,37 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Scans Completed</span>
-                <span className="text-sm">{status.scheduler.totalRuns || 0}</span>
+                <span className="text-sm">{status['scheduler'].totalRuns || 0}</span>
               </div>
               
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Alerts Sent</span>
-                <span className="text-sm">{status.scheduler.totalAlerts || 0}</span>
+                <span className="text-sm">{status['scheduler'].totalAlerts || 0}</span>
               </div>
               
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Last Scan</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDate(status.scheduler.lastRunTime)}
+                    {formatDate(status['scheduler'].lastRunTime)}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Next Scan</span>
                   <span className="text-xs text-muted-foreground">
-                    {formatDate(status.scheduler.nextRunTime)}
+                    {formatDate(status['scheduler'].nextRunTime)}
                   </span>
                 </div>
               </div>
 
             </>
-          ) : health?.services?.scheduler ? (
+          ) : health?.['services']?.['scheduler'] ? (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Status</span>
-                <Badge variant={health.services.scheduler === 'running' ? 'default' : 'secondary'}>
-                  {health.services.scheduler === 'running' ? 'Active' : 'Inactive'}
+                <Badge variant={health['services']['scheduler'] === 'running' ? 'default' : 'secondary'}>
+                  {health['services']['scheduler'] === 'running' ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
               <div className="text-center text-sm text-muted-foreground mt-4">

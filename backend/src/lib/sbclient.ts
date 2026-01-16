@@ -88,7 +88,7 @@ export class SkinBaronClient {
 
       // Only add API key if provided
       if (this.apiKey) {
-        requestBody.apikey = this.apiKey;
+        requestBody['apikey'] = this.apiKey;
       }
 
       const url = `${this.baseURL}${endpoint}`;

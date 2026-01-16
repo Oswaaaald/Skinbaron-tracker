@@ -2,7 +2,7 @@
 
 import { logger } from './logger';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:8080';
 
 export class ApiError extends Error {
   status: number;
@@ -239,7 +239,7 @@ class ApiClient {
       return { ...parsed, success: parsed?.success ?? true };
     } catch (error) {
       const message = (error as Error).message || 'Network error';
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env['NODE_ENV'] === 'development') {
         logger.warn('API request failed:', message);
       }
       return { success: false, error: message, message } as ApiResponse<T>;
@@ -274,7 +274,7 @@ class ApiClient {
           expiresAt: data?.data?.token_expires_at,
         };
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env['NODE_ENV'] === 'development') {
           logger.warn('Token refresh failed:', (error as Error).message);
         }
         return { success: false };

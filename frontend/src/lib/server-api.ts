@@ -2,7 +2,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth-cookies'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:8080'
 
 function decodeExpiry(token: string | undefined): number | null {
   if (!token) return null

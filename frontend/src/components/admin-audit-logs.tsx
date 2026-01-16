@@ -300,7 +300,7 @@ export function AdminAuditLogs() {
         </CardTitle>
         <CardDescription>
           {logs.length > 0 
-            ? `${logs.length} security events - Auto-deleted after ${process.env.NEXT_PUBLIC_AUDIT_RETENTION_DAYS || 365} days (GDPR)`
+            ? `${logs.length} security events - Auto-deleted after ${process.env['NEXT_PUBLIC_AUDIT_RETENTION_DAYS'] || 365} days (GDPR)`
             : "No security events recorded"}
         </CardDescription>
       </CardHeader>

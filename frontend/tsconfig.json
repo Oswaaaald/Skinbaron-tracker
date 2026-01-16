@@ -14,7 +14,7 @@
     "allowUnreachableCode": false,
     "esModuleInterop": true,
     "exactOptionalPropertyTypes": false,
-    "noPropertyAccessFromIndexSignature": false,
+    "noPropertyAccessFromIndexSignature": true,
     "useUnknownInCatchVariables": true,
     "module": "esnext",
     "moduleResolution": "bundler",

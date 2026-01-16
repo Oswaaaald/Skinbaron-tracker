@@ -29,7 +29,7 @@ export class MigrationLogger {
     this.logs.push(logEntry);
     
     // In production, these will be picked up by the main logger
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       console.log(`ℹ️  ${message}`, meta || '');
     }
   }
@@ -44,7 +44,7 @@ export class MigrationLogger {
     
     this.logs.push(logEntry);
     
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       console.warn(`⚠️  ${message}`, meta || '');
     }
   }
@@ -60,7 +60,7 @@ export class MigrationLogger {
     this.logs.push(logEntry);
     
     // Only log to console in non-production environments
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env['NODE_ENV'] !== 'production') {
       console.error(`❌ ${message}`, error || '');
     }
   }

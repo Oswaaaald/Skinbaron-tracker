@@ -5,7 +5,7 @@
  * In production, logs are silent (can be extended to send to monitoring service).
  */
 
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env['NODE_ENV'] === 'development';
 
 export const logger = {
   info: (message: string, ...args: any[]) => {

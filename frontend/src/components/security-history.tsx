@@ -207,7 +207,7 @@ export function SecurityHistory() {
         </CardTitle>
         <CardDescription>
           {logs.length > 0 
-            ? `Your last ${logs.length} security events (retained for ${process.env.NEXT_PUBLIC_AUDIT_RETENTION_DAYS || 365} days)`
+            ? `Your last ${logs.length} security events (retained for ${process.env['NEXT_PUBLIC_AUDIT_RETENTION_DAYS'] || 365} days)`
             : "No events recorded"}
         </CardDescription>
       </CardHeader>

@@ -1282,21 +1282,21 @@ export class Store {
     // Handle totp_secret encryption
     if ('totp_secret' in updates) {
       if (updates.totp_secret) {
-        processedUpdates.totp_secret_encrypted = this.encryptData(updates.totp_secret);
+        processedUpdates['totp_secret_encrypted'] = this.encryptData(updates.totp_secret);
       } else {
-        processedUpdates.totp_secret_encrypted = null;
+        processedUpdates['totp_secret_encrypted'] = null;
       }
-      delete processedUpdates.totp_secret;
+      delete processedUpdates['totp_secret'];
     }
     
     // Handle recovery_codes encryption
     if ('recovery_codes' in updates) {
       if (updates.recovery_codes) {
-        processedUpdates.recovery_codes_encrypted = this.encryptData(updates.recovery_codes);
+        processedUpdates['recovery_codes_encrypted'] = this.encryptData(updates.recovery_codes);
       } else {
-        processedUpdates.recovery_codes_encrypted = null;
+        processedUpdates['recovery_codes_encrypted'] = null;
       }
-      delete processedUpdates.recovery_codes;
+      delete processedUpdates['recovery_codes'];
     }
 
     const validatedUpdates = CreateUserSchema.partial().parse(processedUpdates);
@@ -1864,7 +1864,7 @@ export class Store {
           const data = JSON.parse(log.event_data) as Record<string, unknown>;
           
           // Extract admin_id from various possible fields
-          const adminId = data.admin_id || data.approved_by_admin_id || data.deleted_by_admin_id;
+          const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
           
           if (adminId) {
             const adminStmt = this.db.prepare('SELECT username FROM users WHERE id = ?');
