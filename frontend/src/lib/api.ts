@@ -6,11 +6,11 @@ const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:808
 
 export class ApiError extends Error {
   status: number;
-  body: any;
+  body: unknown;
   url: string;
   method: string;
 
-  constructor(message: string, status: number, url: string, method: string, body: any) {
+  constructor(message: string, status: number, url: string, method: string, body: unknown) {
     super(message);
     this.status = status;
     this.body = body;
@@ -80,7 +80,7 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
-  details?: any;
+  details?: unknown;
   requires2FA?: boolean;  // For 2FA login flow
   status?: number;
   count?: number;  // For batch operations that return count directly
@@ -185,7 +185,7 @@ class ApiClient {
         ...options,
       });
 
-      let data: any = null;
+      let data: unknown = null;
       try {
         data = await response.json();
       } catch (_err) {
@@ -401,12 +401,26 @@ class ApiClient {
   }
 
   async testRule(id: number, webhookTest: boolean = false, webhookOnly: boolean = false): Promise<ApiResponse<{
-    matches: any[];
+    matches: Array<{
+      saleId: string;
+      itemName: string;
+      price: number;
+      wearValue?: number;
+      imageUrl?: string;
+      [key: string]: unknown;
+    }>;
     matchCount: number;
     webhookTest: boolean | null;
   }>> {
     return this.request<{
-      matches: any[];
+      matches: Array<{
+        saleId: string;
+        itemName: string;
+        price: number;
+        wearValue?: number;
+        imageUrl?: string;
+        [key: string]: unknown;
+      }>;
       matchCount: number;
       webhookTest: boolean | null;
     }>(`/api/rules/${id}/test`, {
@@ -592,8 +606,8 @@ class ApiClient {
   }
 
   // Generic GET method for admin endpoints
-  async get(endpoint: string): Promise<ApiResponse<any>> {
-    return this.request(endpoint, { method: 'GET' });
+  async get<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'GET' });
   }
 
   // Get current user profile
@@ -609,21 +623,21 @@ class ApiClient {
   }
 
   // Generic DELETE method for admin endpoints
-  async delete(endpoint: string): Promise<ApiResponse<any>> {
-    return this.request(endpoint, { method: 'DELETE' });
+  async delete<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
   // Generic PATCH method for admin endpoints
-  async patch(endpoint: string, data?: any): Promise<ApiResponse<any>> {
-    return this.request(endpoint, {
+  async patch<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
   // Generic POST method for admin endpoints
-  async post(endpoint: string, data?: any): Promise<ApiResponse<any>> {
-    return this.request(endpoint, {
+  async post<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });

@@ -242,7 +242,7 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
 }
 
 // Get user from store with short-lived cache to cut DB traffic
-async function getUserById(id: number): Promise<any> {
+async function getUserById(id: number): Promise<User | null> {
   const cached = getCachedUser(id);
   if (cached) return cached;
 

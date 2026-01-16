@@ -188,7 +188,7 @@ async function buildSystemSnapshot() {
 
   // Scheduler health and stats
   let schedulerHealth = 'unhealthy';
-  let simplifiedScheduler: Record<string, any> = {};
+  let simplifiedScheduler: Record<string, string | number | boolean | null> = {};
   try {
     const schedulerStats = scheduler.getStats();
     schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';

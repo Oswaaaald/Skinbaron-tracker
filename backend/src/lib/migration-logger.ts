@@ -18,7 +18,7 @@ export class MigrationLogger {
     return MigrationLogger.instance;
   }
 
-  info(message: string, meta?: any) {
+  info(message: string, meta?: unknown) {
     const logEntry = {
       level: 'info',
       message,
@@ -34,7 +34,7 @@ export class MigrationLogger {
     }
   }
 
-  warn(message: string, meta?: any) {
+  warn(message: string, meta?: unknown) {
     const logEntry = {
       level: 'warn',
       message,
@@ -49,12 +49,12 @@ export class MigrationLogger {
     }
   }
 
-  error(message: string, error?: any) {
+  error(message: string, error?: unknown) {
     const logEntry = {
       level: 'error',
       message,
       timestamp: new Date(),
-      error: error?.message || error,
+      error: error instanceof Error ? error.message : error,
     };
     
     this.logs.push(logEntry);

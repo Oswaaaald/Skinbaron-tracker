@@ -73,7 +73,7 @@ export class SkinBaronClient {
 
   private async makeRequest<T>(
     endpoint: string, 
-    params: Record<string, any> = {}, 
+    params: Record<string, string | number | boolean> = {}, 
     schema: z.ZodSchema<T>,
     retryCount: number = 0
   ): Promise<T> {
@@ -81,7 +81,7 @@ export class SkinBaronClient {
     const RETRY_DELAYS = [2000, 5000, 10000]; // 2s, 5s, 10s backoff
     
     try {
-      const requestBody: Record<string, any> = {
+      const requestBody: Record<string, string | number | boolean> = {
         appid: this.appId,
         ...params,
       };

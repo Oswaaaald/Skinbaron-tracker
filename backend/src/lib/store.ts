@@ -232,7 +232,7 @@ export class Store {
    * @param params Query parameters
    * @returns Single row or undefined
    */
-  private query<T>(sql: string, ...params: any[]): T | undefined {
+  private query<T>(sql: string, ...params: (string | number | null | boolean)[]): T | undefined {
     return this.db.prepare(sql).get(...params) as T | undefined;
   }
 
@@ -242,7 +242,7 @@ export class Store {
    * @param params Query parameters
    * @returns Array of rows
    */
-  private queryAll<T>(sql: string, ...params: any[]): T[] {
+  private queryAll<T>(sql: string, ...params: (string | number | null | boolean)[]): T[] {
     return this.db.prepare(sql).all(...params) as T[];
   }
 
@@ -252,7 +252,7 @@ export class Store {
    * @param params Query parameters
    * @returns RunResult with changes, lastInsertRowid, etc.
    */
-  private execute(sql: string, ...params: any[]): Database.RunResult {
+  private execute(sql: string, ...params: (string | number | null | boolean)[]): Database.RunResult {
     return this.db.prepare(sql).run(...params);
   }
 
@@ -710,8 +710,8 @@ export class Store {
         `);
 
         migrationLogger.info('Migration: Added CASCADE constraints to rules table');
-      } catch (error: any) {
-        migrationLogger.error('Migration failed:', error);
+      } catch (error) {
+        migrationLogger.error('Migration failed:', error instanceof Error ? error.message : String(error));
         throw error;
       }
     }
@@ -1095,7 +1095,7 @@ export class Store {
   }
 
   getAlertsByUserId(userId: number, limit: number = 50, offset: number = 0): Alert[] {
-    const rows = this.queryAll<any>(`
+    const rows = this.queryAll<AlertRow>(`
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
       WHERE r.user_id = ? 
@@ -1105,13 +1105,15 @@ export class Store {
     
     return rows.map(row => ({
       ...row,
+      wear_value: row.wear_value ?? undefined,
+      alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
     }));
   }
 
   getAlertByIdForUser(alertId: number, userId: number): Alert | null {
-    const row = this.query<any>(`
+    const row = this.query<AlertRow>(`
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
       WHERE a.id = ? AND r.user_id = ?
@@ -1121,13 +1123,15 @@ export class Store {
 
     return {
       ...row,
+      wear_value: row.wear_value ?? undefined,
+      alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
     };
   }
 
   getAlertsByRuleIdForUser(ruleId: number, userId: number, limit: number = 50, offset: number = 0): Alert[] {
-    const rows = this.queryAll<any>(`
+    const rows = this.queryAll<AlertRow>(`
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
       WHERE a.rule_id = ? AND r.user_id = ? 
@@ -1137,6 +1141,8 @@ export class Store {
     
     return rows.map(row => ({
       ...row,
+      wear_value: row.wear_value ?? undefined,
+      alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
       stattrak: Boolean(row.stattrak),
       souvenir: Boolean(row.souvenir),
     }));
