@@ -300,7 +300,7 @@ export function ProfileSettings() {
 
       {/* User Stats */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3" style={{ minHeight: '120px' }}>
+        <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Rules</CardTitle>
@@ -332,7 +332,7 @@ export function ProfileSettings() {
       )}
 
       {/* Profile Information */}
-      <Card style={{ minHeight: '500px' }}>
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
