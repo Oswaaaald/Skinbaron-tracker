@@ -174,7 +174,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const isLogin = mode === 'login'
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4" style={{ minHeight: '100vh', paddingTop: '2rem', paddingBottom: '2rem' }}>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4" style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}>
       <Card className="w-full max-w-md" style={{ minHeight: '500px' }}>
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">
