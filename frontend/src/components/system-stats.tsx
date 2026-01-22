@@ -111,7 +111,7 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
               <Separator />
               
               <div>
-                <h4 className="text-sm font-medium mb-2">Services Status</h4>
+                <h3 className="text-sm font-medium mb-2">Services Status</h3>
                 <div className="space-y-2">
                   {health.services && Object.entries(health.services).map(([service, serviceStatus]) => (
                     <div key={service} className="flex items-center justify-between">

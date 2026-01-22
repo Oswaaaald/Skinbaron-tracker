@@ -360,6 +360,7 @@ export function WebhooksTable() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleOpenDialog(webhook)}
+                        aria-label="Edit webhook"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -368,6 +369,7 @@ export function WebhooksTable() {
                         size="sm"
                         onClick={() => handleDelete(webhook)}
                         className="text-red-600 hover:text-red-700"
+                        aria-label="Delete webhook"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
