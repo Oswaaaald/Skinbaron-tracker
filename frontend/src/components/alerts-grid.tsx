@@ -186,7 +186,7 @@ export function AlertsGrid() {
               setPage(0)
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px]" aria-label="Filter alerts by type">
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>
@@ -313,7 +313,7 @@ export function AlertsGrid() {
                           target="_blank"
                           rel="noreferrer noopener"
                         >
-                          View on SkinBaron
+                          View {alert.item_name} on SkinBaron
                           <ExternalLink className="ml-2 h-3 w-3" />
                         </a>
                       </Button>
