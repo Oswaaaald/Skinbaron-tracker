@@ -58,18 +58,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
-        // Check if we have any auth cookies before making API calls
-        // This prevents console errors on first visit
-        const hasCookies = document.cookie.includes('access_token') || document.cookie.includes('refresh_token')
-        
-        if (!hasCookies) {
-          setUser(null)
-          setIsLoading(false)
-          setIsReady(true)
-          return
-        }
-
-        // Try to fetch profile if cookies exist
+        // Always probe for session on client mount (cookies sent via credentials: 'include')
         const me = await apiClient.getUserProfile({ allowRefresh: true })
         if (me.success && me.data) {
           setUser(me.data as User)
