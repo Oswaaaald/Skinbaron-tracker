@@ -237,7 +237,7 @@ export function AlertsGrid() {
               return (
                 <Card
                   key={alert.id}
-                  className="group relative overflow-hidden border border-border/70 bg-muted/60 shadow-sm hover:shadow-md transition-all flex flex-col p-0"
+                  className="group relative overflow-hidden border border-border/70 bg-muted/60 shadow-sm hover:border-primary/50 transition-colors flex flex-col p-0 will-change-[border-color]"
                 >
                   {/* Image Header */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
