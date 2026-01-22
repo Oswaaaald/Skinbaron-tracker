@@ -312,8 +312,9 @@ export function AlertsGrid() {
                           href={getSkinBaronUrl(alert.sale_id, alert.item_name)}
                           target="_blank"
                           rel="noreferrer noopener"
+                          aria-label={`View ${alert.item_name} at ${formatPrice(alert.price)} on SkinBaron`}
                         >
-                          View {alert.item_name} ({formatPrice(alert.price)})
+                          View on SkinBaron
                           <ExternalLink className="ml-2 h-3 w-3" />
                         </a>
                       </Button>
