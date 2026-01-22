@@ -13,11 +13,10 @@ const nextConfig: NextConfig = {
   },
   
   // Optimize for modern browsers (ES2020+)
-  // This reduces bundle size by removing unnecessary polyfills
+  // Note: Next.js 16 standalone mode includes some polyfills by default
+  // This is not fully controllable without custom webpack config
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Inline critical CSS
-    optimizeCss: true,
   },
   
   // Image optimization currently not needed
