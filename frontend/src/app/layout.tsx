@@ -7,7 +7,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: 'swap',
+  preload: true,
+});
 
 export const metadata: Metadata = {
   title: "SkinBaron-Tracker",
@@ -22,6 +26,10 @@ export default async function RootLayout({
   // Skip SSR session check - cookies are cross-subdomain and client will handle auth
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://www.gravatar.com" />
+        <link rel="dns-prefetch" href="https://www.gravatar.com" />
+      </head>
       <body className={inter.className}>
         <script
           dangerouslySetInnerHTML={{
@@ -46,11 +54,11 @@ export default async function RootLayout({
         >
           <AuthProvider initialAuth={undefined}>
             <QueryProvider>
-              <div className="min-h-screen bg-background flex flex-col">
+              <div className="min-h-screen bg-background flex flex-col" style={{ minHeight: '100vh' }}>
                 <main className="flex-1">
                   {children}
                 </main>
-                <footer className="border-t border-border/50 bg-muted/30">
+                <footer className="border-t border-border/50 bg-muted/30" style={{ minHeight: '64px' }}>
                   <div className="container mx-auto px-4 py-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span>© 2026 SkinBaron Tracker</span>
                     <div className="flex gap-4">

@@ -1,0 +1,21 @@
+# Modern browsers supporting ES2020+
+# This reduces bundle size by eliminating unnecessary polyfills
+
+# Chrome, Edge (Chromium-based)
+last 2 Chrome versions
+last 2 Edge versions
+
+# Firefox
+last 2 Firefox versions
+
+# Safari
+last 2 Safari versions
+
+# Mobile
+last 2 iOS versions
+last 2 ChromeAndroid versions
+
+# Exclude old browsers
+not dead
+not IE 11
+not op_mini all

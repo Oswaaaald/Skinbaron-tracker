@@ -399,6 +399,7 @@ export function RulesTable() {
                     checked={selectedRules.size === rules.length && rules.length > 0}
                     onChange={handleSelectAll}
                     className="cursor-pointer"
+                    aria-label="Select all rules"
                   />
                 </TableHead>
                 <TableHead>Item</TableHead>
@@ -419,6 +420,7 @@ export function RulesTable() {
                       checked={selectedRules.has(rule.id!)}
                       onChange={() => handleSelectRule(rule.id!)}
                       className="cursor-pointer"
+                      aria-label={`Select rule ${rule.search_item}`}
                     />
                   </TableCell>
                   <TableCell className="font-medium">

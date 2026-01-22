@@ -135,7 +135,7 @@ export class AuthService {
   /**
    * Generate Gravatar URL from email
    */
-  static getGravatarUrl(email: string, size: number = 200): string {
+  static getGravatarUrl(email: string, size: number = 80): string {
     const hash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
     return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon`;
   }

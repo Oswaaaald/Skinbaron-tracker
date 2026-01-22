@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, lazy, Suspense } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { 
   Activity, 
   AlertTriangle, 
@@ -20,14 +21,16 @@ import { useTheme } from "next-themes"
 import { RulesTable } from "@/components/rules-table"
 import { AlertsGrid } from "@/components/alerts-grid"
 import { RuleDialog } from "@/components/rule-dialog"
-import { SystemStats } from "@/components/system-stats"
 import { UserNav } from "@/components/user-nav"
-import { WebhooksTable } from "@/components/webhooks-table"
-import { AdminPanel } from "@/components/admin-panel"
-import { ProfileSettings } from "@/components/profile-settings"
 import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
+
+// Lazy load heavy components
+const SystemStats = lazy(() => import("@/components/system-stats").then(m => ({ default: m.SystemStats })))
+const WebhooksTable = lazy(() => import("@/components/webhooks-table").then(m => ({ default: m.WebhooksTable })))
+const AdminPanel = lazy(() => import("@/components/admin-panel").then(m => ({ default: m.AdminPanel })))
+const ProfileSettings = lazy(() => import("@/components/profile-settings").then(m => ({ default: m.ProfileSettings })))
 
 export function Dashboard() {
   const { theme, setTheme } = useTheme()
@@ -233,7 +236,9 @@ export function Dashboard() {
         </TabsContent>
 
         <TabsContent value="webhooks" className="space-y-4">
-          <WebhooksTable />
+          <Suspense fallback={<LoadingSpinner />}>
+            <WebhooksTable />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">
@@ -252,7 +257,9 @@ export function Dashboard() {
               Manage your account and preferences
             </p>
           </div>
-          <ProfileSettings />
+          <Suspense fallback={<LoadingSpinner />}>
+            <ProfileSettings />
+          </Suspense>
         </TabsContent>
         {user?.is_admin && (
           <TabsContent value="admin" className="space-y-4">
@@ -262,7 +269,9 @@ export function Dashboard() {
                 Manage users and system settings
               </p>
             </div>
-            <AdminPanel />
+            <Suspense fallback={<LoadingSpinner />}>
+              <AdminPanel />
+            </Suspense>
           </TabsContent>
         )}
 
@@ -274,7 +283,9 @@ export function Dashboard() {
                 Monitor system health and performance
               </p>
             </div>
+            <Suspense fallback={<LoadingSpinner />}>
               <SystemStats enabled={activeTab === 'system'} />
+            </Suspense>
           </TabsContent>
         )}
       </Tabs>

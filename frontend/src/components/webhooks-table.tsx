@@ -318,6 +318,7 @@ export function WebhooksTable() {
                   checked={!!webhooks && selectedWebhooks.size === webhooks.length && webhooks.length > 0}
                   onChange={handleSelectAll}
                   className="cursor-pointer"
+                  aria-label="Select all webhooks"
                 />
               </TableHead>
               <TableHead>Name</TableHead>
@@ -336,6 +337,7 @@ export function WebhooksTable() {
                       checked={selectedWebhooks.has(webhook.id!)}
                       onChange={() => handleSelectWebhook(webhook.id!)}
                       className="cursor-pointer"
+                      aria-label={`Select webhook ${webhook.name}`}
                     />
                   </TableCell>
                   <TableCell className="font-medium">{webhook.name}</TableCell>
