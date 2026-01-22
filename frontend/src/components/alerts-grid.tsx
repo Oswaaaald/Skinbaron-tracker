@@ -248,7 +248,7 @@ export function AlertsGrid() {
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                         className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
-                        }}
+                        priority={isFirstImage}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
