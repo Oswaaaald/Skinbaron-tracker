@@ -332,7 +332,7 @@ export function ProfileSettings() {
       )}
 
       {/* Profile Information */}
-      <Card style={{ minHeight: '650px' }}>
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
