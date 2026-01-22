@@ -16,6 +16,8 @@ const nextConfig: NextConfig = {
   // This reduces bundle size by removing unnecessary polyfills
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Inline critical CSS
+    optimizeCss: true,
   },
   
   // Image optimization currently not needed
