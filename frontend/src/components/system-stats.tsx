@@ -84,51 +84,48 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {health ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Status</span>
-                <Badge variant={health.status === 'healthy' ? 'default' : 'destructive'}>
-                  {health.status === 'healthy' ? (
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                  ) : (
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                  )}
-                  {health.status}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Uptime</span>
-                <span className="text-sm">{formatUptime(health.stats?.uptime)}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Version</span>
-                <span className="text-sm font-mono">{health.stats?.version || 'N/A'}</span>
-              </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Status</span>
+            <Badge variant={health?.status === 'healthy' ? 'default' : 'destructive'}>
+              {health?.status === 'healthy' ? (
+                <CheckCircle className="h-3 w-3 mr-1" />
+              ) : (
+                <AlertCircle className="h-3 w-3 mr-1" />
+              )}
+              {health?.status || 'unknown'}
+            </Badge>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Uptime</span>
+            <span className="text-sm">{formatUptime(health?.stats?.uptime)}</span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Version</span>
+            <span className="text-sm font-mono">{health?.stats?.version || 'N/A'}</span>
+          </div>
 
-              <Separator />
-              
-              <div>
-                <h3 className="text-sm font-medium mb-2">Services Status</h3>
-                <div className="space-y-2">
-                  {health.services && Object.entries(health.services).map(([service, serviceStatus]) => (
-                    <div key={service} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{service === 'scheduler' ? 'Alert Monitoring' : service}</span>
-                      <Badge variant={serviceStatus === 'healthy' || serviceStatus === 'running' ? 'default' : 'destructive'} className="text-xs">
-                        {serviceStatus === 'healthy' || serviceStatus === 'running' ? 'Online' : 'Offline'}
-                      </Badge>
-                    </div>
-                  ))}
+          <Separator />
+          
+          <div>
+            <h3 className="text-sm font-medium mb-2">Services Status</h3>
+            <div className="space-y-2">
+              {health?.services && Object.entries(health.services).map(([service, serviceStatus]) => (
+                <div key={service} className="flex items-center justify-between">
+                  <span className="text-sm capitalize">{service === 'scheduler' ? 'Alert Monitoring' : service}</span>
+                  <Badge variant={serviceStatus === 'healthy' || serviceStatus === 'running' ? 'default' : 'destructive'} className="text-xs">
+                    {serviceStatus === 'healthy' || serviceStatus === 'running' ? 'Online' : 'Offline'}
+                  </Badge>
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-muted-foreground">
-              Unable to load health information
+              ))}
+              {!health?.services && (
+                <div className="text-center text-sm text-muted-foreground">
+                  Loading services...
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
@@ -144,71 +141,48 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status?.['scheduler'] && Object.keys(status['scheduler']).length > 0 ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Status</span>
-                <Badge variant={status['scheduler'].isRunning ? 'default' : 'secondary'}>
-                  {status['scheduler'].isRunning ? (
-                    <>
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Active
-                    </>
-                  ) : (
-                    <>
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                      Inactive
-                    </>
-                  )}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Scans Completed</span>
-                <span className="text-sm">{status['scheduler'].totalRuns || 0}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Alerts Sent</span>
-                <span className="text-sm">{status['scheduler'].totalAlerts || 0}</span>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Last Scan</span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(status['scheduler'].lastRunTime)}
-                  </span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Next Scan</span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(status['scheduler'].nextRunTime)}
-                  </span>
-                </div>
-              </div>
-
-            </>
-          ) : health?.['services']?.['scheduler'] ? (
-            <>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Status</span>
-                <Badge variant={health['services']['scheduler'] === 'running' ? 'default' : 'secondary'}>
-                  {health['services']['scheduler'] === 'running' ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-              <div className="text-center text-sm text-muted-foreground mt-4">
-                System is monitoring your rules automatically
-                <br />
-                <span className="text-xs">Scans happen every few minutes</span>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-muted-foreground">
-              Unable to load monitoring information
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Status</span>
+            <Badge variant={status?.['scheduler']?.isRunning || health?.['services']?.['scheduler'] === 'running' ? 'default' : 'secondary'}>
+              {status?.['scheduler']?.isRunning || health?.['services']?.['scheduler'] === 'running' ? (
+                <>
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Active
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Inactive
+                </>
+              )}
+            </Badge>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Scans Completed</span>
+            <span className="text-sm">{status?.['scheduler']?.totalRuns ?? 0}</span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Alerts Sent</span>
+            <span className="text-sm">{status?.['scheduler']?.totalAlerts ?? 0}</span>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Last Scan</span>
+              <span className="text-xs text-muted-foreground">
+                {formatDate(status?.['scheduler']?.lastRunTime)}
+              </span>
             </div>
-          )}
+            
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Next Scan</span>
+              <span className="text-xs text-muted-foreground">
+                {formatDate(status?.['scheduler']?.nextRunTime)}
+              </span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
