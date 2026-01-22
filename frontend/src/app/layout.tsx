@@ -63,8 +63,8 @@ export default async function RootLayout({
                 <main className="flex-1">
                   {children}
                 </main>
-                <footer className="border-t border-border/50 bg-muted/30 min-h-[120px] sm:min-h-[72px]">
-                  <div className="container mx-auto px-4 py-6 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:py-4">
+                <footer className="border-t border-border/50 bg-muted/30 min-h-[120px] sm:min-h-[72px] flex items-center">
+                  <div className="container mx-auto px-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span>© 2026 SkinBaron Tracker</span>
                     <div className="flex gap-4">
                       <Link className="underline" href="/privacy">Privacy Policy</Link>
