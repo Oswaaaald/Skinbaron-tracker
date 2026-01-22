@@ -19,14 +19,22 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   
-  // Image optimization currently not needed
-  // Images are used only in Discord notifications (backend), not in Next.js frontend
-  // If you add skin images to the web interface later, uncomment and configure domains
-  // images: {
-  //   remotePatterns: [
-  //     // Add Steam CDN domains here when needed
-  //   ],
-  // },
+  // Image optimization for external sources
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'www.gravatar.com',
+        pathname: '/avatar/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'steamcommunity-a.akamaihd.net',
+        pathname: '/economy/image/**',
+      },
+    ],
+    formats: ['image/avif', 'image/webp'],
+  },
 };
 
 export default nextConfig;

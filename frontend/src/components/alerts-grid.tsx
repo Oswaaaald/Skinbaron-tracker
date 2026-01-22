@@ -228,9 +228,10 @@ export function AlertsGrid() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
-            {alerts.map((alert) => {
+            {alerts.map((alert, index) => {
               const config = ALERT_TYPE_CONFIG[alert.alert_type as keyof typeof ALERT_TYPE_CONFIG] || ALERT_TYPE_CONFIG.match
               const Icon = config.icon
+              const isFirstImage = index === 0
               
               return (
                 <Card
@@ -240,10 +241,14 @@ export function AlertsGrid() {
                   {/* Image Header */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
                     {alert.skin_url ? (
-                      <img
+                      <Image
                         src={alert.skin_url}
                         alt={alert.item_name}
-                        className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                        className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+                        priority={isFirstImage}
+                        unoptimized={false}
                         onError={(e) => {
                           e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E'
                         }}

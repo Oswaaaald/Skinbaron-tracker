@@ -30,10 +30,13 @@ export function UserNav({ onTabChange }: UserNavProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-8 w-8 rounded-full p-0 overflow-hidden">
             {user.avatar_url ? (
-              <img 
+              <Image 
                 src={user.avatar_url} 
                 alt={user.username}
+                width={32}
+                height={32}
                 className="h-full w-full object-cover"
+                priority
               />
             ) : (
               <span className="text-xs font-medium">{userInitials}</span>

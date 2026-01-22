@@ -27,8 +27,8 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://www.gravatar.com" />
-        <link rel="dns-prefetch" href="https://www.gravatar.com" />
+        <link rel="preconnect" href="https://steamcommunity-a.akamaihd.net" />
+        <link rel="dns-prefetch" href="https://steamcommunity-a.akamaihd.net" />
       </head>
       <body className={inter.className}>
         <script
