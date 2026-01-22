@@ -59,7 +59,7 @@ export function ProfileSettings() {
 
   // Fetch user stats
   const { data: stats } = useQuery({
-    queryKey: ['user', 'stats'],
+    queryKey: ['user-stats'],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/stats'), 'Failed to load user stats')
       return response.data as UserStats
