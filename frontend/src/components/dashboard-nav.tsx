@@ -15,7 +15,7 @@ import {
   Menu
 } from "lucide-react"
 import { useState } from "react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 
 const navItems = [
@@ -169,6 +169,7 @@ export function MobileNavTrigger() {
           </Button>
         </SheetTrigger>
         <SheetContent side="right" className="w-64">
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <nav className="flex flex-col gap-1 mt-8">
             <NavLinks mobile />
           </nav>
