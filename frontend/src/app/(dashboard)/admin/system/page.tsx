@@ -4,29 +4,22 @@ import { Suspense, lazy } from "react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Activity } from "lucide-react"
+import { Activity } from "lucide-react"
 import { usePathname } from "next/navigation"
 
-const AdminPanel = lazy(() => import("@/components/admin-panel").then(m => ({ default: m.AdminPanel })))
+const SystemStats = lazy(() => import("@/components/system-stats").then(m => ({ default: m.SystemStats })))
 
-export default function AdminPage() {
+export default function AdminSystemPage() {
   const pathname = usePathname()
   
   return (
-    <div className="container mx-auto p-4 space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Admin Panel</h2>
-            <p className="text-muted-foreground">
-              Manage users and system settings
-            </p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">System Status</h2>
+          <p className="text-muted-foreground">
+            Monitor system health and performance
+          </p>
         </div>
         <nav className="flex gap-2">
           <Link href="/admin">
@@ -49,7 +42,7 @@ export default function AdminPage() {
         </nav>
       </div>
       <Suspense fallback={<LoadingSpinner />}>
-        <AdminPanel />
+        <SystemStats enabled={true} />
       </Suspense>
     </div>
   )
