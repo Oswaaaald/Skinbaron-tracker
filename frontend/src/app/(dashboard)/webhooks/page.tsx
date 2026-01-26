@@ -8,12 +8,6 @@ const WebhooksTable = lazy(() => import("@/components/webhooks-table").then(m =>
 export default function WebhooksPage() {
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-        <p className="text-muted-foreground">
-          Manage your encrypted webhook endpoints for notifications
-        </p>
-      </div>
       <Suspense fallback={<LoadingSpinner />}>
         <WebhooksTable />
       </Suspense>
