@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardNav } from "@/components/dashboard-nav"
+import { DashboardNav, MobileNavTrigger } from "@/components/dashboard-nav"
 import { UserNav } from "@/components/user-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
@@ -37,16 +37,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold">SkinBaron Tracker</h1>
-        <div className="flex items-center gap-2 md:gap-4">
+    <div className="container mx-auto p-3 sm:p-4">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2 sm:gap-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">SkinBaron Tracker</h1>
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
           <ThemeToggle />
           <UserNav />
+          <MobileNavTrigger />
         </div>
       </div>
       
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <DashboardNav />
       </div>
       

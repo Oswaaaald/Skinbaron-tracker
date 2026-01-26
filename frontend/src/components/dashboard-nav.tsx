@@ -34,6 +34,73 @@ const adminNavItems = [
 export function DashboardNav() {
   const pathname = usePathname()
   const { user } = useAuth()
+  
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/"
+    if (href === "/admin") return pathname === "/admin"
+    return pathname.startsWith(href)
+  }
+
+  const NavLinks = () => (
+    <>
+      {navItems.map((item) => {
+        const Icon = item.icon
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+              isActive(item.href)
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        )
+      })}
+      
+      {user?.is_admin && (
+        <>
+          <div className="w-px h-6 bg-border mx-2" />
+          {adminNavItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                  isActive(item.href)
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+        </>
+      )}
+    </>
+  )
+
+  return (
+    <>
+      {/* Desktop Navigation */}
+      <nav className="hidden md:flex items-center gap-1">
+        <NavLinks />
+      </nav>
+    </>
+  )
+}
+
+export function MobileNavTrigger() {
+  const pathname = usePathname()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   
   const isActive = (href: string) => {
@@ -94,27 +161,19 @@ export function DashboardNav() {
   )
 
   return (
-    <>
-      {/* Mobile Navigation */}
-      <div className="md:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64">
-            <nav className="flex flex-col gap-1 mt-8">
-              <NavLinks mobile />
-            </nav>
-          </SheetContent>
-        </Sheet>
-      </div>
-
-      {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center gap-1">
-        <NavLinks />
-      </nav>
-    </>
+    <div className="md:hidden">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="icon">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-64">
+          <nav className="flex flex-col gap-1 mt-8">
+            <NavLinks mobile />
+          </nav>
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }
