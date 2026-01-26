@@ -250,9 +250,33 @@ export function WebhooksTable() {
   }
 
   if (isLoading) {
+    return <LoadingSpinner />
+  }
+
+  const hasWebhooks = webhooks && webhooks.length > 0
+
+  if (!hasWebhooks) {
     return (
-      <div className="flex justify-center py-8">
-        <LoadingSpinner />
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
+            <p className="text-muted-foreground">
+              Manage your encrypted webhook endpoints for notifications
+            </p>
+          </div>
+          <Button onClick={() => handleOpenDialog()}>
+            Add Webhook
+          </Button>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>No Webhooks Found</CardTitle>
+            <CardDescription>
+              Create your first webhook to receive Discord notifications when alerts are triggered.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     )
   }
@@ -271,56 +295,42 @@ export function WebhooksTable() {
           </Button>
       </div>
 
-      {!webhooks || webhooks.length === 0 ? (
-        <Card className="border-dashed">
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="text-muted-foreground space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">No Webhooks Found</h3>
-              <p className="text-sm max-w-md">
-                Create your first webhook to receive Discord notifications when alerts are triggered.
-              </p>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {selectedWebhooks.size > 0 ? `${selectedWebhooks.size} selected` : `${webhooks.length} total`}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchEnable}
+                disabled={batchEnableMutation.isPending}
+              >
+                {selectedWebhooks.size > 0 ? 'Enable Selected' : 'Enable All'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchDisable}
+                disabled={batchDisableMutation.isPending}
+              >
+                {selectedWebhooks.size > 0 ? 'Disable Selected' : 'Disable All'}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBatchDelete}
+                disabled={batchDeleteMutation.isPending}
+              >
+                {selectedWebhooks.size > 0 ? 'Delete Selected' : 'Delete All'}
+              </Button>
             </div>
           </div>
-        </Card>
-      ) : (
-      <Card>
-        {webhooks && webhooks.length > 0 && (
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {selectedWebhooks.size > 0 ? `${selectedWebhooks.size} selected` : `${webhooks.length} total`}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBatchEnable}
-                  disabled={batchEnableMutation.isPending}
-                >
-                  {selectedWebhooks.size > 0 ? 'Enable Selected' : 'Enable All'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBatchDisable}
-                  disabled={batchDisableMutation.isPending}
-                >
-                  {selectedWebhooks.size > 0 ? 'Disable Selected' : 'Disable All'}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBatchDelete}
-                  disabled={batchDeleteMutation.isPending}
-                >
-                  {selectedWebhooks.size > 0 ? 'Delete Selected' : 'Delete All'}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-        )}
+        </CardHeader>
         <Table>
           <TableHeader>
             <TableRow>
@@ -392,7 +402,7 @@ export function WebhooksTable() {
             </TableBody>
           </Table>
         </Card>
-      )}
+      </div>
 
       {/* Webhook Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
