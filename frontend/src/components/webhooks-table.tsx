@@ -271,6 +271,18 @@ export function WebhooksTable() {
           </Button>
       </div>
 
+      {!webhooks || webhooks.length === 0 ? (
+        <Card className="border-dashed">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="text-muted-foreground space-y-2">
+              <h3 className="text-lg font-semibold text-foreground">No Webhooks Found</h3>
+              <p className="text-sm max-w-md">
+                Create your first webhook to receive Discord notifications when alerts are triggered.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
       <Card>
         {webhooks && webhooks.length > 0 && (
           <CardHeader className="pb-3">
@@ -380,6 +392,7 @@ export function WebhooksTable() {
             </TableBody>
           </Table>
         </Card>
+      )}
 
       {/* Webhook Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

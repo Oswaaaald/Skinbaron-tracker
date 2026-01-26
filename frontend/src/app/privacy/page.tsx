@@ -1,12 +1,23 @@
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+
 export default function PrivacyPolicy() {
   return (
     <div className="container mx-auto p-6 space-y-8">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
-        <h1 className="text-3xl font-bold">Privacy Policy</h1>
-        <p className="text-muted-foreground">
-          This personal, non-commercial project collects limited data to provide the alerting service and protect the platform. Below is a concise overview of what is collected, why, and how you can exercise your rights under GDPR.
-        </p>
+      <div className="flex items-center gap-4">
+        <Link href="/">
+          <Button variant="outline" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="space-y-2 flex-1">
+          <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
+          <h1 className="text-3xl font-bold">Privacy Policy</h1>
+          <p className="text-muted-foreground">
+            This personal, non-commercial project collects limited data to provide the alerting service and protect the platform. Below is a concise overview of what is collected, why, and how you can exercise your rights under GDPR.
+          </p>
+        </div>
       </div>
 
       <section className="space-y-2">
