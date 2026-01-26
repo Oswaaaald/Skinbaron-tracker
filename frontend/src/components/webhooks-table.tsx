@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -401,8 +401,7 @@ export function WebhooksTable() {
               ))}
             </TableBody>
           </Table>
-        </Card>
-      </div>
+      </Card>
 
       {/* Webhook Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
