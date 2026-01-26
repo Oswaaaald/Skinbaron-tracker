@@ -4,14 +4,17 @@ import { useAuth } from '@/contexts/auth-context'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AuthForm } from '@/components/auth-form'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  requireAdmin?: boolean
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, isReady } = useAuth()
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, isReady, user } = useAuth()
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const router = useRouter()
 
   // Show loading spinner while checking authentication status
   if (isLoading || !isReady) {
@@ -32,6 +35,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         mode={authMode} 
         onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} 
       />
+    )
+  }
+
+  // Check admin requirement
+  if (requireAdmin && !user?.is_admin) {
+    router.push('/')
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Access denied. Redirecting...</p>
+        </div>
+      </div>
     )
   }
 
