@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AuthForm } from '@/components/auth-form'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -14,7 +13,6 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, isReady, user } = useAuth()
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
-  const router = useRouter()
 
   // Show loading spinner while checking authentication status
   if (isLoading || !isReady) {
@@ -40,11 +38,20 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
 
   // Check admin requirement
   if (requireAdmin && !user?.is_admin) {
-    router.push('/')
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Access denied. Redirecting...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 p-8">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-3xl font-bold text-foreground">Access Denied</h1>
+          <p className="text-muted-foreground max-w-md">
+            You don&apos;t have permission to access this page. Admin privileges are required.
+          </p>
+          <a 
+            href="/" 
+            className="inline-block mt-4 px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Go to Dashboard
+          </a>
         </div>
       </div>
     )
