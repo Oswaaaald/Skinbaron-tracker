@@ -387,6 +387,23 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         // Verify TOTP code
         const otp = new OTP({ strategy: 'totp' });
+        
+        // Check if secret is too short (migration from otplib v12 to v13)
+        if (user.totp_secret && user.totp_secret.length < 16) {
+          request.log.warn({ email: user.email }, '2FA secret too short, disabling 2FA');
+          // Disable 2FA for this user
+          store.updateUser(user.id, {
+            totp_enabled: 0,
+            totp_secret_encrypted: null,
+            recovery_codes_encrypted: null,
+          });
+          
+          return reply.status(400).send({
+            success: false,
+            error: 'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
+          });
+        }
+        
         const result = await otp.verify({
           token: totp_code,
           secret: user.totp_secret!,
