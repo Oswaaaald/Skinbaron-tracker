@@ -5,19 +5,17 @@ import { ArrowLeft } from "lucide-react"
 export default function LegalNotice() {
   return (
     <div className="container mx-auto p-6 space-y-8">
-      <div className="flex items-center gap-4">
-        <Link href="/">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="space-y-2 flex-1">
-          <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
-          <h1 className="text-3xl font-bold">Legal Notice</h1>
-          <p className="text-muted-foreground">
-            This site is a personal, non-commercial project operated from Belgium. It provides CS2 SkinBaron alerting and related utilities. Below you will find the required publisher and hosting details.
-          </p>
-        </div>
+      <Link href="/">
+        <Button variant="outline" size="icon">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      </Link>
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
+        <h1 className="text-3xl font-bold">Legal Notice</h1>
+        <p className="text-muted-foreground">
+          This site is a personal, non-commercial project operated from Belgium. It provides CS2 SkinBaron alerting and related utilities. Below you will find the required publisher and hosting details.
+        </p>
       </div>
 
       <section className="space-y-2">
