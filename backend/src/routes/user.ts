@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
 import { getClientIp } from '../lib/middleware.js';
-import { authenticator } from 'otplib';
+import { OTP } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import { z } from 'zod';
@@ -470,14 +470,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Generate secret
-      const secret = authenticator.generateSecret();
+      const otp = new OTP({ strategy: 'totp' });
+      const secret = otp.generateSecret();
       
       // Generate OTP auth URL
-      const otpauth = authenticator.keyuri(
-        user.email,
-        'SkinBaron Tracker',
-        secret
-      );
+      const otpauth = otp.generateURI({
+        issuer: 'SkinBaron Tracker',
+        label: user.email,
+        secret,
+      });
 
       // Generate QR code
       const qrCode = await QRCode.toDataURL(otpauth);
@@ -539,11 +540,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const { secret, code } = request.body as { secret: string; code: string };
 
       // Verify the code
-      authenticator.options = { window: 1 }; // ±30s tolerance for clock drift
-      const isValid = authenticator.verify({
+      const otp = new OTP({ strategy: 'totp' });
+      const result = await otp.verify({
         token: code,
         secret,
+        epochTolerance: 1, // ±30s tolerance for clock drift
       });
+      const isValid = result.valid;
 
       if (!isValid) {
         return reply.status(400).send({

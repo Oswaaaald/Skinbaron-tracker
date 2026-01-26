@@ -4,7 +4,7 @@ import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/aut
 import { getStore } from '../lib/store.js';
 import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/middleware.js';
 import { appConfig } from '../lib/config.js';
-import { authenticator } from 'otplib';
+import { OTP } from 'otplib';
 import crypto from 'crypto';
 
 // 2FA attempt tracking
@@ -386,11 +386,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Verify TOTP code
-        authenticator.options = { window: 1 }; // ±30s tolerance for clock drift
-        const isValidTotp = authenticator.verify({
+        const otp = new OTP({ strategy: 'totp' });
+        const result = await otp.verify({
           token: totp_code,
           secret: user.totp_secret!,
+          epochTolerance: 1, // ±30s tolerance for clock drift
         });
+        const isValidTotp = result.valid;
 
         // If invalid, try recovery codes
         if (!isValidTotp) {
