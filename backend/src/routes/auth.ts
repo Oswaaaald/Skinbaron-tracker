@@ -404,12 +404,31 @@ export default async function authRoutes(fastify: FastifyInstance) {
           });
         }
         
-        const result = await otp.verify({
-          token: totp_code,
-          secret: user.totp_secret!,
-          epochTolerance: 1, // ±30s tolerance for clock drift
-        });
-        const isValidTotp = result.valid;
+        let isValidTotp = false;
+        try {
+          const result = await otp.verify({
+            token: totp_code,
+            secret: user.totp_secret!,
+            epochTolerance: 1, // ±30s tolerance for clock drift
+          });
+          isValidTotp = result.valid;
+        } catch (error: any) {
+          // Handle SecretTooShortError from otplib v13 (legacy secrets)
+          if (error?.name === 'SecretTooShortError') {
+            request.log.warn({ email: user.email }, '2FA secret validation failed, disabling 2FA');
+            store.updateUser(user.id, {
+              totp_enabled: 0,
+              totp_secret_encrypted: null,
+              recovery_codes_encrypted: null,
+            });
+            
+            return reply.status(400).send({
+              success: false,
+              error: 'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
+            });
+          }
+          throw error; // Re-throw other errors
+        }
 
         // If invalid, try recovery codes
         if (!isValidTotp) {
