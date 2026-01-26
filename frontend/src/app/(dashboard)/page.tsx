@@ -11,12 +11,172 @@ import {
   Settings,
   ArrowRight,
   Webhook,
+  Zap,
+  Lock,
+  Github
 } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
+import { useState } from "react"
+import { AuthForm } from "@/components/auth-form"
+import { ThemeToggle } from "@/components/theme-toggle"
 
-export default function DashboardPage() {
+function LandingPage() {
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [showAuth, setShowAuth] = useState(false)
+
+  if (showAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <AuthForm 
+          mode={authMode} 
+          onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} 
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-6 w-6 text-primary" />
+            <span className="text-xl font-bold">SkinBaron Tracker</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Button variant="ghost" onClick={() => { setAuthMode('login'); setShowAuth(true); }}>
+              Sign In
+            </Button>
+            <Button onClick={() => { setAuthMode('register'); setShowAuth(true); }}>
+              Get Started
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <h1 className="text-5xl font-bold tracking-tight mb-6">
+          Never Miss a Deal on CS2 Skins
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          Get instant Discord notifications when CS2 skins matching your criteria appear on SkinBaron. 
+          Set custom price alerts, track specific items, and catch the best deals before anyone else.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button size="lg" onClick={() => { setAuthMode('register'); setShowAuth(true); }}>
+            Start Tracking for Free
+          </Button>
+          <Link href="#features">
+            <Button size="lg" variant="outline">
+              Learn More
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="container mx-auto px-4 py-20">
+        <h2 className="text-3xl font-bold text-center mb-12">Why SkinBaron Tracker?</h2>
+        <div className="grid md:grid-cols-3 gap-8">
+          <Card>
+            <CardHeader>
+              <Zap className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Real-Time Alerts</CardTitle>
+              <CardDescription>
+                Instant Discord notifications when items matching your rules appear on the market
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Settings className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Custom Rules</CardTitle>
+              <CardDescription>
+                Filter by weapon, skin, wear, price range, StatTrak, Souvenir, and even specific stickers
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Lock className="h-10 w-10 text-primary mb-2" />
+              <CardTitle>Secure & Private</CardTitle>
+              <CardDescription>
+                GDPR compliant, encrypted webhooks, 2FA authentication, and hosted in EU
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="bg-muted/50 py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">1</div>
+              <h3 className="font-semibold mb-2">Create Rules</h3>
+              <p className="text-sm text-muted-foreground">
+                Set up custom monitoring rules with your desired filters and price limits
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">2</div>
+              <h3 className="font-semibold mb-2">Connect Discord</h3>
+              <p className="text-sm text-muted-foreground">
+                Add your Discord webhook to receive notifications in your server or DMs
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-primary text-primary-foreground rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">3</div>
+              <h3 className="font-semibold mb-2">Get Notified</h3>
+              <p className="text-sm text-muted-foreground">
+                Receive instant alerts when matching items are listed on SkinBaron
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <h2 className="text-3xl font-bold mb-4">Ready to Start Tracking?</h2>
+        <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
+          Join traders who never miss a good deal. Free to use, no credit card required.
+        </p>
+        <Button size="lg" onClick={() => { setAuthMode('register'); setShowAuth(true); }}>
+          Create Your Free Account
+        </Button>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-8">
+        <div className="container mx-auto px-4 flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            © 2026 SkinBaron Tracker. Personal non-commercial project.
+          </div>
+          <div className="flex gap-6">
+            <Link href="/legal" className="hover:text-foreground">Legal Notice</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy Policy</Link>
+            <a href="https://github.com/Oswaaaald" target="_blank" rel="noopener noreferrer" className="hover:text-foreground flex items-center gap-1">
+              <Github className="h-4 w-4" />
+              GitHub
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+function DashboardContent() {
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
@@ -168,4 +328,14 @@ export default function DashboardPage() {
       )}
     </div>
   )
+}
+
+export default function HomePage() {
+  const { isAuthenticated } = useAuth()
+  
+  if (!isAuthenticated) {
+    return <LandingPage />
+  }
+  
+  return <DashboardContent />
 }
