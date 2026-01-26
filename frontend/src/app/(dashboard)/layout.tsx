@@ -10,9 +10,10 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading, isReady } = useAuth()
 
-  if (!isAuthenticated) {
+  // Don't show navigation during loading to prevent flash
+  if (isLoading || !isReady || !isAuthenticated) {
     return children
   }
 

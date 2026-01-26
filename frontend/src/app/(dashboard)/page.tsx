@@ -331,7 +331,19 @@ function DashboardContent() {
 }
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading, isReady } = useAuth()
+  
+  // Show loading state while checking authentication
+  if (isLoading || !isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
   
   if (!isAuthenticated) {
     return <LandingPage />
