@@ -11,8 +11,12 @@ import {
   Webhook,
   Settings,
   Shield,
-  Activity
+  Activity,
+  Menu
 } from "lucide-react"
+import { useState } from "react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
 
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
@@ -30,6 +34,7 @@ const adminNavItems = [
 export function DashboardNav() {
   const pathname = usePathname()
   const { user } = useAuth()
+  const [open, setOpen] = useState(false)
   
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
@@ -37,19 +42,21 @@ export function DashboardNav() {
     return pathname.startsWith(href)
   }
 
-  return (
-    <nav className="flex items-center gap-1">
+  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
+    <>
       {navItems.map((item) => {
         const Icon = item.icon
         return (
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => mobile && setOpen(false)}
             className={cn(
               "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
               isActive(item.href)
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              mobile && "w-full"
             )}
           >
             <Icon className="h-4 w-4" />
@@ -60,18 +67,20 @@ export function DashboardNav() {
       
       {user?.is_admin && (
         <>
-          <div className="w-px h-6 bg-border mx-2" />
+          <div className={cn("bg-border", mobile ? "h-px w-full my-2" : "w-px h-6 mx-2")} />
           {adminNavItems.map((item) => {
             const Icon = item.icon
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => mobile && setOpen(false)}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
                   isActive(item.href)
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  mobile && "w-full"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -81,6 +90,31 @@ export function DashboardNav() {
           })}
         </>
       )}
-    </nav>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile Navigation */}
+      <div className="md:hidden">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64">
+            <nav className="flex flex-col gap-1 mt-8">
+              <NavLinks mobile />
+            </nav>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop Navigation */}
+      <nav className="hidden md:flex items-center gap-1">
+        <NavLinks />
+      </nav>
+    </>
   )
 }

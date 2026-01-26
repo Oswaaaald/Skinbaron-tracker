@@ -38,9 +38,9 @@ export default function DashboardLayout({
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">SkinBaron Tracker</h1>
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold">SkinBaron Tracker</h1>
+        <div className="flex items-center gap-2 md:gap-4">
           <ThemeToggle />
           <UserNav />
         </div>
