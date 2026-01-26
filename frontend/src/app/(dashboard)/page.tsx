@@ -26,19 +26,21 @@ function LandingPage() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">SkinBaron Tracker</span>
+            <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="text-lg sm:text-xl font-bold">SkinBaron Tracker</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
             <Link href="/login">
-              <Button variant="ghost">
-                Sign In
+              <Button variant="ghost" size="sm" className="sm:h-10 sm:px-4">
+                <span className="hidden sm:inline">Sign In</span>
+                <span className="sm:hidden">Login</span>
               </Button>
             </Link>
             <Link href="/register">
-              <Button>
-                Get Started
+              <Button size="sm" className="sm:h-10 sm:px-4">
+                <span className="hidden sm:inline">Get Started</span>
+                <span className="sm:hidden">Sign Up</span>
               </Button>
             </Link>
           </div>
