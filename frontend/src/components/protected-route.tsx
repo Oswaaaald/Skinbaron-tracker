@@ -1,8 +1,8 @@
 'use client'
 
 import { useAuth } from '@/contexts/auth-context'
-import { AuthForm } from '@/components/auth-form'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -11,7 +11,13 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, isReady, user } = useAuth()
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isReady && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [isReady, isAuthenticated, router])
 
   // Show loading spinner while checking authentication status
   if (isLoading || !isReady) {
@@ -25,14 +31,14 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     )
   }
 
-  // Show auth form if not authenticated (only after ready)
+  // Redirect if not authenticated (handled by useEffect)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <AuthForm 
-          mode={authMode} 
-          onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} 
-        />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Redirecting...</p>
+        </div>
       </div>
     )
   }
