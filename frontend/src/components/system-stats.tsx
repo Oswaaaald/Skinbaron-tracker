@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { 
   Activity,
   AlertCircle,
@@ -46,7 +45,14 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
 
 
   if (shouldFetch && isLoadingStatus) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   const status = prefetched?.data || statusResponse?.data
