@@ -255,154 +255,8 @@ export function WebhooksTable() {
 
   const hasWebhooks = webhooks && webhooks.length > 0
 
-  if (!hasWebhooks) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-            <p className="text-muted-foreground">
-              Manage your encrypted webhook endpoints for notifications
-            </p>
-          </div>
-          <Button onClick={() => handleOpenDialog()}>
-            Add Webhook
-          </Button>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>No Webhooks Found</CardTitle>
-            <CardDescription>
-              Create your first webhook to receive Discord notifications when alerts are triggered.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-          <p className="text-muted-foreground">
-            Manage your encrypted webhook endpoints for notifications
-          </p>
-        </div>
-          <Button onClick={() => handleOpenDialog()}>
-            Add Webhook
-          </Button>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {selectedWebhooks.size > 0 ? `${selectedWebhooks.size} selected` : `${webhooks.length} total`}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBatchEnable}
-                disabled={batchEnableMutation.isPending}
-              >
-                {selectedWebhooks.size > 0 ? 'Enable Selected' : 'Enable All'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBatchDisable}
-                disabled={batchDisableMutation.isPending}
-              >
-                {selectedWebhooks.size > 0 ? 'Disable Selected' : 'Disable All'}
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={batchDeleteMutation.isPending}
-              >
-                {selectedWebhooks.size > 0 ? 'Delete Selected' : 'Delete All'}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <input
-                  type="checkbox"
-                  checked={!!webhooks && selectedWebhooks.size === webhooks.length && webhooks.length > 0}
-                  onChange={handleSelectAll}
-                  className="cursor-pointer"
-                  aria-label="Select all webhooks"
-                />
-              </TableHead>
-              <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {webhooks?.map((webhook) => (
-                <TableRow key={webhook.id}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedWebhooks.has(webhook.id!)}
-                      onChange={() => handleSelectWebhook(webhook.id!)}
-                      className="cursor-pointer"
-                      aria-label={`Select webhook ${webhook.name}`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{webhook.name}</TableCell>
-                  <TableCell>
-                    <Badge className={getWebhookTypeColor(webhook.webhook_type)}>
-                      {webhook.webhook_type.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={webhook.is_active ? 'default' : 'secondary'}>
-                      {webhook.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {webhook.created_at ? new Date(webhook.created_at).toLocaleDateString('en-GB') : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(webhook)}
-                        aria-label="Edit webhook"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(webhook)}
-                        className="text-red-600 hover:text-red-700"
-                        aria-label="Delete webhook"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-      </Card>
-
+  const renderDialogs = () => (
+    <>
       {/* Webhook Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -527,6 +381,160 @@ export function WebhooksTable() {
         variant="destructive"
         onConfirm={confirmBatchDelete}
       />
+    </>
+  )
+
+  if (!hasWebhooks) {
+    return (
+      <>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
+              <p className="text-muted-foreground">
+                Manage your encrypted webhook endpoints for notifications
+              </p>
+            </div>
+            <Button onClick={() => handleOpenDialog()}>
+              Add Webhook
+            </Button>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>No Webhooks Found</CardTitle>
+              <CardDescription>
+                Create your first webhook to receive Discord notifications when alerts are triggered.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+        {renderDialogs()}
+      </>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
+          <p className="text-muted-foreground">
+            Manage your encrypted webhook endpoints for notifications
+          </p>
+        </div>
+          <Button onClick={() => handleOpenDialog()}>
+            Add Webhook
+          </Button>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {selectedWebhooks.size > 0 ? `${selectedWebhooks.size} selected` : `${webhooks.length} total`}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchEnable}
+                disabled={batchEnableMutation.isPending}
+              >
+                {selectedWebhooks.size > 0 ? 'Enable Selected' : 'Enable All'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchDisable}
+                disabled={batchDisableMutation.isPending}
+              >
+                {selectedWebhooks.size > 0 ? 'Disable Selected' : 'Disable All'}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBatchDelete}
+                disabled={batchDeleteMutation.isPending}
+              >
+                {selectedWebhooks.size > 0 ? 'Delete Selected' : 'Delete All'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <input
+                  type="checkbox"
+                  checked={!!webhooks && selectedWebhooks.size === webhooks.length && webhooks.length > 0}
+                  onChange={handleSelectAll}
+                  className="cursor-pointer"
+                  aria-label="Select all webhooks"
+                />
+              </TableHead>
+              <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {webhooks?.map((webhook) => (
+                <TableRow key={webhook.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedWebhooks.has(webhook.id!)}
+                      onChange={() => handleSelectWebhook(webhook.id!)}
+                      className="cursor-pointer"
+                      aria-label={`Select webhook ${webhook.name}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{webhook.name}</TableCell>
+                  <TableCell>
+                    <Badge className={getWebhookTypeColor(webhook.webhook_type)}>
+                      {webhook.webhook_type.toUpperCase()}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={webhook.is_active ? 'default' : 'secondary'}>
+                      {webhook.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {webhook.created_at ? new Date(webhook.created_at).toLocaleDateString('en-GB') : '-'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenDialog(webhook)}
+                        aria-label="Edit webhook"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(webhook)}
+                        className="text-red-600 hover:text-red-700"
+                        aria-label="Delete webhook"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+      </Card>
+      {renderDialogs()}
     </div>
   )
 }
