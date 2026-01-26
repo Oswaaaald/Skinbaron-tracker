@@ -5,7 +5,7 @@
 FROM node:20-alpine AS base
 
 RUN apk update && apk add --no-cache ca-certificates && \
-    npm install -g npm@11.7.0
+    npm install -g npm@11.8.0
 
 # ---------- deps ----------
 FROM base AS deps
