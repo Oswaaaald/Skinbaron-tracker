@@ -163,7 +163,7 @@ function DashboardContent() {
     refetchOnWindowFocus: true,
   })
 
-  const { data: userStats } = useQuery({
+  const { data: userStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserStats(), 'Failed to load user stats'),
     enabled: isReady && isAuthenticated && isVisible,
@@ -282,7 +282,7 @@ function DashboardContent() {
         </Link>
       </div>
 
-      {totalRules === 0 && (
+      {!isLoadingStats && totalRules === 0 && (
         <Card className="border-dashed">
           <CardHeader>
             <CardTitle>Get Started</CardTitle>
