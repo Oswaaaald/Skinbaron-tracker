@@ -4,9 +4,20 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { RulesTable } from "@/components/rules-table"
 import { RuleDialog } from "@/components/rule-dialog"
+import { useAuth } from "@/contexts/auth-context"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function RulesPage() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
+  const { isReady } = useAuth()
+
+  if (!isReady) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

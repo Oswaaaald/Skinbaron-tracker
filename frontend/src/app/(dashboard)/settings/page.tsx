@@ -1,11 +1,20 @@
 "use client"
 
-import { Suspense, lazy } from "react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-
-const ProfileSettings = lazy(() => import("@/components/profile-settings").then(m => ({ default: m.ProfileSettings })))
+import { useAuth } from "@/contexts/auth-context"
+import { ProfileSettings } from "@/components/profile-settings"
 
 export default function SettingsPage() {
+  const { isReady } = useAuth()
+
+  if (!isReady) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -14,9 +23,7 @@ export default function SettingsPage() {
           Manage your account and preferences
         </p>
       </div>
-      <Suspense fallback={<LoadingSpinner />}>
-        <ProfileSettings />
-      </Suspense>
+      <ProfileSettings />
     </div>
   )
 }

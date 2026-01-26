@@ -1,11 +1,20 @@
 "use client"
 
-import { Suspense, lazy } from "react"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-
-const AdminPanel = lazy(() => import("@/components/admin-panel").then(m => ({ default: m.AdminPanel })))
+import { useAuth } from "@/contexts/auth-context"
+import { AdminPanel } from "@/components/admin-panel"
 
 export default function AdminPage() {
+  const { isReady } = useAuth()
+
+  if (!isReady) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -14,9 +23,7 @@ export default function AdminPage() {
           Manage users and system settings
         </p>
       </div>
-      <Suspense fallback={<LoadingSpinner />}>
-        <AdminPanel />
-      </Suspense>
+      <AdminPanel />
     </div>
   )
 }

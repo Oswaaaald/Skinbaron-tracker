@@ -12,31 +12,14 @@ import {
   ArrowRight,
   Webhook,
   Zap,
-  Lock,
-  Github
+  Lock
 } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
-import { useState } from "react"
-import { AuthForm } from "@/components/auth-form"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 function LandingPage() {
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
-  const [showAuth, setShowAuth] = useState(false)
-
-  if (showAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <AuthForm 
-          mode={authMode} 
-          onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} 
-        />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -48,12 +31,16 @@ function LandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => { setAuthMode('login'); setShowAuth(true); }}>
-              Sign In
-            </Button>
-            <Button onClick={() => { setAuthMode('register'); setShowAuth(true); }}>
-              Get Started
-            </Button>
+            <Link href="/login">
+              <Button variant="ghost">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/register">
+              <Button>
+                Get Started
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -68,9 +55,11 @@ function LandingPage() {
           Set custom price alerts, track specific items, and catch the best deals before anyone else.
         </p>
         <div className="flex gap-4 justify-center">
-          <Button size="lg" onClick={() => { setAuthMode('register'); setShowAuth(true); }}>
-            Start Tracking for Free
-          </Button>
+          <Link href="/register">
+            <Button size="lg">
+              Start Tracking for Free
+            </Button>
+          </Link>
           <Link href="#features">
             <Button size="lg" variant="outline">
               Learn More
@@ -151,27 +140,12 @@ function LandingPage() {
         <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
           Join traders who never miss a good deal. Free to use, no credit card required.
         </p>
-        <Button size="lg" onClick={() => { setAuthMode('register'); setShowAuth(true); }}>
-          Create Your Free Account
-        </Button>
+        <Link href="/register">
+          <Button size="lg">
+            Create Your Free Account
+          </Button>
+        </Link>
       </section>
-
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto px-4 flex items-center justify-between text-sm text-muted-foreground">
-          <div>
-            © 2026 SkinBaron Tracker. Personal non-commercial project.
-          </div>
-          <div className="flex gap-6">
-            <Link href="/legal" className="hover:text-foreground">Legal Notice</Link>
-            <Link href="/privacy" className="hover:text-foreground">Privacy Policy</Link>
-            <a href="https://github.com/Oswaaaald" target="_blank" rel="noopener noreferrer" className="hover:text-foreground flex items-center gap-1">
-              <Github className="h-4 w-4" />
-              GitHub
-            </a>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { DashboardNav } from "@/components/dashboard-nav"
 import { UserNav } from "@/components/user-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
+import { useEffect, useState } from "react"
 
 export default function DashboardLayout({
   children,
@@ -11,9 +12,27 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const { isAuthenticated, isLoading, isReady } = useAuth()
+  const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
 
-  // Don't show navigation during loading to prevent flash
-  if (isLoading || !isReady || !isAuthenticated) {
+  // Track if user has been authenticated at least once
+  useEffect(() => {
+    if (isAuthenticated) {
+      setHasBeenAuthenticated(true)
+    }
+  }, [isAuthenticated])
+
+  // Show navigation if:
+  // 1. User is currently authenticated, OR
+  // 2. User was authenticated before (during page transitions/reloads)
+  const shouldShowNav = isAuthenticated || (hasBeenAuthenticated && isLoading)
+
+  // For initial load, wait for auth check before deciding layout
+  if (!isReady && !hasBeenAuthenticated) {
+    return children
+  }
+
+  // If user is not authenticated and has never been, show children without nav
+  if (!shouldShowNav) {
     return children
   }
 
