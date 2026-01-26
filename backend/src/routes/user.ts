@@ -469,9 +469,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Generate secret
+      // Generate secret (otplib v13 requires minimum 16 characters)
       const otp = new OTP({ strategy: 'totp' });
-      const secret = otp.generateSecret();
+      const secret = otp.generateSecret(20);
       
       // Generate OTP auth URL
       const otpauth = otp.generateURI({
