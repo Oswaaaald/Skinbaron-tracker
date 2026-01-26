@@ -11,8 +11,6 @@ import {
   Webhook,
   Settings,
   Shield,
-  Users,
-  FileText,
   Activity
 } from "lucide-react"
 
@@ -26,8 +24,6 @@ const navItems = [
 
 const adminNavItems = [
   { href: "/admin", label: "Admin", icon: Shield },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/logs", label: "Logs", icon: FileText },
   { href: "/admin/system", label: "System", icon: Activity },
 ]
 

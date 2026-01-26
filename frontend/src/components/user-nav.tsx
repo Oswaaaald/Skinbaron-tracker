@@ -4,13 +4,9 @@ import Image from 'next/image'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { LogOut, Settings } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 
-interface UserNavProps {
-  onTabChange?: (tab: string) => void
-}
-
-export function UserNav({ onTabChange }: UserNavProps) {
+export function UserNav() {
   const { user, logout } = useAuth()
 
   if (!user) return null
@@ -53,11 +49,6 @@ export function UserNav({ onTabChange }: UserNavProps) {
               </p>
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onTabChange?.('settings')}>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
             <LogOut className="mr-2 h-4 w-4" />
