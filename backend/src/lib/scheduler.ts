@@ -3,8 +3,15 @@ import { appConfig } from './config.js';
 import { getStore, type Rule, type CreateAlert } from './store.js';
 import { getSkinBaronClient, type SkinBaronItem } from './sbclient.js';
 import { getNotificationService } from './notifier.js';
-import pino, { type Logger } from 'pino';
-import { type FastifyBaseLogger } from 'fastify';
+import pino from 'pino';
+
+// Logger interface compatible with both pino.Logger and FastifyBaseLogger
+interface SchedulerLogger {
+  info(obj: object, msg?: string): void;
+  error(obj: object, msg?: string): void;
+  warn(obj: object, msg?: string): void;
+  debug(obj: object, msg?: string): void;
+}
 
 export interface SchedulerStats {
   isRunning: boolean;
@@ -17,7 +24,7 @@ export interface SchedulerStats {
 }
 
 export class AlertScheduler {
-  private logger: Logger | FastifyBaseLogger = pino({ level: appConfig.LOG_LEVEL });
+  private logger: SchedulerLogger = pino({ level: appConfig.LOG_LEVEL });
   private cronJob: CronJob | null = null;
   private store = getStore();
   private notificationService = getNotificationService();
@@ -40,7 +47,7 @@ export class AlertScheduler {
   constructor() {
   }
 
-  setLogger(logger: Logger | FastifyBaseLogger) {
+  setLogger(logger: SchedulerLogger) {
     this.logger = logger;
   }
 
