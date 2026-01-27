@@ -65,8 +65,8 @@ export function ProfileSettings() {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/stats'), 'Failed to load user stats')
       return response.data as UserStats
     },
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 5_000,
     refetchOnWindowFocus: true,
   })
 
