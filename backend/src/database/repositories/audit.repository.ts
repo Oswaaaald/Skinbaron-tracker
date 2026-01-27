@@ -123,7 +123,55 @@ export class AuditRepository {
     params.push(limit);
 
     const stmt = this.db.prepare(query);
-    return stmt.all(...params) as Array<AuditLog & { username?: string; email?: string }>;
+    const logs = stmt.all(...params) as Array<AuditLog & { username?: string; email?: string }>;
+    
+    // Collect all admin IDs to avoid N+1 query problem
+    const adminIds = new Set<number>();
+    logs.forEach(log => {
+      if (log.event_data && typeof log.event_data === 'string') {
+        try {
+          const data = JSON.parse(log.event_data) as Record<string, unknown>;
+          const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
+          if (adminId && typeof adminId === 'number') {
+            adminIds.add(adminId);
+          }
+        } catch {
+          // Invalid JSON, skip
+        }
+      }
+    });
+
+    // Fetch all admin usernames in a single query
+    const adminMap = new Map<number, string>();
+    if (adminIds.size > 0) {
+      const placeholders = Array.from(adminIds).map(() => '?').join(',');
+      const adminStmt = this.db.prepare(`SELECT id, username FROM users WHERE id IN (${placeholders})`);
+      const admins = adminStmt.all(...Array.from(adminIds)) as Array<{ id: number; username: string }>;
+      admins.forEach(admin => adminMap.set(admin.id, admin.username));
+    }
+
+    // Enrich logs with admin usernames
+    return logs.map(log => {
+      if (log.event_data && typeof log.event_data === 'string') {
+        try {
+          const data = JSON.parse(log.event_data) as Record<string, unknown>;
+          const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
+          
+          if (adminId && typeof adminId === 'number') {
+            const adminUsername = adminMap.get(adminId);
+            if (adminUsername) {
+              log.event_data = JSON.stringify({
+                ...data,
+                admin_username: adminUsername
+              });
+            }
+          }
+        } catch {
+          // Invalid JSON, leave as is
+        }
+      }
+      return log;
+    });
   }
 
   cleanupOldAuditLogs(daysToKeep: number = 90): number {

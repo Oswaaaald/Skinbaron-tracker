@@ -495,7 +495,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       store.createAuditLog(
         userId,
         '2fa_enabled',
-        undefined,
+        JSON.stringify({ method: '2fa_enabled' }),
         getClientIp(request),
         request.headers['user-agent']
       );
@@ -565,7 +565,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       store.createAuditLog(
         userId,
         '2fa_disabled',
-        undefined,
+        JSON.stringify({ method: '2fa_disabled' }),
         getClientIp(request),
         request.headers['user-agent']
       );
