@@ -398,10 +398,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const user = store.getUserById(userId);
 
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Generate secret (otplib v13 requires minimum 16 characters)

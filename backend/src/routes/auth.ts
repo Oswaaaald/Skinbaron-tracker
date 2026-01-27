@@ -312,12 +312,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Check if user is locked out from too many failed 2FA attempts
         const lockStatus = is2FALocked(user.id!);
         if (lockStatus.locked) {
-          return reply.status(429).send({
-            success: false,
-            error: 'Too many failed 2FA attempts',
-            message: `Account temporarily locked. Try again in ${lockStatus.remainingTime} seconds`,
-            retry_after: lockStatus.remainingTime,
-          });
+          throw new AppError(
+            429,
+            `Account temporarily locked. Try again in ${lockStatus.remainingTime} seconds`,
+            'TOO_MANY_2FA_ATTEMPTS'
+          );
         }
 
         // If no code provided, return requires_2fa flag
@@ -343,10 +342,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
             recovery_codes_encrypted: null,
           });
           
-          return reply.status(400).send({
-            success: false,
-            error: 'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
-          });
+          throw new AppError(
+            400,
+            'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
+            'TOTP_SECRET_OUTDATED'
+          );
         }
         
         let isValidTotp = false;
@@ -367,10 +367,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
               recovery_codes_encrypted: null,
             });
             
-            return reply.status(400).send({
-              success: false,
-              error: 'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
-            });
+            throw new AppError(
+              400,
+              'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
+              'TOTP_SECRET_OUTDATED'
+            );
           }
           throw error; // Re-throw other errors
         }
@@ -415,19 +416,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
             );
             
             if (!canContinue) {
-              return reply.status(429).send({
-                success: false,
-                error: 'Too many failed attempts',
-                message: 'Account temporarily locked due to multiple failed 2FA attempts. Try again in 15 minutes',
-              });
+              throw new AppError(
+                429,
+                'Account temporarily locked due to multiple failed 2FA attempts. Try again in 15 minutes',
+                'TOO_MANY_2FA_ATTEMPTS'
+              );
             }
-            
-            return reply.status(401).send({
-              success: false,
-              error: 'Invalid 2FA code',
-              message: '2FA code is incorrect',
-              remaining_attempts: MAX_2FA_ATTEMPTS - (attemptsRecord?.attempts || 1),
-            });
+            const attemptsRemaining = MAX_2FA_ATTEMPTS - (attemptsRecord?.attempts || 1);
+            throw new AppError(
+              401,
+              `2FA code is incorrect. ${attemptsRemaining} attempts remaining`,
+              'INVALID_2FA_CODE'
+            );
           }
 
           // Remove used recovery code
