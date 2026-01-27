@@ -14,11 +14,11 @@ export function LoadingSpinner({ className, size = "md", inline = false }: Loadi
   }
 
   const spinner = (
-    <span
+    <div
       className={cn(
-        "animate-spin rounded-full border-2 border-primary border-t-transparent",
+        "animate-spin rounded-full border-primary",
         sizes[size],
-        inline ? "inline-block align-middle" : "",
+        inline ? "inline-block" : "",
         className
       )}
     />
