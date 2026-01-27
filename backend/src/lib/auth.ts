@@ -5,28 +5,33 @@ import crypto from 'crypto';
 
 // User schemas
 export const UserRegistrationSchema = z.object({
-  username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
-  email: z.string().email('Valid email required'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be at most 20 characters')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number'),
 });
 
 export const UserLoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 export const PasswordChangeSchema = z.object({
-  current_password: z.string().min(1),
-  new_password: z.string().min(8, 'Password must be at least 8 characters')
+  current_password: z.string().min(1, 'Current password is required'),
+  new_password: z.string()
+    .min(8, 'Password must be at least 8 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number'),
 });
 
 export const WebhookSchema = z.object({
   id: z.number().optional(),
   user_id: z.number(),
-  name: z.string().min(1).max(50),
-  webhook_url: z.string().url('Valid Discord webhook URL required'),
+  name: z.string().min(1, 'Webhook name is required').max(50, 'Webhook name must be at most 50 characters'),
+  webhook_url: z.string().url('Please enter a valid webhook URL'),
   created_at: z.string().optional(),
 });
 
