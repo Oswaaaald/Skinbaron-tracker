@@ -14,7 +14,8 @@ export function useSyncStats() {
     await Promise.all([
       queryClient.refetchQueries({ queryKey: ['alert-stats'] }),
       queryClient.refetchQueries({ queryKey: ['system-status'] }),
-      queryClient.refetchQueries({ queryKey: ['user-stats'] }) // Add user stats for dashboard sync
+      queryClient.refetchQueries({ queryKey: ['user-stats'] }), // Add user stats for dashboard sync
+      queryClient.refetchQueries({ queryKey: ['user', 'stats'] }) // Profile settings stats
     ])
   }
 

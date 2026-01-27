@@ -10,7 +10,7 @@ import { validateWithZod, handleRouteError } from '../lib/validation-handler.js'
 import { AppError } from '../lib/errors.js';
 
 const UpdateProfileSchema = z.object({
-  username: z.string().min(3).max(50).optional(),
+  username: z.string().min(3).max(20).optional(),
   email: z.string().email().optional(),
 }).refine(data => data.username || data.email, {
   message: 'At least one field must be provided',

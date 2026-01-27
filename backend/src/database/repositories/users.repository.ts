@@ -184,6 +184,13 @@ export class UsersRepository {
   setAdmin(id: number, isAdmin: boolean): boolean {
     const stmt = this.db.prepare('UPDATE users SET is_admin = ? WHERE id = ?');
     const result = stmt.run(isAdmin ? 1 : 0, id);
+    
+    if (result.changes > 0) {
+      import('../../lib/middleware.js')
+        .then(({ invalidateUserCache }) => invalidateUserCache(id))
+        .catch(() => {});
+    }
+    
     return result.changes > 0;
   }
 
