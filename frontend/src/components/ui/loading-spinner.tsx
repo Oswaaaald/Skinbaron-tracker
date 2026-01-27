@@ -18,6 +18,7 @@ export function LoadingSpinner({ className, size = "md", inline = false }: Loadi
       className={cn(
         "animate-spin rounded-full border-primary",
         sizes[size],
+        inline ? "inline-block" : "",
         className
       )}
     />
