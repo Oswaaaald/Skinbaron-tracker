@@ -239,7 +239,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
               >
                 {enableMutation.isPending ? (
                   <>
-                    <LoadingSpinner size="sm" className="mr-2" inline />
+                    <LoadingSpinner size="sm" className="mr-2" />
                     Verifying...
                   </>
                 ) : (

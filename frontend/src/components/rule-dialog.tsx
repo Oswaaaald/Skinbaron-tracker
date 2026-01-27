@@ -726,7 +726,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               >
                 {isSubmitting ? (
                   <>
-                    <LoadingSpinner size="sm" className="mr-2" inline />
+                    <LoadingSpinner size="sm" className="mr-2" />
                     {isEditing ? "Updating..." : "Creating..."}
                   </>
                 ) : (

@@ -649,7 +649,7 @@ export function AdminPanel() {
               Cancel
             </Button>
             <Button onClick={confirmToggleAdmin} disabled={toggleAdminMutation.isPending}>
-              {toggleAdminMutation.isPending ? <LoadingSpinner size="sm" inline /> : 'Confirm'}
+              {toggleAdminMutation.isPending ? <LoadingSpinner size="sm" /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

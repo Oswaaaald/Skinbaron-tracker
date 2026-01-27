@@ -214,7 +214,7 @@ export function AlertsGrid() {
           >
             {isClearingAll ? (
               <>
-                <LoadingSpinner size="sm" className="mr-2" inline />
+                <LoadingSpinner size="sm" className="mr-2" />
                 Clearing...
               </>
             ) : (

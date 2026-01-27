@@ -418,7 +418,7 @@ export function ProfileSettings() {
             >
               {updateProfileMutation.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" inline />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Updating...
                 </>
               ) : (
@@ -494,7 +494,7 @@ export function ProfileSettings() {
             >
               {updatePasswordMutation.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" inline />
+                  <LoadingSpinner size="sm" className="mr-2" />
                   Updating...
                 </>
               ) : (
