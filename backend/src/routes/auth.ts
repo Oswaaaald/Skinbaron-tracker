@@ -625,41 +625,29 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
 
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
-      if (accessPayload?.jti) {
+      
+      // Check if user still exists (may have been deleted)
+      const userExists = accessPayload ? store.getUserById(accessPayload.userId) !== null : false;
+      
+      if (accessPayload?.jti && userExists) {
         const exp = accessPayload.exp ? accessPayload.exp * 1000 : Date.now();
-        try {
-          store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
-        } catch {
-          // User may have been deleted, ignore
-        }
+        store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
       }
 
-      if (refresh_token) {
-        try {
-          store.revokeRefreshToken(refresh_token, 'logout');
-        } catch {
-          // Token may have been deleted with user, ignore
-        }
-      } else if (accessPayload) {
-        try {
-          store.revokeAllRefreshTokensForUser(accessPayload.userId);
-        } catch {
-          // User may have been deleted, ignore
-        }
+      if (refresh_token && userExists) {
+        store.revokeRefreshToken(refresh_token, 'logout');
+      } else if (accessPayload && userExists) {
+        store.revokeAllRefreshTokensForUser(accessPayload.userId);
       }
 
-      if (accessPayload) {
-        try {
-          store.createAuditLog(
-            accessPayload.userId,
-            'logout',
-            JSON.stringify({ reason: 'user_logout' }),
-            getClientIp(request),
-            request.headers['user-agent']
-          );
-        } catch {
-          // User may have been deleted, ignore audit log
-        }
+      if (accessPayload && userExists) {
+        store.createAuditLog(
+          accessPayload.userId,
+          'logout',
+          JSON.stringify({ reason: 'user_logout' }),
+          getClientIp(request),
+          request.headers['user-agent']
+        );
       }
 
       clearAuthCookies(reply);
