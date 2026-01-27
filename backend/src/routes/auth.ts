@@ -331,9 +331,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Verify TOTP code
         const otp = new OTP({ strategy: 'totp' });
         
-        // Check if secret is too short (migration from otplib v12 to v13)
-        if (user.totp_secret && user.totp_secret.length < 16) {
-          request.log.warn({ email: user.email }, '2FA secret too short, disabling 2FA');
+        // Check if secret is missing (decryption failed) or too short (migration from otplib v12 to v13)
+        if (!user.totp_secret || user.totp_secret.length < 16) {
+          const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
+          request.log.warn({ email: user.email, reason }, 'Disabling 2FA');
           // Disable 2FA for this user
           store.updateUser(user.id, {
             totp_enabled: 0,
