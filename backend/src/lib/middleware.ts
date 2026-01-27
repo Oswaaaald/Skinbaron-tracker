@@ -2,7 +2,8 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import '@fastify/cookie';
 import { LRUCache } from 'lru-cache';
 import { AuthService } from './auth.js';
-import { getStore, User } from './store.js';
+import { store } from '../database/index.js';
+import type { User } from '../database/schemas.js';
 import { AppError } from './errors.js';
 
 /**
@@ -32,7 +33,6 @@ async function getUserById(id: number): Promise<User | null> {
   const cached = userCache.get(id);
   if (cached) return cached;
 
-  const store = getStore();
   const user = store.getUserById(id);
 
   if (user) {
@@ -134,7 +134,6 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
     throw new AppError(401, 'Token is invalid or expired', 'INVALID_TOKEN');
   }
 
-  const store = getStore();
   if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) {
     throw new AppError(401, 'Token has been revoked', 'TOKEN_REVOKED');
   }
@@ -191,7 +190,6 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
     const payload = AuthService.verifyToken(token, 'access');
     if (!payload) return;
 
-    const store = getStore();
     if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) return;
 
     const user = await getUserById(payload.userId);

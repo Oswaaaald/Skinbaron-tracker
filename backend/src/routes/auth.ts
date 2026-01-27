@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
-import { getStore } from '../lib/store.js';
+import { store } from '../database/index.js';
 import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/middleware.js';
 import { appConfig } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
@@ -81,7 +81,6 @@ declare module 'fastify' {
  * Authentication routes
  */
 export default async function authRoutes(fastify: FastifyInstance) {
-  const store = getStore();
 
   // Stricter rate limiting for auth endpoints (anti-brute force)
   const authRateLimitConfig = {

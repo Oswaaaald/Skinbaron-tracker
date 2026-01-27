@@ -1,6 +1,7 @@
 import { CronJob } from 'cron';
 import { appConfig } from './config.js';
-import { getStore, type Rule, type CreateAlert } from './store.js';
+import { store } from '../database/index.js';
+import type { Rule, CreateAlert } from '../database/schemas.js';
 import { getSkinBaronClient, type SkinBaronItem } from './sbclient.js';
 import { getNotificationService } from './notifier.js';
 import pino from 'pino';
@@ -26,7 +27,6 @@ export interface SchedulerStats {
 export class AlertScheduler {
   private logger: SchedulerLogger = pino({ level: appConfig.LOG_LEVEL });
   private cronJob: CronJob | null = null;
-  private store = getStore();
   private notificationService = getNotificationService();
 
   // Discord rate limiting: max 30 messages per minute per webhook
@@ -105,9 +105,9 @@ export class AlertScheduler {
       // Clean old audit logs (GDPR compliance) - run once per day
       if (this.stats.totalRuns % 288 === 1) { // Every 288 runs at 5min intervals = ~1 day
         try {
-          const result = this.store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
-          if (result.deleted > 0) {
-            this.logger.info({ deleted: result.deleted, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old audit logs');
+          const result = store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
+          if (result > 0) {
+            this.logger.info({ deleted: result, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old audit logs');
           }
         } catch (error) {
           this.logger.error({ error }, '[Scheduler] Failed to clean old audit logs');
@@ -115,7 +115,7 @@ export class AlertScheduler {
       }
 
       // Get all enabled rules
-      const rules = this.store.getEnabledRules();
+      const rules = store.getEnabledRules();
       if (rules.length === 0) {
         return;
       }
@@ -211,7 +211,7 @@ export class AlertScheduler {
       
       for (const item of response.items) {
         // Check if already processed for this rule
-        if (this.store.isProcessed(item.saleId, rule.id)) {
+        if (store.isProcessed(item.saleId, rule.id!)) {
           skippedAlreadyProcessed++;
           continue;
         }
@@ -268,7 +268,7 @@ export class AlertScheduler {
       // Batch create alerts and send notifications
       if (matchingItems.length > 0) {
         // Get webhooks once for the rule
-        const webhooks = this.store.getRuleWebhooksForNotification(rule.id!);
+        const webhooks = store.getRuleWebhooksForNotification(rule.id!);
         
         // Prepare all alerts for batch insert
         const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
@@ -284,7 +284,7 @@ export class AlertScheduler {
         }));
 
         // Batch insert all alerts at once (much faster!)
-        const insertedCount = this.store.createAlertsBatch(alertsToCreate);
+        const insertedCount = store.createAlertsBatch(alertsToCreate);
         newAlerts += insertedCount;
 
         // Send notifications if webhooks exist (async, don't block)

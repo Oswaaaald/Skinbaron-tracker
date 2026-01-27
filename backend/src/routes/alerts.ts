@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getStore } from '../lib/store.js';
+import { store } from '../database/index.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 
@@ -18,7 +18,6 @@ const AlertParamsSchema = z.object({
 
 // Route handlers
 const alertsRoutes: FastifyPluginAsync = async (fastify) => {
-  const store = getStore();
 
   /**
    * GET /alerts - Get user's alerts with pagination

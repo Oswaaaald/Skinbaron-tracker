@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getStore, CreateUserWebhookSchema } from '../lib/store.js';
+import { store } from '../database/index.js';
+import { CreateUserWebhookSchema } from '../database/schemas.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 
@@ -15,7 +16,6 @@ const WebhookQuerySchema = z.object({
 
 // Route handlers
 const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
-  const store = getStore();
 
   /**
    * POST /webhooks - Create a new webhook for the authenticated user

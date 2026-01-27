@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getStore } from '../lib/store.js';
+import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
 import { getClientIp } from '../lib/middleware.js';
 import { OTP } from 'otplib';
@@ -20,7 +20,6 @@ const UpdateProfileSchema = z.object({
  * User profile routes - Authenticated users can manage their own profile
  */
 export default async function userRoutes(fastify: FastifyInstance) {
-  const store = getStore();
 
   // Rate limiting for sensitive operations (password change)
   const sensitiveOperationRateLimit = {

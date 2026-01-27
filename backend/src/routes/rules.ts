@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { getStore, RuleSchema } from '../lib/store.js';
+import { store } from '../database/index.js';
+import { RuleSchema } from '../database/schemas.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getNotificationService } from '../lib/notifier.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
@@ -38,7 +39,6 @@ const TestRuleRequestSchema = z.object({
 
 // Route handlers
 const rulesRoutes: FastifyPluginAsync = async (fastify) => {
-  const store = getStore();
   const scheduler = getScheduler();
   const notificationService = getNotificationService();
 

@@ -4,7 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
 import { appConfig } from './lib/config.js';
-import { getStore } from './lib/store.js';
+import { store } from './database/index.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
@@ -85,7 +85,6 @@ const gracefulShutdown = async (signal: string) => {
     scheduler.stop();
     
     // Close database
-    const store = getStore();
     store.close();
     
     // Close Fastify
@@ -229,7 +228,6 @@ async function registerPlugins() {
 }
 
 async function buildSystemSnapshot() {
-  const store = getStore();
   const scheduler = getScheduler();
 
   // Check database health
@@ -370,7 +368,7 @@ async function initializeApp() {
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');
-    getStore();
+    // Database auto-initialized via singleton
     
     fastify.log.info('🔍 Initializing SkinBaron client...');
     getSkinBaronClient();

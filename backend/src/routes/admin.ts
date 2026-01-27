@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { getStore } from '../lib/store.js';
+import { store } from '../database/index.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getClientIp } from '../lib/middleware.js';
 import { handleRouteError } from '../lib/validation-handler.js';
@@ -9,7 +9,6 @@ import { Errors } from '../lib/errors.js';
  * Admin routes - All routes require admin privileges
  */
 export default async function adminRoutes(fastify: FastifyInstance) {
-  const store = getStore();
   const scheduler = getScheduler();
 
   /**
