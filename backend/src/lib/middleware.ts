@@ -42,6 +42,19 @@ async function getUserById(id: number): Promise<User | null> {
   return user;
 }
 
+/**
+ * Attach user to request (DRY helper)
+ */
+function attachUser(request: FastifyRequest, user: User): void {
+  request.user = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    is_admin: Boolean(user.is_admin),
+    is_super_admin: Boolean(user.is_super_admin),
+  };
+}
+
 export const ACCESS_COOKIE = 'sb_access';
 export const REFRESH_COOKIE = 'sb_refresh';
 
@@ -136,13 +149,7 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
   }
 
   // Attach user to request (type-safe)
-  request.user = {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    is_admin: Boolean(user.is_admin),
-    is_super_admin: Boolean(user.is_super_admin),
-  };
+  attachUser(request, user);
 }
 
 /**
@@ -152,30 +159,22 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
 
 /**
  * Require admin role - assumes authentication already done
- * @throws AppError(401) if not authenticated
  * @throws AppError(403) if not admin
  */
 export async function requireAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
-  if (!request.user) {
-    throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
-  }
-  
-  if (!request.user.is_admin) {
+  // request.user guaranteed to exist after authenticate
+  if (!request.user!.is_admin) {
     throw new AppError(403, 'This action requires administrator privileges', 'FORBIDDEN');
   }
 }
 
 /**
  * Require super admin role - assumes authentication already done
- * @throws AppError(401) if not authenticated
  * @throws AppError(403) if not super admin
  */
 export async function requireSuperAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
-  if (!request.user) {
-    throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
-  }
-  
-  if (!request.user.is_super_admin) {
+  // request.user guaranteed to exist after authenticate
+  if (!request.user!.is_super_admin) {
     throw new AppError(403, 'This action requires super administrator privileges', 'FORBIDDEN');
   }
 }
@@ -198,13 +197,7 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
     const user = await getUserById(payload.userId);
     if (!user || !user.is_approved) return;
 
-    request.user = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      is_admin: Boolean(user.is_admin),
-      is_super_admin: Boolean(user.is_super_admin),
-    };
+    attachUser(request, user);
   } catch (error) {
     // Log but don't fail - optional auth
     request.log.debug({ error }, 'Optional authentication failed');
