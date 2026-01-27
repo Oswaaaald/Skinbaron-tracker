@@ -58,15 +58,32 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
+        // Only attempt to fetch profile if we have evidence of a previous session
+        // This prevents unnecessary 401/400 errors in console on first visit
+        const hasSession = typeof window !== 'undefined' && localStorage.getItem('has_session') === 'true'
+        
+        if (!hasSession) {
+          setUser(null)
+          setIsLoading(false)
+          setIsReady(true)
+          return
+        }
+
         // Always probe for session on client mount (cookies sent via credentials: 'include')
         const me = await apiClient.getUserProfile({ allowRefresh: true })
         if (me.success && me.data) {
           setUser(me.data as User)
         } else {
           setUser(null)
+          // Clear the flag if profile fetch failed
+          localStorage.removeItem('has_session')
         }
       } catch (_err) {
         setUser(null)
+        // Clear the flag on error
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('has_session')
+        }
       } finally {
         setIsLoading(false)
         setIsReady(true)
@@ -149,6 +166,10 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         setUser(userData)
         setAccessExpiry(_exp ?? null)
         setIsReady(true)
+        // Mark that we have a session for future page loads
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('has_session', 'true')
+        }
         return { success: true, requires2FA: false }
       }
 
@@ -181,6 +202,10 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           setUser(userData as User)
           setAccessExpiry(_exp ?? null)
           setIsReady(true)
+          // Mark that we have a session for future page loads
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('has_session', 'true')
+          }
           return { success: true }
         }
       }
@@ -207,6 +232,10 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     setRefreshToken(null)
     setAccessExpiry(null)
     setIsReady(true)
+    // Clear session flag
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('has_session')
+    }
   }
 
   // Proactively refresh shortly before access expiry using HttpOnly cookies
