@@ -354,10 +354,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.id;
 
-      // Revoke all refresh tokens before deleting user
-      store.revokeAllRefreshTokensForUser(userId);
-
-      // Delete user (CASCADE will delete all associated data)
+      // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       store.deleteUser(userId);
 
       return reply.status(200).send({
