@@ -314,14 +314,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Find user by email
       const user = await store.getUserByEmail(loginData.email);
       if (!user) {
-        // Audit log for failed login attempt
-        store.createAuditLog(
-          0, // No user ID for unknown email
-          'login_failed',
-          JSON.stringify({ email: loginData.email, reason: 'unknown_email' }),
-          getClientIp(request),
-          request.headers['user-agent']
-        );
+        // Don't create audit log for non-existent emails (would cause FK constraint error)
         return reply.status(401).send({
           success: false,
           error: 'Invalid credentials',
@@ -535,7 +528,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       });
 
     } catch (error) {
-      request.log.error({ error }, 'Registration failed');
+      request.log.error({ error }, 'Login failed');
       
       // Handle Zod validation errors
       if (error && typeof error === 'object' && 'issues' in error) {
@@ -549,21 +542,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
       
       if (error instanceof Error) {
-        // Surface unique constraint violations clearly (email/username already used)
-        if (error.message.includes('SQLITE_CONSTRAINT')) {
-          const isEmailConflict = error.message.includes('users.email');
-          const isUsernameConflict = error.message.includes('users.username');
-          return reply.status(409).send({
-            success: false,
-            error: 'Conflict',
-            message: isEmailConflict
-              ? 'An account with this email already exists'
-              : isUsernameConflict
-                ? 'This username is already taken'
-                : 'Account already exists',
-          });
-        }
-        
         if (error.message.includes('validation')) {
           return reply.status(400).send({
             success: false,
@@ -576,8 +554,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Fallback error response
       return reply.status(500).send({
         success: false,
-        error: 'Registration failed',
-        message: 'An unexpected error occurred during registration'
+        error: 'Login failed',
+        message: 'An unexpected error occurred during login'
       });
     }
   });
