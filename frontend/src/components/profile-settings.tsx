@@ -58,7 +58,7 @@ export function ProfileSettings() {
   }, [user])
 
   // Fetch user stats
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['user', 'stats'],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/stats'), 'Failed to load user stats')
@@ -282,6 +282,15 @@ export function ProfileSettings() {
     if (twoFactorPassword) {
       disableTwoFactorMutation.mutate(twoFactorPassword)
     }
+  }
+
+  if (isLoadingStats) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
+      </div>
+    )
   }
 
   return (

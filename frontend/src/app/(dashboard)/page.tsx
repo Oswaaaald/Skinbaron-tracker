@@ -180,6 +180,15 @@ function DashboardContent() {
   const enabledRules = userStats?.data?.enabledRules || 0
   const todayAlerts = userStats?.data?.todayAlerts || 0
 
+  if (isLoadingStats) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
