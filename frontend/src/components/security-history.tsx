@@ -85,6 +85,11 @@ function formatDate(dateString: string): string {
 }
 
 function formatEventData(eventType: string, eventDataJson: string | null): string {
+  // Handle events that don't need event_data
+  if (eventType === "password_changed") {
+    return "Password successfully changed";
+  }
+  
   if (!eventDataJson) return "";
 
   try {
