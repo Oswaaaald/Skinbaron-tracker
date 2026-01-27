@@ -90,8 +90,12 @@ export function rowToWebhook(row: WebhookRow, decryptUrl: boolean = false): User
     updated_at: row.updated_at,
   };
 
-  if (decryptUrl) {
-    webhook.webhook_url = decryptData(row.webhook_url_encrypted);
+  if (decryptUrl && row.webhook_url_encrypted) {
+    try {
+      webhook.webhook_url = decryptData(row.webhook_url_encrypted);
+    } catch (error) {
+      console.warn(`Failed to decrypt webhook URL for webhook ${row.id}:`, error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 
   return webhook;

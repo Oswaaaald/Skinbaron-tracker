@@ -34,10 +34,20 @@ export class UsersRepository {
 
   private decrypt2FASecrets(user: User): User {
     if (user.totp_secret_encrypted) {
-      user.totp_secret = decryptData(user.totp_secret_encrypted);
+      try {
+        user.totp_secret = decryptData(user.totp_secret_encrypted);
+      } catch (error) {
+        // If decryption fails (wrong key or corrupted data), leave encrypted
+        console.warn(`Failed to decrypt 2FA secret for user ${user.id}:`, error instanceof Error ? error.message : 'Unknown error');
+      }
     }
     if (user.recovery_codes_encrypted) {
-      user.recovery_codes = decryptData(user.recovery_codes_encrypted);
+      try {
+        user.recovery_codes = decryptData(user.recovery_codes_encrypted);
+      } catch (error) {
+        // If decryption fails (wrong key or corrupted data), leave encrypted
+        console.warn(`Failed to decrypt recovery codes for user ${user.id}:`, error instanceof Error ? error.message : 'Unknown error');
+      }
     }
     return user;
   }
