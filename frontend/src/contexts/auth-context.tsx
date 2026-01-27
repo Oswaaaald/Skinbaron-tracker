@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { apiClient, ApiError } from '@/lib/api'
 import { logger } from '@/lib/logger'
 
@@ -37,6 +38,7 @@ type InitialAuthState = {
 }
 
 export function AuthProvider({ children, initialAuth }: { children: ReactNode; initialAuth?: InitialAuthState | null }) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<User | null>(initialAuth?.user ?? null)
   const [token, setToken] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState<string | null>(null)
@@ -191,6 +193,10 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
 
       if (data.success) {
         if (data.data && !(data.data as { token?: string }).token) {
+          // Invalidate pending users query so admin sees the request instantly
+          queryClient.invalidateQueries({ queryKey: ['admin', 'pendingUsers'] })
+          queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+          
           return {
             success: true,
             error: data.message || 'Registration successful! Your account is awaiting admin approval.',
