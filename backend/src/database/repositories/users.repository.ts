@@ -147,7 +147,7 @@ export class UsersRepository {
   }
 
   findAll(): User[] {
-    const stmt = this.db.prepare('SELECT * FROM users ORDER BY created_at DESC');
+    const stmt = this.db.prepare('SELECT * FROM users WHERE is_approved = 1 ORDER BY created_at DESC');
     const rows = stmt.all() as UserRow[];
     return rows.map(row => this.decrypt2FASecrets(rowToUser(row)));
   }
@@ -187,11 +187,11 @@ export class UsersRepository {
     return result.changes > 0;
   }
 
-  searchUsers(searchTerm: string, limit: number = 50): User[] {
+  searchUsers(searchTerm: string, limit: number = 20): User[] {
     const stmt = this.db.prepare(`
       SELECT * FROM users 
-      WHERE username LIKE ? OR email LIKE ? 
-      ORDER BY created_at DESC 
+      WHERE is_approved = 1 AND (username LIKE ? OR email LIKE ?) 
+      ORDER BY username ASC 
       LIMIT ?
     `);
     const term = `%${searchTerm}%`;

@@ -77,10 +77,6 @@ export class Store {
     return this.users.delete(userId);
   }
 
-  setUserAdmin(userId: number, isAdmin: boolean): boolean {
-    return this.users.setAdmin(userId, isAdmin);
-  }
-
   // Webhooks
   createUserWebhook = this.webhooks.create.bind(this.webhooks);
   getUserWebhookById = this.webhooks.findById.bind(this.webhooks);
@@ -144,15 +140,37 @@ export class Store {
     return this.alerts.findByUserId(userId);
   }
   getUserStats(userId: number) {
-    return {
-      total_rules: this.rules.countByUserId(userId),
-      total_alerts: this.alerts.countByUserId(userId),
-      total_webhooks: this.webhooks.countByUserId(userId)
-    };
+    // Optimized single query like original store.ts
+    const stats = this.db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM rules WHERE user_id = ?) as totalRules,
+        (SELECT COUNT(*) FROM rules WHERE user_id = ? AND enabled = 1) as enabledRules,
+        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ?) as totalAlerts,
+        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ? AND DATE(a.sent_at) = DATE('now')) as todayAlerts
+    `).get(userId, userId, userId, userId) as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
+
+    return stats;
   }
   toggleUserAdmin(userId: number, isAdmin: boolean): boolean {
     return this.users.setAdmin(userId, isAdmin);
   }
+  setUserAdmin(userId: number, isAdmin: boolean): boolean {
+    return this.users.setAdmin(userId, isAdmin);
+  }
+  
+  // Global stats (original store.ts format)
+  getStats() {
+    const stats = this.db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM rules) as totalRules,
+        (SELECT COUNT(*) FROM rules WHERE enabled = 1) as enabledRules,
+        (SELECT COUNT(*) FROM alerts) as totalAlerts,
+        (SELECT COUNT(*) FROM alerts WHERE DATE(sent_at) = DATE('now')) as todayAlerts
+    `).get() as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
+
+    return stats;
+  }
+  
   getGlobalStats() {
     return this.audit.getSystemStats();
   }
@@ -181,10 +199,12 @@ export class Store {
   cleanOldAuditLogs(daysToKeep: number = 90): number {
     return this.audit.cleanupOldAuditLogs(daysToKeep);
   }
+  cleanupOldAuditLogs(daysToKeep: number = 90): number {
+    return this.audit.cleanupOldAuditLogs(daysToKeep);
+  }
   logAdminAction = this.audit.logAdminAction.bind(this.audit);
   getAdminLogs = this.audit.getAdminLogs.bind(this.audit);
   getSystemStats = this.audit.getSystemStats.bind(this.audit);
-  getStats = this.audit.getSystemStats.bind(this.audit);
 
   close() {
     this.db.close();
