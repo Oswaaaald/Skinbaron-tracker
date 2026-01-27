@@ -73,6 +73,35 @@ export class AuditRepository {
     });
   }
 
+  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): Array<AuditLog & { username?: string; email?: string }> {
+    let query = `
+      SELECT 
+        audit_log.*,
+        users.username,
+        users.email
+      FROM audit_log
+      LEFT JOIN users ON audit_log.user_id = users.id
+      WHERE 1=1
+    `;
+    const params: (string | number)[] = [];
+
+    if (eventType) {
+      query += ' AND audit_log.event_type = ?';
+      params.push(eventType);
+    }
+
+    if (userId) {
+      query += ' AND audit_log.user_id = ?';
+      params.push(userId);
+    }
+
+    query += ' ORDER BY audit_log.created_at DESC LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(query);
+    return stmt.all(...params) as Array<AuditLog & { username?: string; email?: string }>;
+  }
+
   cleanupOldAuditLogs(daysToKeep: number = 90): number {
     const stmt = this.db.prepare(`
       DELETE FROM audit_log 

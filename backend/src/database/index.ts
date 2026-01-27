@@ -156,11 +156,8 @@ export class Store {
   getGlobalStats() {
     return this.audit.getSystemStats();
   }
-  getAllAuditLogs(limit: number = 100, _eventType?: string, userId?: number) {
-    if (userId) {
-      return this.audit.getAuditLogsByUserId(userId, limit);
-    }
-    return this.audit.getAuditLogsByUserId(0, limit); // Fallback
+  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number) {
+    return this.audit.getAllAuditLogs(limit, eventType, userId);
   }
   isProcessed(saleId: string, ruleId: number): boolean {
     const alert = this.alerts.findBySaleId(saleId);
