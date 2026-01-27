@@ -1,37 +1,22 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import '@fastify/cookie';
+import { LRUCache } from 'lru-cache';
 import { AuthService } from './auth.js';
 import { getStore, User } from './store.js';
+import { AppError } from './errors.js';
 
-type CachedUser = {
-  user: User;
-  expiresAt: number;
-};
-
-const userCache = new Map<number, CachedUser>();
-const USER_CACHE_TTL_MS = 30_000;
-const USER_CACHE_MAX = 200;
-
-function getCachedUser(id: number): User | null {
-  const cached = userCache.get(id);
-  if (!cached) return null;
-  if (cached.expiresAt < Date.now()) {
-    userCache.delete(id);
-    return null;
-  }
-  return cached.user;
-}
-
-function setCachedUser(id: number, user: User) {
-  if (userCache.size >= USER_CACHE_MAX) {
-    // Drop the oldest entry (Map preserves insertion order)
-    const oldestKey = userCache.keys().next().value;
-    if (oldestKey !== undefined) {
-      userCache.delete(oldestKey);
-    }
-  }
-  userCache.set(id, { user, expiresAt: Date.now() + USER_CACHE_TTL_MS });
-}
+/**
+ * Modern LRU cache for user data (2026 best practices)
+ * - Automatic TTL expiration
+ * - Memory-efficient with max size limit
+ * - O(1) access time
+ */
+const userCache = new LRUCache<number, User>({
+  max: 500, // Increased from 200 for better performance
+  ttl: 30_000, // 30 seconds TTL
+  updateAgeOnGet: true, // Reset TTL on access
+  allowStale: false,
+});
 
 /**
  * Invalidate user cache entry (called after user updates/deletion)
@@ -40,8 +25,25 @@ export function invalidateUserCache(userId: number): void {
   userCache.delete(userId);
 }
 
-export const ACCESS_COOKIE = 'sb_access'
-export const REFRESH_COOKIE = 'sb_refresh'
+/**
+ * Get user from cache or database
+ */
+async function getUserById(id: number): Promise<User | null> {
+  const cached = userCache.get(id);
+  if (cached) return cached;
+
+  const store = getStore();
+  const user = store.getUserById(id);
+
+  if (user) {
+    userCache.set(id, user);
+  }
+
+  return user;
+}
+
+export const ACCESS_COOKIE = 'sb_access';
+export const REFRESH_COOKIE = 'sb_refresh';
 
 // Extend FastifyRequest to include user info
 declare module 'fastify' {
@@ -89,66 +91,113 @@ export function getClientIp(request: FastifyRequest): string {
   return request.ip;
 }
 
+/**
+ * Extract JWT token from cookie or Authorization header
+ */
 function extractToken(request: FastifyRequest): string | null {
-  const cookieToken = (request.cookies && request.cookies[ACCESS_COOKIE]) as string | undefined
-  if (cookieToken) return cookieToken
-  const authHeader = request.headers.authorization
-  return AuthService.extractTokenFromHeader(authHeader)
+  const cookieToken = request.cookies?.[ACCESS_COOKIE] as string | undefined;
+  if (cookieToken) return cookieToken;
+  
+  const authHeader = request.headers.authorization;
+  return AuthService.extractTokenFromHeader(authHeader);
 }
 
 /**
- * Authentication middleware
+ * Modern authentication middleware (2026 standards)
+ * - Uses AppError for consistent error handling
+ * - LRU cache for performance
+ * - Type-safe user attachment
+ * - Comprehensive security checks
  */
-export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
+export async function authMiddleware(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  const token = extractToken(request);
+  
+  if (!token) {
+    throw new AppError(401, 'No token provided', 'UNAUTHENTICATED');
+  }
+
+  const payload = AuthService.verifyToken(token, 'access');
+  if (!payload) {
+    throw new AppError(401, 'Token is invalid or expired', 'INVALID_TOKEN');
+  }
+
+  const store = getStore();
+  if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) {
+    throw new AppError(401, 'Token has been revoked', 'TOKEN_REVOKED');
+  }
+
+  const user = await getUserById(payload.userId);
+  if (!user) {
+    throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
+  }
+
+  if (!user.is_approved) {
+    throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
+  }
+
+  // Attach user to request (type-safe)
+  request.user = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    is_admin: Boolean(user.is_admin),
+    is_super_admin: Boolean(user.is_super_admin),
+  };
+}
+
+/**
+ * Role-based access control decorators (modern 2026 pattern)
+ * Use after authentication in preHandler: [authenticate, requireRole('admin')]
+ */
+
+/**
+ * Require admin role - assumes authentication already done
+ * @throws AppError(401) if not authenticated
+ * @throws AppError(403) if not admin
+ */
+export async function requireAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  if (!request.user) {
+    throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
+  }
+  
+  if (!request.user.is_admin) {
+    throw new AppError(403, 'This action requires administrator privileges', 'FORBIDDEN');
+  }
+}
+
+/**
+ * Require super admin role - assumes authentication already done
+ * @throws AppError(401) if not authenticated
+ * @throws AppError(403) if not super admin
+ */
+export async function requireSuperAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  if (!request.user) {
+    throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
+  }
+  
+  if (!request.user.is_super_admin) {
+    throw new AppError(403, 'This action requires super administrator privileges', 'FORBIDDEN');
+  }
+}
+
+/**
+ * Optional authentication middleware (allows anonymous access)
+ * Attaches user to request if valid token provided, but doesn't fail if missing
+ */
+export async function optionalAuthMiddleware(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
   try {
     const token = extractToken(request);
-    
-    if (!token) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Authentication required',
-        message: 'No token provided',
-      });
-    }
+    if (!token) return;
 
     const payload = AuthService.verifyToken(token, 'access');
-    if (!payload) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Invalid token',
-        message: 'Token is invalid or expired',
-      });
-    }
+    if (!payload) return;
 
     const store = getStore();
-    if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Token revoked',
-        message: 'Token has been revoked',
-      });
-    }
+    if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) return;
 
-    // Get user from database (we'll implement this)
     const user = await getUserById(payload.userId);
-    if (!user) {
-      return reply.status(401).send({
-        success: false,
-        error: 'User not found',
-        message: 'Token references non-existent user',
-      });
-    }
+    if (!user || !user.is_approved) return;
 
-    // Check if user is approved
-    if (!user.is_approved) {
-      return reply.status(403).send({
-        success: false,
-        error: 'Account pending approval',
-        message: 'Your account is awaiting admin approval',
-      });
-    }
-
-    // Attach user to request
     request.user = {
       id: user.id,
       username: user.username,
@@ -156,152 +205,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       is_admin: Boolean(user.is_admin),
       is_super_admin: Boolean(user.is_super_admin),
     };
-
   } catch (error) {
-    return reply.status(500).send({
-      success: false,
-      error: 'Authentication error',
-      message: 'Internal authentication error',
-    });
-  }
-}
-
-/**
- * Admin authentication middleware - requires is_admin === true
- * Performs full authentication check first, then verifies admin status
- */
-export async function requireAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
-  // First authenticate the user
-  await authMiddleware(request, reply);
-  
-  // If auth failed, the reply was already sent
-  if (reply.sent) {
-    return;
-  }
-  
-  // Check admin status (request.user is guaranteed to exist after authMiddleware)
-  if (!request.user?.is_admin) {
-    return reply.status(403).send({
-      success: false,
-      error: 'Admin access required',
-      message: 'This action requires administrator privileges',
-    });
-  }
-}
-
-/**
- * Admin check only - assumes authentication already done
- * Use this in preHandler arrays: [fastify.authenticate, fastify.checkAdmin]
- */
-export async function checkAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
-  if (!request.user) {
-    return reply.status(401).send({
-      success: false,
-      error: 'Authentication required',
-      message: 'Please authenticate first',
-    });
-  }
-  
-  if (!request.user.is_admin) {
-    return reply.status(403).send({
-      success: false,
-      error: 'Admin access required',
-      message: 'This action requires administrator privileges',
-    });
-  }
-}
-
-/**
- * Super Admin authentication middleware - requires is_super_admin === true
- * Performs full authentication check first, then verifies super admin status
- */
-export async function requireSuperAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
-  // First authenticate the user
-  await authMiddleware(request, reply);
-  
-  // If auth failed, the reply was already sent
-  if (reply.sent) {
-    return;
-  }
-  
-  // Check super admin status (request.user is guaranteed to exist after authMiddleware)
-  if (!request.user?.is_super_admin) {
-    return reply.status(403).send({
-      success: false,
-      error: 'Super Admin access required',
-      message: 'This action requires super administrator privileges',
-    });
-  }
-}
-
-/**
- * Super Admin check only - assumes authentication already done
- * Use this in preHandler arrays: [fastify.authenticate, fastify.checkSuperAdmin]
- */
-export async function checkSuperAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
-  if (!request.user) {
-    return reply.status(401).send({
-      success: false,
-      error: 'Authentication required',
-      message: 'Please authenticate first',
-    });
-  }
-  
-  if (!request.user.is_super_admin) {
-    return reply.status(403).send({
-      success: false,
-      error: 'Super Admin access required',
-      message: 'This action requires super administrator privileges',
-    });
-  }
-}
-
-/**
- * Optional auth middleware (allows anonymous access)
- */
-export async function optionalAuthMiddleware(request: FastifyRequest, _reply: FastifyReply) {
-  try {
-    const token = extractToken(request);
-    
-    if (token) {
-      const payload = AuthService.verifyToken(token, 'access');
-      if (payload) {
-        const store = getStore();
-        if (!payload.jti || !store.isAccessTokenBlacklisted(payload.jti)) {
-          const user = await getUserById(payload.userId);
-          if (user && user.is_approved) {
-            request.user = {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              is_admin: Boolean(user.is_admin),
-              is_super_admin: Boolean(user.is_super_admin),
-            };
-          }
-        }
-      }
-    }
-    // Continue without error if no auth
-  } catch (error) {
-    // Log error but continue - this is optional auth
+    // Log but don't fail - optional auth
     request.log.debug({ error }, 'Optional authentication failed');
   }
-}
-
-// Get user from store with short-lived cache to cut DB traffic
-async function getUserById(id: number): Promise<User | null> {
-  const cached = getCachedUser(id);
-  if (cached) return cached;
-
-  const { getStore } = await import('./store.js');
-  const store = getStore();
-  const user = store.getUserById(id);
-
-  if (user) {
-    setCachedUser(id, user);
-  } else {
-    userCache.delete(id);
-  }
-
-  return user;
 }

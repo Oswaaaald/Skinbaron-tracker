@@ -1,4 +1,4 @@
-import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
+import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -207,34 +207,24 @@ async function registerPlugins() {
     }),
   });
 
-  // Authentication hook
-  fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { authMiddleware } = await import('./lib/middleware.js');
-    await authMiddleware(request, reply);
-  });
+  // Modern authentication decorators (2026)
+  const { authMiddleware, requireAdmin, requireSuperAdmin } = await import('./lib/middleware.js');
+  
+  fastify.decorate('authenticate', authMiddleware);
+  fastify.decorate('requireAdmin', requireAdmin);
+  fastify.decorate('requireSuperAdmin', requireSuperAdmin);
 
-  // Admin authentication hook (full auth + admin check)
-  fastify.decorate('requireAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { requireAdminMiddleware } = await import('./lib/middleware.js');
-    await requireAdminMiddleware(request, reply);
-  });
-
-  // Admin check only (use after authenticate in preHandler array for better performance)
-  fastify.decorate('checkAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { checkAdminMiddleware } = await import('./lib/middleware.js');
-    await checkAdminMiddleware(request, reply);
-  });
-
-  // Super Admin authentication hook (full auth + super admin check)
-  fastify.decorate('requireSuperAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { requireSuperAdminMiddleware } = await import('./lib/middleware.js');
-    await requireSuperAdminMiddleware(request, reply);
-  });
-
-  // Super Admin check only (use after authenticate in preHandler array for better performance)
-  fastify.decorate('checkSuperAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { checkSuperAdminMiddleware } = await import('./lib/middleware.js');
-    await checkSuperAdminMiddleware(request, reply);
+  // Global error handler for AppError (2026 standards)
+  fastify.setErrorHandler(async (error, request, reply) => {
+    const { AppError } = await import('./lib/errors.js');
+    const { handleRouteError } = await import('./lib/validation-handler.js');
+    
+    if (error instanceof AppError) {
+      return handleRouteError(error, request, reply, 'Global handler');
+    }
+    
+    // Let other errors fall through to default handler
+    throw error;
   });
 }
 
