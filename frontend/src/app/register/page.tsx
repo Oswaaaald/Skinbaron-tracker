@@ -4,6 +4,7 @@ import { AuthForm } from "@/components/auth-form"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useEffect } from "react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -17,11 +18,9 @@ export default function RegisterPage() {
 
   if (isLoading || !isReady || isAuthenticated) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
       </div>
     )
   }

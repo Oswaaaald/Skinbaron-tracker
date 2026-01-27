@@ -5,12 +5,12 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Edit, Trash2 } from 'lucide-react'
@@ -250,7 +250,12 @@ export function WebhooksTable() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
+      </div>
+    )
   }
 
   const hasWebhooks = webhooks && webhooks.length > 0

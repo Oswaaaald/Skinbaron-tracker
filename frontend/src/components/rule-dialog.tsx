@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import {
   Select,
   SelectContent,
@@ -725,7 +726,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               >
                 {isSubmitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <LoadingSpinner size="sm" className="mr-2" />
                     {isEditing ? "Updating..." : "Creating..."}
                   </>
                 ) : (

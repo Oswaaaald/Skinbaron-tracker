@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { RulesTable } from "@/components/rules-table"
 import { RuleDialog } from "@/components/rule-dialog"
 import { useAuth } from "@/contexts/auth-context"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
 export default function RulesPage() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
@@ -12,11 +13,9 @@ export default function RulesPage() {
 
   if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
       </div>
     )
   }

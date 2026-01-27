@@ -6,8 +6,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ExternalLink, ChevronLeft, ChevronRight, Sparkles, TrendingDown, Bell } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { logger } from "@/lib/logger"
@@ -110,7 +110,12 @@ export function AlertsGrid() {
   }, [alertsResponse?.data?.length, queryClient])
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
+      </div>
+    )
   }
 
   if (error) {
@@ -209,7 +214,7 @@ export function AlertsGrid() {
           >
             {isClearingAll ? (
               <>
-                <LoadingSpinner />
+                <LoadingSpinner size="sm" className="mr-2" />
                 Clearing...
               </>
             ) : (

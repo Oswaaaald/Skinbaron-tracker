@@ -19,9 +19,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
 import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
@@ -319,7 +319,12 @@ export function RulesTable() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-2">Loading...</p>
+      </div>
+    )
   }
 
   if (error) {
