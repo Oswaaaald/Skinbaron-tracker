@@ -129,6 +129,12 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
         if (data.reason === "invalid_2fa_code") return "Failed: 2FA code";
         return `Failed: ${data.reason}`;
       
+      case "2fa_enabled":
+        return "Two-factor authentication enabled";
+      
+      case "2fa_disabled":
+        return "Two-factor authentication disabled";
+      
       case "2fa_recovery_code_used":
         return `Recovery code used (${data.remaining_codes} remaining)`;
       
