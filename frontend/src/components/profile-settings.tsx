@@ -74,7 +74,7 @@ export function ProfileSettings() {
   const updateProfileMutation = useApiMutation(
     (data: { username?: string; email?: string }) => apiClient.patch('/api/user/profile', data),
     {
-      invalidateKeys: [['user', 'profile'], ['admin', 'users']],
+      invalidateKeys: [['user', 'profile'], ['admin', 'users'], ['user-audit-logs']],
       successMessage: 'Profile updated successfully',
       onSuccess: (response) => {
         // Update auth context with data from backend (includes updated avatar_url)
@@ -121,6 +121,7 @@ export function ProfileSettings() {
   const updatePasswordMutation = useApiMutation(
     (data: { current_password: string; new_password: string }) => apiClient.patch('/api/user/password', data),
     {
+      invalidateKeys: [['user-audit-logs']],
       successMessage: 'Password updated successfully',
       onSuccess: () => {
         toast({
