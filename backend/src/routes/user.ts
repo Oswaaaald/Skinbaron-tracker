@@ -317,7 +317,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       store.createAuditLog(
         userId,
         'password_changed',
-        undefined,
+        JSON.stringify({ success: true }),
         getClientIp(request),
         request.headers['user-agent']
       );
