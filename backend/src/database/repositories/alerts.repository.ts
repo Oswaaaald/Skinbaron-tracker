@@ -93,7 +93,13 @@ export class AlertsRepository {
     const row = stmt.get(saleId) as AlertRow | undefined;
     return row ? rowToAlert(row) : null;
   }
-
+  findBySaleIds(saleIds: string[]): Alert[] {
+    if (saleIds.length === 0) return [];
+    const placeholders = saleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`SELECT * FROM alerts WHERE sale_id IN (${placeholders})`);
+    const rows = stmt.all(...saleIds) as AlertRow[];
+    return rows.map(rowToAlert);
+  }
   findByUserId(userId: number, limit: number = 50, offset: number = 0): Alert[] {
     const stmt = this.db.prepare(`
       SELECT a.* FROM alerts a 

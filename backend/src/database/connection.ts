@@ -16,9 +16,21 @@ export function getDatabase(): Database.Database {
     
     // Run migrations
     runMigrations(dbInstance);
+    
+    // Optimize query planner statistics
+    dbInstance.pragma('optimize');
   }
   
   return dbInstance;
+}
+
+export function closeDatabase(): void {
+  if (dbInstance) {
+    // Persist query planner statistics before closing
+    dbInstance.pragma('optimize');
+    dbInstance.close();
+    dbInstance = null;
+  }
 }
 
 function runMigrations(db: Database.Database) {
@@ -190,8 +202,8 @@ function createIndexes(db: Database.Database) {
   // Users indexes
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-  `);
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);    CREATE INDEX IF NOT EXISTS idx_users_approved ON users(is_approved);
+    CREATE INDEX IF NOT EXISTS idx_users_admin_approved ON users(is_admin, is_approved);  `);
 
   // Webhooks indexes
   db.exec(`
@@ -206,12 +218,15 @@ function createIndexes(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
     CREATE INDEX IF NOT EXISTS idx_audit_log_user_created ON audit_log(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_audit_user_event_date ON audit_log(user_id, event_type, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_event_created ON audit_log(event_type, created_at DESC);
   `);
 
   // Admin actions indexes
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_admin_actions_admin ON admin_actions(admin_user_id);
+    CREATE INDEX IF NOT EXISTS idx_admin_actions_target ON admin_actions(target_user_id);
     CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at);
+    CREATE INDEX IF NOT EXISTS idx_admin_actions_admin_created ON admin_actions(admin_user_id, created_at DESC);
   `);
 
   // Refresh tokens indexes
@@ -227,7 +242,6 @@ function createIndexes(db: Database.Database) {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_token_blacklist_expiry ON access_token_blacklist(expires_at);
     CREATE INDEX IF NOT EXISTS idx_token_blacklist_user ON access_token_blacklist(user_id);
-    CREATE INDEX IF NOT EXISTS idx_access_blacklist_expires ON access_token_blacklist(expires_at);
   `);
 }
 
@@ -306,12 +320,5 @@ function runDataMigrations(db: Database.Database) {
     db.exec(`ALTER TABLE users ADD COLUMN totp_secret_encrypted TEXT`);
     db.exec(`ALTER TABLE users ADD COLUMN recovery_codes_encrypted TEXT`);
     migrationLogger.info('Migration: Added encrypted 2FA columns to users table');
-  }
-}
-
-export function closeDatabase(): void {
-  if (dbInstance) {
-    dbInstance.close();
-    dbInstance = null;
   }
 }

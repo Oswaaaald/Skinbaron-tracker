@@ -5,6 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
 import { appConfig } from './lib/config.js';
 import { store } from './database/index.js';
+import { closeDatabase } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
@@ -84,8 +85,8 @@ const gracefulShutdown = async (signal: string) => {
     const scheduler = getScheduler();
     scheduler.stop();
     
-    // Close database
-    store.close();
+    // Close database with optimization
+    closeDatabase();
     
     // Close Fastify
     await fastify.close();

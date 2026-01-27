@@ -48,20 +48,44 @@ export class AuditRepository {
     `);
     const logs = stmt.all(userId, limit) as AuditLog[];
     
+    // Collect all admin IDs to avoid N+1 query problem
+    const adminIds = new Set<number>();
+    logs.forEach(log => {
+      if (log.event_data && typeof log.event_data === 'string') {
+        try {
+          const data = JSON.parse(log.event_data) as Record<string, unknown>;
+          const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
+          if (adminId && typeof adminId === 'number') {
+            adminIds.add(adminId);
+          }
+        } catch {
+          // Invalid JSON, skip
+        }
+      }
+    });
+
+    // Fetch all admin usernames in a single query
+    const adminMap = new Map<number, string>();
+    if (adminIds.size > 0) {
+      const placeholders = Array.from(adminIds).map(() => '?').join(',');
+      const adminStmt = this.db.prepare(`SELECT id, username FROM users WHERE id IN (${placeholders})`);
+      const admins = adminStmt.all(...Array.from(adminIds)) as Array<{ id: number; username: string }>;
+      admins.forEach(admin => adminMap.set(admin.id, admin.username));
+    }
+
+    // Enrich logs with admin usernames
     return logs.map(log => {
       if (log.event_data && typeof log.event_data === 'string') {
         try {
           const data = JSON.parse(log.event_data) as Record<string, unknown>;
           const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
           
-          if (adminId) {
-            const adminStmt = this.db.prepare('SELECT username FROM users WHERE id = ?');
-            const admin = adminStmt.get(adminId) as { username: string } | undefined;
-            
-            if (admin) {
+          if (adminId && typeof adminId === 'number') {
+            const adminUsername = adminMap.get(adminId);
+            if (adminUsername) {
               log.event_data = JSON.stringify({
                 ...data,
-                admin_username: admin.username
+                admin_username: adminUsername
               });
             }
           }

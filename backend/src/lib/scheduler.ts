@@ -206,12 +206,17 @@ export class AlertScheduler {
       let skippedAlreadyProcessed = 0;
       let skippedByFilters = 0;
       
+      // Batch check for already processed items to avoid N+1 queries
+      const saleIds = response.items.map(item => item.saleId);
+      const processedAlerts = store.alerts.findBySaleIds(saleIds);
+      const processedSet = new Set(processedAlerts.map(alert => alert.sale_id));
+      
       // Collect all matching items first, then batch create alerts
       const matchingItems: typeof response.items = [];
       
       for (const item of response.items) {
-        // Check if already processed for this rule
-        if (store.isProcessed(item.saleId, rule.id!)) {
+        // Check if already processed for this rule (using batched data)
+        if (processedSet.has(item.saleId)) {
           skippedAlreadyProcessed++;
           continue;
         }
