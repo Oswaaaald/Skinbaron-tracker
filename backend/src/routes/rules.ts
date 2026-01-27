@@ -4,6 +4,8 @@ import { getStore, RuleSchema } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getNotificationService } from '../lib/notifier.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
+import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
+import { AppError } from '../lib/errors.js';
 
 // Extend FastifyInstance type for authenticate
 declare module 'fastify' {
@@ -92,12 +94,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         count: rules.length,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get rules');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve rules',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Get rules');
     }
   });
 
@@ -159,20 +156,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       // Check max rules limit
       const userRules = store.getRulesByUserId(request.user!.id);
       if (userRules.length >= MAX_RULES_PER_USER) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Maximum rules limit reached',
-          message: `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`,
-        });
+        throw new AppError(400, `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`, 'MAX_RULES_REACHED');
       }
       
       // Parse body but add user_id from authenticated user
       const bodyData = request.body as Record<string, unknown>;
       
-      const ruleData = CreateRuleRequestSchema.parse({
+      const ruleData = validateWithZod(CreateRuleRequestSchema, {
         ...bodyData,
         user_id: request.user!.id,
-      });
+      }, 'Create rule');
       
       // Validate webhook_ids if provided - must belong to user
       if (ruleData.webhook_ids && ruleData.webhook_ids.length > 0) {
@@ -181,11 +174,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         
         const invalidWebhooks = ruleData.webhook_ids.filter((id: number) => !userWebhookIds.includes(id));
         if (invalidWebhooks.length > 0) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Invalid webhook IDs',
-            message: `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you. Please check that these webhooks haven't been deleted.`,
-          });
+          throw new AppError(400, `Webhook IDs ${invalidWebhooks.join(', ')} do not exist or do not belong to you. Please check that these webhooks haven't been deleted.`, 'INVALID_WEBHOOK_IDS');
         }
       } else {
         // If no webhook IDs provided, set to empty array
@@ -201,21 +190,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         data: rule,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to create rule');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to create rule',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Create rule');
     }
   });
 
@@ -271,23 +246,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = RuleParamsSchema.parse(request.params);
+      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
       const rule = store.getRuleById(id);
       
       if (!rule) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
 
       // Verify user owns this rule
       if (rule.user_id !== request.user!.id) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Access denied',
-          message: 'You can only access your own rules',
-        });
+        throw new AppError(403, 'You can only access your own rules', 'ACCESS_DENIED');
       }
       
       return reply.status(200).send({
@@ -295,12 +263,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         data: rule,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get rule');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve rule',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Get rule');
     }
   });
 
@@ -372,32 +335,25 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = RuleParamsSchema.parse(request.params);
+      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
       
       // Check if rule exists and user owns it
       const existingRule = store.getRuleById(id);
       if (!existingRule) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
 
       if (existingRule.user_id !== request.user!.id) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Access denied',
-          message: 'You can only update your own rules',
-        });
+        throw new AppError(403, 'You can only update your own rules', 'ACCESS_DENIED');
       }
 
       // Parse body but add user_id from authenticated user (same as create)
       const bodyData = request.body as Record<string, unknown>;
       
-      const updates = UpdateRuleRequestSchema.parse({
+      const updates = validateWithZod(UpdateRuleRequestSchema, {
         ...bodyData,
         user_id: request.user!.id,
-      });
+      }, 'Update rule');
       
       // Validate webhook_ids - filter out deleted webhooks automatically
       const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
@@ -428,10 +384,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       const rule = store.updateRule(id, updates);
       
       if (!rule) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
       
       request.log.info(`Updated rule ${rule.id}`);
@@ -441,21 +394,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         data: rule,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to update rule');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to update rule',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Update rule');
     }
   });
 
@@ -493,32 +432,22 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = RuleParamsSchema.parse(request.params);
+      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
       
       // Check if rule exists and user owns it
       const existingRule = store.getRuleById(id);
       if (!existingRule) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
 
       if (existingRule.user_id !== request.user!.id) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Access denied',
-          message: 'You can only delete your own rules',
-        });
+        throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
       }
 
       const deleted = store.deleteRule(id);
       
       if (!deleted) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
       
       request.log.info(`Deleted rule ${id}`);
@@ -528,12 +457,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         message: 'Rule deleted successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to delete rule');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to delete rule',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Delete rule');
     }
   });
 
@@ -583,15 +507,12 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = RuleParamsSchema.parse(request.params);
-      const { webhook_test, webhook_only } = TestRuleRequestSchema.parse(request.body);
+      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
+      const { webhook_test, webhook_only } = validateWithZod(TestRuleRequestSchema, request.body, 'Test rule');
       
       const rule = store.getRuleById(id);
       if (!rule) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
       
       let matches: unknown[] = [];
@@ -637,12 +558,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to test rule');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to test rule',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Test rule');
     }
   });
 
@@ -699,12 +615,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         count: updated,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to enable rules');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to enable rules',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Enable rules');
     }
   });
 
@@ -761,12 +672,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         count: updated,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to disable rules');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to disable rules',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Disable rules');
     }
   });
 
@@ -814,11 +720,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       if (!rule_ids || rule_ids.length === 0) {
         // Delete all rules - require confirmation
         if (!confirm_all) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Confirmation required',
-            message: 'Set confirm_all: true to delete all rules',
-          });
+          throw new AppError(400, 'Set confirm_all: true to delete all rules', 'CONFIRMATION_REQUIRED');
         }
 
         const allRules = store.getRulesByUserId(userId);
@@ -835,12 +737,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         count: deleted,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to delete rules');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to delete rules',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Delete rules');
     }
   });
 };

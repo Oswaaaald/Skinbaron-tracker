@@ -168,9 +168,10 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
 
 /**
  * Admin authentication middleware - requires is_admin === true
+ * Performs full authentication check first, then verifies admin status
  */
 export async function requireAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
-  // First check normal authentication
+  // First authenticate the user
   await authMiddleware(request, reply);
   
   // If auth failed, the reply was already sent
@@ -178,7 +179,7 @@ export async function requireAdminMiddleware(request: FastifyRequest, reply: Fas
     return;
   }
   
-  // Check admin status
+  // Check admin status (request.user is guaranteed to exist after authMiddleware)
   if (!request.user?.is_admin) {
     return reply.status(403).send({
       success: false,
@@ -189,10 +190,33 @@ export async function requireAdminMiddleware(request: FastifyRequest, reply: Fas
 }
 
 /**
+ * Admin check only - assumes authentication already done
+ * Use this in preHandler arrays: [fastify.authenticate, fastify.checkAdmin]
+ */
+export async function checkAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  if (!request.user) {
+    return reply.status(401).send({
+      success: false,
+      error: 'Authentication required',
+      message: 'Please authenticate first',
+    });
+  }
+  
+  if (!request.user.is_admin) {
+    return reply.status(403).send({
+      success: false,
+      error: 'Admin access required',
+      message: 'This action requires administrator privileges',
+    });
+  }
+}
+
+/**
  * Super Admin authentication middleware - requires is_super_admin === true
+ * Performs full authentication check first, then verifies super admin status
  */
 export async function requireSuperAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
-  // First check normal authentication
+  // First authenticate the user
   await authMiddleware(request, reply);
   
   // If auth failed, the reply was already sent
@@ -200,8 +224,30 @@ export async function requireSuperAdminMiddleware(request: FastifyRequest, reply
     return;
   }
   
-  // Check super admin status
+  // Check super admin status (request.user is guaranteed to exist after authMiddleware)
   if (!request.user?.is_super_admin) {
+    return reply.status(403).send({
+      success: false,
+      error: 'Super Admin access required',
+      message: 'This action requires super administrator privileges',
+    });
+  }
+}
+
+/**
+ * Super Admin check only - assumes authentication already done
+ * Use this in preHandler arrays: [fastify.authenticate, fastify.checkSuperAdmin]
+ */
+export async function checkSuperAdminMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  if (!request.user) {
+    return reply.status(401).send({
+      success: false,
+      error: 'Authentication required',
+      message: 'Please authenticate first',
+    });
+  }
+  
+  if (!request.user.is_super_admin) {
     return reply.status(403).send({
       success: false,
       error: 'Super Admin access required',
@@ -223,7 +269,7 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
         const store = getStore();
         if (!payload.jti || !store.isAccessTokenBlacklisted(payload.jti)) {
           const user = await getUserById(payload.userId);
-          if (user) {
+          if (user && user.is_approved) {
             request.user = {
               id: user.id,
               username: user.username,
@@ -237,7 +283,8 @@ export async function optionalAuthMiddleware(request: FastifyRequest, _reply: Fa
     }
     // Continue without error if no auth
   } catch (error) {
-    // Log error but continue
+    // Log error but continue - this is optional auth
+    request.log.debug({ error }, 'Optional authentication failed');
   }
 }
 

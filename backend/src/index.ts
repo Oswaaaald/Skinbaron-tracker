@@ -8,6 +8,7 @@ import { getStore } from './lib/store.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
+import { handleRouteError } from './lib/validation-handler.js';
 import rulesRoutes from './routes/rules.js';
 import alertsRoutes from './routes/alerts.js';
 
@@ -18,6 +19,57 @@ const fastify = Fastify({
   },
   // Respect X-Forwarded-* headers from the reverse proxy for accurate client IPs
   trustProxy: true,
+  // Custom error formatter for validation errors (makes them user-friendly)
+  schemaErrorFormatter: (errors, _dataVar) => {
+    const error = errors[0];
+    if (!error) return new Error('Validation failed');
+    
+    // Extract field name from path, removing "body/" prefix
+    let field = error.instancePath.replace(/^\//, '').replace(/\//g, '.');
+    if (!field && error.keyword === 'required') {
+      field = error.params['missingProperty'] as string;
+    }
+    
+    // Generate user-friendly message
+    let message = '';
+    
+    if (error.keyword === 'minLength') {
+      message = field 
+        ? `${field.charAt(0).toUpperCase() + field.slice(1)} must be at least ${error.params['limit']} characters`
+        : `Must be at least ${error.params['limit']} characters`;
+    } else if (error.keyword === 'maxLength') {
+      message = field
+        ? `${field.charAt(0).toUpperCase() + field.slice(1)} must be at most ${error.params['limit']} characters`
+        : `Must be at most ${error.params['limit']} characters`;
+    } else if (error.keyword === 'format' && error.params['format'] === 'email') {
+      message = 'Please enter a valid email address';
+    } else if (error.keyword === 'format' && error.params['format'] === 'url') {
+      message = 'Please enter a valid URL';
+    } else if (error.keyword === 'pattern') {
+      if (field === 'username') {
+        message = 'Username can only contain letters, numbers and underscores';
+      } else if (field === 'password') {
+        message = 'Password must contain uppercase, lowercase and number';
+      } else {
+        message = `${field || 'Field'} format is invalid`;
+      }
+    } else if (error.keyword === 'required') {
+      message = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+    } else if (error.keyword === 'minimum') {
+      message = `${field || 'Field'} must be at least ${error.params['limit']}`;
+    } else if (error.keyword === 'maximum') {
+      message = `${field || 'Field'} must be at most ${error.params['limit']}`;
+    } else if (error.keyword === 'enum') {
+      const allowedValues = error.params['allowedValues'] as string[] | undefined;
+      message = `${field || 'Field'} must be one of: ${allowedValues?.join(', ') || 'allowed values'}`;
+    } else if (error.keyword === 'type') {
+      message = `${field || 'Field'} must be a ${error.params['type']}`;
+    } else {
+      message = error.message || 'Validation error';
+    }
+    
+    return new Error(message);
+  }
 });
 
 // Attach Fastify logger to scheduler for unified logging
@@ -161,16 +213,28 @@ async function registerPlugins() {
     await authMiddleware(request, reply);
   });
 
-  // Admin authentication hook
+  // Admin authentication hook (full auth + admin check)
   fastify.decorate('requireAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
     const { requireAdminMiddleware } = await import('./lib/middleware.js');
     await requireAdminMiddleware(request, reply);
   });
 
-  // Super Admin authentication hook
+  // Admin check only (use after authenticate in preHandler array for better performance)
+  fastify.decorate('checkAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { checkAdminMiddleware } = await import('./lib/middleware.js');
+    await checkAdminMiddleware(request, reply);
+  });
+
+  // Super Admin authentication hook (full auth + super admin check)
   fastify.decorate('requireSuperAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
     const { requireSuperAdminMiddleware } = await import('./lib/middleware.js');
     await requireSuperAdminMiddleware(request, reply);
+  });
+
+  // Super Admin check only (use after authenticate in preHandler array for better performance)
+  fastify.decorate('checkSuperAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { checkSuperAdminMiddleware } = await import('./lib/middleware.js');
+    await checkSuperAdminMiddleware(request, reply);
   });
 }
 
@@ -271,11 +335,7 @@ async function setupSystemStatus() {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get system status');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve system status',
-      });
+      return handleRouteError(error, request, reply, 'Get system status');
     }
   });
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
+import { validateRegistration, validateLogin } from '@/lib/validation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -38,29 +39,26 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   }
 
   const validateForm = () => {
-    if (!formData.email || !formData.password) {
-      setError('Email and password are required')
-      return false
-    }
-
     if (mode === 'register') {
-      if (!formData.username) {
-        setError('Username is required')
+      const result = validateRegistration({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      })
+      
+      if (!result.valid) {
+        setError(result.error || 'Validation failed')
         return false
       }
+    } else {
+      const result = validateLogin({
+        email: formData.email,
+        password: formData.password,
+      })
       
-      if (formData.password.length < 8) {
-        setError('Password must be at least 8 characters long')
-        return false
-      }
-      
-      if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-        setError('Password must contain uppercase, lowercase and number')
-        return false
-      }
-      
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match')
+      if (!result.valid) {
+        setError(result.error || 'Validation failed')
         return false
       }
     }

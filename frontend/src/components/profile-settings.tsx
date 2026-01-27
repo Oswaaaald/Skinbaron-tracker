@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { validateUsername, validateEmail, validatePasswordChange } from '@/lib/validation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -219,20 +220,22 @@ export function ProfileSettings() {
     const updates: { username?: string; email?: string } = {}
     
     if (username !== user?.username) {
-      // Validate username format (same as backend: alphanumeric + underscore only)
-      const usernameRegex = /^[a-zA-Z0-9_]+$/
-      if (!usernameRegex.test(username)) {
-        setError('profile', 'Username can only contain letters, numbers and underscores')
-        return
-      }
-      if (username.length < 3 || username.length > 20) {
-        setError('profile', 'Username must be between 3 and 20 characters')
+      // Validate username
+      const result = validateUsername(username)
+      if (!result.valid) {
+        setError('profile', result.error || 'Invalid username')
         return
       }
       updates.username = username
     }
     
     if (email !== user?.email) {
+      // Validate email
+      const result = validateEmail(email)
+      if (!result.valid) {
+        setError('profile', result.error || 'Invalid email')
+        return
+      }
       updates.email = email
     }
     
@@ -250,18 +253,15 @@ export function ProfileSettings() {
     // Clear previous messages
     clear('password')
     
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('password', 'All fields are required')
-      return
-    }
+    // Validate password change
+    const result = validatePasswordChange({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    })
     
-    if (newPassword !== confirmPassword) {
-      setError('password', 'Passwords do not match')
-      return
-    }
-    
-    if (newPassword.length < 8) {
-      setError('password', 'Password must be at least 8 characters')
+    if (!result.valid) {
+      setError('password', result.error || 'Validation failed')
       return
     }
     

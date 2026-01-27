@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getStore, CreateUserWebhookSchema } from '../lib/store.js';
+import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
+import { AppError } from '../lib/errors.js';
 
 // Query parameters schemas
 const WebhookParamsSchema = z.object({
@@ -56,7 +58,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const webhookData = CreateUserWebhookSchema.parse(request.body);
+      const webhookData = validateWithZod(CreateUserWebhookSchema, request.body, 'webhook creation');
       const webhook = store.createUserWebhook(request.user!.id, webhookData);
       
       // Don't return encrypted URL in response
@@ -67,21 +69,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhook,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to create webhook');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to create webhook',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook creation');
     }
   });
 
@@ -126,7 +114,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { decrypt } = WebhookQuerySchema.parse(request.query);
+      const { decrypt } = validateWithZod(WebhookQuerySchema, request.query, 'webhook query');
       const webhooks = store.getUserWebhooksByUserId(request.user!.id, decrypt);
       
       // Remove encrypted field from response
@@ -140,21 +128,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhooks,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get webhooks');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve webhooks',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook retrieval');
     }
   });
 
@@ -209,15 +183,12 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = WebhookParamsSchema.parse(request.params);
-      const { decrypt } = WebhookQuerySchema.parse(request.query);
+      const { id } = validateWithZod(WebhookParamsSchema, request.params, 'webhook params');
+      const { decrypt } = validateWithZod(WebhookQuerySchema, request.query, 'webhook query');
       const webhook = store.getUserWebhookById(id, decrypt);
       
       if (!webhook || webhook.user_id !== request.user!.id) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Webhook not found',
-        });
+        throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
       
       // Remove encrypted field from response
@@ -228,21 +199,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhook,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get webhook');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve webhook',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook retrieval');
     }
   });
 
@@ -299,8 +256,8 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = WebhookParamsSchema.parse(request.params);
-      const updates = CreateUserWebhookSchema.partial().parse(request.body);
+      const { id } = validateWithZod(WebhookParamsSchema, request.params, 'webhook params');
+      const updates = validateWithZod(CreateUserWebhookSchema.partial(), request.body, 'webhook update');
       
       const webhook = store.updateUserWebhook(id, request.user!.id, updates);
       
@@ -312,28 +269,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhook,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to update webhook');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      if (error instanceof Error && error.message.includes('not found')) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Webhook not found',
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to update webhook',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook update');
     }
   });
 
@@ -370,14 +306,11 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = WebhookParamsSchema.parse(request.params);
+      const { id } = validateWithZod(WebhookParamsSchema, request.params, 'webhook params');
       const deleted = store.deleteUserWebhook(id, request.user!.id);
       
       if (!deleted) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Webhook not found',
-        });
+        throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
       
       return reply.status(200).send({
@@ -385,21 +318,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         message: 'Webhook deleted successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to delete webhook');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to delete webhook',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook deletion');
     }
   });
 
@@ -451,12 +370,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhooks,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get active webhooks');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve active webhooks',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'active webhook retrieval');
     }
   });
 
@@ -513,12 +427,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         count: updated,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to enable webhooks');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to enable webhooks',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook batch enable');
     }
   });
 
@@ -575,12 +484,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         count: updated,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to disable webhooks');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to disable webhooks',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook batch disable');
     }
   });
 
@@ -628,11 +532,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       if (!webhook_ids || webhook_ids.length === 0) {
         // Delete all webhooks - requires confirmation
         if (!confirm_all) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Confirmation required',
-            message: 'Set confirm_all to true to delete all webhooks',
-          });
+          throw new AppError(400, 'Set confirm_all to true to delete all webhooks', 'CONFIRMATION_REQUIRED');
         }
         
         const allWebhooks = store.getUserWebhooks(userId);
@@ -649,12 +549,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         count: deleted,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to delete webhooks');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to delete webhooks',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'webhook batch deletion');
     }
   });
 };

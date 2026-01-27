@@ -6,6 +6,8 @@ import { OTP } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import { z } from 'zod';
+import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
+import { AppError } from '../lib/errors.js';
 
 const UpdateProfileSchema = z.object({
   username: z.string().min(3).max(50).optional(),
@@ -19,6 +21,18 @@ const UpdateProfileSchema = z.object({
  */
 export default async function userRoutes(fastify: FastifyInstance) {
   const store = getStore();
+
+  // Rate limiting for sensitive operations (password change)
+  const sensitiveOperationRateLimit = {
+    max: 5,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many password change attempts. Please try again in 1 minute.',
+    }),
+  };
 
   /**
    * GET /api/user/profile - Get current user profile
@@ -55,10 +69,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const user = store.getUserById(userId);
       
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       return reply.status(200).send({
@@ -73,11 +84,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get user profile');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to get user profile',
-      });
+      return handleRouteError(error, request, reply, 'Get user profile');
     }
   });
 
@@ -124,11 +131,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get user stats');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to get user stats',
-      });
+      return handleRouteError(error, request, reply, 'Get user stats');
     }
   });
 
@@ -172,47 +175,32 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const updates = UpdateProfileSchema.parse(request.body);
+      const updates = validateWithZod(UpdateProfileSchema, request.body, 'Profile update');
 
       // Get current user to check admin status
       const currentUser = store.getUserById(userId);
       if (!currentUser) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Check if username is already taken by another user
       if (updates.username) {
         const existingUser = store.getUserByUsername(updates.username);
         if (existingUser && existingUser.id !== userId) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation failed',
-            message: 'Username already taken',
-          });
+          throw new AppError(400, 'Username already taken', 'USERNAME_TAKEN');
         }
       }
 
       // Non-admin users cannot change their email
       if (updates.email && !currentUser.is_admin) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Permission denied',
-          message: 'Only administrators can change their email address',
-        });
+        throw new AppError(403, 'Only administrators can change their email address', 'PERMISSION_DENIED');
       }
 
       // Check if email is already taken by another user
       if (updates.email) {
         const existingUser = store.getUserByEmail(updates.email);
         if (existingUser && existingUser.id !== userId) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation failed',
-            message: 'Email already in use',
-          });
+          throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
       }
 
@@ -232,10 +220,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Get updated user data
       const updatedUser = store.getUserById(userId);
       if (!updatedUser) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       return reply.status(200).send({
@@ -251,20 +236,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to update profile');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Invalid input',
-          details: error.issues,
-        });
-      }
-
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to update profile',
-      });
+      return handleRouteError(error, request, reply, 'Update user profile');
     }
   });
 
@@ -273,6 +245,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
    */
   fastify.patch('/password', {
     preHandler: [fastify.authenticate],
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'Update current user password',
       tags: ['User'],
@@ -298,15 +273,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const passwordData = PasswordChangeSchema.parse(request.body);
+      const passwordData = validateWithZod(PasswordChangeSchema, request.body, 'Password change');
 
       // Get user
       const user = store.getUserById(userId);
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Verify current password
@@ -320,10 +292,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           getClientIp(request),
           request.headers['user-agent']
         );
-        return reply.status(401).send({
-          success: false,
-          error: 'Current password is incorrect',
-        });
+        throw new AppError(401, 'Current password is incorrect', 'INVALID_PASSWORD');
       }
 
       // Check if new password is same as current password
@@ -336,11 +305,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           getClientIp(request),
           request.headers['user-agent']
         );
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation failed',
-          message: 'New password must be different from current password',
-        });
+        throw new AppError(400, 'New password must be different from current password', 'SAME_PASSWORD');
       }
 
       // Hash new password
@@ -363,33 +328,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         message: 'Password updated successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to update password');
-
-      // Handle Zod validation errors
-      if (error && typeof error === 'object' && 'issues' in error) {
-        const zodError = error as { issues: Array<{ message: string }> };
-        const firstIssue = zodError.issues?.[0];
-        if (firstIssue?.message) {
-          return reply.status(400).send({
-            success: false,
-            error: 'Validation failed',
-            message: firstIssue.message,
-          });
-        }
-      }
-
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Invalid input',
-          details: error.issues,
-        });
-      }
-
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to update password',
-      });
+      return handleRouteError(error, request, reply, 'Update password');
     }
   });
 
@@ -424,11 +363,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         message: 'Account deleted successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to delete account');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to delete account',
-      });
+      return handleRouteError(error, request, reply, 'Delete account');
     }
   });
 
@@ -491,11 +426,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to generate 2FA setup');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to generate 2FA setup',
-      });
+      return handleRouteError(error, request, reply, 'Generate 2FA setup');
     }
   });
 
@@ -549,10 +480,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const isValid = result.valid;
 
       if (!isValid) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Invalid verification code',
-        });
+        throw new AppError(400, 'Invalid verification code', 'INVALID_CODE');
       }
 
       // Generate 10 recovery codes
@@ -584,11 +512,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to enable 2FA');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to enable 2FA',
-      });
+      return handleRouteError(error, request, reply, 'Enable 2FA');
     }
   });
 
@@ -625,19 +549,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       const user = store.getUserById(userId);
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Verify password
       const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
       if (!isValidPassword) {
-        return reply.status(401).send({
-          success: false,
-          error: 'Invalid password',
-        });
+        throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
       }
 
       // Disable 2FA
@@ -661,11 +579,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         message: '2FA disabled successfully',
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to disable 2FA');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to disable 2FA',
-      });
+      return handleRouteError(error, request, reply, 'Disable 2FA');
     }
   });
 
@@ -699,10 +613,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const user = store.getUserById(userId);
 
       if (!user) {
-        return reply.status(404).send({
-          success: false,
-          error: 'User not found',
-        });
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       return reply.status(200).send({
@@ -712,11 +623,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get 2FA status');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to get 2FA status',
-      });
+      return handleRouteError(error, request, reply, 'Get 2FA status');
     }
   });
 
@@ -770,11 +677,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         data: logs,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get audit logs');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to get audit logs',
-      });
+      return handleRouteError(error, request, reply, 'Get audit logs');
     }
   });
 }

@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getSkinBaronClient } from '../lib/sbclient.js';
+import { handleRouteError } from '../lib/validation-handler.js';
 
 export default async function itemsRoutes(fastify: FastifyInstance) {
   // Search items endpoint for autocomplete
@@ -62,12 +63,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
         data: suggestions,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to search items');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to search items',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Search items');
     }
   });
 }

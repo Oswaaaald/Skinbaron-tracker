@@ -2,7 +2,8 @@ import { FastifyInstance } from 'fastify';
 import { getStore } from '../lib/store.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getClientIp } from '../lib/middleware.js';
-import { handleError, Errors } from '../lib/errors.js';
+import { handleRouteError } from '../lib/validation-handler.js';
+import { Errors } from '../lib/errors.js';
 
 /**
  * Admin routes - All routes require admin privileges
@@ -86,7 +87,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: usersWithStats,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to list users');
+      return handleRouteError(error, request, reply, 'Failed to list users');
     }
   });
 
@@ -176,7 +177,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: `User ${user.username} deleted successfully`,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to delete user');
+      return handleRouteError(error, request, reply, 'Failed to delete user');
     }
   });
 
@@ -275,7 +276,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: { is_admin },
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to toggle admin status');
+      return handleRouteError(error, request, reply, 'Failed to toggle admin status');
     }
   });
 
@@ -293,7 +294,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: stats,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to get global stats');
+      return handleRouteError(error, request, reply, 'Failed to get global stats');
     }
   });
 
@@ -323,7 +324,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: logs,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to get admin logs');
+      return handleRouteError(error, request, reply, 'Failed to get admin logs');
     }
   });
 
@@ -366,7 +367,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: pendingUsers,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to get pending users');
+      return handleRouteError(error, request, reply, 'Failed to get pending users');
     }
   });
 
@@ -424,7 +425,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'User approved successfully',
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to approve user');
+      return handleRouteError(error, request, reply, 'Failed to approve user');
     }
   });
 
@@ -471,7 +472,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'User rejected and deleted successfully',
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to reject user');
+      return handleRouteError(error, request, reply, 'Failed to reject user');
     }
   });
 
@@ -507,7 +508,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'Scheduler executed successfully',
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to force scheduler run');
+      return handleRouteError(error, request, reply, 'Failed to force scheduler run');
     }
   });
 
@@ -593,7 +594,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to get user audit logs');
+      return handleRouteError(error, request, reply, 'Failed to get user audit logs');
     }
   });
 
@@ -651,7 +652,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: logs,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to get all audit logs');
+      return handleRouteError(error, request, reply, 'Failed to get all audit logs');
     }
   });
 
@@ -701,7 +702,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: users,
       });
     } catch (error) {
-      return handleError(error, request, reply, 'Failed to search users');
+      return handleRouteError(error, request, reply, 'Failed to search users');
     }
   });
 }

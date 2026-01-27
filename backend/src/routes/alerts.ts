@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { getStore } from '../lib/store.js';
+import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
+import { AppError } from '../lib/errors.js';
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
@@ -73,7 +75,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const query = AlertsQuerySchema.parse(request.query);
+      const query = validateWithZod(AlertsQuerySchema, request.query, 'alerts query');
       
       // Get user's alerts with pagination
       let alerts = store.getAlertsByUserId(request.user!.id, query.limit, query.offset);
@@ -83,11 +85,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
         if (!rule || rule.user_id !== request.user!.id) {
-          return reply.status(403).send({
-            success: false,
-            error: 'Access denied',
-            message: 'You can only access alerts for your own rules',
-          });
+          throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
         alerts = alerts.filter(alert => alert.rule_id === query.rule_id);
       }
@@ -106,21 +104,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get alerts');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve alerts',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to get alerts');
     }
   });
 
@@ -172,14 +156,11 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = AlertParamsSchema.parse(request.params);
+      const { id } = validateWithZod(AlertParamsSchema, request.params, 'alert params');
       const alert = store.getAlertByIdForUser(id, request.user!.id);
       
       if (!alert) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Alert not found',
-        });
+        throw new AppError(404, 'Alert not found', 'NOT_FOUND');
       }
       
       return reply.status(200).send({
@@ -187,12 +168,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         data: alert,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get alert');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve alert',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to get alert');
     }
   });
 
@@ -251,12 +227,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get alert stats');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve alert statistics',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to get alert stats');
     }
   });
 
@@ -280,12 +251,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to cleanup user alerts');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to cleanup alerts',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to cleanup user alerts');
     }
   });
 
@@ -309,12 +275,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to clear all user alerts');
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to clear alerts',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to clear all user alerts');
     }
   });
 
@@ -363,9 +324,13 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const query = z.object({
-        limit: z.coerce.number().default(20),
-      }).parse(request.query);
+      const query = validateWithZod(
+        z.object({
+          limit: z.coerce.number().default(20),
+        }),
+        request.query,
+        'recent alerts query'
+      );
       
       // Get user's alerts and filter for last 24h
       const userAlerts = store.getAlertsByUserId(request.user!.id, 1000, 0);
@@ -381,21 +346,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         count: recentAlerts.length,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get recent alerts');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve recent alerts',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to get recent alerts');
     }
   });
 
@@ -451,30 +402,31 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { ruleId } = z.object({
-        ruleId: z.string().transform(val => parseInt(val, 10)),
-      }).parse(request.params);
+      const { ruleId } = validateWithZod(
+        z.object({
+          ruleId: z.string().transform(val => parseInt(val, 10)),
+        }),
+        request.params,
+        'rule params'
+      );
       
-      const { limit, offset } = z.object({
-        limit: z.coerce.number().default(50),
-        offset: z.coerce.number().default(0),
-      }).parse(request.query);
+      const { limit, offset } = validateWithZod(
+        z.object({
+          limit: z.coerce.number().default(50),
+          offset: z.coerce.number().default(0),
+        }),
+        request.query,
+        'pagination query'
+      );
       
       // Ensure rule belongs to the user before getting alerts
       const rule = store.getRuleById(ruleId);
       if (!rule) {
-        return reply.status(404).send({
-          success: false,
-          error: 'Rule not found',
-        });
+        throw new AppError(404, 'Rule not found', 'NOT_FOUND');
       }
 
       if (rule.user_id !== request.user!.id) {
-        return reply.status(403).send({
-          success: false,
-          error: 'Access denied',
-          message: 'You can only access alerts for your own rules',
-        });
+        throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
       }
       
       // Get alerts for user's rule
@@ -486,21 +438,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         count: ruleAlerts.length,
       });
     } catch (error) {
-      request.log.error({ error }, 'Failed to get alerts by rule');
-      
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Validation error',
-          details: error.issues,
-        });
-      }
-      
-      return reply.status(500).send({
-        success: false,
-        error: 'Failed to retrieve alerts for rule',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return handleRouteError(error, request, reply, 'Failed to get alerts by rule');
     }
   });
 };
