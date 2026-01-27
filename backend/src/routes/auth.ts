@@ -627,23 +627,39 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
       if (accessPayload?.jti) {
         const exp = accessPayload.exp ? accessPayload.exp * 1000 : Date.now();
-        store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
+        try {
+          store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
+        } catch {
+          // User may have been deleted, ignore
+        }
       }
 
       if (refresh_token) {
-        store.revokeRefreshToken(refresh_token, 'logout');
+        try {
+          store.revokeRefreshToken(refresh_token, 'logout');
+        } catch {
+          // Token may have been deleted with user, ignore
+        }
       } else if (accessPayload) {
-        store.revokeAllRefreshTokensForUser(accessPayload.userId);
+        try {
+          store.revokeAllRefreshTokensForUser(accessPayload.userId);
+        } catch {
+          // User may have been deleted, ignore
+        }
       }
 
       if (accessPayload) {
-        store.createAuditLog(
-          accessPayload.userId,
-          'logout',
-          JSON.stringify({ reason: 'user_logout' }),
-          getClientIp(request),
-          request.headers['user-agent']
-        );
+        try {
+          store.createAuditLog(
+            accessPayload.userId,
+            'logout',
+            JSON.stringify({ reason: 'user_logout' }),
+            getClientIp(request),
+            request.headers['user-agent']
+          );
+        } catch {
+          // User may have been deleted, ignore audit log
+        }
       }
 
       clearAuthCookies(reply);
