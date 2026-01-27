@@ -301,10 +301,11 @@ export class Store {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_rules_user_id ON rules (user_id);
       CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules (enabled);
+      CREATE INDEX IF NOT EXISTS idx_rules_user_enabled ON rules (user_id, enabled);
       CREATE INDEX IF NOT EXISTS idx_alerts_sale_id ON alerts (sale_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_rule_id ON alerts (rule_id);
       CREATE INDEX IF NOT EXISTS idx_alerts_sent_at ON alerts (sent_at);
-      CREATE INDEX IF NOT EXISTS idx_alerts_rule_sent ON alerts (rule_id, sent_at);
+      CREATE INDEX IF NOT EXISTS idx_alerts_rule_sent ON alerts (rule_id, sent_at DESC);
     `);
 
   }
@@ -351,8 +352,16 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
       CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
+      CREATE INDEX IF NOT EXISTS idx_webhooks_user_active ON user_webhooks(user_id, is_active);
       CREATE INDEX IF NOT EXISTS idx_audit_log_user_created ON audit_log(user_id, created_at);
       CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_expires ON refresh_tokens(user_id, expires_at);
+    `);
+
+    // Optimized composite indexes for performance
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_audit_user_event_date ON audit_log(user_id, event_type, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expiry_revoked ON refresh_tokens(expires_at, revoked_at);
+      CREATE INDEX IF NOT EXISTS idx_access_blacklist_expires ON access_token_blacklist(expires_at);
     `);
 
     // Migration: Add is_admin column if it doesn't exist
