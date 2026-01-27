@@ -115,10 +115,13 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
       case "profile_updated":
         return `Updated fields: ${data.fields?.join(', ') || 'profile'}`;
       
+      case "password_changed":
+        return "Password successfully changed";
+      
       case "password_change_failed":
-        return data.reason === "invalid_current_password" 
-          ? "Failed: invalid current password" 
-          : `Failed: ${data.reason}`;
+        if (data.reason === "invalid_current_password") return "Failed: invalid current password";
+        if (data.reason === "same_password") return "Failed: same password";
+        return `Failed: ${data.reason}`;
       
       case "user_approved":
         return `Approved by ${data.admin_username || `admin #${data.approved_by_admin_id}`}`;
