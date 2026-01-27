@@ -120,11 +120,14 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             description: "Your account is awaiting admin approval",
           })
         } else {
-          setError(result.error || `${mode} failed`)
+          // Use backend error messages directly (they're already user-friendly)
+          const errorMessage = result.error || `${mode} failed`
+          
+          setError(errorMessage)
           toast({
             variant: "destructive",
             title: `❌ ${mode === 'login' ? 'Login' : 'Registration'} failed`,
-            description: result.error || `${mode} failed`,
+            description: errorMessage,
           })
         }
       } else {
@@ -158,7 +161,17 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       }
       // If successful login, the auth context will handle the redirect
     } catch (error) {
-      setError('An unexpected error occurred')
+      // Network or unexpected error
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred. Please try again.'
+      
+      setError(errorMessage)
+      toast({
+        variant: "destructive",
+        title: "❌ Error",
+        description: errorMessage,
+      })
     } finally {
       setIsLoading(false)
     }
