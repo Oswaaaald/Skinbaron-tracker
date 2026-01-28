@@ -337,9 +337,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
               request.headers['user-agent']
             );
             
+            const errorMessage = totp_code.length === 8 
+              ? 'Backup code is incorrect' 
+              : '2FA code is incorrect';
+            
             throw new AppError(
               401,
-              '2FA code is incorrect',
+              errorMessage,
               'INVALID_2FA_CODE'
             );
           }
