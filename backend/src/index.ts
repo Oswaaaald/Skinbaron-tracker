@@ -221,10 +221,13 @@ async function registerPlugins() {
         ? appConfig.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
         : [];
       
+      // Auto-detect server's own URL for Swagger UI access
+      const serverOrigin = appConfig.API_BASE_URL || `http://localhost:${appConfig.PORT}`;
+      
       // Build allowed origins list
       const allowedOrigins = Array.from(new Set([
         appConfig.CORS_ORIGIN,
-        appConfig.API_BASE_URL, // Allow API's own domain for Swagger UI if configured
+        serverOrigin, // Allow API's own domain for Swagger UI
         ...configuredOrigins,
       ])).filter(Boolean);
       
