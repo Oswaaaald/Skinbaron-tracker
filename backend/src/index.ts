@@ -129,11 +129,7 @@ async function registerPlugins() {
       },
       servers: [
         {
-          url: appConfig.API_BASE_URL 
-            ? `${appConfig.API_BASE_URL}/api`
-            : (appConfig.NODE_ENV === 'production' 
-              ? 'https://skinbaron-tracker-api.oswaaaald.be/api'
-              : 'http://localhost:8080/api'),
+          url: `${appConfig.API_BASE_URL || 'http://localhost:8080'}/api`,
           description: appConfig.NODE_ENV === 'production' ? 'Production' : 'Development',
         },
       ],
@@ -228,7 +224,7 @@ async function registerPlugins() {
       // Build allowed origins list
       const allowedOrigins = Array.from(new Set([
         appConfig.CORS_ORIGIN,
-        appConfig.API_BASE_URL, // Allow API's own domain for Swagger UI
+        appConfig.API_BASE_URL, // Allow API's own domain for Swagger UI if configured
         ...configuredOrigins,
       ])).filter(Boolean);
       
@@ -238,19 +234,12 @@ async function registerPlugins() {
         return;
       }
       
-      // Check if origin is in allowed list, or if it matches the request host (for same-domain requests)
+      // Check if origin is in allowed list
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
-        return;
+      } else {
+        callback(new Error('Not allowed by CORS'), false);
       }
-      
-      // Allow same-origin requests (Swagger UI on same domain)
-      if (origin && origin.startsWith('https://skinbaron-tracker-api.oswaaaald.be')) {
-        callback(null, true);
-        return;
-      }
-      
-      callback(new Error('Not allowed by CORS'), false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
