@@ -421,6 +421,7 @@ async function setupSystemStatus() {
   }, async (request, reply) => {
     try {
       const snapshot = await buildSystemSnapshot();
+      fastify.log.info({ snapshot }, 'System status snapshot');
       return reply.status(200).send({
         success: true,
         data: {
@@ -429,6 +430,7 @@ async function setupSystemStatus() {
         },
       });
     } catch (error) {
+      fastify.log.error({ error }, 'Failed to build system snapshot');
       return handleRouteError(error, request, reply, 'Get system status');
     }
   });
