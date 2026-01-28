@@ -178,6 +178,11 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const handleKeyDownSubmit = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
+      
+      // Check if button should be disabled
+      if (isLoading) return
+      if (requires2FA && (totpCode.length === 7 || totpCode.length < 6)) return
+      
       handleSubmit(e as unknown as React.FormEvent)
     }
   }
