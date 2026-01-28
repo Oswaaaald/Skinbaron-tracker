@@ -316,6 +316,17 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { id } = validateWithZod(WebhookParamsSchema, request.params, 'webhook params');
+      
+      // Check if webhook exists and user owns it
+      const existingWebhook = store.getUserWebhookById(id);
+      if (!existingWebhook) {
+        throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
+      }
+
+      if (existingWebhook.user_id !== request.user!.id) {
+        throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
+      }
+      
       const deleted = store.deleteUserWebhook(id, request.user!.id);
       
       if (!deleted) {
