@@ -93,11 +93,6 @@ export class WebhooksRepository {
   }
 
   delete(id: number, userId: number): boolean {
-    const webhook = this.findById(id);
-    if (!webhook || webhook.user_id !== userId) {
-      return false;
-    }
-
     const stmt = this.db.prepare('DELETE FROM user_webhooks WHERE id = ? AND user_id = ?');
     const result = stmt.run(id, userId);
     return result.changes > 0;
