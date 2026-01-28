@@ -217,20 +217,13 @@ async function registerPlugins() {
   // CORS
   await fastify.register(cors, {
     origin: (origin, callback) => {
-      const configuredOrigins = appConfig.CORS_ORIGINS
-        ? appConfig.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
-        : [];
-      
-      // Auto-detect server's own URL for Swagger UI access
-      const serverOrigin = appConfig.NEXT_PUBLIC_API_URL || `http://localhost:${appConfig.PORT}`;
-      
-      // Build allowed origins list (API URL + configured origins + dev fallback)
-      const allowedOrigins = Array.from(new Set([
-        serverOrigin, // Allow API's own domain for Swagger UI
-        ...configuredOrigins,
-        // Dev fallback if no origins configured
-        ...(configuredOrigins.length === 0 ? ['http://localhost:3000'] : []),
-      ])).filter(Boolean);
+      // Build allowed origins: API URL (for Swagger) + Frontend URL + dev fallback
+      const allowedOrigins = [
+        appConfig.NEXT_PUBLIC_API_URL, // API's own domain for Swagger UI
+        appConfig.CORS_ORIGIN,          // Frontend URL
+        'http://localhost:3000',        // Dev fallback
+        `http://localhost:${appConfig.PORT}`, // Dev API fallback
+      ].filter(Boolean);
       
       // Allow requests with no origin (e.g., mobile apps, Postman)
       if (!origin) {

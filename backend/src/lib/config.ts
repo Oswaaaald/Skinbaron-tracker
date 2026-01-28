@@ -33,7 +33,7 @@ const ConfigSchema = z.object({
   
   // API
   NEXT_PUBLIC_API_URL: z.string().optional(),
-  CORS_ORIGINS: z.string().optional(),
+  CORS_ORIGIN: z.string().optional(),
   RATE_LIMIT_MAX: z.coerce.number().default(1000),
   RATE_LIMIT_WINDOW: z.coerce.number().default(60000),
   
