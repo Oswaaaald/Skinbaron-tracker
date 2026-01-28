@@ -373,7 +373,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
               'TOTP_SECRET_OUTDATED'
             );
           }
-          throw error; // Re-throw other errors
+          // Log the error and treat as invalid code (prevent 500 errors)
+          request.log.warn({ error, email: user.email }, 'TOTP verification error, treating as invalid code');
+          isValidTotp = false;
         }
 
         // If invalid, try recovery codes
