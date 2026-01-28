@@ -164,20 +164,46 @@ async function registerPlugins() {
     uiConfig: {
       docExpansion: 'list',
       deepLinking: true,
+      filter: true, // Enable filter bar
     },
     staticCSP: true,
     transformStaticCSP: (header) => header,
+    transformSpecification: (swaggerObject, request) => {
+      // Filter routes based on user role
+      const isAdmin = request.user?.is_admin || request.user?.is_super_admin;
+      
+      if (isAdmin) {
+        // Admins see everything
+        return swaggerObject;
+      }
+      
+      // Non-admins: hide admin-only routes
+      const filteredPaths: Record<string, any> = {};
+      for (const [path, methods] of Object.entries(swaggerObject['paths'] || {})) {
+        // Hide /admin/* routes for non-admins
+        if (path.startsWith('/admin/')) {
+          continue;
+        }
+        filteredPaths[path] = methods;
+      }
+      
+      return {
+        ...swaggerObject,
+        paths: filteredPaths,
+      };
+    },
     uiHooks: {
       onRequest: async (request, reply) => {
-        // Verify super admin access
+        // Require authentication (any logged-in user)
         try {
           await fastify.authenticate(request, reply);
           
-          if (!request.user?.is_super_admin) {
-            return reply.status(403).send({
+          // Allow any authenticated user to view docs
+          if (!request.user) {
+            return reply.status(401).send({
               success: false,
-              error: 'Forbidden',
-              message: 'Super admin access required to view API documentation',
+              error: 'Unauthorized',
+              message: 'Authentication required to view API documentation',
             });
           }
         } catch (error) {
