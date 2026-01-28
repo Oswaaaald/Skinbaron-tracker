@@ -479,6 +479,9 @@ async function registerRoutes() {
 async function initializeApp() {
   try {
     fastify.log.info('🚀 Initializing SkinBaron Tracker API...');
+    fastify.log.info(`📍 API_BASE_URL: ${appConfig.API_BASE_URL || 'NOT SET'}`);
+    fastify.log.info(`📍 NEXT_PUBLIC_API_URL env: ${process.env['NEXT_PUBLIC_API_URL'] || 'NOT SET'}`);
+    fastify.log.info(`📍 CORS_ORIGIN: ${appConfig.CORS_ORIGIN}`);
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');
