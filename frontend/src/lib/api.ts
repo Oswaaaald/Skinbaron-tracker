@@ -394,38 +394,6 @@ class ApiClient {
     });
   }
 
-  async testRule(id: number, webhookTest: boolean = false, webhookOnly: boolean = false): Promise<ApiResponse<{
-    matches: Array<{
-      saleId: string;
-      itemName: string;
-      price: number;
-      wearValue?: number;
-      imageUrl?: string;
-      [key: string]: unknown;
-    }>;
-    matchCount: number;
-    webhookTest: boolean | null;
-  }>> {
-    return this.request<{
-      matches: Array<{
-        saleId: string;
-        itemName: string;
-        price: number;
-        wearValue?: number;
-        imageUrl?: string;
-        [key: string]: unknown;
-      }>;
-      matchCount: number;
-      webhookTest: boolean | null;
-    }>(`/api/rules/${id}/test`, {
-      method: 'POST',
-      body: JSON.stringify({ 
-        webhook_test: webhookTest,
-        webhook_only: webhookOnly 
-      }),
-    });
-  }
-
   // Alerts endpoints
   async getAlerts(params: {
     limit?: number;
