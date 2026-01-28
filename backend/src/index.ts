@@ -225,15 +225,9 @@ async function registerPlugins() {
         ? appConfig.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
         : [];
       
-      // Always allow API's own domain for Swagger UI
-      const apiDomain = appConfig.API_BASE_URL || 
-        (appConfig.NODE_ENV === 'production' 
-          ? 'https://skinbaron-tracker-api.oswaaaald.be'
-          : 'http://localhost:8080');
-      
       const allowedOrigins = Array.from(new Set([
         appConfig.CORS_ORIGIN,
-        apiDomain, // Allow Swagger UI on same domain
+        appConfig.API_BASE_URL, // Allow API's own domain for Swagger UI
         ...configuredOrigins,
       ])).filter(Boolean);
       

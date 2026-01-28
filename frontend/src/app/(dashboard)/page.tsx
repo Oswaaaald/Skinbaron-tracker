@@ -175,7 +175,7 @@ function DashboardContent() {
     refetchOnWindowFocus: true,
   })
 
-  const isSchedulerRunning = systemStatus?.data?.scheduler.isRunning
+  const isSchedulerRunning = systemStatus?.data?.scheduler?.isRunning ?? false
   const totalRules = userStats?.data?.totalRules || 0
   const enabledRules = userStats?.data?.enabledRules || 0
   const todayAlerts = userStats?.data?.todayAlerts || 0
