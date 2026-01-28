@@ -207,7 +207,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * PUT /webhooks/:id - Update a webhook for the authenticated user
+   * PATCH /webhooks/:id - Update a webhook for the authenticated user
    */
   fastify.patch('/:id', {
     preHandler: [fastify.authenticate],

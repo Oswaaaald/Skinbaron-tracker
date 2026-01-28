@@ -373,9 +373,9 @@ class ApiClient {
     });
   }
 
-  async updateRule(id: number, data: CreateRuleData): Promise<ApiResponse<Rule>> {
+  async updateRule(id: number, data: Partial<CreateRuleData>): Promise<ApiResponse<Rule>> {
     return this.request<Rule>(`/api/rules/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
@@ -544,7 +544,7 @@ class ApiClient {
 
   async updateWebhook(id: number, updates: Partial<Webhook>): Promise<ApiResponse<Webhook>> {
     return this.request<Webhook>(`/api/webhooks/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(updates),
     });
   }
@@ -593,7 +593,7 @@ class ApiClient {
     email: string;
   }>> {
     return this.request('/api/auth/profile', {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(updates),
     });
   }
