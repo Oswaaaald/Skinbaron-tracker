@@ -129,7 +129,7 @@ async function registerPlugins() {
       },
       servers: [
         {
-          url: `${appConfig.API_BASE_URL || 'http://localhost:8080'}/api`,
+          url: `${appConfig.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api`,
           description: appConfig.NODE_ENV === 'production' ? 'Production' : 'Development',
         },
       ],
@@ -222,7 +222,7 @@ async function registerPlugins() {
         : [];
       
       // Auto-detect server's own URL for Swagger UI access
-      const serverOrigin = appConfig.API_BASE_URL || `http://localhost:${appConfig.PORT}`;
+      const serverOrigin = appConfig.NEXT_PUBLIC_API_URL || `http://localhost:${appConfig.PORT}`;
       
       // Build allowed origins list
       const allowedOrigins = Array.from(new Set([
@@ -479,9 +479,6 @@ async function registerRoutes() {
 async function initializeApp() {
   try {
     fastify.log.info('🚀 Initializing SkinBaron Tracker API...');
-    fastify.log.info(`📍 API_BASE_URL: ${appConfig.API_BASE_URL || 'NOT SET'}`);
-    fastify.log.info(`📍 NEXT_PUBLIC_API_URL env: ${process.env['NEXT_PUBLIC_API_URL'] || 'NOT SET'}`);
-    fastify.log.info(`📍 CORS_ORIGIN: ${appConfig.CORS_ORIGIN}`);
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');

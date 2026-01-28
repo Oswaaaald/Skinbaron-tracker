@@ -4,11 +4,6 @@ import { z } from 'zod';
 // Load environment variables
 config();
 
-// Fallback: use NEXT_PUBLIC_API_URL if API_BASE_URL is not set
-if (!process.env['API_BASE_URL'] && process.env['NEXT_PUBLIC_API_URL']) {
-  process.env['API_BASE_URL'] = process.env['NEXT_PUBLIC_API_URL'];
-}
-
 // Configuration schema with validation
 const ConfigSchema = z.object({
   // Server
@@ -37,7 +32,7 @@ const ConfigSchema = z.object({
   POLL_CRON: z.string().default('*/5 * * * *'),
   
   // API
-  API_BASE_URL: z.string().optional(),
+  NEXT_PUBLIC_API_URL: z.string().optional(),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   CORS_ORIGINS: z.string().optional(),
   RATE_LIMIT_MAX: z.coerce.number().default(1000),
