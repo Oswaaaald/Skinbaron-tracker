@@ -2,7 +2,11 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth-cookies'
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:8080'
+if (!process.env['NEXT_PUBLIC_API_URL']) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+}
+
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL']
 
 function decodeExpiry(token: string | undefined): number | null {
   if (!token) return null

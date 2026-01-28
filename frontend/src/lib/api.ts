@@ -2,7 +2,11 @@
 
 import { logger } from './logger';
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:8080';
+if (!process.env['NEXT_PUBLIC_API_URL']) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+}
+
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'];
 
 export class ApiError extends Error {
   status: number;
