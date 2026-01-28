@@ -127,6 +127,7 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
         if (data.reason === "unknown_email") return "Failed: unknown email";
         if (data.reason === "invalid_password") return "Failed: invalid password";
         if (data.reason === "invalid_2fa_code") return "Failed: 2FA code";
+        if (data.reason === "invalid_2fa_backup_code") return "Failed: 2FA backup code";
         return `Failed: ${data.reason}`;
       
       case "2fa_enabled":

@@ -329,10 +329,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           if (codeIndex === -1) {
             // Audit log for failed 2FA
+            const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
             store.createAuditLog(
               user.id!,
               'login_failed',
-              JSON.stringify({ reason: 'invalid_2fa_code' }),
+              JSON.stringify({ reason }),
               getClientIp(request),
               request.headers['user-agent']
             );
