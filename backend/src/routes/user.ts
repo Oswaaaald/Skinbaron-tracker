@@ -204,25 +204,28 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Update user profile
-      const changedFields = Object.keys(updates);
       store.updateUser(userId, updates);
       
-      // Audit log for profile update
-      const eventType = updates.email ? 'email_changed' : 
-                        updates.username ? 'username_changed' : 
-                        'profile_updated';
+      // Audit log for profile update - create separate logs for email and username changes
+      if (updates.email) {
+        store.createAuditLog(
+          userId,
+          'email_changed',
+          JSON.stringify({ new_email: updates.email }),
+          getClientIp(request),
+          request.headers['user-agent']
+        );
+      }
       
-      store.createAuditLog(
-        userId,
-        eventType,
-        JSON.stringify({ 
-          fields: changedFields, 
-          new_email: updates.email,
-          new_username: updates.username 
-        }),
-        getClientIp(request),
-        request.headers['user-agent']
-      );
+      if (updates.username) {
+        store.createAuditLog(
+          userId,
+          'username_changed',
+          JSON.stringify({ new_username: updates.username }),
+          getClientIp(request),
+          request.headers['user-agent']
+        );
+      }
       
       // Get updated user data
       const updatedUser = store.getUserById(userId);
