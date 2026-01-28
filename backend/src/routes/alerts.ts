@@ -12,10 +12,6 @@ const AlertsQuerySchema = z.object({
   alert_type: z.enum(['match', 'best_deal', 'new_item']).optional(),
 });
 
-const AlertParamsSchema = z.object({
-  id: z.string().transform(val => parseInt(val, 10)),
-});
-
 // Route handlers
 const alertsRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -105,71 +101,6 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Failed to get alerts');
-    }
-  });
-
-  /**
-   * GET /alerts/:id - Get a specific alert (user-owned only)
-   */
-  fastify.get('/:id', {
-    preHandler: [fastify.authenticate],
-    schema: {
-      description: 'Get a specific alert by ID',
-      tags: ['Alerts'],
-      security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-        },
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number' },
-                rule_id: { type: 'number' },
-                sale_id: { type: 'string' },
-                item_name: { type: 'string' },
-                price: { type: 'number' },
-                wear_value: { type: 'number', nullable: true },
-                stattrak: { type: 'boolean' },
-                souvenir: { type: 'boolean' },
-                skin_url: { type: 'string' },
-                alert_type: { type: 'string' },
-                sent_at: { type: 'string' },
-              },
-            },
-          },
-        },
-        404: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            error: { type: 'string' },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      const { id } = validateWithZod(AlertParamsSchema, request.params, 'alert params');
-      const alert = store.getAlertByIdForUser(id, request.user!.id);
-      
-      if (!alert) {
-        throw new AppError(404, 'Alert not found', 'NOT_FOUND');
-      }
-      
-      return reply.status(200).send({
-        success: true,
-        data: alert,
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get alert');
     }
   });
 

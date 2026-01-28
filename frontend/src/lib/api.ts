@@ -349,10 +349,6 @@ class ApiClient {
     return this.request<Rule[]>('/api/rules');
   }
 
-  async getRule(id: number): Promise<ApiResponse<Rule>> {
-    return this.request<Rule>(`/api/rules/${id}`);
-  }
-
   async createRule(rule: CreateRuleData): Promise<ApiResponse<Rule>> {
     return this.request<Rule>('/api/rules', {
       method: 'POST',
@@ -412,10 +408,6 @@ class ApiClient {
     return this.request<Alert[]>(endpoint) as Promise<PaginatedResponse<Alert>>;
   }
 
-  async getAlert(id: number): Promise<ApiResponse<Alert>> {
-    return this.request<Alert>(`/api/alerts/${id}`);
-  }
-
   async getAlertStats(): Promise<ApiResponse<{
     totalRules: number;
     enabledRules: number;
@@ -457,11 +449,6 @@ class ApiClient {
   async getWebhooks(decrypt: boolean = false): Promise<ApiResponse<Webhook[]>> {
     const query = decrypt ? '?decrypt=true' : '';
     return this.request<Webhook[]>(`/api/webhooks${query}`);
-  }
-
-  async getWebhook(id: number, decrypt: boolean = false): Promise<ApiResponse<Webhook>> {
-    const query = decrypt ? '?decrypt=true' : '';
-    return this.request<Webhook>(`/api/webhooks/${id}${query}`);
   }
 
   async createWebhook(webhook: Omit<Webhook, 'id' | 'user_id' | 'created_at' | 'updated_at'> & { webhook_url: string }): Promise<ApiResponse<Webhook>> {
