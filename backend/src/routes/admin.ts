@@ -312,12 +312,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   /**
-   * GET /api/admin/logs - Get admin action logs (super admin only)
+   * GET /api/admin/logs - Get admin action logs (admin only)
    */
   fastify.get('/logs', {
-    preHandler: [fastify.authenticate, fastify.requireSuperAdmin],
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
-      description: 'Get admin action logs showing what admins have done (approvals, rejections, deletions, force runs, etc.) - Super Admin only',
+      description: 'Get admin action logs showing what admins have done (approvals, rejections, deletions, force runs, etc.) - Admin only',
       tags: ['Admin'],
       security: [{ bearerAuth: [] }],
       querystring: {

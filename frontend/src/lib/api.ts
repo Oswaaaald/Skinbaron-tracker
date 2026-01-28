@@ -685,6 +685,20 @@ class ApiClient {
     return this.get(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
   }
 
+  // Get admin action logs (admin only)
+  async getAdminLogs(limit: number = 50): Promise<ApiResponse<Array<{
+    id: number;
+    admin_user_id: number;
+    admin_username: string | null;
+    action: string;
+    target_user_id: number | null;
+    target_username: string | null;
+    details: string | null;
+    created_at: string;
+  }>>> {
+    return this.get(`/api/admin/logs?limit=${limit}`);
+  }
+
   // Get all audit logs (super admin only)
   async getAllAuditLogs(params?: {
     limit?: number;
