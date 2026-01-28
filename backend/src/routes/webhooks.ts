@@ -209,10 +209,10 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * PUT /webhooks/:id - Update a webhook for the authenticated user
    */
-  fastify.put('/:id', {
+  fastify.patch('/:id', {
     preHandler: [fastify.authenticate],
     schema: {
-      description: 'Update a webhook for the authenticated user',
+      description: 'Update a webhook for the authenticated user (partial update)',
       tags: ['Webhooks'],
       security: [{ bearerAuth: [] }],
       params: {
