@@ -370,17 +370,17 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={isLoading || totpCode.length < 6}
+                  disabled={isLoading || totpCode.length === 7 || totpCode.length < 6}
                 >
                   {isLoading ? (
                     <>
-                      <LoadingSpinner className="mr-2 h-4 w-4" />
-                      Verifying...
+                      <LoadingSpinner size="sm" inline />
+                      <span className="ml-2">Verifying...</span>
                     </>
                   ) : (
                     <>
                       <Shield className="mr-2 h-4 w-4" />
-                      Verify Code
+                      {totpCode.length === 8 ? 'Verify Backup Code' : 'Verify Code'}
                     </>
                   )}
                 </Button>
