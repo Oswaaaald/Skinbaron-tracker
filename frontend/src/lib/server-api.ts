@@ -2,11 +2,14 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth-cookies'
 
-if (!process.env['NEXT_PUBLIC_API_URL']) {
-  throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-}
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || ''
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL']
+function getApiBaseUrl(): string {
+  if (!API_BASE_URL) {
+    throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+  }
+  return API_BASE_URL;
+}
 
 function decodeExpiry(token: string | undefined): number | null {
   if (!token) return null
@@ -29,7 +32,7 @@ async function fetchWithAuth(path: string, init: RequestInit = {}) {
     const headers = new Headers(init.headers as HeadersInit)
     if (token) headers.set('Authorization', `Bearer ${token}`)
 
-    return fetch(`${API_BASE_URL}${path}`, {
+    return fetch(`${getApiBaseUrl()}${path}`, {
       ...init,
       headers,
       cache: 'no-store',

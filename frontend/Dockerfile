@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.npm \
 
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL=https://skinbaron-tracker-api.oswaaaald.be
+ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_BUILD_TURBO=1

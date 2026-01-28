@@ -2,11 +2,7 @@
 
 import { logger } from './logger';
 
-if (!process.env['NEXT_PUBLIC_API_URL']) {
-  throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
-}
-
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'];
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || '';
 
 export class ApiError extends Error {
   status: number;
@@ -147,6 +143,9 @@ class ApiClient {
   private hasCalledLogout: boolean = false;
 
   constructor(baseURL: string = API_BASE_URL) {
+    if (!baseURL) {
+      throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+    }
     this.baseURL = baseURL;
   }
 
