@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DISCORD_COLORS, appConfig } from './config.js';
-import type { Rule } from './store.js';
+import type { Rule } from '../database/schemas.js';
 import type { SkinBaronItem } from './sbclient.js';
 
 // Discord Webhook Schemas
