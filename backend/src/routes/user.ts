@@ -211,7 +211,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
       store.createAuditLog(
         userId,
         updates.email ? 'email_changed' : 'profile_updated',
-        JSON.stringify({ fields: changedFields, new_email: updates.email }),
+        JSON.stringify({ 
+          fields: changedFields, 
+          new_email: updates.email,
+          new_username: updates.username 
+        }),
         getClientIp(request),
         request.headers['user-agent']
       );
