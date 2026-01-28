@@ -73,17 +73,21 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         const me = await apiClient.getUserProfile({ allowRefresh: true })
         if (me.success && me.data) {
           setUser(me.data as User)
+          // Refresh the session flag on success
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('has_session', 'true')
+          }
         } else {
           setUser(null)
-          // Clear the flag if profile fetch failed
-          localStorage.removeItem('has_session')
+          // Only clear the flag on explicit auth errors, not network errors
+          if (typeof window !== 'undefined' && (me.error === 'Unauthorized' || me.error === 'Invalid token')) {
+            localStorage.removeItem('has_session')
+          }
         }
-      } catch (_err) {
+      } catch (err) {
         setUser(null)
-        // Clear the flag on error
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('has_session')
-        }
+        // Don't clear the flag on network errors - keep it for next reload
+        logger.error('Session load error:', err)
       } finally {
         setIsLoading(false)
         setIsReady(true)
