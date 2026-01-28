@@ -340,8 +340,8 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 >
                   {isLoading ? (
                     <>
-                      <LoadingSpinner className="mr-2 h-4 w-4" />
-                      {isLogin ? 'Signing In...' : 'Creating Account...'}
+                      <LoadingSpinner size="sm" inline />
+                      <span className="ml-2">{isLogin ? 'Signing In...' : 'Creating Account...'}</span>
                     </>
                   ) : (
                     isLogin ? 'Sign In' : 'Create Account'

@@ -353,9 +353,11 @@ export function WebhooksTable() {
                 disabled={createWebhookMutation.isPending || updateWebhookMutation.isPending}
               >
                 {(createWebhookMutation.isPending || updateWebhookMutation.isPending) && (
-                  <LoadingSpinner className="mr-2 h-4 w-4" />
+                  <LoadingSpinner size="sm" inline />
                 )}
-                {editingWebhook ? 'Update' : 'Create'}
+                <span className={createWebhookMutation.isPending || updateWebhookMutation.isPending ? 'ml-2' : ''}>
+                  {editingWebhook ? 'Update' : 'Create'}
+                </span>
               </Button>
             </DialogFooter>
           </form>

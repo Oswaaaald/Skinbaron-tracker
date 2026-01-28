@@ -647,8 +647,8 @@ export function ProfileSettings() {
               >
                 {disableTwoFactorMutation.isPending ? (
                   <>
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    Disabling...
+                    <LoadingSpinner size="sm" inline />
+                    <span className="ml-2">Disabling...</span>
                   </>
                 ) : (
                   'Disable 2FA'
@@ -709,8 +709,8 @@ export function ProfileSettings() {
             >
               {deleteAccountMutation.isPending ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Deleting...
+                  <LoadingSpinner size="sm" inline />
+                  <span className="ml-2">Deleting...</span>
                 </>
               ) : (
                 'Delete My Account'
