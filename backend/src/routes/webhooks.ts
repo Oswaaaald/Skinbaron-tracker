@@ -190,8 +190,12 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       const { decrypt } = validateWithZod(WebhookQuerySchema, request.query, 'webhook query');
       const webhook = store.getUserWebhookById(id, decrypt);
       
-      if (!webhook || webhook.user_id !== request.user!.id) {
+      if (!webhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
+      }
+
+      if (webhook.user_id !== request.user!.id) {
+        throw new AppError(403, 'You can only access your own webhooks', 'ACCESS_DENIED');
       }
       
       // Remove encrypted field from response
@@ -262,6 +266,16 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const { id } = validateWithZod(WebhookParamsSchema, request.params, 'webhook params');
       const updates = validateWithZod(CreateUserWebhookSchema.partial(), request.body, 'webhook update');
+      
+      // Check if webhook exists and user owns it
+      const existingWebhook = store.getUserWebhookById(id);
+      if (!existingWebhook) {
+        throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
+      }
+
+      if (existingWebhook.user_id !== request.user!.id) {
+        throw new AppError(403, 'You can only update your own webhooks', 'ACCESS_DENIED');
+      }
       
       const webhook = store.updateUserWebhook(id, request.user!.id, updates);
       

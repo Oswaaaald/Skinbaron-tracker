@@ -49,11 +49,6 @@ export class WebhooksRepository {
   }
 
   update(id: number, userId: number, updates: Partial<CreateUserWebhook>): UserWebhook | null {
-    const currentWebhook = this.findById(id);
-    if (!currentWebhook || currentWebhook.user_id !== userId) {
-      return null;
-    }
-
     const validatedUpdates = CreateUserWebhookSchema.partial().parse(updates);
     
     const fields: string[] = [];
@@ -80,15 +75,19 @@ export class WebhooksRepository {
     }
 
     if (fields.length === 0) {
-      return currentWebhook;
+      return this.findById(id);
     }
 
     fields.push('updated_at = CURRENT_TIMESTAMP');
     const setClause = fields.join(', ');
     
-    const stmt = this.db.prepare(`UPDATE user_webhooks SET ${setClause} WHERE id = ?`);
-    stmt.run(...values, id);
-
+    const stmt = this.db.prepare(`UPDATE user_webhooks SET ${setClause} WHERE id = ? AND user_id = ?`);
+    const result = stmt.run(...values, id, userId);
+    
+    if (result.changes === 0) {
+      return null;
+    }
+    
     return this.findById(id)!;
   }
 
