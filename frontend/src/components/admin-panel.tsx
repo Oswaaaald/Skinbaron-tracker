@@ -703,7 +703,7 @@ export function AdminPanel() {
       />
 
       {/* Super Admin Audit Logs Section */}
-      {currentUser?.is_super_admin && <AdminAuditLogs />}
+      {currentUser?.is_admin && <AdminAuditLogs />}
     </div>
   )
 }

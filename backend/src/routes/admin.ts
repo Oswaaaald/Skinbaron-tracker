@@ -312,60 +312,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   /**
-   * GET /api/admin/logs - Get admin action logs (admin only)
-   */
-  fastify.get('/logs', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
-    schema: {
-      description: 'Get admin action logs showing what admins have done (approvals, rejections, deletions, force runs, etc.) - Admin only',
-      tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
-      querystring: {
-        type: 'object',
-        properties: {
-          limit: { type: 'number', default: 50, maximum: 500 },
-        },
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number' },
-                  admin_user_id: { type: 'number' },
-                  admin_username: { type: 'string', nullable: true },
-                  action: { type: 'string' },
-                  target_user_id: { type: 'number', nullable: true },
-                  target_username: { type: 'string', nullable: true },
-                  details: { type: 'string', nullable: true },
-                  created_at: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      const { limit = 50 } = request.query as { limit?: number };
-      const logs = store.getAdminLogs(limit);
-
-      return reply.status(200).send({
-        success: true,
-        data: logs,
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get admin logs');
-    }
-  });
-
-  /**
    * GET /api/admin/pending-users - Get users pending approval (admin only)
    */
   fastify.get('/pending-users', {
@@ -636,12 +582,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   /**
-   * GET /api/admin/audit-logs - Get all audit logs (super admin only)
+   * GET /api/admin/audit-logs - Get all audit logs (admin only)
    */
   fastify.get('/audit-logs', {
-    preHandler: [fastify.authenticate, fastify.requireSuperAdmin],
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
-      description: 'Get all security audit logs (super admin only)',
+      description: 'Get all security audit logs (admin only)',
       tags: ['Admin'],
       security: [{ bearerAuth: [] }],
       querystring: {
