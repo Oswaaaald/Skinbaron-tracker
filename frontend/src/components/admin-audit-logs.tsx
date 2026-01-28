@@ -144,8 +144,8 @@ function formatEventData(eventType: string, eventDataJson: string | null): strin
       case "email_changed":
         return `New email: ${data.new_email}`;
       
-      case "profile_updated":
-        return data.fields?.join(', ') ? `Updated: ${data.fields.join(', ')}` : "";
+      case "username_changed":
+        return `New username: ${data.new_username}`;
       
       case "password_changed":
         return "Password successfully changed";
