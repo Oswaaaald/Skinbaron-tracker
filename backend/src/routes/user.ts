@@ -208,9 +208,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
       store.updateUser(userId, updates);
       
       // Audit log for profile update
+      const eventType = updates.email ? 'email_changed' : 
+                        updates.username ? 'username_changed' : 
+                        'profile_updated';
+      
       store.createAuditLog(
         userId,
-        updates.email ? 'email_changed' : 'profile_updated',
+        eventType,
         JSON.stringify({ 
           fields: changedFields, 
           new_email: updates.email,
