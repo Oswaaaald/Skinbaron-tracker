@@ -177,19 +177,35 @@ async function registerPlugins() {
         return swaggerObject;
       }
       
-      // Non-admins: hide admin-only routes
+      // Non-admins: hide admin-only routes and system status
       const filteredPaths: Record<string, any> = {};
+      const usedTags = new Set<string>();
+      
       for (const [path, methods] of Object.entries(swaggerObject['paths'] || {})) {
-        // Hide /admin/* routes for non-admins
-        if (path.startsWith('/admin/')) {
+        // Hide /admin/* and /system/* routes for non-admins
+        if (path.startsWith('/admin/') || path.startsWith('/api/system/')) {
           continue;
         }
         filteredPaths[path] = methods;
+        
+        // Track which tags are actually used
+        const methodsObj = methods as Record<string, any>;
+        for (const method of Object.values(methodsObj)) {
+          if (method && typeof method === 'object' && method.tags) {
+            method.tags.forEach((tag: string) => usedTags.add(tag));
+          }
+        }
       }
+      
+      // Filter tags to only show those with visible routes
+      const filteredTags = (swaggerObject['tags'] || []).filter((tag: any) => 
+        usedTags.has(tag.name)
+      );
       
       return {
         ...swaggerObject,
         paths: filteredPaths,
+        tags: filteredTags,
       };
     },
     uiHooks: {
@@ -434,9 +450,19 @@ async function setupSystemStatus() {
     schema: {
       description: 'Get system status including scheduler and health information',
       tags: ['System'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       // Note: No response schema to allow dynamic nested object structure
     },
+    preHandler: fastify.authenticate,
   }, async (request, reply) => {
+    // Require admin access
+    if (!request.user?.is_admin && !request.user?.is_super_admin) {
+      return reply.status(403).send({
+        success: false,
+        error: 'Forbidden',
+        message: 'Admin access required',
+      });
+    }
     try {
       const snapshot = await buildSystemSnapshot();
       fastify.log.info({ snapshot }, 'System status snapshot');

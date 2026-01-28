@@ -2,12 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import Link from "next/link"
 import { 
-  Activity, 
   Bell, 
   Settings,
   ArrowRight,
@@ -157,15 +155,6 @@ function DashboardContent() {
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
-  const { data: systemStatus } = useQuery({
-    queryKey: ['system-status'],
-    queryFn: async () => apiClient.ensureSuccess(await apiClient.getSystemStatus(), 'Failed to load system status'),
-    enabled: isReady && isAuthenticated && isVisible,
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: isVisible ? 5 * 60 * 1000 : false,
-    refetchOnWindowFocus: true,
-  })
-
   const { data: userStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['user-stats'],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserStats(), 'Failed to load user stats'),
@@ -175,7 +164,6 @@ function DashboardContent() {
     refetchOnWindowFocus: true,
   })
 
-  const isSchedulerRunning = systemStatus?.data?.scheduler?.isRunning ?? false
   const totalRules = userStats?.data?.totalRules || 0
   const enabledRules = userStats?.data?.enabledRules || 0
   const todayAlerts = userStats?.data?.todayAlerts || 0
@@ -198,22 +186,7 @@ function DashboardContent() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <Badge variant={isSchedulerRunning ? "default" : "secondary"}>
-              {isSchedulerRunning ? "Active" : "Inactive"}
-            </Badge>
-            <p className="text-xs text-muted-foreground mt-2">
-              {isSchedulerRunning ? "Monitoring active" : "Monitoring paused"}
-            </p>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Rules</CardTitle>
