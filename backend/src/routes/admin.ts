@@ -288,15 +288,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       description: 'Get global statistics (admin only)',
       tags: ['Admin'],
       security: [{ bearerAuth: [] }],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: { type: 'object' },
-          },
-        },
-      },
+      // Note: No response schema to allow dynamic nested object structure
     },
   }, async (request, reply) => {
     try {
