@@ -97,12 +97,6 @@ export class WebhooksRepository {
     return result.changes > 0;
   }
 
-  deleteByUserId(userId: number): number {
-    const stmt = this.db.prepare('DELETE FROM user_webhooks WHERE user_id = ?');
-    const result = stmt.run(userId);
-    return result.changes;
-  }
-
   // Batch operations
   enableBatch(webhookIds: number[], userId: number): number {
     if (webhookIds.length === 0) return 0;
@@ -126,11 +120,5 @@ export class WebhooksRepository {
     const stmt = this.db.prepare(`DELETE FROM user_webhooks WHERE id IN (${placeholders}) AND user_id = ?`);
     const result = stmt.run(...webhookIds, userId);
     return result.changes;
-  }
-
-  countByUserId(userId: number): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM user_webhooks WHERE user_id = ?');
-    const result = stmt.get(userId) as { count: number };
-    return result.count;
   }
 }

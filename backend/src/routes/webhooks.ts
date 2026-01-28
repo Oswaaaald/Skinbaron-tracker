@@ -357,59 +357,6 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * GET /webhooks/active - Get all active webhooks for the authenticated user (with decrypted URLs)
-   */
-  fastify.get('/active', {
-    preHandler: [fastify.authenticate],
-    schema: {
-      description: 'Get all active webhooks for the authenticated user with decrypted URLs',
-      tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number' },
-                  user_id: { type: 'number' },
-                  name: { type: 'string' },
-                  webhook_url: { type: 'string' },
-                  webhook_type: { type: 'string' },
-                  is_active: { type: 'boolean' },
-                  created_at: { type: 'string' },
-                  updated_at: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      const webhooks = store.getUserActiveWebhooks(request.user!.id);
-      
-      // Remove encrypted field from response
-      const safeWebhooks = webhooks.map(webhook => {
-        const { webhook_url_encrypted, ...safe } = webhook;
-        return safe;
-      });
-      
-      return reply.status(200).send({
-        success: true,
-        data: safeWebhooks,
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'active webhook retrieval');
-    }
-  });
-
-  /**
    * POST /webhooks/batch/enable - Enable multiple or all webhooks
    */
   fastify.post('/batch/enable', {

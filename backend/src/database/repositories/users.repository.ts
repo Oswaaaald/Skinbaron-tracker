@@ -158,12 +158,6 @@ export class UsersRepository {
     return result.count;
   }
 
-  countPendingApproval(): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_approved = 0');
-    const result = stmt.get() as { count: number };
-    return result.count;
-  }
-
   findPendingApproval(limit: number = 50, offset: number = 0): User[] {
     const stmt = this.db.prepare(`
       SELECT * FROM users 

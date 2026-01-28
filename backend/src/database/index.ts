@@ -22,7 +22,6 @@ export class Store {
   // Rules
   createRule = this.rules.create.bind(this.rules);
   getRuleById = this.rules.findById.bind(this.rules);
-  getAllRules = this.rules.findAll.bind(this.rules);
   getRulesByUserId = this.rules.findByUserId.bind(this.rules);
   getEnabledRules = this.rules.findEnabled.bind(this.rules);
   updateRule = this.rules.update.bind(this.rules);
@@ -35,7 +34,6 @@ export class Store {
   createAlert = this.alerts.create.bind(this.alerts);
   createAlertsBatch = this.alerts.createBatch.bind(this.alerts);
   getAlertById = this.alerts.findById.bind(this.alerts);
-  getAlerts = this.alerts.findAll.bind(this.alerts);
   getAlertsBySaleId = this.alerts.findBySaleId.bind(this.alerts);
   getAlertsByUserId = this.alerts.findByUserId.bind(this.alerts);
   getAlertByIdForUser = this.alerts.findByIdForUser.bind(this.alerts);

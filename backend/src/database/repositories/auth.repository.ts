@@ -88,11 +88,4 @@ export class AuthRepository {
     const row = stmt.get(jti) as { 1: number } | undefined;
     return Boolean(row);
   }
-
-  cleanupBlacklistedTokens(): void {
-    const stmt = this.db.prepare(`
-      DELETE FROM access_token_blacklist WHERE expires_at < CURRENT_TIMESTAMP
-    `);
-    stmt.run();
-  }
 }

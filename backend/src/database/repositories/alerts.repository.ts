@@ -148,35 +148,4 @@ export class AlertsRepository {
     const result = stmt.run(userId);
     return result.changes;
   }
-
-  countByUserId(userId: number): number {
-    const stmt = this.db.prepare(`
-      SELECT COUNT(*) as count FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ?
-    `);
-    const result = stmt.get(userId) as { count: number };
-    return result.count;
-  }
-
-  countByRuleId(ruleId: number): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM alerts WHERE rule_id = ?');
-    const result = stmt.get(ruleId) as { count: number };
-    return result.count;
-  }
-
-  getRecentStats(days: number = 7): { total: number; by_type: Record<string, number> } {
-    const stmt = this.db.prepare(`
-      SELECT alert_type, COUNT(*) as count 
-      FROM alerts 
-      WHERE sent_at > datetime('now', '-' || ? || ' days')
-      GROUP BY alert_type
-    `);
-    const rows = stmt.all(days) as Array<{ alert_type: string; count: number }>;
-    
-    const total = rows.reduce((sum, row) => sum + row.count, 0);
-    const by_type = Object.fromEntries(rows.map(r => [r.alert_type, r.count]));
-    
-    return { total, by_type };
-  }
 }
