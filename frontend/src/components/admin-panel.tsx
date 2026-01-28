@@ -626,7 +626,7 @@ export function AdminPanel() {
               Cancel
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleteUserMutation.isPending}>
-              {deleteUserMutation.isPending ? <LoadingSpinner size="sm" /> : 'Delete User'}
+              {deleteUserMutation.isPending ? <LoadingSpinner size="sm" inline /> : 'Delete User'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -649,7 +649,7 @@ export function AdminPanel() {
               Cancel
             </Button>
             <Button onClick={confirmToggleAdmin} disabled={toggleAdminMutation.isPending}>
-              {toggleAdminMutation.isPending ? <LoadingSpinner size="sm" /> : 'Confirm'}
+              {toggleAdminMutation.isPending ? <LoadingSpinner size="sm" inline /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -685,7 +685,7 @@ export function AdminPanel() {
               }}
               disabled={approveUserMutation.isPending || rejectUserMutation.isPending}
             >
-              {(approveUserMutation.isPending || rejectUserMutation.isPending) ? <LoadingSpinner size="sm" /> : 'Confirm'}
+              {(approveUserMutation.isPending || rejectUserMutation.isPending) ? <LoadingSpinner size="sm" inline /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>
