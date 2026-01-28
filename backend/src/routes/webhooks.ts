@@ -25,6 +25,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Create a new webhook for the authenticated user',
       tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -81,6 +82,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get all webhooks for the authenticated user',
       tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
@@ -140,6 +142,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get a specific webhook for the authenticated user',
       tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -211,6 +214,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Update a webhook for the authenticated user',
       tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -281,6 +285,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Delete a webhook for the authenticated user',
       tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -330,6 +335,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get all active webhooks for the authenticated user with decrypted URLs',
       tags: ['Webhooks'],
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',

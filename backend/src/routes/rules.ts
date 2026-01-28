@@ -2,8 +2,6 @@ import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { RuleSchema } from '../database/schemas.js';
-import { getScheduler } from '../lib/scheduler.js';
-import { getNotificationService } from '../lib/notifier.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
@@ -32,15 +30,8 @@ const RuleParamsSchema = z.object({
   id: z.string().transform(val => parseInt(val, 10)),
 });
 
-const TestRuleRequestSchema = z.object({
-  webhook_test: z.boolean().optional().default(false),
-  webhook_only: z.boolean().optional().default(false),
-});
-
 // Route handlers
 const rulesRoutes: FastifyPluginAsync = async (fastify) => {
-  const scheduler = getScheduler();
-  const notificationService = getNotificationService();
 
   /**
    * GET /rules - Get all rules for authenticated user
@@ -405,8 +396,8 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete a rule (user-owned)',
-      security: [{ bearerAuth: [] }],
       tags: ['Rules'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -458,107 +449,6 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Delete rule');
-    }
-  });
-
-  /**
-   * POST /rules/:id/test - Test a rule
-   */
-  fastify.post('/:id/test', {
-    schema: {
-      description: 'Test a rule without creating alerts',
-      tags: ['Rules'],
-      params: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-        },
-      },
-      body: {
-        type: 'object',
-        properties: {
-          webhook_test: { type: 'boolean', default: false },
-          webhook_only: { type: 'boolean', default: false },
-        },
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                matches: { type: 'array' },
-                matchCount: { type: 'number' },
-                webhookTest: { type: 'boolean' },
-              },
-            },
-          },
-        },
-        404: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            error: { type: 'string' },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
-      const { webhook_test, webhook_only } = validateWithZod(TestRuleRequestSchema, request.body, 'Test rule');
-      
-      const rule = store.getRuleById(id);
-      if (!rule) {
-        throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
-      }
-      
-      let matches: unknown[] = [];
-      let webhookTestResult: boolean | null = null;
-      
-      if (webhook_only) {
-        // Only test webhooks, skip SkinBaron API
-        request.log.info(`Testing webhooks only for rule ${id}`);
-        
-        const webhooks = store.getRuleWebhooksForNotification(rule.id!);
-        if (webhooks.length > 0) {
-          const testResults = await Promise.all(
-            webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
-          );
-          webhookTestResult = testResults.every(result => result); // All must pass
-        }
-        
-        // Return empty matches array for webhook-only test
-        matches = [];
-      } else {
-        // Normal test: test rule first, then optionally webhooks
-        matches = await scheduler.testRule(rule);
-        
-        if (webhook_test) {
-          const webhooks = store.getRuleWebhooksForNotification(rule.id!);
-          if (webhooks.length > 0) {
-            const testResults = await Promise.all(
-              webhooks.map(webhook => notificationService.testWebhook(webhook.webhook_url!))
-            );
-            webhookTestResult = testResults.every(result => result); // All must pass
-          }
-        }
-      }
-      
-      request.log.info(`Tested rule ${id}: ${matches.length} matches found`);
-      
-      return reply.status(200).send({
-        success: true,
-        data: {
-          matches,
-          matchCount: matches.length,
-          webhookTest: webhookTestResult,
-        },
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'Test rule');
     }
   });
 

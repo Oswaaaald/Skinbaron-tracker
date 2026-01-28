@@ -27,6 +27,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get user alerts with pagination and filtering',
       tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
@@ -115,6 +116,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get a specific alert by ID',
       tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -180,6 +182,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get user alert statistics',
       tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -235,6 +238,11 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/cleanup', {
     preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Cleanup user\'s old alerts (older than 7 days)',
+      tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
+    },
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
@@ -259,6 +267,11 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
    */
   fastify.post('/clear-all', {
     preHandler: [fastify.authenticate],
+    schema: {
+      description: 'Delete all user alerts',
+      tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
+    },
   }, async (request, reply) => {
     try {
       const userId = request.user!.id;
@@ -286,6 +299,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get user alerts from the last 24 hours',
       tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
@@ -357,6 +371,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get all alerts for a specific user rule',
       tags: ['Alerts'],
+      security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
         properties: {

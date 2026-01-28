@@ -129,9 +129,11 @@ async function registerPlugins() {
       },
       servers: [
         {
-          url: appConfig.NODE_ENV === 'production' 
-            ? 'https://api.skinbaron-tracker.com'
-            : 'http://localhost:8080',
+          url: appConfig.API_BASE_URL 
+            ? `${appConfig.API_BASE_URL}/api`
+            : (appConfig.NODE_ENV === 'production' 
+              ? 'https://skinbaron-tracker-api.oswaaaald.be/api'
+              : 'http://localhost:8080/api'),
           description: appConfig.NODE_ENV === 'production' ? 'Production' : 'Development',
         },
       ],
