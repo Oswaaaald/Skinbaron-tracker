@@ -8,68 +8,6 @@ import { AppError } from '../lib/errors.js';
 import { OTP } from 'otplib';
 import crypto from 'crypto';
 
-// 2FA attempt tracking
-type TwoFAAttempt = {
-  attempts: number;
-  lockedUntil?: number;
-};
-
-const twoFAAttempts = new Map<number, TwoFAAttempt>();
-const MAX_2FA_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-
-function record2FAFailure(userId: number): boolean {
-  const now = Date.now();
-  const record = twoFAAttempts.get(userId);
-  
-  if (record?.lockedUntil && record.lockedUntil > now) {
-    return false; // Still locked
-  }
-  
-  const attempts = (record?.attempts || 0) + 1;
-  
-  if (attempts >= MAX_2FA_ATTEMPTS) {
-    twoFAAttempts.set(userId, {
-      attempts,
-      lockedUntil: now + LOCKOUT_DURATION_MS
-    });
-    return false; // Now locked
-  }
-  
-  twoFAAttempts.set(userId, { attempts });
-  return true; // Not locked yet
-}
-
-function reset2FAAttempts(userId: number): void {
-  twoFAAttempts.delete(userId);
-}
-
-function is2FALocked(userId: number): { locked: boolean; remainingTime?: number } {
-  const record = twoFAAttempts.get(userId);
-  if (!record?.lockedUntil) return { locked: false };
-  
-  const now = Date.now();
-  if (record.lockedUntil <= now) {
-    twoFAAttempts.delete(userId);
-    return { locked: false };
-  }
-  
-  return {
-    locked: true,
-    remainingTime: Math.ceil((record.lockedUntil - now) / 1000)
-  };
-}
-
-// Cleanup expired locks every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [userId, record] of twoFAAttempts.entries()) {
-    if (record.lockedUntil && record.lockedUntil <= now) {
-      twoFAAttempts.delete(userId);
-    }
-  }
-}, 5 * 60 * 1000);
-
 // Extend FastifyInstance type
 declare module 'fastify' {
   interface FastifyInstance {
@@ -308,16 +246,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (user.totp_enabled) {
         const { totp_code } = request.body as { totp_code?: string };
 
-        // Check if user is locked out from too many failed 2FA attempts
-        const lockStatus = is2FALocked(user.id!);
-        if (lockStatus.locked) {
-          throw new AppError(
-            429,
-            `Account temporarily locked. Try again in ${lockStatus.remainingTime} seconds`,
-            'TOO_MANY_2FA_ATTEMPTS'
-          );
-        }
-
         // If no code provided, return requires_2fa flag
         if (!totp_code) {
           return reply.status(200).send({
@@ -400,34 +328,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
           }
 
           if (codeIndex === -1) {
-            // Record failed attempt
-            const canContinue = record2FAFailure(user.id!);
-            
             // Audit log for failed 2FA
-            const attemptsRecord = twoFAAttempts.get(user.id!);
             store.createAuditLog(
               user.id!,
               'login_failed',
-              JSON.stringify({ 
-                reason: 'invalid_2fa_code',
-                attempts: attemptsRecord?.attempts || 1,
-                locked: !canContinue
-              }),
+              JSON.stringify({ reason: 'invalid_2fa_code' }),
               getClientIp(request),
               request.headers['user-agent']
             );
             
-            if (!canContinue) {
-              throw new AppError(
-                429,
-                'Account temporarily locked due to multiple failed 2FA attempts. Try again in 15 minutes',
-                'TOO_MANY_2FA_ATTEMPTS'
-              );
-            }
-            const attemptsRemaining = MAX_2FA_ATTEMPTS - (attemptsRecord?.attempts || 1);
             throw new AppError(
               401,
-              `2FA code is incorrect. ${attemptsRemaining} attempts remaining`,
+              '2FA code is incorrect',
               'INVALID_2FA_CODE'
             );
           }
@@ -447,9 +359,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
             request.headers['user-agent']
           );
         }
-        
-        // Reset failed attempts on successful 2FA
-        reset2FAAttempts(user.id!);
       }
 
       // Generate tokens
