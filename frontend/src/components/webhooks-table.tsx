@@ -160,12 +160,13 @@ export function WebhooksTable() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.name || !formData.webhook_url) {
-      setError('Name and webhook URL are required')
-      return
-    }
-
     if (editingWebhook) {
+      // For updates, only name is required
+      if (!formData.name) {
+        setError('Name is required')
+        return
+      }
+      
       // Only send fields that might have changed
       const updates: Partial<WebhookFormData> = {
         name: formData.name,
@@ -178,6 +179,11 @@ export function WebhooksTable() {
       }
       updateWebhookMutation.mutate({ id: editingWebhook.id!, data: updates })
     } else {
+      // For creation, both name and URL are required
+      if (!formData.name || !formData.webhook_url) {
+        setError('Name and webhook URL are required')
+        return
+      }
       createWebhookMutation.mutate(formData)
     }
   }
@@ -291,14 +297,15 @@ export function WebhooksTable() {
 
               <div className="space-y-2">
                 <Label htmlFor="webhook_url">
-                  Webhook URL {editingWebhook && '(leave empty to keep current)'}
+                  Webhook URL {editingWebhook ? '(optional - leave empty to keep current)' : ''}
                 </Label>
                 <Input
                   id="webhook_url"
                   type="url"
                   value={formData.webhook_url}
                   onChange={(e) => setFormData({ ...formData, webhook_url: e.target.value })}
-                  placeholder="https://discord.com/api/webhooks/..."
+                  placeholder={editingWebhook ? "Leave empty to keep current URL" : "https://discord.com/api/webhooks/..."}
+                  required={!editingWebhook}
                 />
               </div>
 
