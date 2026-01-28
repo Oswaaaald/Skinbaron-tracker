@@ -4,7 +4,28 @@ import { handleRouteError } from '../lib/validation-handler.js';
 
 export default async function itemsRoutes(fastify: FastifyInstance) {
   // Search items endpoint for autocomplete
-  fastify.get('/search', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/search', {
+    schema: {
+      description: 'Search SkinBaron items for autocomplete',
+      tags: ['Items'],
+      querystring: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: 'Search query' },
+          limit: { type: 'string', description: 'Max results (default: 20, max: 50)' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'array' },
+          },
+        },
+      },
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { q, limit } = request.query as { q?: string; limit?: string };
       

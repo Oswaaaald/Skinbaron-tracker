@@ -284,6 +284,20 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    */
   fastify.get('/stats', {
     preHandler: [fastify.authenticate, fastify.requireAdmin],
+    schema: {
+      description: 'Get global statistics (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' },
+          },
+        },
+      },
+    },
   }, async (request, reply) => {
     try {
       const stats = store.getGlobalStats();

@@ -385,7 +385,22 @@ async function buildSystemSnapshot() {
 // Health check endpoint
 async function setupHealthCheck() {
   fastify.get('/api/health', {
-    logLevel: 'warn'
+    logLevel: 'warn',
+    schema: {
+      description: 'Health check endpoint',
+      tags: ['System'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            status: { type: 'string' },
+            database: { type: 'string' },
+            uptime: { type: 'number' },
+          },
+        },
+      },
+    },
   }, async (_request, reply) => {
     const snapshot = await buildSystemSnapshot();
     const { health } = snapshot;
@@ -395,7 +410,21 @@ async function setupHealthCheck() {
 
 // System status endpoint - now includes health snapshot
 async function setupSystemStatus() {
-  fastify.get('/api/system/status', async (request, reply) => {
+  fastify.get('/api/system/status', {
+    schema: {
+      description: 'Get system status including scheduler and health information',
+      tags: ['System'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     try {
       const snapshot = await buildSystemSnapshot();
       return reply.status(200).send({
