@@ -32,7 +32,7 @@ const ConfigSchema = z.object({
   POLL_CRON: z.string().default('*/5 * * * *'),
   
   // API
-  API_BASE_URL: z.string().optional(),
+  API_BASE_URL: z.string().optional().transform(val => val || process.env['NEXT_PUBLIC_API_URL']),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   CORS_ORIGINS: z.string().optional(),
   RATE_LIMIT_MAX: z.coerce.number().default(1000),
