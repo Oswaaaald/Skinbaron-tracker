@@ -440,7 +440,12 @@ async function setupHealthCheck() {
   }, async (_request, reply) => {
     const snapshot = await buildSystemSnapshot();
     const { health } = snapshot;
-    return reply.status(200).send({ success: true, ...health });
+    return reply.status(200).send({ 
+      success: true, 
+      status: health.status,
+      database: health.services.database,
+      uptime: health.stats.uptime,
+    });
   });
 }
 
