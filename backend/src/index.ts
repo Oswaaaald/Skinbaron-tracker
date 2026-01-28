@@ -317,14 +317,14 @@ async function buildSystemSnapshot() {
 
   // Scheduler health and stats
   let schedulerHealth = 'unhealthy';
-  let simplifiedScheduler: Record<string, string | number | boolean | null | Date> = {};
+  let simplifiedScheduler: Record<string, string | number | boolean | null> = {};
   try {
     const schedulerStats = scheduler.getStats();
     schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
     simplifiedScheduler = {
       isRunning: schedulerStats.isRunning,
-      lastRunTime: schedulerStats.lastRunTime,
-      nextRunTime: schedulerStats.nextRunTime,
+      lastRunTime: schedulerStats.lastRunTime ? schedulerStats.lastRunTime.toISOString() : null,
+      nextRunTime: schedulerStats.nextRunTime ? schedulerStats.nextRunTime.toISOString() : null,
       totalRuns: schedulerStats.totalRuns,
       totalAlerts: schedulerStats.totalAlerts,
     };
