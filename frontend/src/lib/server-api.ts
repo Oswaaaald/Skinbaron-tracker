@@ -54,7 +54,7 @@ export async function getServerSession() {
   let tokenToUse = access
   let refreshToUse = refresh
 
-  let res = await fetchWithAuth('/api/auth/me', { method: 'GET' })
+  let res = await fetchWithAuth('/auth/me', { method: 'GET' })
 
   if (res.status === 401 || res.status === 403) {
     return null
