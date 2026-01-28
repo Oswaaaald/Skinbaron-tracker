@@ -182,8 +182,8 @@ async function registerPlugins() {
       const usedTags = new Set<string>();
       
       for (const [path, methods] of Object.entries(swaggerObject['paths'] || {})) {
-        // Hide /admin/* and /system/* routes for non-admins
-        if (path.startsWith('/admin/') || path.startsWith('/api/system/')) {
+        // Hide /api/admin/* and /api/system/* routes for non-admins
+        if (path.startsWith('/api/admin/') || path.startsWith('/api/system/')) {
           continue;
         }
         filteredPaths[path] = methods;
