@@ -423,6 +423,16 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id!);
         updated = store.enableWebhooksBatch(allIds, userId);
       } else {
+        // Validate ownership of all webhooks
+        for (const webhookId of webhook_ids) {
+          const webhook = store.getUserWebhookById(webhookId);
+          if (!webhook) {
+            throw new AppError(404, `Webhook ${webhookId} not found`, 'WEBHOOK_NOT_FOUND');
+          }
+          if (webhook.user_id !== userId) {
+            throw new AppError(403, 'You can only enable your own webhooks', 'ACCESS_DENIED');
+          }
+        }
         // Enable specific webhooks (optimized batch operation)
         updated = store.enableWebhooksBatch(webhook_ids, userId);
       }
@@ -480,6 +490,16 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id!);
         updated = store.disableWebhooksBatch(allIds, userId);
       } else {
+        // Validate ownership of all webhooks
+        for (const webhookId of webhook_ids) {
+          const webhook = store.getUserWebhookById(webhookId);
+          if (!webhook) {
+            throw new AppError(404, `Webhook ${webhookId} not found`, 'WEBHOOK_NOT_FOUND');
+          }
+          if (webhook.user_id !== userId) {
+            throw new AppError(403, 'You can only disable your own webhooks', 'ACCESS_DENIED');
+          }
+        }
         // Disable specific webhooks (optimized batch operation)
         updated = store.disableWebhooksBatch(webhook_ids, userId);
       }
@@ -545,6 +565,16 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         const allIds = allWebhooks.map(w => w.id!);
         deleted = store.deleteWebhooksBatch(allIds, userId);
       } else {
+        // Validate ownership of all webhooks
+        for (const webhookId of webhook_ids) {
+          const webhook = store.getUserWebhookById(webhookId);
+          if (!webhook) {
+            throw new AppError(404, `Webhook ${webhookId} not found`, 'WEBHOOK_NOT_FOUND');
+          }
+          if (webhook.user_id !== userId) {
+            throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
+          }
+        }
         // Delete specific webhooks (optimized batch operation)
         deleted = store.deleteWebhooksBatch(webhook_ids, userId);
       }

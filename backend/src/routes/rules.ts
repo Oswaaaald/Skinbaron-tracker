@@ -494,6 +494,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         const allIds = allRules.filter(r => !r.enabled).map(r => r.id!);
         updated = store.enableRulesBatch(allIds, userId);
       } else {
+        // Validate ownership of all rules
+        for (const ruleId of rule_ids) {
+          const rule = store.getRuleById(ruleId);
+          if (!rule) {
+            throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
+          }
+          if (rule.user_id !== userId) {
+            throw new AppError(403, 'You can only enable your own rules', 'ACCESS_DENIED');
+          }
+        }
         // Enable specific rules (optimized batch operation)
         updated = store.enableRulesBatch(rule_ids, userId);
       }
@@ -551,6 +561,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         const allIds = allRules.filter(r => r.enabled).map(r => r.id!);
         updated = store.disableRulesBatch(allIds, userId);
       } else {
+        // Validate ownership of all rules
+        for (const ruleId of rule_ids) {
+          const rule = store.getRuleById(ruleId);
+          if (!rule) {
+            throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
+          }
+          if (rule.user_id !== userId) {
+            throw new AppError(403, 'You can only disable your own rules', 'ACCESS_DENIED');
+          }
+        }
         // Disable specific rules (optimized batch operation)
         updated = store.disableRulesBatch(rule_ids, userId);
       }
@@ -616,6 +636,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         const allIds = allRules.map(r => r.id!);
         deleted = store.deleteRulesBatch(allIds, userId);
       } else {
+        // Validate ownership of all rules
+        for (const ruleId of rule_ids) {
+          const rule = store.getRuleById(ruleId);
+          if (!rule) {
+            throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
+          }
+          if (rule.user_id !== userId) {
+            throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
+          }
+        }
         // Delete specific rules (optimized batch operation)
         deleted = store.deleteRulesBatch(rule_ids, userId);
       }
