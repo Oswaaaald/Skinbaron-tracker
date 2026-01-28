@@ -312,18 +312,42 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   /**
-   * GET /api/admin/logs - Get admin action logs (admin only)
+   * GET /api/admin/logs - Get admin action logs (super admin only)
    */
   fastify.get('/logs', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
+    preHandler: [fastify.authenticate, fastify.requireSuperAdmin],
     schema: {
-      description: 'Get admin action logs (admin only)',
+      description: 'Get admin action logs showing what admins have done (approvals, rejections, deletions, force runs, etc.) - Super Admin only',
       tags: ['Admin'],
       security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'number', default: 50 },
+          limit: { type: 'number', default: 50, maximum: 500 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  admin_user_id: { type: 'number' },
+                  admin_username: { type: 'string', nullable: true },
+                  action: { type: 'string' },
+                  target_user_id: { type: 'number', nullable: true },
+                  target_username: { type: 'string', nullable: true },
+                  details: { type: 'string', nullable: true },
+                  created_at: { type: 'string' },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -666,107 +690,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Failed to get all audit logs');
-    }
-  });
-
-  /**
-   * GET /api/admin/admin-actions - Get audit logs of admin actions only (super admin only)
-   */
-  fastify.get('/admin-actions', {
-    preHandler: [fastify.authenticate, fastify.requireSuperAdmin],
-    schema: {
-      description: 'Get audit logs showing only admin actions (approvals, rejections, deletions, etc.) - Super Admin only',
-      tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
-      querystring: {
-        type: 'object',
-        properties: {
-          limit: { type: 'number', default: 100, maximum: 1000 },
-          admin_id: { type: 'number', description: 'Filter by specific admin user ID' },
-        },
-      },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number' },
-                  user_id: { type: 'number' },
-                  username: { type: 'string', nullable: true },
-                  email: { type: 'string', nullable: true },
-                  event_type: { type: 'string' },
-                  event_data: { type: 'string', nullable: true },
-                  ip_address: { type: 'string', nullable: true },
-                  user_agent: { type: 'string', nullable: true },
-                  created_at: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      const { limit = 100, admin_id } = request.query as { limit?: number; admin_id?: number };
-
-      // Event types that represent admin actions
-      const adminActionEvents = [
-        'user_approved',
-        'user_deleted',
-        'scheduler_forced',
-        'admin_status_changed',
-        'super_admin_status_changed',
-      ];
-
-      // Get all admin users to filter by
-      const allUsers = store.getAllUsers();
-      const adminUserIds = allUsers
-        .filter(u => u.is_admin || u.is_super_admin)
-        .map(u => u.id);
-
-      // Get logs for these event types
-      let allAdminLogs: Array<any> = [];
-      
-      for (const eventType of adminActionEvents) {
-        const logs = store.getAllAuditLogs(limit, eventType, admin_id);
-        allAdminLogs = allAdminLogs.concat(logs);
-      }
-
-      // Filter to only show actions performed BY admins
-      // Look for deleted_by_admin_id, approved_by_admin_id, etc. in event_data
-      const adminActionLogs = allAdminLogs.filter(log => {
-        try {
-          const eventData = log.event_data ? JSON.parse(log.event_data) : {};
-          const actorAdminId = 
-            eventData.deleted_by_admin_id || 
-            eventData.approved_by_admin_id ||
-            eventData.changed_by_admin_id;
-          
-          // Include if action was performed by an admin OR if the user_id is an admin
-          return actorAdminId ? adminUserIds.includes(actorAdminId) : adminUserIds.includes(log.user_id);
-        } catch {
-          // If can't parse event_data, check if user_id is admin
-          return adminUserIds.includes(log.user_id);
-        }
-      });
-
-      // Sort by created_at descending and limit
-      const sortedLogs = adminActionLogs
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, limit);
-
-      return reply.status(200).send({
-        success: true,
-        data: sortedLogs,
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get admin actions');
     }
   });
 
