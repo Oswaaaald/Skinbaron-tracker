@@ -357,9 +357,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
             epochTolerance: 1, // ±30s tolerance for clock drift
           });
           isValidTotp = result.valid;
-        } catch (error: any) {
+        } catch (error: unknown) {
           // Handle SecretTooShortError from otplib v13 (legacy secrets)
-          if (error?.name === 'SecretTooShortError') {
+          if (error instanceof Error && error.name === 'SecretTooShortError') {
             request.log.warn({ email: user.email }, '2FA secret validation failed, disabling 2FA');
             store.updateUser(user.id, {
               totp_enabled: 0,
