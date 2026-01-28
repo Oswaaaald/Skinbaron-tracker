@@ -23,8 +23,8 @@ const CreateRuleRequestSchema = RuleSchema.omit({
   updated_at: true 
 });
 
-// Use the same schema for updates to maintain consistency
-const UpdateRuleRequestSchema = CreateRuleRequestSchema;
+// Use partial schema for updates to allow partial modifications
+const UpdateRuleRequestSchema = CreateRuleRequestSchema.partial();
 
 const RuleParamsSchema = z.object({
   id: z.string().transform(val => parseInt(val, 10)),
@@ -261,10 +261,10 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * PUT /rules/:id - Update a rule
    */
-  fastify.put('/:id', {
+  fastify.patch('/:id', {
     preHandler: [fastify.authenticate],
     schema: {
-      description: 'Update an existing rule (user-owned)',
+      description: 'Update an existing rule (user-owned, partial update)',
       tags: ['Rules'],
       security: [{ bearerAuth: [] }],
       params: {
@@ -275,7 +275,6 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       },
       body: {
         type: 'object',
-        required: ['search_item'],
         properties: {
           search_item: { type: 'string', minLength: 1 },
           min_price: { type: 'number', minimum: 0, nullable: true },
