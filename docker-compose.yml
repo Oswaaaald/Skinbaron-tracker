@@ -7,20 +7,26 @@ services:
     restart: unless-stopped
 
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 8080
-      SB_API_KEY: ${SB_API_KEY}
+      # REQUIRED: Must be set in deployment platform or .env
       JWT_SECRET: ${JWT_SECRET}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${JWT_SECRET}}
-      SQLITE_PATH: /app/data/alerts.db
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      
+      # RECOMMENDED: Set for proper functionality
+      SB_API_KEY: ${SB_API_KEY}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      
+      # OPTIONAL: Have sensible defaults
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-8080}
+      SQLITE_PATH: ${SQLITE_PATH:-/app/data/alerts.db}
       POLL_CRON: ${POLL_CRON:-*/5 * * * *}
-      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-1000}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      CORS_ORIGIN: ${CORS_ORIGIN}
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
       APP_VERSION: ${APP_VERSION:-dev}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:-365}
 
     volumes:
       - skinbaron_backend_data:/app/data

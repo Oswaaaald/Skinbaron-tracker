@@ -32,19 +32,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_BUILD_TURBO=1
 
 # Validate required build arguments
-RUN if [ -z "$NEXT_PUBLIC_API_URL" ]; then \
-      echo ""; \
-      echo "❌ ERROR: NEXT_PUBLIC_API_URL build argument is required"; \
-      echo ""; \
-      echo "Please provide it in docker-compose.yml:"; \
-      echo "  build:"; \
-      echo "    args:"; \
-      echo "      NEXT_PUBLIC_API_URL: \${NEXT_PUBLIC_API_URL}"; \
-      echo ""; \
-      echo "Or set it in your deployment platform environment variables."; \
-      echo ""; \
-      exit 1; \
-    fi
+RUN node scripts/validate-env.js
 
 RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
