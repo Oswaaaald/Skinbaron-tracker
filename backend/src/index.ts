@@ -224,11 +224,12 @@ async function registerPlugins() {
       // Auto-detect server's own URL for Swagger UI access
       const serverOrigin = appConfig.NEXT_PUBLIC_API_URL || `http://localhost:${appConfig.PORT}`;
       
-      // Build allowed origins list
+      // Build allowed origins list (API URL + configured origins + dev fallback)
       const allowedOrigins = Array.from(new Set([
-        appConfig.CORS_ORIGIN,
         serverOrigin, // Allow API's own domain for Swagger UI
         ...configuredOrigins,
+        // Dev fallback if no origins configured
+        ...(configuredOrigins.length === 0 ? ['http://localhost:3000'] : []),
       ])).filter(Boolean);
       
       // Allow requests with no origin (e.g., mobile apps, Postman)
