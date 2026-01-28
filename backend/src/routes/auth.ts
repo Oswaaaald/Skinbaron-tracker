@@ -393,15 +393,23 @@ export default async function authRoutes(fastify: FastifyInstance) {
       description: 'Refresh access token using a valid refresh token',
       tags: ['Authentication'],
       body: {
-        anyOf: [
-          { type: 'null' },
-          {
-            type: 'object',
-            properties: {
-              refresh_token: { type: 'string' },
+        type: 'object',
+        properties: {},
+        additionalProperties: false,
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                token_expires_at: { type: 'number' },
+              },
             },
           },
-        ],
+        },
       },
     },
   }, async (request, reply) => {
