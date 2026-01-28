@@ -337,20 +337,7 @@ class ApiClient {
     }, false);
   }
 
-  // Health and System endpoints
-  async getHealth() {
-    return this.request<{
-      status: string;
-      timestamp: string;
-      services: Record<string, string>;
-      stats: {
-        uptime: number;
-        memory: NodeJS.MemoryUsage;
-        version: string;
-      };
-    }>('/api/health');
-  }
-
+  // System endpoints
   async getSystemStatus() {
     return this.request<SystemStats>('/api/system/status');
   }
@@ -489,32 +476,6 @@ class ApiClient {
     return this.request('/api/alerts/stats');
   }
 
-  async getRecentAlerts(limit: number = 20): Promise<ApiResponse<Alert[]>> {
-    return this.request<Alert[]>(`/api/alerts/recent?limit=${limit}`);
-  }
-
-  async getAlertsByRule(ruleId: number, params: {
-    limit?: number;
-    offset?: number;
-  } = {}): Promise<ApiResponse<Alert[]>> {
-    const searchParams = new URLSearchParams();
-    
-    if (params.limit) searchParams.append('limit', params.limit.toString());
-    if (params.offset) searchParams.append('offset', params.offset.toString());
-
-    const endpoint = `/api/alerts/by-rule/${ruleId}${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    return this.request<Alert[]>(endpoint);
-  }
-
-  async cleanupAlerts(): Promise<ApiResponse<{
-    deletedCount: number;
-    message: string;
-  }>> {
-    return this.request('/api/alerts/cleanup', {
-      method: 'POST',
-    });
-  }
-
   async clearAllAlerts(): Promise<ApiResponse<{
     deletedCount: number;
     message: string;
@@ -574,10 +535,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ webhook_ids: webhookIds || [], confirm_all: confirmAll }),
     });
-  }
-
-  async getActiveWebhooks(): Promise<ApiResponse<Webhook[]>> {
-    return this.request<Webhook[]>('/api/webhooks/active');
   }
 
   // Items search endpoint for autocomplete
@@ -678,14 +635,6 @@ class ApiClient {
     if (params?.event_type) query.append('event_type', params.event_type);
     if (params?.user_id) query.append('user_id', params.user_id.toString());
     return this.get(`/api/admin/audit-logs?${query.toString()}`);
-  }
-
-  // Get audit logs for specific user (admin only)
-  async getUserAuditLogsById(userId: number, limit: number = 100): Promise<ApiResponse<{
-    user: { id: number; username: string; email: string };
-    logs: AuditLog[];
-  }>> {
-    return this.get(`/api/admin/audit-logs/${userId}?limit=${limit}`);
   }
 }
 
