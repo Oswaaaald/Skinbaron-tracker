@@ -36,7 +36,6 @@ const EVENT_CONFIG: Record<string, {
   "2fa_recovery_code_used": { icon: Key, label: "Recovery Code Used", variant: "outline" },
   email_changed: { icon: Mail, label: "Email Changed", variant: "outline" },
   username_changed: { icon: User, label: "Username Changed", variant: "outline" },
-  profile_updated: { icon: User, label: "Profile Updated", variant: "outline" },
   password_changed: { icon: Key, label: "Password Changed", variant: "default" },
   password_change_failed: { icon: AlertCircle, label: "Password Change Failed", variant: "destructive" },
   user_approved: { icon: ShieldCheck, label: "Account Approved", variant: "default" },
