@@ -234,35 +234,6 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * POST /alerts/cleanup - Cleanup user's old alerts (older than 7 days)
-   */
-  fastify.post('/cleanup', {
-    preHandler: [fastify.authenticate],
-    schema: {
-      description: 'Cleanup user\'s old alerts (older than 7 days)',
-      tags: ['Alerts'],
-      security: [{ bearerAuth: [] }],
-    },
-  }, async (request, reply) => {
-    try {
-      const userId = request.user!.id;
-      const deletedCount = store.cleanupUserOldAlerts(userId);
-      
-      request.log.info(`User ${userId} cleaned up ${deletedCount} old alerts`);
-      
-      return reply.status(200).send({
-        success: true,
-        data: {
-          deletedCount,
-          message: `Successfully deleted ${deletedCount} of your old alerts (7+ days)`,
-        },
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to cleanup user alerts');
-    }
-  });
-
-  /**
    * POST /alerts/clear-all - Delete all user alerts
    */
   fastify.post('/clear-all', {

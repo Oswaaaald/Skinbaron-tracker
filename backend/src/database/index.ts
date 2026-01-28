@@ -41,25 +41,7 @@ export class Store {
   getAlertByIdForUser = this.alerts.findByIdForUser.bind(this.alerts);
   getAlertsByRuleIdForUser = this.alerts.findByRuleIdForUser.bind(this.alerts);
   deleteAlertsByRuleId = this.alerts.deleteByRuleId.bind(this.alerts);
-  
-  cleanupUserOldAlerts(userId: number): number {
-    const stmt = this.db.prepare(`
-      DELETE FROM alerts 
-      WHERE sent_at < DATE('now', '-7 days')
-        AND rule_id IN (SELECT id FROM rules WHERE user_id = ?)
-    `);
-    return stmt.run(userId).changes;
-  }
-
   deleteAllUserAlerts = this.alerts.deleteByUserId.bind(this.alerts);
-  
-  cleanupOldAlerts(): number {
-    const stmt = this.db.prepare(`
-      DELETE FROM alerts 
-      WHERE sent_at < DATE('now', '-30 days')
-    `);
-    return stmt.run().changes;
-  }
 
   // Users
   createUser = this.users.create.bind(this.users);
