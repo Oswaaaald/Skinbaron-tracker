@@ -408,15 +408,7 @@ async function setupSystemStatus() {
     schema: {
       description: 'Get system status including scheduler and health information',
       tags: ['System'],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: { type: 'object' },
-          },
-        },
-      },
+      // Note: No response schema to allow dynamic nested object structure
     },
   }, async (request, reply) => {
     try {
