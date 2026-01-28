@@ -580,24 +580,6 @@ class ApiClient {
     return this.request<Webhook[]>('/api/webhooks/active');
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
-    return this.request('/api/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-  }
-
-  async updateProfile(updates: { username?: string; email?: string }): Promise<ApiResponse<{
-    id: number;
-    username: string;
-    email: string;
-  }>> {
-    return this.request('/api/auth/profile', {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    });
-  }
-
   // Items search endpoint for autocomplete
   async searchItems(query: string, limit?: number): Promise<ApiResponse<Array<{
     name: string;
