@@ -48,10 +48,10 @@ export class WebhooksRepository {
     return rows.map(row => rowToWebhook(row, decrypt));
   }
 
-  update(id: number, userId: number, updates: Partial<CreateUserWebhook>): UserWebhook {
+  update(id: number, userId: number, updates: Partial<CreateUserWebhook>): UserWebhook | null {
     const currentWebhook = this.findById(id);
     if (!currentWebhook || currentWebhook.user_id !== userId) {
-      throw new Error('Webhook not found or access denied');
+      return null;
     }
 
     const validatedUpdates = CreateUserWebhookSchema.partial().parse(updates);
@@ -95,7 +95,7 @@ export class WebhooksRepository {
   delete(id: number, userId: number): boolean {
     const webhook = this.findById(id);
     if (!webhook || webhook.user_id !== userId) {
-      throw new Error('Webhook not found or access denied');
+      return false;
     }
 
     const stmt = this.db.prepare('DELETE FROM user_webhooks WHERE id = ? AND user_id = ?');

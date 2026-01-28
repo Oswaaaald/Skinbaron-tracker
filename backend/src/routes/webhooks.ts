@@ -265,6 +265,10 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       
       const webhook = store.updateUserWebhook(id, request.user!.id, updates);
       
+      if (!webhook) {
+        throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
+      }
+      
       // Remove encrypted field from response
       const { webhook_url_encrypted, ...safeWebhook } = webhook;
       
