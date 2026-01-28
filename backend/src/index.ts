@@ -3,6 +3,8 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { appConfig } from './lib/config.js';
 import { store } from './database/index.js';
 import { closeDatabase } from './database/connection.js';
@@ -116,6 +118,81 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Register plugins
 async function registerPlugins() {
+  // Swagger documentation
+  await fastify.register(swagger, {
+    openapi: {
+      openapi: '3.0.0',
+      info: {
+        title: 'SkinBaron Tracker API',
+        description: 'API for tracking CS2 skin prices and sending alerts via Discord webhooks',
+        version: '1.0.0',
+      },
+      servers: [
+        {
+          url: appConfig.NODE_ENV === 'production' 
+            ? 'https://api.skinbaron-tracker.com'
+            : 'http://localhost:8080',
+          description: appConfig.NODE_ENV === 'production' ? 'Production' : 'Development',
+        },
+      ],
+      tags: [
+        { name: 'Authentication', description: 'User authentication and session management' },
+        { name: 'Rules', description: 'Price tracking rules management' },
+        { name: 'Alerts', description: 'Alert history and management' },
+        { name: 'Webhooks', description: 'Discord webhook configuration' },
+        { name: 'User', description: 'User profile and settings' },
+        { name: 'Admin', description: 'Admin-only endpoints' },
+        { name: 'Items', description: 'SkinBaron item search' },
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+          cookieAuth: {
+            type: 'apiKey',
+            in: 'cookie',
+            name: 'sb_access',
+          },
+        },
+      },
+    },
+  });
+
+  await fastify.register(swaggerUi, {
+    routePrefix: '/docs',
+    uiConfig: {
+      docExpansion: 'list',
+      deepLinking: true,
+    },
+    staticCSP: true,
+    transformStaticCSP: (header) => header,
+    uiHooks: {
+      onRequest: async (request, reply) => {
+        // Verify super admin access
+        try {
+          await fastify.authenticate(request, reply);
+          
+          if (!request.user?.is_super_admin) {
+            return reply.status(403).send({
+              success: false,
+              error: 'Forbidden',
+              message: 'Super admin access required to view API documentation',
+            });
+          }
+        } catch (error) {
+          return reply.status(401).send({
+            success: false,
+            error: 'Unauthorized',
+            message: 'Authentication required to view API documentation',
+          });
+        }
+      },
+    },
+  });
+
   await fastify.register(cookie, {
     hook: 'onRequest',
   });
