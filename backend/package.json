@@ -41,13 +41,13 @@
     "lru-cache": "^11.2.5",
     "otplib": "^13.0.0",
     "qrcode": "^1.5.4",
-    "undici": "^7.18.2",
+    "undici": "^7.19.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/better-sqlite3": "^7.6.8",
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.1.0",
     "@types/qrcode": "^1.5.6",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
