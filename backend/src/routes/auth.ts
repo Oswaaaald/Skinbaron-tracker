@@ -400,62 +400,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.get('/me', {
-    schema: {
-      description: 'Get current user profile',
-      tags: ['Authentication'],
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number' },
-                username: { type: 'string' },
-                email: { type: 'string' },
-                avatar_url: { type: 'string' },
-                is_admin: { type: 'boolean' },
-                is_super_admin: { type: 'boolean' },
-                created_at: { type: 'string' },
-              },
-            },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    try {
-      // User is already attached by auth middleware
-      if (!request.user) {
-        throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
-      }
-      
-      const user = await store.getUserById(request.user.id);
-      
-      if (!user) {
-        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
-      }
-      
-      return reply.status(200).send({
-        success: true,
-        data: {
-          id: user.id!,
-          username: user.username,
-          email: user.email,
-          avatar_url: AuthService.getGravatarUrl(user.email),
-          is_admin: Boolean(user.is_admin),
-          is_super_admin: Boolean(user.is_super_admin),
-          created_at: user.created_at!,
-        },
-      });
-    } catch (error) {
-      return handleRouteError(error, request, reply, 'Get current user');
-    }
-  });
-
   fastify.post('/refresh', {
     schema: {
       description: 'Refresh access token using a valid refresh token',
