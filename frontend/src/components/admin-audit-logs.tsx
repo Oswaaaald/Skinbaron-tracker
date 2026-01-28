@@ -427,7 +427,7 @@ export function AdminAuditLogs() {
             No security events found
           </p>
         ) : (
-          <ScrollArea className="h-[600px] pr-4">
+          <ScrollArea className="max-h-[600px] pr-4">
             <div className="space-y-4">
               {logs.map((log: AuditLog, index: number) => {
                 const config = EVENT_CONFIG[log.event_type] || {

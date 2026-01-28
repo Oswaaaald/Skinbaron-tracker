@@ -226,7 +226,7 @@ export function SecurityHistory() {
             No security events recorded
           </p>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="max-h-[400px] pr-4">
             <div className="space-y-4">
               {logs.map((log: AuditLog, index: number) => {
                 const config = EVENT_CONFIG[log.event_type] || {
