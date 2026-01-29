@@ -80,10 +80,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
             data: {
               type: 'object',
               properties: {
-                id: { type: 'number' },
-                username: { type: 'string' },
-                email: { type: 'string' },
-                avatar_url: { type: 'string' },
                 pending_approval: { type: 'boolean' },
               },
             },
@@ -125,14 +121,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Check if user is approved
       if (!user.is_approved) {
-        // User created but needs approval - don't return token
+        // User created but needs approval - don't return token or user data
         return reply.status(201).send({
           success: true,
           message: 'Registration successful. Your account is awaiting admin approval.',
           data: {
-            id: user.id!,
-            username: user.username,
-            email: user.email,
             pending_approval: true,
           },
         });
