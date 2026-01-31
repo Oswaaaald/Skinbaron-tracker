@@ -58,9 +58,11 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
-        // Always attempt to fetch profile on mount - cookies are sent automatically
-        // The server will respond 401 if no valid session exists (handled gracefully)
-        const me = await apiClient.getUserProfile({ allowRefresh: true })
+        // Detect if we believe a session exists (set after a previous successful auth)
+        const hasSessionFlag = typeof window !== 'undefined' && localStorage.getItem('has_session') === 'true'
+
+        // Fetch profile; only attempt refresh if we believe a session exists
+        const me = await apiClient.getUserProfile({ allowRefresh: hasSessionFlag })
         if (me.success && me.data) {
           setUser(me.data as User)
           // Set session flag on success
