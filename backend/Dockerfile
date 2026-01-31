@@ -43,8 +43,8 @@ RUN addgroup --system --gid 1001 nodejs \
 
 RUN mkdir -p /app/data && chown skinbaron:nodejs /app/data
 
+COPY --from=deps --chown=skinbaron:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=skinbaron:nodejs /app/dist ./dist
-COPY --from=builder --chown=skinbaron:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=skinbaron:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=skinbaron:nodejs /app/scripts ./scripts
 

@@ -75,4 +75,5 @@ docker-compose.dev.yml
 # Temporary files
 tmp/
 temp/
-*.tmpbackend/data/
+*.tmp
+backend/data/

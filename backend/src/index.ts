@@ -12,6 +12,7 @@ import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
 import { handleRouteError } from './lib/validation-handler.js';
+import { generateCsrfToken, setCsrfCookie, csrfProtection } from './lib/csrf.js';
 import rulesRoutes from './routes/rules.js';
 import alertsRoutes from './routes/alerts.js';
 
@@ -313,8 +314,8 @@ async function registerPlugins() {
       }
 
       const cookies = request.cookies as Record<string, string | undefined> | undefined;
-      const accessToken = cookies?.['access_token'];
-      const refreshToken = cookies?.['refresh_token'];
+      const accessToken = cookies?.['sb_access'];
+      const refreshToken = cookies?.['sb_refresh'];
       return accessToken ?? refreshToken ?? request.ip ?? 'unknown';
     },
     errorResponseBuilder: (_request, context) => ({
@@ -485,6 +486,39 @@ async function setupSystemStatus() {
   });
 }
 
+// CSRF token endpoint
+async function setupCsrfEndpoint() {
+  fastify.get('/api/csrf-token', {
+    schema: {
+      description: 'Get a CSRF token for client-side requests',
+      tags: ['Security'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                csrf_token: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (_request, reply) => {
+    const token = generateCsrfToken();
+    setCsrfCookie(reply, token, appConfig.NODE_ENV === 'production');
+    
+    return reply.status(200).send({
+      success: true,
+      data: {
+        csrf_token: token,
+      },
+    });
+  });
+}
 
 
 
@@ -540,6 +574,11 @@ async function initializeApp() {
     await registerPlugins();
     await setupHealthCheck();
     await setupSystemStatus();
+    await setupCsrfEndpoint();
+    
+    // Register CSRF protection middleware globally
+    fastify.addHook('preHandler', csrfProtection);
+    
     await registerRoutes();
 
     // Start server
@@ -550,9 +589,13 @@ async function initializeApp() {
 
     fastify.log.info(`🌐 Server listening on ${address}`);
     
-    // Auto-start scheduler in all environments
-    scheduler.start();
-    fastify.log.info('⏰ Scheduler auto-started');
+    // Start scheduler only if enabled
+    if (appConfig.SCHEDULER_ENABLED) {
+      scheduler.start();
+      fastify.log.info('⏰ Scheduler auto-started');
+    } else {
+      fastify.log.info('⏰ Scheduler disabled (SCHEDULER_ENABLED=false)');
+    }
 
     fastify.log.info('✅ SkinBaron Tracker API initialized successfully!');
     

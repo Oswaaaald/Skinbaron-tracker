@@ -101,9 +101,7 @@ function createUserTables(db: Database.Database) {
       is_admin BOOLEAN DEFAULT 0,
       is_super_admin BOOLEAN DEFAULT 0,
       is_approved BOOLEAN DEFAULT 0,
-      totp_secret TEXT,
       totp_enabled BOOLEAN DEFAULT 0,
-      recovery_codes TEXT,
       totp_secret_encrypted TEXT,
       recovery_codes_encrypted TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -202,8 +200,10 @@ function createIndexes(db: Database.Database) {
   // Users indexes
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);    CREATE INDEX IF NOT EXISTS idx_users_approved ON users(is_approved);
-    CREATE INDEX IF NOT EXISTS idx_users_admin_approved ON users(is_admin, is_approved);  `);
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+    CREATE INDEX IF NOT EXISTS idx_users_approved ON users(is_approved);
+    CREATE INDEX IF NOT EXISTS idx_users_admin_approved ON users(is_admin, is_approved);
+  `);
 
   // Webhooks indexes
   db.exec(`
@@ -299,19 +299,17 @@ function runDataMigrations(db: Database.Database) {
     migrationLogger.info('Migration: Added filter columns to rules table');
   }
 
-  // Migration: Add 2FA columns if they don't exist
-  const hasTotpSecret = db.prepare(`
-    SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret'
+  // Migration: Add encrypted 2FA columns (skip plaintext columns)
+  // First ensure totp_enabled exists
+  const hasTotpEnabled = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_enabled'
   `).get() as { count: number };
 
-  if (hasTotpSecret.count === 0) {
-    db.exec(`ALTER TABLE users ADD COLUMN totp_secret TEXT`);
+  if (hasTotpEnabled.count === 0) {
     db.exec(`ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN DEFAULT 0`);
-    db.exec(`ALTER TABLE users ADD COLUMN recovery_codes TEXT`);
-    migrationLogger.info('Migration: Added 2FA columns to users table');
+    migrationLogger.info('Migration: Added totp_enabled column to users table');
   }
 
-  // Migration: Add encrypted 2FA columns and migrate existing data
   const hasEncryptedSecret = db.prepare(`
     SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret_encrypted'
   `).get() as { count: number };
@@ -320,5 +318,44 @@ function runDataMigrations(db: Database.Database) {
     db.exec(`ALTER TABLE users ADD COLUMN totp_secret_encrypted TEXT`);
     db.exec(`ALTER TABLE users ADD COLUMN recovery_codes_encrypted TEXT`);
     migrationLogger.info('Migration: Added encrypted 2FA columns to users table');
+  }
+
+  // Migration: Remove plaintext 2FA columns (security fix)
+  const hasPlaintextSecret = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret'
+  `).get() as { count: number };
+
+  if (hasPlaintextSecret.count > 0) {
+    // SQLite doesn't support DROP COLUMN before 3.35.0
+    // We need to recreate the table without these columns
+    db.exec(`
+      -- Create new table without plaintext 2FA columns
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        is_admin BOOLEAN DEFAULT 0,
+        is_super_admin BOOLEAN DEFAULT 0,
+        is_approved BOOLEAN DEFAULT 0,
+        totp_enabled BOOLEAN DEFAULT 0,
+        totp_secret_encrypted TEXT,
+        recovery_codes_encrypted TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      -- Copy data from old table
+      INSERT INTO users_new (id, username, email, password_hash, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted, created_at, updated_at)
+      SELECT id, username, email, password_hash, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted, created_at, updated_at
+      FROM users;
+      
+      -- Drop old table
+      DROP TABLE users;
+      
+      -- Rename new table
+      ALTER TABLE users_new RENAME TO users;
+    `);
+    migrationLogger.info('Migration: Removed plaintext 2FA columns from users table (security fix)');
   }
 }

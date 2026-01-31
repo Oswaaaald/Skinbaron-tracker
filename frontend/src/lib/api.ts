@@ -141,12 +141,34 @@ class ApiClient {
   private onRefresh: ((expiresAt: number) => void) | null = null;
   private refreshPromise: Promise<{ success: boolean; expiresAt?: number }> | null = null;
   private hasCalledLogout: boolean = false;
+  private csrfToken: string | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
-    if (!baseURL) {
+    // Allow build-time to proceed without API_URL (SSG pages won't call API during build)
+    if (!baseURL && typeof window !== 'undefined') {
       throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
     }
     this.baseURL = baseURL;
+    // Only init CSRF token on client-side
+    if (typeof window !== 'undefined') {
+      this.initCsrfToken();
+    }
+  }
+
+  private async initCsrfToken() {
+    try {
+      const response = await fetch(`${this.baseURL}/api/csrf-token`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json() as ApiResponse<{ csrf_token: string }>;
+        if (data.success && data.data?.csrf_token) {
+          this.csrfToken = data.data.csrf_token;
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to initialize CSRF token:', error);
+    }
   }
 
   ensureSuccess<T>(response: ApiResponse<T>, fallbackMessage?: string): ApiResponse<T> {
@@ -178,6 +200,11 @@ class ApiClient {
       // Build headers
       const headers: Record<string, string> = {};
       if (options.body) headers['Content-Type'] = 'application/json';
+      
+      // Add CSRF token for mutating requests
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method || 'GET') && this.csrfToken) {
+        headers['x-csrf-token'] = this.csrfToken;
+      }
 
       const response = await fetch(url, {
         headers: {

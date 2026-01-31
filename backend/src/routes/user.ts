@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
 import { getClientIp } from '../lib/middleware.js';
+import { encryptData } from '../database/utils/encryption.js';
 import { OTP } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
@@ -495,11 +496,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
         crypto.randomBytes(4).toString('hex').toUpperCase()
       );
 
-      // Save to database
+      // Encrypt and save to database
       store.updateUser(userId, {
-        totp_secret: secret,
+        totp_secret_encrypted: encryptData(secret),
         totp_enabled: 1,
-        recovery_codes: JSON.stringify(recoveryCodes),
+        recovery_codes_encrypted: encryptData(JSON.stringify(recoveryCodes)),
       });
 
       // Audit log
@@ -567,9 +568,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Disable 2FA
       store.updateUser(userId, {
-        totp_secret: null,
+        totp_secret_encrypted: null,
         totp_enabled: 0,
-        recovery_codes: null,
+        recovery_codes_encrypted: null,
       });
 
       // Audit log

@@ -98,6 +98,7 @@ export const UserWebhookSchema = z.object({
 export type Rule = z.infer<typeof RuleSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
 export type User = z.infer<typeof UserSchema> & {
+  // Decrypted fields (added by repository)
   totp_secret?: string | null;
   recovery_codes?: string | null;
 };

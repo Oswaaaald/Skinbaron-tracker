@@ -423,13 +423,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const tokenRecord = store.getRefreshToken(refresh_token);
       const isExpired = tokenRecord ? new Date(tokenRecord.expires_at).getTime() <= Date.now() : true;
-      if (!tokenRecord || tokenRecord.revoked_at || isExpired) {
+      if (!tokenRecord || tokenRecord.revoked_at || tokenRecord.replaced_by_jti || isExpired) {
         request.log.warn({ 
           hasRecord: !!tokenRecord, 
           isRevoked: tokenRecord?.revoked_at ? true : false,
+          isReplaced: tokenRecord?.replaced_by_jti ? true : false,
           isExpired,
           jti: payload.jti 
-        }, 'Refresh token expired or revoked');
+        }, 'Refresh token expired, revoked, or replaced');
         throw new AppError(401, 'Refresh token expired or revoked', 'REFRESH_TOKEN_EXPIRED');
       }
 

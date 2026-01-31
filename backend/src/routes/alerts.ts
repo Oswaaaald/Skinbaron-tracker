@@ -6,7 +6,10 @@ import { AppError } from '../lib/errors.js';
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
-  limit: z.string().default('50').transform(val => parseInt(val, 10)),
+  limit: z.string().default('50').transform(val => {
+    const num = parseInt(val, 10);
+    return Math.min(num, 500); // Max 500 alerts per request
+  }),
   offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
   alert_type: z.enum(['match', 'best_deal', 'new_item']).optional(),
