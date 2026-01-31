@@ -121,4 +121,10 @@ export class WebhooksRepository {
     const result = stmt.run(...webhookIds, userId);
     return result.changes;
   }
+
+  count(userId: number): number {
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM user_webhooks WHERE user_id = ?');
+    const result = stmt.get(userId) as { count: number };
+    return result.count;
+  }
 }

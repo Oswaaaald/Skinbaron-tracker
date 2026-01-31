@@ -118,9 +118,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.id;
 
-      const rulesCount = store.getRulesByUserId(userId).length;
-      const alertsCount = store.getUserAlerts(userId).length;
-      const webhooksCount = store.getUserWebhooks(userId).length;
+      // Use COUNT(*) queries instead of loading all data into memory
+      const rulesCount = store.rules.count(userId);
+      const webhooksCount = store.webhooks.count(userId);
+      
+      // Alerts count via JOIN to get user's alerts through their rules
+      const alertsCount = store.alerts.countByUserId(userId);
 
       return reply.status(200).send({
         success: true,

@@ -158,4 +158,10 @@ export class RulesRepository {
     const result = stmt.run(...ruleIds, userId);
     return result.changes;
   }
+
+  count(userId: number): number {
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE user_id = ?');
+    const result = stmt.get(userId) as { count: number };
+    return result.count;
+  }
 }

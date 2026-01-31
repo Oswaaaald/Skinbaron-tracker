@@ -58,29 +58,19 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           return
         }
 
-        // Only attempt to fetch profile if we have evidence of a previous session
-        // This prevents unnecessary 401/400 errors in console on first visit
-        const hasSession = typeof window !== 'undefined' && localStorage.getItem('has_session') === 'true'
-        
-        if (!hasSession) {
-          setUser(null)
-          setIsLoading(false)
-          setIsReady(true)
-          return
-        }
-
-        // Always probe for session on client mount (cookies sent via credentials: 'include')
+        // Always attempt to fetch profile on mount - cookies are sent automatically
+        // The server will respond 401 if no valid session exists (handled gracefully)
         const me = await apiClient.getUserProfile({ allowRefresh: true })
         if (me.success && me.data) {
           setUser(me.data as User)
-          // Refresh the session flag on success
+          // Set session flag on success
           if (typeof window !== 'undefined') {
             localStorage.setItem('has_session', 'true')
           }
         } else {
           setUser(null)
-          // Only clear the flag on explicit auth errors, not network errors
-          if (typeof window !== 'undefined' && (me.error === 'Unauthorized' || me.error === 'Invalid token')) {
+          // Clear the flag on auth errors
+          if (typeof window !== 'undefined') {
             localStorage.removeItem('has_session')
           }
         }

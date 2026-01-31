@@ -148,4 +148,14 @@ export class AlertsRepository {
     const result = stmt.run(userId);
     return result.changes;
   }
+
+  countByUserId(userId: number): number {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE r.user_id = ?
+    `);
+    const result = stmt.get(userId) as { count: number };
+    return result.count;
+  }
 }

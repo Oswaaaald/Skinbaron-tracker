@@ -227,13 +227,23 @@ class ApiClient {
       if (!response.ok) {
         const errorPayload =
           data && typeof data === 'object'
-            ? (data as { message?: string; error?: string })
+            ? (data as { message?: string; error?: string; code?: string })
             : undefined;
         const message = errorPayload?.message || errorPayload?.error || `HTTP ${response.status}`;
 
         const isAuthLogin = endpoint.startsWith('/api/auth/login');
         const isAuthRegister = endpoint.startsWith('/api/auth/register');
         const isAuthLogout = endpoint.startsWith('/api/auth/logout');
+
+        // Check for CSRF token errors (403 with CSRF_TOKEN_* code)
+        const isCsrfError = response.status === 403 && 
+          errorPayload?.code?.startsWith('CSRF_TOKEN_');
+
+        if (isCsrfError && allowRefresh) {
+          // CSRF token expired or invalid - regenerate and retry
+          await this.initCsrfToken();
+          return this.request<T>(endpoint, options, false);
+        }
 
         const shouldAttemptRefresh =
           !isAuthLogin &&
