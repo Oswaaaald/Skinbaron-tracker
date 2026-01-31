@@ -39,7 +39,7 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
 
   // Skip CSRF for auth routes (they have their own protection via rate-limiting)
   // and for public endpoints
-  const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh'];
+  const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout'];
   if (skipPaths.some(path => request.url.startsWith(path))) {
     return;
   }
