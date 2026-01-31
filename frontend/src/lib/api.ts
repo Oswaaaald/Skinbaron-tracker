@@ -365,13 +365,18 @@ class ApiClient {
   }
 
   async logout() {
+    // Ensure we have a fresh CSRF token before logging out
+    if (!this.csrfToken && typeof window !== 'undefined') {
+      await this.initCsrfToken();
+    }
+
     return this.request<{ message: string }>(`/api/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({}),
-    }, false);
+    }, true); // allow CSRF auto-retry; auth refresh is skipped for logout
   }
 
   // System endpoints

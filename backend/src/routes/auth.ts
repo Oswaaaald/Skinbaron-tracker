@@ -48,8 +48,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
   };
 
   const clearAuthCookies = (reply: FastifyReply) => {
-    reply.setCookie(ACCESS_COOKIE, '', { ...cookieOptions(), expires: new Date(0) });
-    reply.setCookie(REFRESH_COOKIE, '', { ...cookieOptions(), expires: new Date(0) });
+    // Clear with configured domain (if any)
+    const opts = { ...cookieOptions(), expires: new Date(0), maxAge: 0 };
+    reply.setCookie(ACCESS_COOKIE, '', opts);
+    reply.setCookie(REFRESH_COOKIE, '', opts);
+
+    // Also clear host-only variants in case cookies were set without domain
+    reply.setCookie(ACCESS_COOKIE, '', { ...opts, domain: undefined });
+    reply.setCookie(REFRESH_COOKIE, '', { ...opts, domain: undefined });
   };
 
   /**
