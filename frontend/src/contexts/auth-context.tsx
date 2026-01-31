@@ -61,6 +61,14 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         // Detect if we believe a session exists (set after a previous successful auth)
         const hasSessionFlag = typeof window !== 'undefined' && localStorage.getItem('has_session') === 'true'
 
+        // If we have no signal of an existing session, avoid the extra 401 noise
+        if (!hasSessionFlag) {
+          setUser(null)
+          setIsLoading(false)
+          setIsReady(true)
+          return
+        }
+
         // Fetch profile; only attempt refresh if we believe a session exists
         const me = await apiClient.getUserProfile({ allowRefresh: hasSessionFlag })
         if (me.success && me.data) {
