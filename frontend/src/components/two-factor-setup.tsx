@@ -157,6 +157,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
             ) : setupData ? (
               <>
                 <div className="flex justify-center p-4 bg-white rounded-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
                     src={setupData.qrCode} 
                     alt="2FA QR Code" 
@@ -184,7 +185,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Use this key if you can't scan the QR code
+                    Use this key if you can&apos;t scan the QR code
                   </p>
                 </div>
 
@@ -256,7 +257,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Important:</strong> Save these codes in a safe place. You'll need them to access your account if you lose your authenticator.
+                <strong>Important:</strong> Save these codes in a safe place. You&apos;ll need them to access your account if you lose your authenticator.
               </AlertDescription>
             </Alert>
 

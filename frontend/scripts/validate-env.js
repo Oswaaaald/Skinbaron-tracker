@@ -12,9 +12,10 @@ const REQUIRED_VARS = {
   },
 };
 
-const OPTIONAL_VARS = {
-  NODE_ENV: { default: 'production', description: 'Environment mode' },
-};
+// Optional environment variables with defaults
+// const OPTIONAL_VARS = {
+//   NODE_ENV: { default: 'production', description: 'Environment mode' },
+// };
 
 const errors = [];
 

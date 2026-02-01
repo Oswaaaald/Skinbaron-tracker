@@ -3,8 +3,6 @@ import tsparser from '@typescript-eslint/parser';
 import globals from 'globals';
 
 export default [
-  // Type-aware recommended rules from @typescript-eslint
-  ...tseslint.configs.recommendedTypeChecked,
   {
     files: ['src/**/*.ts'],
     languageOptions: {
@@ -16,7 +14,13 @@ export default [
       },
       globals: globals.node,
     },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
     rules: {
+      // TypeScript recommended rules
+      ...tseslint.configs['recommended-type-checked'].rules,
+      // Custom overrides
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-non-null-assertion': 'warn',

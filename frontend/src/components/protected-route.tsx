@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import Link from 'next/link'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -50,12 +51,12 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
           <p className="text-muted-foreground max-w-md">
             You don&apos;t have permission to access this page. Admin privileges are required.
           </p>
-          <a 
+          <Link 
             href="/" 
             className="inline-block mt-4 px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             Go to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     )
