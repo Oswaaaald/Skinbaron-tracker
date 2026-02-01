@@ -487,7 +487,7 @@ async function setupCsrfEndpoint() {
   fastify.get('/api/csrf-token', {
     schema: {
       description: 'Get a CSRF token for client-side requests',
-      tags: ['Security'],
+      tags: ['Authentication'],
       response: {
         200: {
           type: 'object',

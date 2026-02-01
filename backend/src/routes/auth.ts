@@ -462,6 +462,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/logout', {
+    preHandler: [fastify.authenticate],
     schema: {
       description: 'Logout user and revoke tokens',
       tags: ['Authentication'],
@@ -471,7 +472,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           refresh_token: { type: 'string' },
         },
       },
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
     },
   }, async (request, reply) => {
     try {

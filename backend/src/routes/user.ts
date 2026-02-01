@@ -42,7 +42,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Get current user profile',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -96,7 +96,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Get current user statistics',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -146,7 +146,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Update current user profile',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -265,7 +265,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Update current user password',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -354,7 +354,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Delete current user account and all associated data',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -389,7 +389,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Generate 2FA setup credentials',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -449,7 +449,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Verify code and enable 2FA',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -535,7 +535,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Disable 2FA',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -602,7 +602,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Get 2FA status for current user',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -646,7 +646,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Get security audit logs for current user',
       tags: ['User'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       querystring: {
         type: 'object',
         properties: {

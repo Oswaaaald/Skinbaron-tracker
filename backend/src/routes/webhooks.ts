@@ -25,7 +25,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Create a new webhook for the authenticated user',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -82,7 +82,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get all webhooks for the authenticated user',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
@@ -142,7 +142,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Update a webhook for the authenticated user (partial update)',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -227,7 +227,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Delete a webhook for the authenticated user',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -284,11 +284,10 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /webhooks/batch/enable - Enable multiple or all webhooks
    */
   fastify.post('/batch/enable', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Enable multiple webhooks or all webhooks for authenticated user',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -351,11 +350,10 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /webhooks/batch/disable - Disable multiple or all webhooks
    */
   fastify.post('/batch/disable', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Disable multiple webhooks or all webhooks for authenticated user',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -418,11 +416,10 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /webhooks/batch/delete - Delete multiple or all webhooks
    */
   fastify.post('/batch/delete', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete multiple webhooks or all webhooks for authenticated user',
       tags: ['Webhooks'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {

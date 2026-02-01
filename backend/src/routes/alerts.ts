@@ -26,7 +26,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get user alerts with pagination and filtering',
       tags: ['Alerts'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
@@ -111,12 +111,11 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /alerts/stats - Get user alert statistics
    */
   fastify.get('/stats', {
-    preHandler: [fastify.authenticate],
     logLevel: 'warn', // Reduce logging for this frequent endpoint
     schema: {
       description: 'Get user alert statistics',
       tags: ['Alerts'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -171,11 +170,10 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /alerts/clear-all - Delete all user alerts
    */
   fastify.post('/clear-all', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete all user alerts',
       tags: ['Alerts'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
     },
   }, async (request, reply) => {
     try {

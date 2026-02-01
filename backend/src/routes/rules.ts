@@ -41,7 +41,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Get all alert rules for authenticated user',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -97,7 +97,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Create a new alert rule for authenticated user',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         required: ['search_item'],
@@ -193,7 +193,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Update an existing rule (user-owned, partial update)',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -323,7 +323,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Delete a rule (user-owned)',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -382,11 +382,10 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /rules/batch/enable - Enable multiple or all rules
    */
   fastify.post('/batch/enable', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Enable multiple rules or all rules for authenticated user',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -449,11 +448,10 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /rules/batch/disable - Disable multiple or all rules
    */
   fastify.post('/batch/disable', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Disable multiple rules or all rules for authenticated user',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -516,11 +514,10 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /rules/batch/delete - Delete multiple or all rules
    */
   fastify.post('/batch/delete', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete multiple rules or all rules for authenticated user',
       tags: ['Rules'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
         properties: {
