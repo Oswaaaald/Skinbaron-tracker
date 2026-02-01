@@ -515,6 +515,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
         store.revokeAllRefreshTokensForUser(accessPayload.userId);
       }
 
+      // Clean up revoked tokens from database
+      store.cleanupRefreshTokens();
+
       if (accessPayload && userExists) {
         store.createAuditLog(
           accessPayload.userId,
