@@ -8,7 +8,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Project Banner](https://via.placeholder.com/1200x300/1e293b/06b6d4?text=SkinBaron+Tracker)
+![Project Banner](https://oswaaaald.be/images/skinbaron-tracker.png)
 
 ## 📋 Overview
 
