@@ -21,6 +21,8 @@ const UpdateProfileSchema = z.object({
  * User profile routes - Authenticated users can manage their own profile
  */
 export default async function userRoutes(fastify: FastifyInstance) {
+  // Local hook for defense in depth - ensures all routes require authentication
+  fastify.addHook('preHandler', fastify.authenticate);
 
   // Rate limiting for sensitive operations (password change)
   const sensitiveOperationRateLimit = {
@@ -38,7 +40,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * GET /api/user/profile - Get current user profile
    */
   fastify.get('/profile', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get current user profile',
       tags: ['User'],
@@ -92,7 +93,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * GET /api/user/stats - Get current user statistics
    */
   fastify.get('/stats', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get current user statistics',
       tags: ['User'],
@@ -142,7 +142,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * PATCH /api/user/profile - Update current user profile
    */
   fastify.patch('/profile', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Update current user profile',
       tags: ['User'],
@@ -258,7 +257,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * PATCH /api/user/password - Update current user password
    */
   fastify.patch('/password', {
-    preHandler: [fastify.authenticate],
     config: {
       rateLimit: sensitiveOperationRateLimit,
     },
@@ -350,7 +348,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * DELETE /api/user/account - Delete current user account
    */
   fastify.delete('/account', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete current user account and all associated data',
       tags: ['User'],
@@ -385,7 +382,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * POST /api/user/2fa/setup - Generate 2FA setup (secret + QR code)
    */
   fastify.post('/2fa/setup', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Generate 2FA setup credentials',
       tags: ['User'],
@@ -445,7 +441,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * POST /api/user/2fa/enable - Verify code and enable 2FA
    */
   fastify.post('/2fa/enable', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Verify code and enable 2FA',
       tags: ['User'],
@@ -531,7 +526,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * POST /api/user/2fa/disable - Disable 2FA
    */
   fastify.post('/2fa/disable', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Disable 2FA',
       tags: ['User'],
@@ -598,7 +592,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * GET /api/user/2fa/status - Check 2FA status
    */
   fastify.get('/2fa/status', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get 2FA status for current user',
       tags: ['User'],
@@ -642,7 +635,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * GET /api/user/audit-logs - Get current user's audit logs
    */
   fastify.get('/audit-logs', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get security audit logs for current user',
       tags: ['User'],

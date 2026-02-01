@@ -32,12 +32,13 @@ const RuleParamsSchema = z.object({
 
 // Route handlers
 const rulesRoutes: FastifyPluginAsync = async (fastify) => {
+  // Local hook for defense in depth - ensures all routes require authentication
+  fastify.addHook('preHandler', fastify.authenticate);
 
   /**
    * GET /rules - Get all rules for authenticated user
    */
   fastify.get('/', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get all alert rules for authenticated user',
       tags: ['Rules'],
@@ -93,7 +94,6 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * POST /rules - Create a new rule
    */
   fastify.post('/', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Create a new alert rule for authenticated user',
       tags: ['Rules'],
@@ -189,7 +189,6 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * PUT /rules/:id - Update a rule
    */
   fastify.patch('/:id', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Update an existing rule (user-owned, partial update)',
       tags: ['Rules'],
@@ -319,7 +318,6 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
    * DELETE /rules/:id - Delete a rule
    */
   fastify.delete('/:id', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete a rule (user-owned)',
       tags: ['Rules'],

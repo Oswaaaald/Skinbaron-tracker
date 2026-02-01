@@ -16,12 +16,13 @@ const WebhookQuerySchema = z.object({
 
 // Route handlers
 const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
+  // Local hook for defense in depth - ensures all routes require authentication
+  fastify.addHook('preHandler', fastify.authenticate);
 
   /**
    * POST /webhooks - Create a new webhook for the authenticated user
    */
   fastify.post('/', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Create a new webhook for the authenticated user',
       tags: ['Webhooks'],
@@ -78,7 +79,6 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /webhooks - Get all webhooks for the authenticated user
    */
   fastify.get('/', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get all webhooks for the authenticated user',
       tags: ['Webhooks'],
@@ -138,7 +138,6 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
    * PATCH /webhooks/:id - Update a webhook for the authenticated user
    */
   fastify.patch('/:id', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Update a webhook for the authenticated user (partial update)',
       tags: ['Webhooks'],
@@ -223,7 +222,6 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
    * DELETE /webhooks/:id - Delete a webhook for the authenticated user
    */
   fastify.delete('/:id', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Delete a webhook for the authenticated user',
       tags: ['Webhooks'],

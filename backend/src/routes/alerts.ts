@@ -17,12 +17,13 @@ const AlertsQuerySchema = z.object({
 
 // Route handlers
 const alertsRoutes: FastifyPluginAsync = async (fastify) => {
+  // Local hook for defense in depth - ensures all routes require authentication
+  fastify.addHook('preHandler', fastify.authenticate);
 
   /**
    * GET /alerts - Get user's alerts with pagination
    */
   fastify.get('/', {
-    preHandler: [fastify.authenticate],
     schema: {
       description: 'Get user alerts with pagination and filtering',
       tags: ['Alerts'],

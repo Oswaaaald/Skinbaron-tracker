@@ -9,6 +9,10 @@ import { Errors } from '../lib/errors.js';
  * Admin routes - All routes require admin privileges
  */
 export default async function adminRoutes(fastify: FastifyInstance) {
+  // Local hooks for defense in depth - ensures protection even if register preHandler is forgotten
+  fastify.addHook('preHandler', fastify.authenticate);
+  fastify.addHook('preHandler', fastify.requireAdmin);
+  
   const scheduler = getScheduler();
 
   /**
