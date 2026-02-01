@@ -441,6 +441,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * POST /api/user/2fa/enable - Verify code and enable 2FA
    */
   fastify.post('/2fa/enable', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'Verify code and enable 2FA',
       tags: ['User'],
@@ -526,6 +529,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * POST /api/user/2fa/disable - Disable 2FA
    */
   fastify.post('/2fa/disable', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'Disable 2FA',
       tags: ['User'],

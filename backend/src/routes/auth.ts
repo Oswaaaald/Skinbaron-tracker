@@ -388,6 +388,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/refresh', {
+    config: {
+      rateLimit: authRateLimitConfig,
+    },
     schema: {
       description: 'Refresh access token using a valid refresh token',
       tags: ['Authentication'],
@@ -463,6 +466,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   fastify.post('/logout', {
     preHandler: [fastify.authenticate],
+    config: {
+      rateLimit: authRateLimitConfig,
+    },
     schema: {
       description: 'Logout user and revoke tokens',
       tags: ['Authentication'],
