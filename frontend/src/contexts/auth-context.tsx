@@ -268,11 +268,8 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   }, [user, accessExpiry])
 
   const updateUser = useCallback((userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
-    }
-  }, [user])
+    setUser(prev => prev ? { ...prev, ...userData } : null)
+  }, [])
 
   const contextValue: AuthContextType = {
     user,
