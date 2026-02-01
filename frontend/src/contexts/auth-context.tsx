@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { apiClient, ApiError } from '@/lib/api'
 import { logger } from '@/lib/logger'
 
@@ -45,6 +45,11 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   const [accessExpiry, setAccessExpiry] = useState<number | null>(initialAuth?.expiresAt ?? null)
 
   const isAuthenticated = !!user
+
+  // Define updateUser early so it can be used in effects
+  const updateUser = useCallback((userData: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...userData } : null)
+  }, [])
 
   // Initialize auth state from server session or fetch /me if cookies exist
   useEffect(() => {
@@ -151,7 +156,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
-  }, [user])
+  }, [user, updateUser])
 
   const login = async (email: string, password: string, totpCode?: string): Promise<{
     success: boolean;
@@ -228,7 +233,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   const logout = async () => {
     try {
       await apiClient.logout()
-    } catch (error) {
+    } catch (_err) {
       // Best-effort logout
     }
     setUser(null)
@@ -266,13 +271,6 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
 
     return () => clearTimeout(timer)
   }, [user, accessExpiry])
-
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
-    }
-  }
 
   const contextValue: AuthContextType = {
     user,

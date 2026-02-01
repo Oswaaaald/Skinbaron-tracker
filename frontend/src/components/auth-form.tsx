@@ -87,7 +87,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           setTotpCode('') // Clear the code
         }
         // If successful, auth context will handle redirect
-      } catch (error) {
+      } catch (_err) {
         setError('An unexpected error occurred')
       } finally {
         setIsLoading(false)

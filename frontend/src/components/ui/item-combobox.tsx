@@ -153,6 +153,7 @@ export function ItemCombobox({
                         />
                         {item.imageUrl && (
                           <div className="shrink-0 w-10 h-10 flex items-center justify-center bg-muted rounded">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={item.imageUrl}
                               alt={item.name}

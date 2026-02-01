@@ -553,7 +553,7 @@ export function ProfileSettings() {
             <Alert>
               <Shield className="h-4 w-4" />
               <AlertDescription>
-                You'll be asked for a verification code when logging in. Keep your authenticator app accessible.
+                You&apos;ll be asked for a verification code when logging in. Keep your authenticator app accessible.
               </AlertDescription>
             </Alert>
           )}
