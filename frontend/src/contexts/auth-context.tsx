@@ -46,6 +46,11 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
 
   const isAuthenticated = !!user
 
+  // Define updateUser early so it can be used in effects
+  const updateUser = useCallback((userData: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...userData } : null)
+  }, [])
+
   // Initialize auth state from server session or fetch /me if cookies exist
   useEffect(() => {
     const loadSession = async () => {
@@ -266,10 +271,6 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
 
     return () => clearTimeout(timer)
   }, [user, accessExpiry])
-
-  const updateUser = useCallback((userData: Partial<User>) => {
-    setUser(prev => prev ? { ...prev, ...userData } : null)
-  }, [])
 
   const contextValue: AuthContextType = {
     user,
