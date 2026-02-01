@@ -171,6 +171,17 @@ async function registerPlugins() {
     staticCSP: true,
     transformStaticCSP: (header) => header,
     transformSpecification: (swaggerObject, request) => {
+      // Types for OpenAPI structure
+      type OpenAPIOperation = {
+        tags?: string[];
+        [key: string]: unknown;
+      };
+      type OpenAPIPathMethods = Record<string, OpenAPIOperation>;
+      type OpenAPITag = {
+        name: string;
+        description?: string;
+      };
+      
       // Filter routes based on user role
       const isAdmin = request.user?.is_admin || request.user?.is_super_admin;
       
@@ -181,15 +192,15 @@ async function registerPlugins() {
       
       // Non-admins: hide routes tagged as Admin or System
       const hiddenTags = new Set(['Admin', 'System']);
-      const filteredPaths: Record<string, any> = {};
+      const filteredPaths: Record<string, OpenAPIPathMethods> = {};
       const usedTags = new Set<string>();
       
       for (const [path, methods] of Object.entries(swaggerObject['paths'] || {})) {
-        const methodsObj = methods as Record<string, any>;
-        const filteredMethods: Record<string, any> = {};
+        const methodsObj = methods as OpenAPIPathMethods;
+        const filteredMethods: OpenAPIPathMethods = {};
         
         for (const [verb, op] of Object.entries(methodsObj)) {
-          const tags: string[] = (op as any)?.tags || [];
+          const tags: string[] = op.tags || [];
           const hide = tags.some((t) => hiddenTags.has(t));
           if (!hide) {
             filteredMethods[verb] = op;
@@ -203,7 +214,7 @@ async function registerPlugins() {
       }
       
       // Filter tags to only show those with visible routes
-      const filteredTags = (swaggerObject['tags'] || []).filter((tag: any) => 
+      const filteredTags = (swaggerObject['tags'] || []).filter((tag: OpenAPITag) => 
         usedTags.has(tag.name)
       );
       
