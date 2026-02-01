@@ -15,11 +15,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/users - List all users (admin only)
    */
   fastify.get('/users', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'List all users (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -94,11 +93,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * DELETE /api/admin/users/:id - Delete a user (admin only)
    */
   fastify.delete('/users/:id', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Delete a user and all their data (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         required: ['id'],
@@ -184,11 +182,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * PATCH /api/admin/users/:id/admin - Toggle admin status (admin only)
    */
   fastify.patch('/users/:id/admin', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Toggle admin status for a user (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         required: ['id'],
@@ -283,11 +280,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/stats - Get global statistics (admin only)
    */
   fastify.get('/stats', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Get global statistics (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       // Note: No response schema to allow dynamic nested object structure
     },
   }, async (request, reply) => {
@@ -307,11 +303,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/pending-users - Get users pending approval (admin only)
    */
   fastify.get('/pending-users', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Get users pending approval (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -350,11 +345,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/approve-user/:id - Approve a pending user (admin only)
    */
   fastify.post('/approve-user/:id', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Approve a pending user (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         required: ['id'],
@@ -408,11 +402,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/reject-user/:id - Reject (delete) a pending user (admin only)
    */
   fastify.post('/reject-user/:id', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Reject and delete a pending user (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         required: ['id'],
@@ -455,11 +448,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/scheduler/force-run - Force scheduler to run immediately (admin only)
    */
   fastify.post('/scheduler/force-run', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Force the scheduler to run immediately (bypasses cron schedule) - Admin only',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -491,11 +483,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/audit-logs/:userId - Get audit logs for a specific user (admin only)
    */
   fastify.get('/audit-logs/:userId', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Get security audit logs for a specific user (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         properties: {
@@ -577,11 +568,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/audit-logs - Get all audit logs (admin only)
    */
   fastify.get('/audit-logs', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Get all security audit logs (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
@@ -635,11 +625,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/users/search - Search users by username or email
    */
   fastify.get('/users/search', {
-    preHandler: [fastify.authenticate, fastify.requireAdmin],
     schema: {
       description: 'Search users by username or email (admin only)',
       tags: ['Admin'],
-      security: [{ bearerAuth: [] }],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       querystring: {
         type: 'object',
         properties: {

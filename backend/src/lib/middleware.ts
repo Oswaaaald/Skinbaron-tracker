@@ -161,8 +161,11 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
  * @throws AppError(403) if not admin
  */
 export async function requireAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
-  // request.user guaranteed to exist after authenticate
-  if (!request.user!.is_admin) {
+  const u = request.user;
+  if (!u) {
+    throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
+  }
+  if (!u.is_admin && !u.is_super_admin) {
     throw new AppError(403, 'This action requires administrator privileges', 'FORBIDDEN');
   }
 }
@@ -172,8 +175,11 @@ export async function requireAdmin(request: FastifyRequest, _reply: FastifyReply
  * @throws AppError(403) if not super admin
  */
 export async function requireSuperAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
-  // request.user guaranteed to exist after authenticate
-  if (!request.user!.is_super_admin) {
+  const u = request.user;
+  if (!u) {
+    throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
+  }
+  if (!u.is_super_admin) {
     throw new AppError(403, 'This action requires super administrator privileges', 'FORBIDDEN');
   }
 }

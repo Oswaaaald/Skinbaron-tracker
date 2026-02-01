@@ -141,6 +141,7 @@ async function registerPlugins() {
         { name: 'Webhooks', description: 'Discord webhook configuration' },
         { name: 'User', description: 'User profile and settings' },
         { name: 'Admin', description: 'Admin-only endpoints' },
+        { name: 'System', description: 'System status and health monitoring' },
         { name: 'Items', description: 'SkinBaron item search' },
       ],
       components: {
@@ -178,23 +179,26 @@ async function registerPlugins() {
         return swaggerObject;
       }
       
-      // Non-admins: hide admin-only routes and system status
+      // Non-admins: hide routes tagged as Admin or System
+      const hiddenTags = new Set(['Admin', 'System']);
       const filteredPaths: Record<string, any> = {};
       const usedTags = new Set<string>();
       
       for (const [path, methods] of Object.entries(swaggerObject['paths'] || {})) {
-        // Hide admin and system routes for non-admins (check both with and without /api prefix)
-        if (path.includes('/admin/') || path.includes('/system/')) {
-          continue;
-        }
-        filteredPaths[path] = methods;
-        
-        // Track which tags are actually used
         const methodsObj = methods as Record<string, any>;
-        for (const method of Object.values(methodsObj)) {
-          if (method && typeof method === 'object' && method.tags) {
-            method.tags.forEach((tag: string) => usedTags.add(tag));
+        const filteredMethods: Record<string, any> = {};
+        
+        for (const [verb, op] of Object.entries(methodsObj)) {
+          const tags: string[] = (op as any)?.tags || [];
+          const hide = tags.some((t) => hiddenTags.has(t));
+          if (!hide) {
+            filteredMethods[verb] = op;
+            tags.forEach((t) => usedTags.add(t));
           }
+        }
+        
+        if (Object.keys(filteredMethods).length > 0) {
+          filteredPaths[path] = filteredMethods;
         }
       }
       
@@ -459,16 +463,8 @@ async function setupSystemStatus() {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       // Note: No response schema to allow dynamic nested object structure
     },
-    preHandler: fastify.authenticate,
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
   }, async (request, reply) => {
-    // Require admin access
-    if (!request.user?.is_admin && !request.user?.is_super_admin) {
-      return reply.status(403).send({
-        success: false,
-        error: 'Forbidden',
-        message: 'Admin access required',
-      });
-    }
     try {
       const snapshot = await buildSystemSnapshot();
       fastify.log.info({ snapshot }, 'System status snapshot');
@@ -549,7 +545,10 @@ async function registerRoutes() {
   
   // Admin routes (requires admin privileges)
   const { default: adminRoutes } = await import('./routes/admin.js');
-  await fastify.register(adminRoutes, { prefix: '/api/admin' });
+  await fastify.register(adminRoutes, {
+    prefix: '/api/admin',
+    preHandler: [fastify.authenticate, fastify.requireAdmin],
+  });
 }
 
 // Initialize application
