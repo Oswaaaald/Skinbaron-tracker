@@ -210,7 +210,7 @@ export class UsersRepository {
         u.*,
         (SELECT COUNT(*) FROM rules WHERE user_id = u.id) as rules_count,
         (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = u.id) as alerts_count,
-        (SELECT COUNT(*) FROM webhooks WHERE user_id = u.id) as webhooks_count
+        (SELECT COUNT(*) FROM user_webhooks WHERE user_id = u.id) as webhooks_count
       FROM users u
       WHERE u.is_approved = 1
       ORDER BY u.created_at DESC
