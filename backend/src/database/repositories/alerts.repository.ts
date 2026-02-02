@@ -35,9 +35,7 @@ export class AlertsRepository {
         validated.alert_type
       );
 
-      const created = this.findById(result.lastInsertRowid as number);
-      if (!created) throw new Error('Failed to create alert');
-      return created;
+      return this.findById(result.lastInsertRowid as number)!;
     } catch (error) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         throw new Error('DUPLICATE_SALE');

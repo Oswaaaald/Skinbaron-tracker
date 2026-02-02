@@ -1,14 +1,8 @@
-import { FastifyPluginCallback, FastifyRequest } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
-
-/** Get authenticated user or throw - use after authenticate middleware */
-function getAuthUser(request: FastifyRequest) {
-  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
-  return request.user;
-}
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
@@ -22,7 +16,7 @@ const AlertsQuerySchema = z.object({
 });
 
 // Route handlers
-const alertsRoutes: FastifyPluginCallback = (fastify) => {
+const alertsRoutes: FastifyPluginAsync = async (fastify) => {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -84,13 +78,13 @@ const alertsRoutes: FastifyPluginCallback = (fastify) => {
       const query = validateWithZod(AlertsQuerySchema, request.query);
       
       // Get user's alerts with pagination
-      let alerts = store.getAlertsByUserId(getAuthUser(request).id, query.limit, query.offset);
+      let alerts = store.getAlertsByUserId(request.user!.id, query.limit, query.offset);
       
       // Apply filters if provided
       if (query.rule_id !== undefined) {
         // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
-        if (!rule || rule.user_id !== getAuthUser(request).id) {
+        if (!rule || rule.user_id !== request.user!.id) {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
         alerts = alerts.filter(alert => alert.rule_id === query.rule_id);
@@ -151,10 +145,10 @@ const alertsRoutes: FastifyPluginCallback = (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const stats = store.getUserStats(getAuthUser(request).id);
+      const stats = store.getUserStats(request.user!.id);
       
       // Get alert counts by type using efficient SQL aggregation
-      const alertsByType = store.getAlertCountsByType(getAuthUser(request).id);
+      const alertsByType = store.getAlertCountsByType(request.user!.id);
       
       return reply.status(200).send({
         success: true,
@@ -179,7 +173,7 @@ const alertsRoutes: FastifyPluginCallback = (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const userId = getAuthUser(request).id;
+      const userId = request.user!.id;
       const deletedCount = store.deleteAllUserAlerts(userId);
       
       request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);

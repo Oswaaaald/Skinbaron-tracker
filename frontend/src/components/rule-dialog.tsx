@@ -167,7 +167,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
             title: "✅ Rule created",
             description: "Your rule has been created successfully",
           })
-          void syncStats() // Sync stats immediately after rule creation
+          syncStats() // Sync stats immediately after rule creation
           onOpenChange(false)
         } else {
           toast({
@@ -200,7 +200,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
             title: "✅ Rule updated",
             description: "Your rule has been updated successfully",
           })
-          void syncStats() // Sync stats immediately after rule update
+          syncStats() // Sync stats immediately after rule update
           onOpenChange(false)
         } else {
           toast({
@@ -222,7 +222,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     }
   )
 
-  const onSubmit = (data: RuleFormData) => {
+  const onSubmit = async (data: RuleFormData) => {
     if (isSubmitting) return
     setIsSubmitting(true)
 
@@ -288,7 +288,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Search Item */}
             <FormField
               control={form.control}
@@ -658,19 +658,16 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                      {webhooks.map(webhook => {
-                        const webhookId = webhook.id
-                        if (webhookId === undefined) return null
-                        return (
+                      {webhooks.map(webhook => (
                         <div
-                          key={webhookId}
+                          key={webhook.id}
                           className="flex items-center space-x-2 p-2 rounded border hover:bg-muted cursor-pointer"
-                          onClick={() => handleWebhookToggle(webhookId)}
+                          onClick={() => handleWebhookToggle(webhook.id!)}
                         >
                           <input
                             type="checkbox"
-                            checked={selectedWebhooks.includes(webhookId)}
-                            onChange={() => handleWebhookToggle(webhookId)}
+                            checked={selectedWebhooks.includes(webhook.id!)}
+                            onChange={() => handleWebhookToggle(webhook.id!)}
                             className="h-4 w-4"
                           />
                           <span className="flex-1 text-sm">{webhook.name}</span>
@@ -678,8 +675,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             {webhook.webhook_type === 'discord' ? '🎮 Discord' : '🔗 Other'}
                           </span>
                         </div>
-                        )
-                      })}
+                      ))}
                     </div>
                   )}
 

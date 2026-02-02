@@ -66,9 +66,9 @@ export function AlertsTable() {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
         // Invalidate alerts and stats cache - let auto-refresh handle the rest
-        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
-        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN_STATS] })
-        void syncStats()
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN_STATS] })
+        syncStats()
         
         toast({
           title: "✅ Alerts cleared",
@@ -109,7 +109,7 @@ export function AlertsTable() {
     
     // If alert count changed (and it's not the first load), invalidate user stats
     if (prevAlertCountRef.current !== null && prevAlertCountRef.current !== currentCount) {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
     }
     
     prevAlertCountRef.current = currentCount
@@ -254,8 +254,8 @@ export function AlertsTable() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={alert.alert_type in ALERT_TYPE_COLORS ? ALERT_TYPE_COLORS[alert.alert_type] : 'default'}>
-                        {alert.alert_type in ALERT_TYPE_LABELS ? ALERT_TYPE_LABELS[alert.alert_type] : alert.alert_type}
+                      <Badge variant={ALERT_TYPE_COLORS[alert.alert_type as keyof typeof ALERT_TYPE_COLORS] || 'default'}>
+                        {ALERT_TYPE_LABELS[alert.alert_type as keyof typeof ALERT_TYPE_LABELS] || alert.alert_type}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -342,7 +342,7 @@ export function AlertsTable() {
         description="This will permanently delete all your alerts. This action cannot be undone."
         confirmText="Delete All"
         variant="destructive"
-        onConfirm={() => { void confirmClear() }}
+        onConfirm={confirmClear}
       />
     </div>
   )

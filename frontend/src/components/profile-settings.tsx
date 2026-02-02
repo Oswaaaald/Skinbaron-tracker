@@ -151,7 +151,7 @@ export function ProfileSettings() {
           title: "✅ Account deleted",
           description: "Your account has been permanently deleted",
         })
-        void logout()
+        logout()
       },
       onError: (error: unknown) => {
         const errorMsg = extractErrorMessage(error, 'Failed to delete account')

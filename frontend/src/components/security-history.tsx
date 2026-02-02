@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { QUERY_KEYS } from "@/lib/constants"
-import { AUDIT_EVENT_CONFIG } from "@/lib/audit-config"
+import { QUERY_KEYS, AUDIT_EVENT_CONFIG } from "@/lib/constants"
 import { formatRelativeDate, formatEventData } from "@/lib/formatters"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -111,17 +110,17 @@ export function SecurityHistory() {
                 const contextualMessage = formatEventData(log.event_type, log.event_data);
 
                 // For user_deleted events, extract deleted user info from event_data
-                let displayUsername: string | null = null;
-                let displayEmail: string | null = null;
-                let adminUsername: string | null = null;
+                let displayUsername = null;
+                let displayEmail = null;
+                let adminUsername = null;
                 if (log.event_type === 'user_deleted') {
                   try {
-                    const data = JSON.parse(log.event_data || '{}') as { username?: string; email?: string; admin_username?: string };
-                    displayUsername = data.username ?? null;
-                    displayEmail = data.email ?? null;
+                    const data = JSON.parse(log.event_data || '{}');
+                    displayUsername = data.username;
+                    displayEmail = data.email;
                     // For user_deleted, the current log user is the admin who did the deletion
                     // We need to get admin info from a different source since this is the user's own audit log
-                    adminUsername = data.admin_username ?? null;
+                    adminUsername = data.admin_username || null;
                   } catch {}
                 }
 

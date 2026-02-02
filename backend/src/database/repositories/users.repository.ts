@@ -17,9 +17,7 @@ export class UsersRepository {
 
     try {
       const result = stmt.run(validated.username, validated.email, validated.password_hash);
-      const created = this.findById(result.lastInsertRowid as number);
-      if (!created) throw new Error('Failed to create user');
-      return created;
+      return this.findById(result.lastInsertRowid as number)!;
     } catch (error) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         const errorMessage = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
@@ -127,9 +125,7 @@ export class UsersRepository {
       .then(({ invalidateUserCache }) => invalidateUserCache(id))
       .catch(() => {});
     
-    const updated = this.findById(id);
-    if (!updated) throw new Error('Failed to update user');
-    return updated;
+    return this.findById(id)!;
   }
 
   delete(id: number): boolean {

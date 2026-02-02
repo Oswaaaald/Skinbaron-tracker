@@ -437,7 +437,7 @@ async function buildSystemSnapshot() {
   return { health, scheduler: simplifiedScheduler };
 }
 
-// Health check endpoint
+// Health check endpoint - lightweight, no external dependencies
 function setupHealthCheck() {
   fastify.get('/api/health', {
     logLevel: 'warn',
@@ -457,13 +457,22 @@ function setupHealthCheck() {
       },
     },
   }, async (_request, reply) => {
-    const snapshot = await buildSystemSnapshot();
-    const { health } = snapshot;
+    // Lightweight health check - only check database, not external APIs
+    let dbHealth = 'healthy';
+    try {
+      store.getStats();
+    } catch {
+      dbHealth = 'unhealthy';
+    }
+
+    const uptime = process.uptime();
+    const status = dbHealth === 'healthy' ? 'healthy' : 'degraded';
+
     return reply.status(200).send({ 
       success: true, 
-      status: health.status,
-      database: health.services.database,
-      uptime: health.stats.uptime,
+      status,
+      database: dbHealth,
+      uptime,
     });
   });
 }

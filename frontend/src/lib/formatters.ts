@@ -141,20 +141,6 @@ export function formatUptime(uptimeSeconds?: number): string {
 }
 
 /**
- * Audit log event data structure
- */
-interface AuditEventData {
-  method?: string;
-  reason?: string;
-  remaining_codes?: number;
-  new_email?: string;
-  new_username?: string;
-  admin_username?: string;
-  admin_id?: number;
-  approved_by_admin_id?: number;
-}
-
-/**
  * Format audit log event data into human-readable text
  * 
  * @param eventType - The type of event (login_success, 2fa_enabled, etc.)
@@ -165,7 +151,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
   if (!eventDataJson) return "";
 
   try {
-    const data = JSON.parse(eventDataJson) as AuditEventData;
+    const data = JSON.parse(eventDataJson);
 
     switch (eventType) {
       case "login_success":

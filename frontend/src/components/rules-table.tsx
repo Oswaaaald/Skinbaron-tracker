@@ -128,7 +128,7 @@ export function RulesTable() {
             ? "Rule is now active and monitoring items" 
             : "Rule has been paused",
         })
-        void syncStats() // Sync stats immediately after rule change
+        syncStats() // Sync stats immediately after rule change
       },
       onError: (error: unknown) => {
         toast({
@@ -149,7 +149,7 @@ export function RulesTable() {
           title: "✅ Rule deleted",
           description: "The monitoring rule has been permanently deleted",
         })
-        void syncStats() // Sync stats immediately after rule deletion
+        syncStats() // Sync stats immediately after rule deletion
       },
       onError: (error: unknown) => {
         toast({
@@ -171,7 +171,7 @@ export function RulesTable() {
           description: `${data?.count || 0} rule(s) have been enabled`,
         })
         setSelectedRules(new Set())
-        void syncStats()
+        syncStats()
       },
       onError: (error: unknown) => {
         toast({
@@ -193,7 +193,7 @@ export function RulesTable() {
           description: `${data?.count || 0} rule(s) have been disabled`,
         })
         setSelectedRules(new Set())
-        void syncStats()
+        syncStats()
       },
       onError: (error: unknown) => {
         toast({
@@ -216,7 +216,7 @@ export function RulesTable() {
           description: `${data?.count || 0} rule(s) have been permanently deleted`,
         })
         setSelectedRules(new Set())
-        void syncStats()
+        syncStats()
       },
       onError: (error: unknown) => {
         toast({
@@ -255,7 +255,7 @@ export function RulesTable() {
     if (selectedRules.size === rules.length) {
       setSelectedRules(new Set())
     } else {
-      setSelectedRules(new Set(rules.map(r => r.id).filter((id): id is number => id !== undefined)))
+      setSelectedRules(new Set(rules.map(r => r.id!).filter(Boolean)))
     }
   }
 
@@ -395,16 +395,13 @@ export function RulesTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rules.map((rule) => {
-                const ruleId = rule.id
-                if (ruleId === undefined) return null
-                return (
-                <TableRow key={ruleId}>
+              {rules.map((rule) => (
+                <TableRow key={rule.id}>
                   <TableCell>
                     <input
                       type="checkbox"
-                      checked={selectedRules.has(ruleId)}
-                      onChange={() => handleSelectRule(ruleId)}
+                      checked={selectedRules.has(rule.id!)}
+                      onChange={() => handleSelectRule(rule.id!)}
                       className="cursor-pointer"
                       aria-label={`Select rule ${rule.search_item}`}
                     />
@@ -510,7 +507,7 @@ export function RulesTable() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              )})}
+              ))}
             </TableBody>
           </Table>
         </CardContent>

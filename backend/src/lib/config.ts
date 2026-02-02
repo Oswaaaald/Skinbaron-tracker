@@ -67,7 +67,9 @@ function loadConfig() {
     return config;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // Errors already logged by Zod
+      error.issues.forEach((_err) => {
+        // Errors already logged by Zod
+      });
     }
     process.exit(1);
   }

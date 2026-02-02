@@ -1,23 +1,10 @@
-import { FastifyPluginCallback, FastifyRequest } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
-import { CreateUserWebhookSchema, type UserWebhook } from '../database/schemas.js';
+import { CreateUserWebhookSchema } from '../database/schemas.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 import { validateWebhookUrl } from '../lib/webhook-validator.js';
-
-/** Remove encrypted URL from webhook for safe API response */
-function omitEncryptedUrl(webhook: UserWebhook): Omit<UserWebhook, 'webhook_url_encrypted'> {
-  const result = { ...webhook };
-  delete (result as Partial<UserWebhook>).webhook_url_encrypted;
-  return result;
-}
-
-/** Get authenticated user or throw - use after authenticate middleware */
-function getAuthUser(request: FastifyRequest) {
-  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
-  return request.user;
-}
 
 // Query parameters schemas
 const WebhookParamsSchema = z.object({
@@ -29,7 +16,7 @@ const WebhookQuerySchema = z.object({
 });
 
 // Route handlers
-const webhooksRoutes: FastifyPluginCallback = (fastify) => {
+const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -82,11 +69,14 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
         throw new AppError(400, urlValidation.error || 'Invalid webhook URL', 'INVALID_WEBHOOK_URL');
       }
       
-      const webhook = store.createUserWebhook(getAuthUser(request).id, webhookData);
+      const webhook = store.createUserWebhook(request.user!.id, webhookData);
+      
+      // Don't return encrypted URL in response
+      const { webhook_url_encrypted, ...safeWebhook } = webhook;
       
       return reply.status(201).send({
         success: true,
-        data: omitEncryptedUrl(webhook),
+        data: safeWebhook,
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'webhook creation');
@@ -135,11 +125,17 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
   }, async (request, reply) => {
     try {
       const { decrypt } = validateWithZod(WebhookQuerySchema, request.query);
-      const webhooks = store.getUserWebhooksByUserId(getAuthUser(request).id, decrypt);
+      const webhooks = store.getUserWebhooksByUserId(request.user!.id, decrypt);
+      
+      // Remove encrypted field from response
+      const safeWebhooks = webhooks.map(webhook => {
+        const { webhook_url_encrypted, ...safe } = webhook;
+        return safe;
+      });
       
       return reply.status(200).send({
         success: true,
-        data: webhooks.map(omitEncryptedUrl),
+        data: safeWebhooks,
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'webhook retrieval');
@@ -208,7 +204,7 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
 
-      if (existingWebhook.user_id !== getAuthUser(request).id) {
+      if (existingWebhook.user_id !== request.user!.id) {
         throw new AppError(403, 'You can only update your own webhooks', 'ACCESS_DENIED');
       }
       
@@ -221,15 +217,18 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
         }
       }
       
-      const webhook = store.updateUserWebhook(id, getAuthUser(request).id, updates);
+      const webhook = store.updateUserWebhook(id, request.user!.id, updates);
       
       if (!webhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
       
+      // Remove encrypted field from response
+      const { webhook_url_encrypted, ...safeWebhook } = webhook;
+      
       return reply.status(200).send({
         success: true,
-        data: omitEncryptedUrl(webhook),
+        data: safeWebhook,
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'webhook update');
@@ -277,11 +276,11 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
 
-      if (existingWebhook.user_id !== getAuthUser(request).id) {
+      if (existingWebhook.user_id !== request.user!.id) {
         throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
       }
       
-      const deleted = store.deleteUserWebhook(id, getAuthUser(request).id);
+      const deleted = store.deleteUserWebhook(id, request.user!.id);
       
       if (!deleted) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
@@ -328,14 +327,14 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
   }, async (request, reply) => {
     try {
       const { webhook_ids } = request.body as { webhook_ids?: number[] };
-      const userId = getAuthUser(request).id;
+      const userId = request.user!.id;
 
       let updated = 0;
       
       if (!webhook_ids || webhook_ids.length === 0) {
         // Enable all webhooks for this user
         const allWebhooks = store.getUserWebhooks(userId);
-        const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id);
+        const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id!);
         updated = store.enableWebhooksBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks
@@ -394,14 +393,14 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
   }, async (request, reply) => {
     try {
       const { webhook_ids } = request.body as { webhook_ids?: number[] };
-      const userId = getAuthUser(request).id;
+      const userId = request.user!.id;
 
       let updated = 0;
       
       if (!webhook_ids || webhook_ids.length === 0) {
         // Disable all webhooks for this user
         const allWebhooks = store.getUserWebhooks(userId);
-        const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id);
+        const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id!);
         updated = store.disableWebhooksBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks
@@ -464,7 +463,7 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
   }, async (request, reply) => {
     try {
       const { webhook_ids, confirm_all } = request.body as { webhook_ids?: number[]; confirm_all?: boolean };
-      const userId = getAuthUser(request).id;
+      const userId = request.user!.id;
 
       let deleted = 0;
       
@@ -475,7 +474,7 @@ const webhooksRoutes: FastifyPluginCallback = (fastify) => {
         }
         
         const allWebhooks = store.getUserWebhooks(userId);
-        const allIds = allWebhooks.map(w => w.id);
+        const allIds = allWebhooks.map(w => w.id!);
         deleted = store.deleteWebhooksBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks

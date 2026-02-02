@@ -62,10 +62,7 @@ function isPrivateIP(ip: string): boolean {
   for (const range of PRIVATE_IP_RANGES) {
     let inRange = true;
     for (let i = 0; i < 4; i++) {
-      const part = parts[i];
-      const rangeStart = range.start[i];
-      const rangeEnd = range.end[i];
-      if (part === undefined || rangeStart === undefined || rangeEnd === undefined || part < rangeStart || part > rangeEnd) {
+      if (parts[i]! < range.start[i]! || parts[i]! > range.end[i]!) {
         inRange = false;
         break;
       }

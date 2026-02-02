@@ -1,20 +1,14 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getClientIp } from '../lib/middleware.js';
 import { handleRouteError } from '../lib/validation-handler.js';
-import { Errors, AppError } from '../lib/errors.js';
-
-/** Get authenticated user or throw - use after authenticate middleware */
-function getAuthUser(request: FastifyRequest) {
-  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
-  return request.user;
-}
+import { Errors } from '../lib/errors.js';
 
 /**
  * Admin routes - All routes require admin privileges
  */
-export default function adminRoutes(fastify: FastifyInstance) {
+export default async function adminRoutes(fastify: FastifyInstance) {
   // Local hooks for defense in depth - ensures protection even if register preHandler is forgotten
   fastify.addHook('preHandler', fastify.authenticate);
   fastify.addHook('preHandler', fastify.requireAdmin);
@@ -103,7 +97,7 @@ export default function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = request.params as { id: number };
-      const adminId = getAuthUser(request).id;
+      const adminId = request.user!.id;
 
       // Prevent deleting yourself
       if (id === adminId) {
@@ -200,7 +194,7 @@ export default function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: number };
       const { is_admin } = request.body as { is_admin: boolean };
-      const adminId = getAuthUser(request).id;
+      const adminId = request.user!.id;
 
       // Prevent modifying your own admin status
       if (id === adminId) {
@@ -371,14 +365,14 @@ export default function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action
-      store.logAdminAction(getAuthUser(request).id, 'APPROVE_USER', id, `Approved user ID ${id}`);
+      store.logAdminAction(request.user!.id, 'APPROVE_USER', id, `Approved user ID ${id}`);
 
       // Create audit log
       store.createAuditLog(
         id,
         'user_approved',
         JSON.stringify({ 
-          approved_by_admin_id: getAuthUser(request).id 
+          approved_by_admin_id: request.user!.id 
         }),
         getClientIp(request),
         request.headers['user-agent']
@@ -428,7 +422,7 @@ export default function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action
-      store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ID ${id}`);
+      store.logAdminAction(request.user!.id, 'REJECT_USER', id, `Rejected user ID ${id}`);
 
       return reply.status(200).send({
         success: true,
@@ -463,7 +457,7 @@ export default function adminRoutes(fastify: FastifyInstance) {
       await scheduler.forceRun();
 
       // Log admin action
-      store.logAdminAction(getAuthUser(request).id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
+      store.logAdminAction(request.user!.id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
 
       return reply.status(200).send({
         success: true,

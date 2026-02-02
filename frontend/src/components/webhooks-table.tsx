@@ -178,12 +178,7 @@ export function WebhooksTable() {
       if (formData.webhook_url.trim()) {
         updates.webhook_url = formData.webhook_url
       }
-      const webhookId = editingWebhook.id
-      if (webhookId === undefined) {
-        setError('Invalid webhook ID')
-        return
-      }
-      updateWebhookMutation.mutate({ id: webhookId, data: updates })
+      updateWebhookMutation.mutate({ id: editingWebhook.id!, data: updates })
     } else {
       // For creation, both name and URL are required
       if (!formData.name || !formData.webhook_url) {
@@ -211,7 +206,7 @@ export function WebhooksTable() {
     if (selectedWebhooks.size === webhooks.length) {
       setSelectedWebhooks(new Set())
     } else {
-      setSelectedWebhooks(new Set(webhooks.map(w => w.id).filter((id): id is number => id !== undefined)))
+      setSelectedWebhooks(new Set(webhooks.map(w => w.id!).filter(Boolean)))
     }
   }
 
@@ -509,16 +504,13 @@ export function WebhooksTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {webhooks?.map((webhook) => {
-                const webhookId = webhook.id
-                if (webhookId === undefined) return null
-                return (
-                <TableRow key={webhookId}>
+              {webhooks?.map((webhook) => (
+                <TableRow key={webhook.id}>
                   <TableCell>
                     <input
                       type="checkbox"
-                      checked={selectedWebhooks.has(webhookId)}
-                      onChange={() => handleSelectWebhook(webhookId)}
+                      checked={selectedWebhooks.has(webhook.id!)}
+                      onChange={() => handleSelectWebhook(webhook.id!)}
                       className="cursor-pointer"
                       aria-label={`Select webhook ${webhook.name}`}
                     />
@@ -559,7 +551,7 @@ export function WebhooksTable() {
                     </div>
                   </TableCell>
                 </TableRow>
-              )})}
+              ))}
             </TableBody>
           </Table>
       </Card>

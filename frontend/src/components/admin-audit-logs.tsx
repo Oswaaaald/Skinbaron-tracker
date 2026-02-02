@@ -26,8 +26,7 @@ import {
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { QUERY_KEYS } from "@/lib/constants"
-import { AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/audit-config"
+import { QUERY_KEYS, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
 import { formatRelativeDate, formatEventData } from "@/lib/formatters"
 
 export function AdminAuditLogs() {
@@ -261,7 +260,7 @@ export function AdminAuditLogs() {
           <div className="space-y-2 flex-shrink-0 w-auto min-w-[220px] flex flex-col">
             <Label className="invisible">Actions</Label>
             <div className="flex items-end gap-2">
-              <Button onClick={() => { void refetch() }} variant="outline" className="flex-1" disabled={isFetching}>
+              <Button onClick={() => refetch()} variant="outline" className="flex-1" disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh results
               </Button>
@@ -299,7 +298,7 @@ export function AdminAuditLogs() {
                 let displayEmail = log.email;
                 if (log.event_type === 'user_deleted') {
                   try {
-                    const data = JSON.parse(log.event_data || '{}') as { username?: string; email?: string };
+                    const data = JSON.parse(log.event_data || '{}');
                     displayUsername = data.username || log.username;
                     displayEmail = data.email || log.email;
                   } catch {}
