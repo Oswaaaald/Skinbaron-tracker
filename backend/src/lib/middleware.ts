@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest } from 'fastify';
 import '@fastify/cookie';
 import { LRUCache } from 'lru-cache';
 import { AuthService } from './auth.js';
@@ -29,7 +29,7 @@ export function invalidateUserCache(userId: number): void {
 /**
  * Get user from cache or database
  */
-async function getUserById(id: number): Promise<User | null> {
+function getUserById(id: number): User | null {
   const cached = userCache.get(id);
   if (cached) return cached;
 
@@ -108,7 +108,7 @@ export function getClientIp(request: FastifyRequest): string {
  * Extract JWT token from cookie or Authorization header
  */
 function extractToken(request: FastifyRequest): string | null {
-  const cookieToken = request.cookies?.[ACCESS_COOKIE] as string | undefined;
+  const cookieToken = request.cookies?.[ACCESS_COOKIE];
   if (cookieToken) return cookieToken;
   
   const authHeader = request.headers.authorization;
@@ -122,7 +122,7 @@ function extractToken(request: FastifyRequest): string | null {
  * - Type-safe user attachment
  * - Comprehensive security checks
  */
-export async function authMiddleware(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+export function authMiddleware(request: FastifyRequest): Promise<void> {
   const token = extractToken(request);
   
   if (!token) {
@@ -138,7 +138,7 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
     throw new AppError(401, 'Token has been revoked', 'TOKEN_REVOKED');
   }
 
-  const user = await getUserById(payload.userId);
+  const user = getUserById(payload.userId);
   if (!user) {
     throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
   }
@@ -149,6 +149,7 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
 
   // Attach user to request (type-safe)
   attachUser(request, user);
+  return Promise.resolve();
 }
 
 /**
@@ -160,7 +161,7 @@ export async function authMiddleware(request: FastifyRequest, _reply: FastifyRep
  * Require admin role - assumes authentication already done
  * @throws AppError(403) if not admin
  */
-export async function requireAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+export function requireAdmin(request: FastifyRequest): Promise<void> {
   const u = request.user;
   if (!u) {
     throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
@@ -168,13 +169,14 @@ export async function requireAdmin(request: FastifyRequest, _reply: FastifyReply
   if (!u.is_admin && !u.is_super_admin) {
     throw new AppError(403, 'This action requires administrator privileges', 'FORBIDDEN');
   }
+  return Promise.resolve();
 }
 
 /**
  * Require super admin role - assumes authentication already done
  * @throws AppError(403) if not super admin
  */
-export async function requireSuperAdmin(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+export function requireSuperAdmin(request: FastifyRequest): Promise<void> {
   const u = request.user;
   if (!u) {
     throw new AppError(401, 'Authentication required', 'UNAUTHENTICATED');
@@ -182,28 +184,31 @@ export async function requireSuperAdmin(request: FastifyRequest, _reply: Fastify
   if (!u.is_super_admin) {
     throw new AppError(403, 'This action requires super administrator privileges', 'FORBIDDEN');
   }
+  return Promise.resolve();
 }
 
 /**
  * Optional authentication middleware (allows anonymous access)
  * Attaches user to request if valid token provided, but doesn't fail if missing
  */
-export async function optionalAuthMiddleware(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+export function optionalAuthMiddleware(request: FastifyRequest): Promise<void> {
   try {
     const token = extractToken(request);
-    if (!token) return;
+    if (!token) return Promise.resolve();
 
     const payload = AuthService.verifyToken(token, 'access');
-    if (!payload) return;
+    if (!payload) return Promise.resolve();
 
-    if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) return;
+    if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) return Promise.resolve();
 
-    const user = await getUserById(payload.userId);
-    if (!user || !user.is_approved) return;
+    const user = getUserById(payload.userId);
+    if (!user || !user.is_approved) return Promise.resolve();
 
     attachUser(request, user);
+    return Promise.resolve();
   } catch (error) {
     // Log but don't fail - optional auth
     request.log.debug({ error }, 'Optional authentication failed');
+    return Promise.resolve();
   }
 }

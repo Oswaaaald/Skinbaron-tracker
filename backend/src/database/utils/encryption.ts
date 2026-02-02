@@ -8,11 +8,14 @@ const TAG_LENGTH = 16;
 const TAG_POSITION = SALT_LENGTH + IV_LENGTH;
 const ENCRYPTED_POSITION = TAG_POSITION + TAG_LENGTH;
 
+// OWASP 2024+ recommendation: 600,000+ iterations for PBKDF2-SHA512
+const PBKDF2_ITERATIONS = 600_000;
+
 /**
  * Derives a key from the encryption key using PBKDF2
  */
 function getKey(salt: Buffer): Buffer {
-  return crypto.pbkdf2Sync(appConfig.ENCRYPTION_KEY, salt, 100000, 32, 'sha512');
+  return crypto.pbkdf2Sync(appConfig.ENCRYPTION_KEY, salt, PBKDF2_ITERATIONS, 32, 'sha512');
 }
 
 /**
@@ -47,7 +50,8 @@ export function decryptData(encryptedData: string): string {
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
 
-  return decipher.update(encrypted) + decipher.final('utf8');
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf8');
 }
 
 /**

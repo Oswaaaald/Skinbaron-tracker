@@ -16,7 +16,7 @@ export function rowToRule(row: RuleRow): Rule {
     stattrak_filter: row.stattrak_filter as 'all' | 'only' | 'exclude',
     souvenir_filter: row.souvenir_filter as 'all' | 'only' | 'exclude',
     allow_stickers: Boolean(row.allow_stickers),
-    webhook_ids: row.webhook_ids ? JSON.parse(row.webhook_ids) : [],
+    webhook_ids: row.webhook_ids ? (JSON.parse(row.webhook_ids) as number[]) : [],
     enabled: Boolean(row.enabled),
     created_at: row.created_at,
     updated_at: row.updated_at,

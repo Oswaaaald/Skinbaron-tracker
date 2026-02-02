@@ -19,6 +19,7 @@ import { AlertCircle, CheckCircle, Copy, Shield } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
+import { QUERY_KEYS } from '@/lib/constants'
 
 interface TwoFactorSetupProps {
   open: boolean
@@ -37,7 +38,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
 
   // Fetch 2FA setup
   const { data: setupData, isLoading: setupLoading } = useQuery({
-    queryKey: ['2fa-setup'],
+    queryKey: [QUERY_KEYS.TWO_FA_SETUP],
     queryFn: async () => {
       const response = await apiClient.post('/api/user/2fa/setup')
       if (response.success && response.data) {
@@ -63,7 +64,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
       return response
     },
     {
-      invalidateKeys: [['2fa-status']],
+      invalidateKeys: [[QUERY_KEYS.TWO_FA_STATUS]],
       onSuccess: (response) => {
         if (response.success && response.data) {
           const payload = response.data as { recovery_codes?: string[] }
@@ -114,13 +115,13 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   }
 
   const copySecret = () => {
-    navigator.clipboard.writeText(secret)
+    void navigator.clipboard.writeText(secret)
     setCopiedSecret(true)
     setTimeout(() => setCopiedSecret(false), 2000)
   }
 
   const copyRecoveryCodes = () => {
-    navigator.clipboard.writeText(recoveryCodes.join('\n'))
+    void navigator.clipboard.writeText(recoveryCodes.join('\n'))
     setCopiedCodes(true)
     setTimeout(() => setCopiedCodes(false), 2000)
   }

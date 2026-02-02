@@ -17,7 +17,9 @@ export class UsersRepository {
 
     try {
       const result = stmt.run(validated.username, validated.email, validated.password_hash);
-      return this.findById(result.lastInsertRowid as number)!;
+      const created = this.findById(result.lastInsertRowid as number);
+      if (!created) throw new Error('Failed to create user');
+      return created;
     } catch (error) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         const errorMessage = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
@@ -125,7 +127,9 @@ export class UsersRepository {
       .then(({ invalidateUserCache }) => invalidateUserCache(id))
       .catch(() => {});
     
-    return this.findById(id)!;
+    const updated = this.findById(id);
+    if (!updated) throw new Error('Failed to update user');
+    return updated;
   }
 
   delete(id: number): boolean {
@@ -198,5 +202,33 @@ export class UsersRepository {
     const term = `%${searchTerm}%`;
     const rows = stmt.all(term, term, limit) as UserRow[];
     return rows.map(row => this.decrypt2FASecrets(rowToUser(row)));
+  }
+
+  /**
+   * Get all approved users with their stats in a single efficient query
+   * Replaces N+1 pattern of fetching users then iterating for counts
+   */
+  findAllWithStats(): Array<User & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }> {
+    const stmt = this.db.prepare(`
+      SELECT 
+        u.*,
+        (SELECT COUNT(*) FROM rules WHERE user_id = u.id) as rules_count,
+        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = u.id) as alerts_count,
+        (SELECT COUNT(*) FROM webhooks WHERE user_id = u.id) as webhooks_count
+      FROM users u
+      WHERE u.is_approved = 1
+      ORDER BY u.created_at DESC
+    `);
+    
+    const rows = stmt.all() as Array<UserRow & { rules_count: number; alerts_count: number; webhooks_count: number }>;
+    
+    return rows.map(row => {
+      const { rules_count, alerts_count, webhooks_count, ...userRow } = row;
+      const user = this.decrypt2FASecrets(rowToUser(userRow as UserRow));
+      return {
+        ...user,
+        stats: { rules_count, alerts_count, webhooks_count }
+      };
+    });
   }
 }

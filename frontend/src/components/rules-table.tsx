@@ -26,11 +26,13 @@ import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
 import { apiClient, type Rule } from "@/lib/api"
 import { RuleDialog } from "@/components/rule-dialog"
 import { formatWearPercentage } from "@/lib/wear-utils"
+import { extractErrorMessage } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { useApiMutation } from "@/hooks/use-api-mutation"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { QUERY_KEYS } from "@/lib/constants"
 
 export function RulesTable() {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
@@ -44,14 +46,14 @@ export function RulesTable() {
   const { toast } = useToast()
 
   const { data: rulesResponse, isLoading, error } = useQuery({
-    queryKey: ['rules'],
+    queryKey: [QUERY_KEYS.RULES],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getRules(), 'Failed to load rules'),
     enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
   })
 
     // Fetch user's webhooks to display webhook names in rules table
   const { data: webhooksResponse } = useQuery({
-    queryKey: ['webhooks'],
+    queryKey: [QUERY_KEYS.WEBHOOKS],
     queryFn: async () => {
       const result = await apiClient.getWebhooks(false) // Don't decrypt for listing
       if (!result.success) throw new Error(result.error)
@@ -118,7 +120,7 @@ export function RulesTable() {
       return apiClient.updateRule(rule.id, updateData);
     },
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: (_, { enabled }) => {
         toast({
           title: enabled ? "✅ Rule enabled" : "⚠️ Rule disabled",
@@ -126,19 +128,13 @@ export function RulesTable() {
             ? "Rule is now active and monitoring items" 
             : "Rule has been paused",
         })
-        syncStats() // Sync stats immediately after rule change
+        void syncStats() // Sync stats immediately after rule change
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to update rule",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -147,25 +143,19 @@ export function RulesTable() {
   const deleteRuleMutation = useApiMutation(
     (id: number) => apiClient.deleteRule(id),
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: () => {
         toast({
           title: "✅ Rule deleted",
           description: "The monitoring rule has been permanently deleted",
         })
-        syncStats() // Sync stats immediately after rule deletion
+        void syncStats() // Sync stats immediately after rule deletion
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to delete rule",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -174,26 +164,20 @@ export function RulesTable() {
   const batchEnableMutation = useApiMutation(
     (ruleIds?: number[]) => apiClient.batchEnableRules(ruleIds),
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: (data) => {
         toast({
           title: "✅ Rules enabled",
           description: `${data?.count || 0} rule(s) have been enabled`,
         })
         setSelectedRules(new Set())
-        syncStats()
+        void syncStats()
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to enable rules",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -202,26 +186,20 @@ export function RulesTable() {
   const batchDisableMutation = useApiMutation(
     (ruleIds?: number[]) => apiClient.batchDisableRules(ruleIds),
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: (data) => {
         toast({
           title: "⚠️ Rules disabled",
           description: `${data?.count || 0} rule(s) have been disabled`,
         })
         setSelectedRules(new Set())
-        syncStats()
+        void syncStats()
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to disable rules",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -231,26 +209,20 @@ export function RulesTable() {
     ({ ruleIds, confirmAll }: { ruleIds?: number[]; confirmAll: boolean }) => 
       apiClient.batchDeleteRules(ruleIds, confirmAll),
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: (data) => {
         toast({
           title: "✅ Rules deleted",
           description: `${data?.count || 0} rule(s) have been permanently deleted`,
         })
         setSelectedRules(new Set())
-        syncStats()
+        void syncStats()
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to delete rules",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -283,7 +255,7 @@ export function RulesTable() {
     if (selectedRules.size === rules.length) {
       setSelectedRules(new Set())
     } else {
-      setSelectedRules(new Set(rules.map(r => r.id!).filter(Boolean)))
+      setSelectedRules(new Set(rules.map(r => r.id).filter((id): id is number => id !== undefined)))
     }
   }
 
@@ -332,7 +304,7 @@ export function RulesTable() {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
-            Error loading rules: {error instanceof Error ? error.message : 'Unknown error'}
+            Error loading rules: {extractErrorMessage(error)}
           </div>
         </CardContent>
       </Card>
@@ -423,13 +395,16 @@ export function RulesTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rules.map((rule) => (
-                <TableRow key={rule.id}>
+              {rules.map((rule) => {
+                const ruleId = rule.id
+                if (ruleId === undefined) return null
+                return (
+                <TableRow key={ruleId}>
                   <TableCell>
                     <input
                       type="checkbox"
-                      checked={selectedRules.has(rule.id!)}
-                      onChange={() => handleSelectRule(rule.id!)}
+                      checked={selectedRules.has(ruleId)}
+                      onChange={() => handleSelectRule(ruleId)}
                       className="cursor-pointer"
                       aria-label={`Select rule ${rule.search_item}`}
                     />
@@ -535,7 +510,7 @@ export function RulesTable() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         </CardContent>

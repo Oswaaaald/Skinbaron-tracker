@@ -78,7 +78,7 @@ export class NotificationService {
       } else {
         return false;
       }
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -87,7 +87,7 @@ export class NotificationService {
    * Create Discord embed for the notification
    */
   private createEmbed(options: NotificationOptions): DiscordEmbed {
-    const { alertType, item, rule: _rule, skinUrl } = options;
+    const { alertType, item, skinUrl } = options;
 
     // Base embed structure
     const embed: DiscordEmbed = {
@@ -247,7 +247,7 @@ export class NotificationService {
       });
 
       return response.status === 204;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -284,7 +284,7 @@ export class NotificationService {
       });
 
       return response.status === 204;
-    } catch (sendError) {
+    } catch {
       return false;
     }
   }

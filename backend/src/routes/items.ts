@@ -2,9 +2,25 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getSkinBaronClient } from '../lib/sbclient.js';
 import { handleRouteError } from '../lib/validation-handler.js';
 
-export default async function itemsRoutes(fastify: FastifyInstance) {
+export default function itemsRoutes(fastify: FastifyInstance) {
+  
+  // Rate limiting for item search (protect SkinBaron API quota)
+  const searchRateLimitConfig = {
+    max: 30,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many requests',
+      message: 'You are searching too fast. Please wait a moment.',
+    }),
+  };
+
   // Search items endpoint for autocomplete
   fastify.get('/search', {
+    config: {
+      rateLimit: searchRateLimitConfig,
+    },
     schema: {
       description: 'Search SkinBaron items for autocomplete',
       tags: ['Items'],

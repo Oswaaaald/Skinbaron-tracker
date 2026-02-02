@@ -151,7 +151,7 @@ class ApiClient {
     this.baseURL = baseURL;
     // Only init CSRF token on client-side
     if (typeof window !== 'undefined') {
-      this.initCsrfToken();
+      void this.initCsrfToken();
     }
   }
 
@@ -218,7 +218,7 @@ class ApiClient {
       let data: unknown = null;
       try {
         data = await response.json();
-      } catch (_err) {
+      } catch {
         // Non-JSON response
         const message = `Invalid JSON response (status ${response.status})`;
         throw new ApiError(message, response.status, url, options.method || 'GET', null);
@@ -312,7 +312,7 @@ class ApiClient {
         if (!response.ok) {
           return { success: false };
         }
-        const data = await response.json();
+        const data = await response.json() as { success?: boolean; data?: { token_expires_at?: number } };
         return {
           success: Boolean(data?.success),
           expiresAt: data?.data?.token_expires_at,

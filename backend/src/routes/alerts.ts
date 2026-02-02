@@ -1,8 +1,14 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginCallback, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
+
+/** Get authenticated user or throw - use after authenticate middleware */
+function getAuthUser(request: FastifyRequest) {
+  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
+  return request.user;
+}
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
@@ -16,7 +22,7 @@ const AlertsQuerySchema = z.object({
 });
 
 // Route handlers
-const alertsRoutes: FastifyPluginAsync = async (fastify) => {
+const alertsRoutes: FastifyPluginCallback = (fastify) => {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -75,16 +81,16 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const query = validateWithZod(AlertsQuerySchema, request.query, 'alerts query');
+      const query = validateWithZod(AlertsQuerySchema, request.query);
       
       // Get user's alerts with pagination
-      let alerts = store.getAlertsByUserId(request.user!.id, query.limit, query.offset);
+      let alerts = store.getAlertsByUserId(getAuthUser(request).id, query.limit, query.offset);
       
       // Apply filters if provided
       if (query.rule_id !== undefined) {
         // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
-        if (!rule || rule.user_id !== request.user!.id) {
+        if (!rule || rule.user_id !== getAuthUser(request).id) {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
         alerts = alerts.filter(alert => alert.rule_id === query.rule_id);
@@ -145,15 +151,10 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const stats = store.getUserStats(request.user!.id);
+      const stats = store.getUserStats(getAuthUser(request).id);
       
-      // Get user alerts by type
-      const userAlerts = store.getAlertsByUserId(request.user!.id, 1000, 0); // Get a large batch for stats
-      const alertsByType = {
-        match: userAlerts.filter(alert => alert.alert_type === 'match').length,
-        best_deal: userAlerts.filter(alert => alert.alert_type === 'best_deal').length,
-        new_item: userAlerts.filter(alert => alert.alert_type === 'new_item').length,
-      };
+      // Get alert counts by type using efficient SQL aggregation
+      const alertsByType = store.getAlertCountsByType(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
@@ -178,7 +179,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const deletedCount = store.deleteAllUserAlerts(userId);
       
       request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);

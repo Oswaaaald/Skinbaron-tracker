@@ -40,6 +40,7 @@ export class Store {
   getAlertsByRuleIdForUser = this.alerts.findByRuleIdForUser.bind(this.alerts);
   deleteAlertsByRuleId = this.alerts.deleteByRuleId.bind(this.alerts);
   deleteAllUserAlerts = this.alerts.deleteByUserId.bind(this.alerts);
+  getAlertCountsByType = this.alerts.countByAlertType.bind(this.alerts);
 
   // Users
   createUser = this.users.create.bind(this.users);
@@ -49,6 +50,7 @@ export class Store {
   updateUser = this.users.update.bind(this.users);
   deleteUser = this.users.delete.bind(this.users);
   getAllUsers = this.users.findAll.bind(this.users);
+  getAllUsersWithStats = this.users.findAllWithStats.bind(this.users);
   searchUsers = this.users.searchUsers.bind(this.users);
   getPendingUsers = this.users.findPendingApproval.bind(this.users);
   approveUser = this.users.approve.bind(this.users);

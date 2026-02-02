@@ -24,7 +24,9 @@ export class WebhooksRepository {
       validated.is_active ? 1 : 0
     );
 
-    return this.findById(result.lastInsertRowid as number)!;
+    const created = this.findById(result.lastInsertRowid as number);
+    if (!created) throw new Error('Failed to create webhook');
+    return created;
   }
 
   findById(id: number, decrypt: boolean = false): UserWebhook | null {
@@ -88,7 +90,9 @@ export class WebhooksRepository {
       return null;
     }
     
-    return this.findById(id)!;
+    const updated = this.findById(id);
+    if (!updated) throw new Error('Failed to update webhook');
+    return updated;
   }
 
   delete(id: number, userId: number): boolean {

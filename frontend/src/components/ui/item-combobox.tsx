@@ -71,7 +71,7 @@ export function ItemCombobox({
       }
     }
 
-    fetchSuggestions()
+    void fetchSuggestions()
   }, [debouncedSearch])
 
   // Update search query when value prop changes

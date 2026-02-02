@@ -9,8 +9,7 @@ import { AppError } from './errors.js';
  */
 export function validateWithZod<T>(
   schema: ZodSchema<T>,
-  data: unknown,
-  _context: string = 'Input'
+  data: unknown
 ): T {
   try {
     return schema.parse(data);

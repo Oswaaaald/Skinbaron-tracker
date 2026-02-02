@@ -29,7 +29,9 @@ export class RulesRepository {
       validated.enabled ? 1 : 0
     );
 
-    return this.findById(result.lastInsertRowid as number)!;
+    const created = this.findById(result.lastInsertRowid as number);
+    if (!created) throw new Error('Failed to create rule');
+    return created;
   }
 
   findById(id: number): Rule | null {

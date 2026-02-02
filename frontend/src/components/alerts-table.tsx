@@ -22,9 +22,12 @@ import { logger } from "@/lib/logger"
 import { useToast } from "@/hooks/use-toast"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
+import { formatPrice, formatSystemDate } from "@/lib/formatters"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { extractErrorMessage } from "@/lib/utils"
+import { QUERY_KEYS, QUERY_STALE_TIME, POLL_INTERVAL } from "@/lib/constants"
 
 const ALERT_TYPE_LABELS = {
   match: 'Rule Match',
@@ -63,9 +66,9 @@ export function AlertsTable() {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
         // Invalidate alerts and stats cache - let auto-refresh handle the rest
-        queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
-        syncStats()
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN_STATS] })
+        void syncStats()
         
         toast({
           title: "✅ Alerts cleared",
@@ -85,15 +88,15 @@ export function AlertsTable() {
   }
 
   const { data: alertsResponse, isLoading, error } = useQuery({
-    queryKey: ['alerts', page, search, alertTypeFilter],
+    queryKey: [QUERY_KEYS.ALERTS, page, search, alertTypeFilter],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlerts({
       limit,
       offset: page * limit,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated && isVisible,
-    staleTime: 15_000,
-    refetchInterval: isVisible ? 10_000 : false,
+    staleTime: QUERY_STALE_TIME,
+    refetchInterval: isVisible ? POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
@@ -106,7 +109,7 @@ export function AlertsTable() {
     
     // If alert count changed (and it's not the first load), invalidate user stats
     if (prevAlertCountRef.current !== null && prevAlertCountRef.current !== currentCount) {
-      queryClient.invalidateQueries({ queryKey: ['user-stats'] })
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
     }
     
     prevAlertCountRef.current = currentCount
@@ -121,7 +124,7 @@ export function AlertsTable() {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
-            Error loading alerts: {error instanceof Error ? error.message : 'Unknown error'}
+            Error loading alerts: {extractErrorMessage(error)}
           </div>
         </CardContent>
       </Card>
@@ -130,25 +133,6 @@ export function AlertsTable() {
 
   const alerts = alertsResponse?.data || []
   const hasMorePages = alerts.length === limit
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-    }).format(price)
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleString('en-GB', {
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
 
   if (alerts.length === 0 && page === 0 && !search && !alertTypeFilter) {
     return (
@@ -270,8 +254,8 @@ export function AlertsTable() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={ALERT_TYPE_COLORS[alert.alert_type as keyof typeof ALERT_TYPE_COLORS] || 'default'}>
-                        {ALERT_TYPE_LABELS[alert.alert_type as keyof typeof ALERT_TYPE_LABELS] || alert.alert_type}
+                      <Badge variant={alert.alert_type in ALERT_TYPE_COLORS ? ALERT_TYPE_COLORS[alert.alert_type] : 'default'}>
+                        {alert.alert_type in ALERT_TYPE_LABELS ? ALERT_TYPE_LABELS[alert.alert_type] : alert.alert_type}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -293,7 +277,7 @@ export function AlertsTable() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
-                        {formatDate(alert.sent_at)}
+                        {formatSystemDate(alert.sent_at)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -358,7 +342,7 @@ export function AlertsTable() {
         description="This will permanently delete all your alerts. This action cannot be undone."
         confirmText="Delete All"
         variant="destructive"
-        onConfirm={confirmClear}
+        onConfirm={() => { void confirmClear() }}
       />
     </div>
   )

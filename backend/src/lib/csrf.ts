@@ -29,7 +29,7 @@ export function setCsrfCookie(reply: FastifyReply, token: string, isProduction: 
  * CSRF Protection Middleware for mutating requests (POST, PUT, PATCH, DELETE)
  * Uses double-submit cookie pattern
  */
-export async function csrfProtection(request: FastifyRequest): Promise<void> {
+export function csrfProtection(request: FastifyRequest): void {
   const method = request.method;
   
   // Only protect mutating requests
@@ -39,7 +39,8 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
 
   // Skip CSRF for auth routes (they have their own protection via rate-limiting)
   // and for public endpoints
-  const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout'];
+  // Note: logout IS protected by CSRF to prevent logout CSRF attacks
+  const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh'];
   if (skipPaths.some(path => request.url.startsWith(path))) {
     return;
   }

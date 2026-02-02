@@ -87,7 +87,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           setTotpCode('') // Clear the code
         }
         // If successful, auth context will handle redirect
-      } catch (_err) {
+      } catch {
         setError('An unexpected error occurred')
       } finally {
         setIsLoading(false)
@@ -183,7 +183,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       if (isLoading) return
       if (requires2FA && (totpCode.length === 7 || totpCode.length < 6)) return
       
-      handleSubmit(e as unknown as React.FormEvent)
+      void handleSubmit(e as unknown as React.FormEvent)
     }
   }
 
@@ -208,7 +208,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSubmit} onKeyDown={handleKeyDownSubmit} className="space-y-4">
+          <form onSubmit={(e) => { void handleSubmit(e) }} onKeyDown={handleKeyDownSubmit} className="space-y-4">
             {requires2FA ? (
               // 2FA Code Input
               <div className="space-y-4">

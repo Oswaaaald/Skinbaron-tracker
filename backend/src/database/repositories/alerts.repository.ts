@@ -3,6 +3,13 @@ import type { Alert, CreateAlert, AlertRow } from '../schemas.js';
 import { AlertSchema } from '../schemas.js';
 import { rowToAlert } from '../utils/converters.js';
 
+/** Alert type counts by category */
+export interface AlertTypeCounts {
+  match: number;
+  best_deal: number;
+  new_item: number;
+}
+
 export class AlertsRepository {
   constructor(private db: Database.Database) {}
 
@@ -28,7 +35,9 @@ export class AlertsRepository {
         validated.alert_type
       );
 
-      return this.findById(result.lastInsertRowid as number)!;
+      const created = this.findById(result.lastInsertRowid as number);
+      if (!created) throw new Error('Failed to create alert');
+      return created;
     } catch (error) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         throw new Error('DUPLICATE_SALE');
@@ -157,5 +166,31 @@ export class AlertsRepository {
     `);
     const result = stmt.get(userId) as { count: number };
     return result.count;
+  }
+
+  /**
+   * Get alert counts by type for a user - efficient SQL aggregation
+   * Replaces fetching all alerts and filtering in memory
+   */
+  countByAlertType(userId: number): AlertTypeCounts {
+    const stmt = this.db.prepare(`
+      SELECT 
+        alert_type,
+        COUNT(*) as count
+      FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE r.user_id = ?
+      GROUP BY alert_type
+    `);
+    const rows = stmt.all(userId) as Array<{ alert_type: string; count: number }>;
+    
+    // Initialize with zeros and populate from results
+    const counts: AlertTypeCounts = { match: 0, best_deal: 0, new_item: 0 };
+    for (const row of rows) {
+      if (row.alert_type in counts) {
+        counts[row.alert_type as keyof AlertTypeCounts] = row.count;
+      }
+    }
+    return counts;
   }
 }

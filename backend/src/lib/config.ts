@@ -23,7 +23,8 @@ const ConfigSchema = z.object({
   SQLITE_PATH: z.string().default('./data/alerts.db'),
   
   // Authentication
-  JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
+  // Note: A strong JWT secret should be randomly generated with high entropy
   // Encryption key for sensitive data (defaults to JWT_SECRET for backward compatibility)
   ENCRYPTION_KEY: z.string().optional(),
   APP_VERSION: z.string().default('dev'),
@@ -66,9 +67,7 @@ function loadConfig() {
     return config;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      error.issues.forEach((_err) => {
-        // Errors already logged by Zod
-      });
+      // Errors already logged by Zod
     }
     process.exit(1);
   }

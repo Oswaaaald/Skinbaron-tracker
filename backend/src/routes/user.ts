@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest } from 'fastify';
 import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
 import { getClientIp } from '../lib/middleware.js';
@@ -10,6 +10,12 @@ import { z } from 'zod';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 
+/** Get authenticated user or throw - use after authenticate middleware */
+function getAuthUser(request: FastifyRequest) {
+  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
+  return request.user;
+}
+
 const UpdateProfileSchema = z.object({
   username: z.string().min(3).max(20).optional(),
   email: z.string().email().optional(),
@@ -20,7 +26,7 @@ const UpdateProfileSchema = z.object({
 /**
  * User profile routes - Authenticated users can manage their own profile
  */
-export default async function userRoutes(fastify: FastifyInstance) {
+export default function userRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -66,7 +72,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const user = store.getUserById(userId);
       
       if (!user) {
@@ -116,7 +122,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       // Use COUNT(*) queries instead of loading all data into memory
       const rulesCount = store.rules.count(userId);
@@ -176,8 +182,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
-      const updates = validateWithZod(UpdateProfileSchema, request.body, 'Profile update');
+      const userId = getAuthUser(request).id;
+      const updates = validateWithZod(UpdateProfileSchema, request.body);
 
       // Get current user to check admin status
       const currentUser = store.getUserById(userId);
@@ -284,8 +290,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
-      const passwordData = validateWithZod(PasswordChangeSchema, request.body, 'Password change');
+      const userId = getAuthUser(request).id;
+      const passwordData = validateWithZod(PasswordChangeSchema, request.body);
 
       // Get user
       const user = store.getUserById(userId);
@@ -364,7 +370,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       store.deleteUser(userId);
@@ -404,7 +410,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const user = store.getUserById(userId);
 
       if (!user) {
@@ -476,7 +482,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const { secret, code } = request.body as { secret: string; code: string };
 
       // Verify the code
@@ -555,7 +561,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const { password } = request.body as { password: string };
 
       const user = store.getUserById(userId);
@@ -619,7 +625,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const user = store.getUserById(userId);
 
       if (!user) {
@@ -676,7 +682,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const { limit = 100 } = request.query as { limit?: number };
 
       const logs = store.getAuditLogsByUserId(userId, limit);

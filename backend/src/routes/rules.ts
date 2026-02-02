@@ -1,10 +1,16 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginCallback, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { RuleSchema } from '../database/schemas.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
+
+/** Get authenticated user or throw - use after authenticate middleware */
+function getAuthUser(request: FastifyRequest) {
+  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
+  return request.user;
+}
 
 // Extend FastifyInstance type for authenticate
 declare module 'fastify' {
@@ -31,7 +37,7 @@ const RuleParamsSchema = z.object({
 });
 
 // Route handlers
-const rulesRoutes: FastifyPluginAsync = async (fastify) => {
+const rulesRoutes: FastifyPluginCallback = (fastify) => {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -78,7 +84,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       // Get rules only for the authenticated user
-      const rules = store.getRulesByUserId(request.user!.id);
+      const rules = store.getRulesByUserId(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
@@ -145,7 +151,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       // Check max rules limit
-      const userRules = store.getRulesByUserId(request.user!.id);
+      const userRules = store.getRulesByUserId(getAuthUser(request).id);
       if (userRules.length >= MAX_RULES_PER_USER) {
         throw new AppError(400, `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`, 'MAX_RULES_REACHED');
       }
@@ -155,12 +161,12 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       const ruleData = validateWithZod(CreateRuleRequestSchema, {
         ...bodyData,
-        user_id: request.user!.id,
-      }, 'Create rule');
+        user_id: getAuthUser(request).id,
+      });
       
       // Validate webhook_ids if provided - must belong to user
       if (ruleData.webhook_ids && ruleData.webhook_ids.length > 0) {
-        const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
+        const userWebhooks = store.getUserWebhooksByUserId(getAuthUser(request).id);
         const userWebhookIds = userWebhooks.map(w => w.id);
         
         const invalidWebhooks = ruleData.webhook_ids.filter((id: number) => !userWebhookIds.includes(id));
@@ -251,7 +257,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
+      const { id } = validateWithZod(RuleParamsSchema, request.params);
       
       // Check if rule exists and user owns it
       const existingRule = store.getRuleById(id);
@@ -259,7 +265,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
 
-      if (existingRule.user_id !== request.user!.id) {
+      if (existingRule.user_id !== getAuthUser(request).id) {
         throw new AppError(403, 'You can only update your own rules', 'ACCESS_DENIED');
       }
 
@@ -268,11 +274,11 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
       
       const updates = validateWithZod(UpdateRuleRequestSchema, {
         ...bodyData,
-        user_id: request.user!.id,
-      }, 'Update rule');
+        user_id: getAuthUser(request).id,
+      });
       
       // Validate webhook_ids - filter out deleted webhooks automatically
-      const userWebhooks = store.getUserWebhooksByUserId(request.user!.id);
+      const userWebhooks = store.getUserWebhooksByUserId(getAuthUser(request).id);
       const userWebhookIds = userWebhooks.map(w => w.id);
       
       if (updates.webhook_ids !== undefined) {
@@ -347,7 +353,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { id } = validateWithZod(RuleParamsSchema, request.params, 'Rule params');
+      const { id } = validateWithZod(RuleParamsSchema, request.params);
       
       // Check if rule exists and user owns it
       const existingRule = store.getRuleById(id);
@@ -355,7 +361,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
 
-      if (existingRule.user_id !== request.user!.id) {
+      if (existingRule.user_id !== getAuthUser(request).id) {
         throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
       }
 
@@ -408,14 +414,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { rule_ids } = request.body as { rule_ids?: number[] };
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       let updated = 0;
       
       if (!rule_ids || rule_ids.length === 0) {
         // Enable all rules for this user
         const allRules = store.getRulesByUserId(userId);
-        const allIds = allRules.filter(r => !r.enabled).map(r => r.id!);
+        const allIds = allRules
+          .filter(r => !r.enabled && r.id !== undefined)
+          .map(r => r.id as number);
         updated = store.enableRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules
@@ -474,14 +482,16 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { rule_ids } = request.body as { rule_ids?: number[] };
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       let updated = 0;
       
       if (!rule_ids || rule_ids.length === 0) {
         // Disable all rules for this user
         const allRules = store.getRulesByUserId(userId);
-        const allIds = allRules.filter(r => r.enabled).map(r => r.id!);
+        const allIds = allRules
+          .filter(r => r.enabled && r.id !== undefined)
+          .map(r => r.id as number);
         updated = store.disableRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules
@@ -544,7 +554,7 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { rule_ids, confirm_all } = request.body as { rule_ids?: number[]; confirm_all?: boolean };
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       let deleted = 0;
       
@@ -555,7 +565,9 @@ const rulesRoutes: FastifyPluginAsync = async (fastify) => {
         }
 
         const allRules = store.getRulesByUserId(userId);
-        const allIds = allRules.map(r => r.id!);
+        const allIds = allRules
+          .filter((r): r is typeof r & { id: number } => r.id !== undefined)
+          .map(r => r.id);
         deleted = store.deleteRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules

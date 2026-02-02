@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { extractErrorMessage } from '@/lib/utils'
+import { QUERY_KEYS } from '@/lib/constants'
 import { validateUsername, validateEmail, validatePasswordChange } from '@/lib/validation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -60,7 +62,7 @@ export function ProfileSettings() {
 
   // Fetch user stats
   const { data: stats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['user', 'stats'],
+    queryKey: [QUERY_KEYS.USER_STATS],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/stats'), 'Failed to load user stats')
       return response.data as UserStats
@@ -74,7 +76,7 @@ export function ProfileSettings() {
   const updateProfileMutation = useApiMutation(
     (data: { username?: string; email?: string }) => apiClient.patch('/api/user/profile', data),
     {
-      invalidateKeys: [['user', 'profile'], ['admin', 'users'], ['user-audit-logs']],
+      invalidateKeys: [[QUERY_KEYS.USER_PROFILE], [QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.USER_AUDIT_LOGS]],
       successMessage: 'Profile updated successfully',
       onSuccess: (response) => {
         // Update auth context with data from backend (includes updated avatar_url)
@@ -101,12 +103,7 @@ export function ProfileSettings() {
         setSuccess('profile', 'Profile updated successfully')
       },
       onError: (error: unknown) => {
-        const errorMsg =
-          (error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : undefined) || 'Failed to update profile';
+        const errorMsg = extractErrorMessage(error, 'Failed to update profile')
         toast({
           variant: "destructive",
           title: "❌ Update failed",
@@ -121,7 +118,7 @@ export function ProfileSettings() {
   const updatePasswordMutation = useApiMutation(
     (data: { current_password: string; new_password: string }) => apiClient.patch('/api/user/password', data),
     {
-      invalidateKeys: [['user-audit-logs']],
+      invalidateKeys: [[QUERY_KEYS.USER_AUDIT_LOGS]],
       successMessage: 'Password updated successfully',
       onSuccess: () => {
         toast({
@@ -134,12 +131,7 @@ export function ProfileSettings() {
         setConfirmPassword('')
       },
       onError: (error: unknown) => {
-        const errorMsg =
-          (error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : undefined) || 'Failed to update password';
+        const errorMsg = extractErrorMessage(error, 'Failed to update password')
         toast({
           variant: "destructive",
           title: "❌ Password update failed",
@@ -159,10 +151,10 @@ export function ProfileSettings() {
           title: "✅ Account deleted",
           description: "Your account has been permanently deleted",
         })
-        logout()
+        void logout()
       },
       onError: (error: unknown) => {
-        const errorMsg = error instanceof Error ? error.message : 'Failed to delete account'
+        const errorMsg = extractErrorMessage(error, 'Failed to delete account')
         setError('general', errorMsg)
         setDeleteDialog(false)
         setDeleteConfirmText('')
@@ -172,7 +164,7 @@ export function ProfileSettings() {
 
   // 2FA status query
   const { data: twoFactorStatus } = useQuery({
-    queryKey: ['2fa-status'],
+    queryKey: [QUERY_KEYS.TWO_FA_STATUS],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/2fa/status'), 'Failed to load 2FA status')
       return response.data as { enabled: boolean }
@@ -183,7 +175,7 @@ export function ProfileSettings() {
   const disableTwoFactorMutation = useApiMutation(
     (password: string) => apiClient.post('/api/user/2fa/disable', { password }),
     {
-      invalidateKeys: [['2fa-status']],
+      invalidateKeys: [[QUERY_KEYS.TWO_FA_STATUS]],
       successMessage: 'Two-factor authentication disabled successfully',
       onSuccess: () => {
         toast({
@@ -196,12 +188,7 @@ export function ProfileSettings() {
         setTwoFactorPassword('')
       },
       onError: (error: unknown) => {
-        const errorMsg =
-          (error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : undefined) || 'Failed to disable 2FA';
+        const errorMsg = extractErrorMessage(error, 'Failed to disable 2FA')
         toast({
           variant: "destructive",
           title: "❌ Failed to disable 2FA",

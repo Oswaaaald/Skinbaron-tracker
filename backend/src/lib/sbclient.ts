@@ -118,11 +118,11 @@ export class SkinBaronClient {
       }
 
       const rawData = await body.text();
-      let jsonData;
+      let jsonData: unknown;
       
       try {
-        jsonData = JSON.parse(rawData);
-      } catch (parseError) {
+        jsonData = JSON.parse(rawData) as unknown;
+      } catch {
         throw new Error('Invalid JSON response from SkinBaron API');
       }
 
@@ -218,7 +218,7 @@ export class SkinBaronClient {
       
       this.lastConnectionTest = { timestamp: now, result: true };
       return true;
-    } catch (error) {
+    } catch {
       this.lastConnectionTest = { timestamp: now, result: false };
       return false;
     }

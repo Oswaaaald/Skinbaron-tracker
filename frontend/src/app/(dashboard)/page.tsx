@@ -17,6 +17,7 @@ import { apiClient } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { QUERY_KEYS } from "@/lib/constants"
 
 function LandingPage() {
   return (
@@ -156,7 +157,7 @@ function DashboardContent() {
   const isVisible = usePageVisible()
 
   const { data: userStats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['user-stats'],
+    queryKey: [QUERY_KEYS.USER_STATS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserStats(), 'Failed to load user stats'),
     enabled: isReady && isAuthenticated && isVisible,
     staleTime: 30_000,

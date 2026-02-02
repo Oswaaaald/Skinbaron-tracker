@@ -92,7 +92,7 @@ export function useApiMutation<TData = unknown, TVariables = void, TError = Erro
       
       keysArray.forEach(key => {
         if (key.length > 0) {
-          queryClient.invalidateQueries({ queryKey: key });
+          void queryClient.invalidateQueries({ queryKey: key });
         }
       });
       

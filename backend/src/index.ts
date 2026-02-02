@@ -10,7 +10,7 @@ import { store } from './database/index.js';
 import { closeDatabase } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
-import { getScheduler } from './lib/scheduler.js';
+import { getScheduler, type AlertScheduler } from './lib/scheduler.js';
 import { handleRouteError } from './lib/validation-handler.js';
 import { generateCsrfToken, setCsrfCookie, csrfProtection } from './lib/csrf.js';
 import rulesRoutes from './routes/rules.js';
@@ -24,7 +24,7 @@ const fastify = Fastify({
   // Respect X-Forwarded-* headers from the reverse proxy for accurate client IPs
   trustProxy: true,
   // Custom error formatter for validation errors (makes them user-friendly)
-  schemaErrorFormatter: (errors, _dataVar) => {
+  schemaErrorFormatter: (errors) => {
     const error = errors[0];
     if (!error) return new Error('Validation failed');
     
@@ -39,12 +39,12 @@ const fastify = Fastify({
     
     if (error.keyword === 'minLength') {
       message = field 
-        ? `${field.charAt(0).toUpperCase() + field.slice(1)} must be at least ${error.params['limit']} characters`
-        : `Must be at least ${error.params['limit']} characters`;
+        ? `${field.charAt(0).toUpperCase() + field.slice(1)} must be at least ${Number(error.params['limit'])} characters`
+        : `Must be at least ${Number(error.params['limit'])} characters`;
     } else if (error.keyword === 'maxLength') {
       message = field
-        ? `${field.charAt(0).toUpperCase() + field.slice(1)} must be at most ${error.params['limit']} characters`
-        : `Must be at most ${error.params['limit']} characters`;
+        ? `${field.charAt(0).toUpperCase() + field.slice(1)} must be at most ${Number(error.params['limit'])} characters`
+        : `Must be at most ${Number(error.params['limit'])} characters`;
     } else if (error.keyword === 'format' && error.params['format'] === 'email') {
       message = 'Please enter a valid email address';
     } else if (error.keyword === 'format' && error.params['format'] === 'url') {
@@ -60,14 +60,14 @@ const fastify = Fastify({
     } else if (error.keyword === 'required') {
       message = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
     } else if (error.keyword === 'minimum') {
-      message = `${field || 'Field'} must be at least ${error.params['limit']}`;
+      message = `${field || 'Field'} must be at least ${Number(error.params['limit'])}`;
     } else if (error.keyword === 'maximum') {
-      message = `${field || 'Field'} must be at most ${error.params['limit']}`;
+      message = `${field || 'Field'} must be at most ${Number(error.params['limit'])}`;
     } else if (error.keyword === 'enum') {
       const allowedValues = error.params['allowedValues'] as string[] | undefined;
       message = `${field || 'Field'} must be one of: ${allowedValues?.join(', ') || 'allowed values'}`;
     } else if (error.keyword === 'type') {
-      message = `${field || 'Field'} must be a ${error.params['type']}`;
+      message = `${field || 'Field'} must be a ${String(error.params['type'])}`;
     } else {
       message = error.message || 'Validation error';
     }
@@ -103,8 +103,8 @@ const gracefulShutdown = async (signal: string) => {
 };
 
 // Setup graceful shutdown handlers
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 // Error handlers
 process.on('uncaughtException', (error) => {
@@ -194,9 +194,10 @@ async function registerPlugins() {
       const hiddenTags = new Set(['Admin', 'System']);
       const filteredPaths: Record<string, OpenAPIPathMethods> = {};
       const usedTags = new Set<string>();
+      const paths = (swaggerObject['paths'] || {}) as Record<string, OpenAPIPathMethods>;
       
-      for (const [path, methods] of Object.entries(swaggerObject['paths'] || {})) {
-        const methodsObj = methods as OpenAPIPathMethods;
+      for (const [path, methods] of Object.entries(paths)) {
+        const methodsObj = methods;
         const filteredMethods: OpenAPIPathMethods = {};
         
         for (const [verb, op] of Object.entries(methodsObj)) {
@@ -214,7 +215,7 @@ async function registerPlugins() {
       }
       
       // Filter tags to only show those with visible routes
-      const filteredTags = (swaggerObject['tags'] || []).filter((tag: OpenAPITag) => 
+      const filteredTags = ((swaggerObject['tags'] || []) as OpenAPITag[]).filter((tag: OpenAPITag) => 
         usedTags.has(tag.name)
       );
       
@@ -222,29 +223,31 @@ async function registerPlugins() {
         ...swaggerObject,
         paths: filteredPaths,
         tags: filteredTags,
-      };
+      } as typeof swaggerObject;
     },
     uiHooks: {
-      onRequest: async (request, reply) => {
+      onRequest: (request, reply) => {
         // Require authentication (any logged-in user)
-        try {
-          await fastify.authenticate(request, reply);
-          
-          // Allow any authenticated user to view docs
-          if (!request.user) {
+        void (async () => {
+          try {
+            await fastify.authenticate(request, reply);
+            
+            // Allow any authenticated user to view docs
+            if (!request.user) {
+              return reply.status(401).send({
+                success: false,
+                error: 'Unauthorized',
+                message: 'Authentication required to view API documentation',
+              });
+            }
+          } catch {
             return reply.status(401).send({
               success: false,
               error: 'Unauthorized',
               message: 'Authentication required to view API documentation',
             });
           }
-        } catch (error) {
-          return reply.status(401).send({
-            success: false,
-            error: 'Unauthorized',
-            message: 'Authentication required to view API documentation',
-          });
-        }
+        })();
       },
     },
   });
@@ -363,13 +366,13 @@ async function registerPlugins() {
 }
 
 async function buildSystemSnapshot() {
-  const scheduler = getScheduler();
+  const scheduler: AlertScheduler = getScheduler();
 
   // Check database health
   let dbHealth = 'healthy';
   try {
-    await store.getStats();
-  } catch (_error) {
+    store.getStats();
+  } catch {
     dbHealth = 'unhealthy';
   }
 
@@ -386,7 +389,7 @@ async function buildSystemSnapshot() {
       totalRuns: schedulerStats.totalRuns,
       totalAlerts: schedulerStats.totalAlerts,
     };
-  } catch (_error) {
+  } catch {
     schedulerHealth = 'unhealthy';
   }
 
@@ -401,7 +404,7 @@ async function buildSystemSnapshot() {
     } else {
       skinbaronHealth = healthStatus;
     }
-  } catch (_error) {
+  } catch {
     skinbaronHealth = 'unhealthy';
   }
 
@@ -435,7 +438,7 @@ async function buildSystemSnapshot() {
 }
 
 // Health check endpoint
-async function setupHealthCheck() {
+function setupHealthCheck() {
   fastify.get('/api/health', {
     logLevel: 'warn',
     schema: {
@@ -466,7 +469,7 @@ async function setupHealthCheck() {
 }
 
 // System status endpoint - now includes health snapshot
-async function setupSystemStatus() {
+function setupSystemStatus() {
   fastify.get('/api/system/status', {
     schema: {
       description: 'Get system status including scheduler and health information',
@@ -494,7 +497,7 @@ async function setupSystemStatus() {
 }
 
 // CSRF token endpoint
-async function setupCsrfEndpoint() {
+function setupCsrfEndpoint() {
   fastify.get('/api/csrf-token', {
     schema: {
       description: 'Get a CSRF token for client-side requests',
@@ -579,9 +582,9 @@ async function initializeApp() {
 
     // Register plugins and routes
     await registerPlugins();
-    await setupHealthCheck();
-    await setupSystemStatus();
-    await setupCsrfEndpoint();
+    setupHealthCheck();
+    setupSystemStatus();
+    setupCsrfEndpoint();
     
     // Register CSRF protection middleware globally
     fastify.addHook('preHandler', csrfProtection);
@@ -613,7 +616,7 @@ async function initializeApp() {
 }
 
 // Start the application
-initializeApp().catch((_error) => {
+initializeApp().catch(() => {
   process.exit(1);
 });
 

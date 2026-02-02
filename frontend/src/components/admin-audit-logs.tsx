@@ -18,14 +18,6 @@ import {
 } from "@/components/ui/select"
 import { 
   Shield, 
-  ShieldAlert, 
-  LogIn, 
-  Key, 
-  Mail, 
-  User,
-  ShieldCheck,
-  ShieldOff,
-  AlertCircle,
   X,
   ChevronDown,
   ChevronUp,
@@ -34,148 +26,9 @@ import {
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-
-const EVENT_TYPES = [
-  { value: "all", label: "All Events" },
-  { value: "login_success", label: "Login Success" },
-  { value: "login_failed", label: "Login Failed" },
-  { value: "logout", label: "Logout" },
-  { value: "2fa_enabled", label: "2FA Enabled" },
-  { value: "2fa_disabled", label: "2FA Disabled" },
-  { value: "2fa_recovery_code_used", label: "2FA Recovery Used" },
-  { value: "email_changed", label: "Email Changed" },
-  { value: "username_changed", label: "Username Changed" },
-  { value: "password_changed", label: "Password Changed" },
-  { value: "password_change_failed", label: "Password Change Failed" },
-  { value: "user_approved", label: "User Approved" },
-  { value: "user_promoted", label: "User Promoted" },
-  { value: "user_demoted", label: "User Demoted" },
-  { value: "user_deleted", label: "User Deleted" },
-];
-
-const EVENT_CONFIG: Record<string, {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  variant: "default" | "secondary" | "destructive" | "outline";
-}> = {
-  login_success: { icon: LogIn, label: "Login Success", variant: "default" },
-  login_failed: { icon: ShieldAlert, label: "Login Failed", variant: "destructive" },
-  logout: { icon: LogIn, label: "Logout", variant: "secondary" },
-  "2fa_enabled": { icon: ShieldCheck, label: "2FA Enabled", variant: "default" },
-  "2fa_disabled": { icon: ShieldOff, label: "2FA Disabled", variant: "secondary" },
-  "2fa_recovery_code_used": { icon: Key, label: "Recovery Code Used", variant: "outline" },
-  email_changed: { icon: Mail, label: "Email Changed", variant: "outline" },
-  username_changed: { icon: User, label: "Username Changed", variant: "outline" },
-  password_changed: { icon: Key, label: "Password Changed", variant: "default" },
-  password_change_failed: { icon: AlertCircle, label: "Password Change Failed", variant: "destructive" },
-  user_approved: { icon: ShieldCheck, label: "User Approved", variant: "default" },
-  user_promoted: { icon: Shield, label: "User Promoted", variant: "default" },
-  user_demoted: { icon: ShieldOff, label: "User Demoted", variant: "secondary" },
-  user_deleted: { icon: ShieldAlert, label: "User Deleted", variant: "destructive" },
-};
-
-function formatDate(dateString: string): string {
-  // SQLite returns dates without timezone (e.g., "2026-01-11 23:37:14")
-  // We need to append 'Z' to treat it as UTC, then convert to local time
-  const utcDate = dateString.includes('Z') ? dateString : dateString.replace(' ', 'T') + 'Z';
-  const date = new Date(utcDate);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  let relative = "";
-  if (diffMins < 1) {
-    relative = "À l'instant";
-  } else if (diffMins < 60) {
-    relative = `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
-  } else if (diffHours < 24) {
-    relative = `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
-  } else if (diffDays < 7) {
-    relative = `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-  } else {
-    relative = date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  }
-
-  const fullDate = date.toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return `${relative} • ${fullDate}`;
-}
-
-function formatEventData(eventType: string, eventDataJson: string | null): string {
-  if (!eventDataJson) return "";
-
-  try {
-    const data = JSON.parse(eventDataJson);
-
-    switch (eventType) {
-      case "login_success":
-        return data.method === "2fa" ? "Login with 2FA" : "Login with password";
-      
-      case "login_failed":
-        if (data.reason === "unknown_email") return "Failed: unknown email";
-        if (data.reason === "invalid_password") return "Failed: invalid password";
-        if (data.reason === "invalid_2fa_code") return "Failed: 2FA code";
-        if (data.reason === "invalid_2fa_backup_code") return "Failed: 2FA backup code";
-        return `Failed: ${data.reason}`;
-      
-      case "2fa_enabled":
-        return "Two-factor authentication enabled";
-      
-      case "2fa_disabled":
-        return "Two-factor authentication disabled";
-      
-      case "2fa_recovery_code_used":
-        return `Recovery code used (${data.remaining_codes} remaining)`;
-      
-      case "email_changed":
-        return `New email: ${data.new_email}`;
-      
-      case "username_changed":
-        return `New username: ${data.new_username}`;
-      
-      case "password_changed":
-        return "Password successfully changed";
-      
-      case "password_change_failed":
-        if (data.reason === "invalid_current_password") return "Failed: invalid current password";
-        if (data.reason === "same_password") return "Failed: same password";
-        return `Failed: ${data.reason}`;
-      
-      case "user_approved":
-        return `Approved by ${data.admin_username || `admin #${data.approved_by_admin_id}`}`;
-      
-      case "user_promoted":
-        return `Promoted to admin by ${data.admin_username || `#${data.admin_id}`}`;
-      
-      case "user_demoted":
-        return `Demoted by ${data.admin_username || `admin #${data.admin_id}`}`;
-      
-      case "user_deleted":
-        // Note: admin_username is not in event_data, it's in the log.username (since the log belongs to the admin)
-        return "";  // We'll show admin info separately
-      
-      case "logout":
-        return data.reason === "user_logout" ? "User logout" : "Logged out";
-      
-      default:
-        return eventDataJson;
-    }
-  } catch {
-    return eventDataJson;
-  }
-}
+import { QUERY_KEYS } from "@/lib/constants"
+import { AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/audit-config"
+import { formatRelativeDate, formatEventData } from "@/lib/formatters"
 
 export function AdminAuditLogs() {
   const [eventType, setEventType] = useState<string>("all");
@@ -187,7 +40,7 @@ export function AdminAuditLogs() {
 
   // Search users with debounce
   const { data: searchResults } = useQuery({
-    queryKey: ['search-users', userSearch],
+    queryKey: [QUERY_KEYS.SEARCH_USERS, userSearch],
     queryFn: async () => {
       if (userSearch.length < 2) return { success: true, data: [] };
       return apiClient.ensureSuccess(await apiClient.searchUsers(userSearch), 'Failed to search users');
@@ -206,7 +59,7 @@ export function AdminAuditLogs() {
   }, [showSuggestions]);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['admin-audit-logs', eventType, selectedUser?.id, limit],
+    queryKey: [QUERY_KEYS.ADMIN_AUDIT_LOGS, eventType, selectedUser?.id, limit],
     queryFn: async () => {
       const result = apiClient.ensureSuccess(await apiClient.getAllAuditLogs({
         limit,
@@ -327,7 +180,7 @@ export function AdminAuditLogs() {
                 <SelectValue placeholder="All Events" />
               </SelectTrigger>
               <SelectContent>
-                {EVENT_TYPES.map((type) => (
+                {AUDIT_EVENT_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
                   </SelectItem>
@@ -408,7 +261,7 @@ export function AdminAuditLogs() {
           <div className="space-y-2 flex-shrink-0 w-auto min-w-[220px] flex flex-col">
             <Label className="invisible">Actions</Label>
             <div className="flex items-end gap-2">
-              <Button onClick={() => refetch()} variant="outline" className="flex-1" disabled={isFetching}>
+              <Button onClick={() => { void refetch() }} variant="outline" className="flex-1" disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh results
               </Button>
@@ -431,8 +284,8 @@ export function AdminAuditLogs() {
           <ScrollArea className="h-[600px] pr-4">
             <div className="space-y-4">
               {logs.map((log: AuditLog, index: number) => {
-                const config = EVENT_CONFIG[log.event_type] || {
-                  icon: AlertCircle,
+                const config = AUDIT_EVENT_CONFIG[log.event_type] || {
+                  icon: Shield,
                   label: log.event_type,
                   variant: "outline" as const,
                 };
@@ -446,7 +299,7 @@ export function AdminAuditLogs() {
                 let displayEmail = log.email;
                 if (log.event_type === 'user_deleted') {
                   try {
-                    const data = JSON.parse(log.event_data || '{}');
+                    const data = JSON.parse(log.event_data || '{}') as { username?: string; email?: string };
                     displayUsername = data.username || log.username;
                     displayEmail = data.email || log.email;
                   } catch {}
@@ -491,7 +344,7 @@ export function AdminAuditLogs() {
                             </>
                           )}
                           <span className="text-xs text-muted-foreground ml-auto">
-                            {formatDate(log.created_at)}
+                            {formatRelativeDate(log.created_at, 'fr')}
                           </span>
                           {(log.ip_address || log.user_agent) && (
                             <div className="h-6 px-2 ml-2 flex items-center">

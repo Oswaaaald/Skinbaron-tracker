@@ -18,6 +18,7 @@ import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { QUERY_KEYS } from '@/lib/constants'
 
 interface WebhookFormData {
   name: string
@@ -47,7 +48,7 @@ export function WebhooksTable() {
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
-    queryKey: ['webhooks'],
+    queryKey: [QUERY_KEYS.WEBHOOKS],
     queryFn: async () => {
       const result = await apiClient.getWebhooks(false) // Don't decrypt for listing
       if (!result.success) throw new Error(result.error)
@@ -63,7 +64,7 @@ export function WebhooksTable() {
       return result.data
     }),
     {
-      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       successMessage: 'Webhook created successfully',
       onSuccess: () => {
         setIsDialogOpen(false)
@@ -83,7 +84,7 @@ export function WebhooksTable() {
         return result.data
       }),
     {
-      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       successMessage: 'Webhook updated successfully',
       onSuccess: () => {
         setIsDialogOpen(false)
@@ -102,7 +103,7 @@ export function WebhooksTable() {
       return result.data
     }),
     {
-      invalidateKeys: [['webhooks']],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS]],
       successMessage: 'Webhook deleted successfully',
       errorMessage: 'Failed to delete webhook',
     }
@@ -111,7 +112,7 @@ export function WebhooksTable() {
   const batchEnableMutation = useApiMutation(
     (webhookIds?: number[]) => apiClient.batchEnableWebhooks(webhookIds),
     {
-      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       successMessage: 'Webhooks enabled successfully',
     }
   )
@@ -119,7 +120,7 @@ export function WebhooksTable() {
   const batchDisableMutation = useApiMutation(
     (webhookIds?: number[]) => apiClient.batchDisableWebhooks(webhookIds),
     {
-      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       successMessage: 'Webhooks disabled successfully',
     }
   )
@@ -128,7 +129,7 @@ export function WebhooksTable() {
     ({ webhookIds, confirmAll }: { webhookIds?: number[]; confirmAll: boolean }) => 
       apiClient.batchDeleteWebhooks(webhookIds, confirmAll),
     {
-      invalidateKeys: [['webhooks'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: () => {
         setBatchAction(null)
       },
@@ -177,7 +178,12 @@ export function WebhooksTable() {
       if (formData.webhook_url.trim()) {
         updates.webhook_url = formData.webhook_url
       }
-      updateWebhookMutation.mutate({ id: editingWebhook.id!, data: updates })
+      const webhookId = editingWebhook.id
+      if (webhookId === undefined) {
+        setError('Invalid webhook ID')
+        return
+      }
+      updateWebhookMutation.mutate({ id: webhookId, data: updates })
     } else {
       // For creation, both name and URL are required
       if (!formData.name || !formData.webhook_url) {
@@ -205,7 +211,7 @@ export function WebhooksTable() {
     if (selectedWebhooks.size === webhooks.length) {
       setSelectedWebhooks(new Set())
     } else {
-      setSelectedWebhooks(new Set(webhooks.map(w => w.id!).filter(Boolean)))
+      setSelectedWebhooks(new Set(webhooks.map(w => w.id).filter((id): id is number => id !== undefined)))
     }
   }
 
@@ -503,13 +509,16 @@ export function WebhooksTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {webhooks?.map((webhook) => (
-                <TableRow key={webhook.id}>
+              {webhooks?.map((webhook) => {
+                const webhookId = webhook.id
+                if (webhookId === undefined) return null
+                return (
+                <TableRow key={webhookId}>
                   <TableCell>
                     <input
                       type="checkbox"
-                      checked={selectedWebhooks.has(webhook.id!)}
-                      onChange={() => handleSelectWebhook(webhook.id!)}
+                      checked={selectedWebhooks.has(webhookId)}
+                      onChange={() => handleSelectWebhook(webhookId)}
                       className="cursor-pointer"
                       aria-label={`Select webhook ${webhook.name}`}
                     />
@@ -550,7 +559,7 @@ export function WebhooksTable() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
       </Card>

@@ -14,18 +14,19 @@ import { apiClient, type ApiResponse, type SystemStats as SystemStatsType } from
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { formatUptime, formatSystemDate } from "@/lib/formatters"
+import { QUERY_KEYS, POLL_INTERVAL } from "@/lib/constants"
 
 export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean; prefetched?: ApiResponse<SystemStatsType> | null }) {
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
   const STATUS_POLL_MS = 30_000
-  const ALERT_POLL_MS = 10_000
 
   const shouldFetch = enabled && isReady && isAuthenticated && isVisible && !prefetched
 
   const { data: statusResponse, isLoading: isLoadingStatus } = useQuery({
-    queryKey: ['system-status'],
+    queryKey: [QUERY_KEYS.SYSTEM_STATUS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getSystemStatus(), 'Failed to load system status'),
     enabled: shouldFetch,
     staleTime: STATUS_POLL_MS,
@@ -35,11 +36,11 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
 
   // Alerts statistics - used for real-time updates
   useQuery({
-    queryKey: ['alert-stats'],
+    queryKey: [QUERY_KEYS.ALERT_STATS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlertStats(), 'Failed to load alert stats'),
     enabled: enabled && isReady && isAuthenticated && isVisible,
-    staleTime: ALERT_POLL_MS,
-    refetchInterval: enabled && isVisible ? ALERT_POLL_MS : false,
+    staleTime: POLL_INTERVAL,
+    refetchInterval: enabled && isVisible ? POLL_INTERVAL : false,
     refetchOnWindowFocus: enabled,
     notifyOnChangeProps: ['data', 'error'],
   })
@@ -56,24 +57,6 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
 
   const status = prefetched?.data || statusResponse?.data
   const health = status?.health
-
-  const formatUptime = (uptimeSeconds?: number) => {
-    if (!uptimeSeconds) return 'N/A'
-    const hours = Math.floor(uptimeSeconds / 3600)
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60)
-    return `${hours}h ${minutes}m`
-  }
-
-  const formatDate = (dateString?: Date | string | null) => {
-    if (!dateString) return 'Never'
-    return new Date(dateString).toLocaleString('en-GB', {
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -177,14 +160,14 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Last Scan</span>
               <span className="text-xs text-muted-foreground">
-                {formatDate(status?.['scheduler']?.lastRunTime)}
+                {formatSystemDate(status?.['scheduler']?.lastRunTime)}
               </span>
             </div>
             
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Next Scan</span>
               <span className="text-xs text-muted-foreground">
-                {formatDate(status?.['scheduler']?.nextRunTime)}
+                {formatSystemDate(status?.['scheduler']?.nextRunTime)}
               </span>
             </div>
           </div>

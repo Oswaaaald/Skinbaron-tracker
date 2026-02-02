@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,12 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, ChevronLeft, ChevronRight, Sparkles, TrendingDown, Bell } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { logger } from "@/lib/logger"
+import { extractErrorMessage } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
+import { formatPrice, formatShortDate } from "@/lib/formatters"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { ALERTS_PAGE_SIZE, QUERY_STALE_TIME, POLL_INTERVAL, QUERY_KEYS } from "@/lib/constants"
 
 const ALERT_TYPE_CONFIG = {
   match: {
@@ -45,25 +48,24 @@ export function AlertsGrid() {
   const [isClearingAll, setIsClearingAll] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const { toast } = useToast()
-  const limit = 12
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
-  const handleClearAllAlerts = () => {
+  const handleClearAllAlerts = useCallback(() => {
     setClearConfirmOpen(true)
-  }
+  }, [])
 
-  const confirmClear = async () => {
+  const confirmClear = useCallback(async () => {
     if (isClearingAll) return
     
     setIsClearingAll(true)
     try {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
-        queryClient.invalidateQueries({ queryKey: ['alerts'] })
-        syncStats()
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
+        void syncStats()
         toast({
           title: "✅ Alerts cleared",
           description: response.data?.message || 'All alerts cleared successfully',
@@ -74,23 +76,23 @@ export function AlertsGrid() {
       toast({
         variant: "destructive",
         title: "❌ Failed to clear alerts",
-        description: "An error occurred while clearing alerts",
+        description: extractErrorMessage(error, "An error occurred while clearing alerts"),
       })
     } finally {
       setIsClearingAll(false)
     }
-  }
+  }, [isClearingAll, queryClient, syncStats, toast])
 
   const { data: alertsResponse, isLoading, error } = useQuery({
-    queryKey: ['alerts', page, alertTypeFilter],
+    queryKey: [QUERY_KEYS.ALERTS, page, alertTypeFilter],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlerts({
-      limit,
-      offset: page * limit,
+      limit: ALERTS_PAGE_SIZE,
+      offset: page * ALERTS_PAGE_SIZE,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated && isVisible,
-    staleTime: 15_000,
-    refetchInterval: isVisible ? 10_000 : false,
+    staleTime: QUERY_STALE_TIME,
+    refetchInterval: isVisible ? POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
     notifyOnChangeProps: ['data', 'error'],
   })
@@ -103,7 +105,7 @@ export function AlertsGrid() {
     
     // If alert count changed (and it's not the first load), invalidate user stats
     if (prevAlertCountRef.current !== null && prevAlertCountRef.current !== currentCount) {
-      queryClient.invalidateQueries({ queryKey: ['user-stats'] })
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
     }
     
     prevAlertCountRef.current = currentCount
@@ -123,7 +125,7 @@ export function AlertsGrid() {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
-            Error loading alerts: {error instanceof Error ? error.message : 'Unknown error'}
+            Error loading alerts: {extractErrorMessage(error)}
           </div>
         </CardContent>
       </Card>
@@ -131,28 +133,7 @@ export function AlertsGrid() {
   }
 
   const alerts = alertsResponse?.data || []
-  const hasMorePages = alerts.length === limit
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-    }).format(price)
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  }
+  const hasMorePages = alerts.length === ALERTS_PAGE_SIZE
 
   const getSkinBaronUrl = (saleId: string, itemName?: string) => {
     if (itemName) {
@@ -235,7 +216,8 @@ export function AlertsGrid() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
             {alerts.map((alert, index) => {
-              const config = ALERT_TYPE_CONFIG[alert.alert_type as keyof typeof ALERT_TYPE_CONFIG] || ALERT_TYPE_CONFIG.match
+              const alertType = alert.alert_type
+              const config = ALERT_TYPE_CONFIG[alertType]
               const Icon = config.icon
               const isFirstImage = index === 0
               
@@ -280,7 +262,7 @@ export function AlertsGrid() {
                         {alert.item_name}
                       </CardTitle>
                       <CardDescription className="text-xs mt-0.5">
-                        {formatDate(alert.sent_at)}
+                        {formatShortDate(alert.sent_at)}
                       </CardDescription>
                     </div>
 
@@ -334,7 +316,7 @@ export function AlertsGrid() {
           {/* Pagination */}
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
-              Showing {page * limit + 1} - {page * limit + alerts.length} alerts
+              Showing {page * ALERTS_PAGE_SIZE + 1} - {page * ALERTS_PAGE_SIZE + alerts.length} alerts
             </div>
             <div className="flex gap-2">
               <Button
@@ -367,7 +349,7 @@ export function AlertsGrid() {
         description="This will permanently delete all your alerts. This action cannot be undone."
         confirmText="Delete All"
         variant="destructive"
-        onConfirm={confirmClear}
+        onConfirm={() => { void confirmClear() }}
       />
     </div>
   )

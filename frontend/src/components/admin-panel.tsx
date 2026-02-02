@@ -14,6 +14,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { extractErrorMessage } from '@/lib/utils'
+import { QUERY_KEYS } from '@/lib/constants'
 import {
   Dialog,
   DialogContent,
@@ -69,7 +71,7 @@ export function AdminPanel() {
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ['admin', 'users'],
+    queryKey: [QUERY_KEYS.ADMIN_USERS],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/admin/users'), 'Failed to load users')
       return response.data as AdminUser[]
@@ -81,7 +83,7 @@ export function AdminPanel() {
 
   // Fetch pending users
   const { data: pendingUsersData } = useQuery({
-    queryKey: ['admin', 'pendingUsers'],
+    queryKey: [QUERY_KEYS.ADMIN_PENDING],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.getPendingUsers(), 'Failed to load pending users')
       return response.data
@@ -93,7 +95,7 @@ export function AdminPanel() {
 
   // Fetch global stats
   const { data: statsData } = useQuery({
-    queryKey: ['admin', 'stats'],
+    queryKey: [QUERY_KEYS.ADMIN_STATS],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/admin/stats'), 'Failed to load stats')
       return response.data as GlobalStats
@@ -107,7 +109,7 @@ export function AdminPanel() {
   const deleteUserMutation = useApiMutation(
     (userId: number) => apiClient.delete(`/api/admin/users/${userId}`),
     {
-      invalidateKeys: [['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
+      invalidateKeys: [[QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
       onSuccess: () => {
         toast({
           title: "✅ User deleted",
@@ -116,16 +118,10 @@ export function AdminPanel() {
         setDeleteDialog({ open: false, user: null })
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to delete user",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -136,7 +132,7 @@ export function AdminPanel() {
     ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) =>
       apiClient.patch(`/api/admin/users/${userId}/admin`, { is_admin: isAdmin }),
     {
-      invalidateKeys: [['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
+      invalidateKeys: [[QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
       onSuccess: (_, { isAdmin }) => {
         toast({
           title: isAdmin ? "✅ Admin granted" : "✅ Admin revoked",
@@ -149,16 +145,10 @@ export function AdminPanel() {
         setAdminDialog({ open: false, user: null, action: 'grant' })
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to update admin status",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -168,7 +158,7 @@ export function AdminPanel() {
   const approveUserMutation = useApiMutation(
     (userId: number) => apiClient.approveUser(userId),
     {
-      invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'users'], ['admin', 'stats'], ['admin-audit-logs']],
+      invalidateKeys: [[QUERY_KEYS.ADMIN_PENDING], [QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
       onSuccess: () => {
         toast({
           title: "✅ User approved",
@@ -177,16 +167,10 @@ export function AdminPanel() {
         setpendingUserDialog({ open: false, userId: null, action: 'approve' })
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to approve user",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -196,7 +180,7 @@ export function AdminPanel() {
   const rejectUserMutation = useApiMutation(
     (userId: number) => apiClient.rejectUser(userId),
     {
-      invalidateKeys: [['admin', 'pendingUsers'], ['admin', 'stats'], ['admin-audit-logs']],
+      invalidateKeys: [[QUERY_KEYS.ADMIN_PENDING], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
       onSuccess: () => {
         toast({
           title: "✅ User rejected",
@@ -205,16 +189,10 @@ export function AdminPanel() {
         setpendingUserDialog({ open: false, userId: null, action: 'reject' })
       },
       onError: (error: unknown) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
-              ? (error as { error?: string }).error
-              : 'An error occurred';
         toast({
           variant: "destructive",
           title: "❌ Failed to reject user",
-          description: message,
+          description: extractErrorMessage(error),
         })
       },
     }
@@ -230,7 +208,7 @@ export function AdminPanel() {
       return response
     },
     {
-      invalidateKeys: [['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.ADMIN_STATS]],
       onSuccess: () => {
         toast({
           title: "✅ Scheduler executed",
@@ -241,7 +219,7 @@ export function AdminPanel() {
         toast({
           variant: "destructive",
           title: "❌ Scheduler failed",
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: extractErrorMessage(error),
         })
       },
     }

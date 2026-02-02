@@ -18,7 +18,7 @@ declare module 'fastify' {
 /**
  * Authentication routes
  */
-export default async function authRoutes(fastify: FastifyInstance) {
+export default function authRoutes(fastify: FastifyInstance) {
 
   // Stricter rate limiting for auth endpoints (anti-brute force)
   const authRateLimitConfig = {
@@ -102,10 +102,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       // Validate with Zod (regex patterns not checked by Fastify)
-      const userData = validateWithZod(UserRegistrationSchema, request.body, 'Registration data');
+      const userData = validateWithZod(UserRegistrationSchema, request.body);
       
       // Check if user already exists
-      const existingUser = await store.getUserByEmail(userData.email);
+      const existingUser = store.getUserByEmail(userData.email);
       if (existingUser) {
         // Check if account is pending approval
         if (!existingUser.is_approved) {
@@ -116,7 +116,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check if username is taken
-      const existingUsername = await store.getUserByUsername(userData.username);
+      const existingUsername = store.getUserByUsername(userData.username);
       if (existingUsername) {
         throw new AppError(409, 'This username is already taken', 'USERNAME_TAKEN');
       }
@@ -125,7 +125,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const passwordHash = await AuthService.hashPassword(userData.password);
 
       // Create user
-      const user = await store.createUser({
+      const user = store.createUser({
         username: userData.username,
         email: userData.email,
         password_hash: passwordHash,
@@ -146,14 +146,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens (only for approved users)
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      store.addRefreshToken(user.id!, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
 
       setAuthCookies(reply, accessToken, refreshToken);
 
       return reply.status(201).send({
         success: true,
         data: {
-          id: user.id!,
+          id: user.id,
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
@@ -210,30 +210,35 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       // Validate with Zod
-      const loginData = validateWithZod(UserLoginSchema, request.body, 'Login data');
+      const loginData = validateWithZod(UserLoginSchema, request.body);
       
       // Find user by email
-      const user = await store.getUserByEmail(loginData.email);
-      if (!user) {
-        // Don't create audit log for non-existent emails (would cause FK constraint error)
-        throw new AppError(401, 'Email or password is incorrect', 'INVALID_CREDENTIALS');
-      }
-
-      // Verify password
+      const user = store.getUserByEmail(loginData.email);
+      
+      // SECURITY: Always execute bcrypt to prevent timing attacks
+      // If user doesn't exist, use a fake hash to make response time consistent
+      // This prevents attackers from determining if an email exists by measuring response time
+      const FAKE_HASH = '$2b$12$K4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0';
+      const hashToCompare = user?.password_hash || FAKE_HASH;
+      
+      // Verify password (always executed to prevent timing attacks)
       const isValidPassword = await AuthService.verifyPassword(
         loginData.password,
-        user.password_hash
+        hashToCompare
       );
 
-      if (!isValidPassword) {
-        // Audit log for failed login (wrong password)
-        store.createAuditLog(
-          user.id!,
-          'login_failed',
-          JSON.stringify({ reason: 'invalid_password' }),
-          getClientIp(request),
-          request.headers['user-agent']
-        );
+      // Check credentials - user must exist AND password must be valid
+      if (!user || !isValidPassword) {
+        // Audit log for failed login (only if user exists to avoid FK constraint error)
+        if (user) {
+          store.createAuditLog(
+            user.id,
+            'login_failed',
+            JSON.stringify({ reason: 'invalid_password' }),
+            getClientIp(request),
+            request.headers['user-agent']
+          );
+        }
         throw new AppError(401, 'Email or password is incorrect', 'INVALID_CREDENTIALS');
       }
 
@@ -281,7 +286,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         try {
           const result = await otp.verify({
             token: totp_code,
-            secret: user.totp_secret!,
+            secret: user.totp_secret,
             epochTolerance: 1, // ±30s tolerance for clock drift
           });
           isValidTotp = result.valid;
@@ -308,14 +313,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         // If invalid, try recovery codes
         if (!isValidTotp) {
-          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) : [];
+          const recoveryCodes: string[] = user.recovery_codes 
+            ? (JSON.parse(user.recovery_codes) as string[]) 
+            : [];
           
           // Use constant-time comparison to prevent timing attacks
           let codeIndex = -1;
           for (let i = 0; i < recoveryCodes.length; i++) {
-            if (recoveryCodes[i].length === totp_code.length) {
+            const recoveryCode = recoveryCodes[i];
+            if (recoveryCode && recoveryCode.length === totp_code.length) {
               try {
-                const a = Buffer.from(recoveryCodes[i], 'utf8');
+                const a = Buffer.from(recoveryCode, 'utf8');
                 const b = Buffer.from(totp_code, 'utf8');
                 if (crypto.timingSafeEqual(a, b)) {
                   codeIndex = i;
@@ -331,7 +339,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             // Audit log for failed 2FA
             const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
             store.createAuditLog(
-              user.id!,
+              user.id,
               'login_failed',
               JSON.stringify({ reason }),
               getClientIp(request),
@@ -351,13 +359,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           // Remove used recovery code
           recoveryCodes.splice(codeIndex, 1);
-          store.updateUser(user.id!, {
+          store.updateUser(user.id, {
             recovery_codes: JSON.stringify(recoveryCodes),
           });
 
           // Audit log
           store.createAuditLog(
-            user.id!,
+            user.id,
             '2fa_recovery_code_used',
             JSON.stringify({ remaining_codes: recoveryCodes.length }),
             getClientIp(request),
@@ -367,14 +375,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Generate tokens
-      const accessToken = AuthService.generateAccessToken(user.id!);
-      const refreshToken = AuthService.generateRefreshToken(user.id!);
-      store.addRefreshToken(user.id!, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      const accessToken = AuthService.generateAccessToken(user.id);
+      const refreshToken = AuthService.generateRefreshToken(user.id);
+      store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log for successful login
       store.createAuditLog(
-        user.id!,
+        user.id,
         'login_success',
         JSON.stringify({ method: user.totp_enabled ? '2fa' : 'password' }),
         getClientIp(request),
@@ -384,7 +392,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({
         success: true,
         data: {
-          id: user.id!,
+          id: user.id,
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
@@ -429,7 +437,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { refresh_token: refreshFromBody } = (request.body as { refresh_token?: string } | null) || {};
-      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
+      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE]);
 
       if (!refresh_token) {
         request.log.warn({ cookies: request.cookies }, 'Refresh token missing');
@@ -495,9 +503,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const authHeader = request.headers.authorization;
-      const accessToken = AuthService.extractTokenFromHeader(authHeader ?? '') || (request.cookies?.[ACCESS_COOKIE] as string | undefined);
+      const accessToken = AuthService.extractTokenFromHeader(authHeader ?? '') || (request.cookies?.[ACCESS_COOKIE]);
       const { refresh_token: refreshFromBody } = request.body as { refresh_token?: string };
-      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
+      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE]);
 
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
       

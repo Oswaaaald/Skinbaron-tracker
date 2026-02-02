@@ -62,7 +62,9 @@ export class AlertScheduler {
     try {
       this.cronJob = new CronJob(
         appConfig.POLL_CRON,
-        this.executePoll.bind(this),
+        () => {
+          void this.executePoll();
+        },
         null,
         true,
         'Europe/Paris'
@@ -80,7 +82,7 @@ export class AlertScheduler {
    */
   stop(): void {
     if (this.cronJob) {
-      this.cronJob.stop();
+      void this.cronJob.stop();
       this.cronJob = null;
       this.stats.isRunning = false;
       this.stats.nextRunTime = null;
@@ -271,13 +273,14 @@ export class AlertScheduler {
       }
 
       // Batch create alerts and send notifications
-      if (matchingItems.length > 0) {
+      if (matchingItems.length > 0 && rule.id !== undefined) {
         // Get webhooks once for the rule
-        const webhooks = store.getRuleWebhooksForNotification(rule.id!);
+        const webhooks = store.getRuleWebhooksForNotification(rule.id);
         
         // Prepare all alerts for batch insert
+        const ruleId = rule.id;
         const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
-          rule_id: rule.id!,
+          rule_id: ruleId,
           sale_id: item.saleId,
           item_name: item.itemName,
           price: item.price,
@@ -298,22 +301,17 @@ export class AlertScheduler {
             const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
             
             for (const webhook of webhooks) {
-              this.queueWebhookNotification(
-                webhook.webhook_url!,
-                {
-                  alertType: 'match',
-                  item,
-                  rule,
-                  skinUrl: offerUrl,
-                }
-              ).catch((error) => {
-                this.logger.warn({ 
-                  error: error instanceof Error ? error.message : 'Unknown error',
-                  webhookId: webhook.id,
-                  ruleId: rule.id,
-                  itemName: item.itemName 
-                }, 'Failed to send webhook notification');
-              });
+              if (webhook.webhook_url) {
+                this.queueWebhookNotification(
+                  webhook.webhook_url,
+                  {
+                    alertType: 'match',
+                    item,
+                    rule,
+                    skinUrl: offerUrl,
+                  }
+                );
+              }
             }
           }
         }
@@ -340,10 +338,10 @@ export class AlertScheduler {
    * Queue webhook notification with rate limiting per webhook URL
    * Discord allows max 30 messages per minute per webhook
    */
-  private async queueWebhookNotification(
+  private queueWebhookNotification(
     webhookUrl: string,
     options: { alertType: 'match' | 'best_deal' | 'new_item', item: SkinBaronItem, rule?: Rule, skinUrl: string }
-  ): Promise<void> {
+  ): void {
     // Get or create queue for this webhook URL
     const existingQueue = this.webhookQueues.get(webhookUrl) || Promise.resolve();
     
@@ -351,7 +349,7 @@ export class AlertScheduler {
     const newQueue = existingQueue.then(async () => {
       try {
         await this.notificationService.sendNotification(webhookUrl, options);
-      } catch (error) {
+      } catch {
         // Log but don't throw - we don't want to block other notifications
       }
       // Add delay before next message to respect Discord rate limits
@@ -362,7 +360,7 @@ export class AlertScheduler {
     this.webhookQueues.set(webhookUrl, newQueue);
     
     // Clean up the queue after it's done (with extra time buffer)
-    newQueue.then(() => {
+    void newQueue.then(() => {
       setTimeout(() => {
         if (this.webhookQueues.get(webhookUrl) === newQueue) {
           this.webhookQueues.delete(webhookUrl);

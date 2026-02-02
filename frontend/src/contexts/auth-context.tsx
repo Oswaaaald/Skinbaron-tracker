@@ -99,7 +99,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       }
     }
 
-    loadSession()
+    void loadSession()
   }, [initialAuth])
 
   // Setup logout callback for when user is deleted/invalid
@@ -142,7 +142,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
             is_super_admin: response.data.is_super_admin,
           })
         }
-      } catch (_error) {
+      } catch {
         // Ignore failures; will retry on next focus
       } finally {
         lastCheck = Date.now()
@@ -150,7 +150,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       }
     }
 
-    const handleFocus = () => checkUserProfile()
+    const handleFocus = () => { void checkUserProfile() }
     window.addEventListener('focus', handleFocus)
 
     return () => {
@@ -233,7 +233,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   const logout = async () => {
     try {
       await apiClient.logout()
-    } catch (_err) {
+    } catch {
       // Best-effort logout
     }
     setUser(null)
@@ -254,19 +254,21 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     const now = Date.now()
     const msToRefresh = Math.max(accessExpiry - now - 60_000, 0)
 
-    const timer = setTimeout(async () => {
-      try {
-        const refreshed = await apiClient.refresh()
-        if (refreshed.success && refreshed.data?.token_expires_at) {
-          setAccessExpiry(refreshed.data.token_expires_at)
-        } else if (!refreshed.success) {
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const refreshed = await apiClient.refresh()
+          if (refreshed.success && refreshed.data?.token_expires_at) {
+            setAccessExpiry(refreshed.data.token_expires_at)
+          } else if (!refreshed.success) {
+            setUser(null)
+            setAccessExpiry(null)
+          }
+        } catch {
           setUser(null)
           setAccessExpiry(null)
         }
-      } catch (_err) {
-        setUser(null)
-        setAccessExpiry(null)
-      }
+      })()
     }, msToRefresh)
 
     return () => clearTimeout(timer)

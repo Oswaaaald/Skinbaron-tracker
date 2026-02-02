@@ -40,6 +40,8 @@ import { useSyncStats } from "@/hooks/use-sync-stats"
 import { ItemCombobox } from "@/components/ui/item-combobox"
 import { useApiMutation } from "@/hooks/use-api-mutation"
 import { useToast } from "@/hooks/use-toast"
+import { extractErrorMessage } from "@/lib/utils"
+import { QUERY_KEYS } from "@/lib/constants"
 
 const ruleFormSchema = z.object({
   search_item: z.string().min(1, "Search item is required"),
@@ -78,7 +80,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
 
   // Fetch user's webhooks
   const { data: webhooks = [] } = useQuery({
-    queryKey: ['webhooks'],
+    queryKey: [QUERY_KEYS.WEBHOOKS],
     queryFn: async () => {
       const result = await apiClient.getWebhooks(false)
       if (!result.success) throw new Error(result.error)
@@ -158,14 +160,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const createRuleMutation = useApiMutation(
     (data: CreateRuleData) => apiClient.createRule(data),
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: (result) => {
         if (result.success) {
           toast({
             title: "✅ Rule created",
             description: "Your rule has been created successfully",
           })
-          syncStats() // Sync stats immediately after rule creation
+          void syncStats() // Sync stats immediately after rule creation
           onOpenChange(false)
         } else {
           toast({
@@ -180,7 +182,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         toast({
           variant: "destructive",
           title: "❌ Failed to create rule",
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: extractErrorMessage(error),
         })
         setIsSubmitting(false)
       },
@@ -191,14 +193,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     ({ id, data }: { id: number; data: CreateRuleData }) =>
       apiClient.updateRule(id, data),
     {
-      invalidateKeys: [['rules'], ['admin', 'stats']],
+      invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],
       onSuccess: (result) => {
         if (result.success) {
           toast({
             title: "✅ Rule updated",
             description: "Your rule has been updated successfully",
           })
-          syncStats() // Sync stats immediately after rule update
+          void syncStats() // Sync stats immediately after rule update
           onOpenChange(false)
         } else {
           toast({
@@ -213,14 +215,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         toast({
           variant: "destructive",
           title: "❌ Failed to update rule",
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: extractErrorMessage(error),
         })
         setIsSubmitting(false)
       },
     }
   )
 
-  const onSubmit = async (data: RuleFormData) => {
+  const onSubmit = (data: RuleFormData) => {
     if (isSubmitting) return
     setIsSubmitting(true)
 
@@ -248,7 +250,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       toast({
         variant: "destructive",
         title: "❌ Failed to submit rule",
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: extractErrorMessage(error),
       })
       setIsSubmitting(false)
     }
@@ -286,7 +288,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
             {/* Search Item */}
             <FormField
               control={form.control}
@@ -656,16 +658,19 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                      {webhooks.map(webhook => (
+                      {webhooks.map(webhook => {
+                        const webhookId = webhook.id
+                        if (webhookId === undefined) return null
+                        return (
                         <div
-                          key={webhook.id}
+                          key={webhookId}
                           className="flex items-center space-x-2 p-2 rounded border hover:bg-muted cursor-pointer"
-                          onClick={() => handleWebhookToggle(webhook.id!)}
+                          onClick={() => handleWebhookToggle(webhookId)}
                         >
                           <input
                             type="checkbox"
-                            checked={selectedWebhooks.includes(webhook.id!)}
-                            onChange={() => handleWebhookToggle(webhook.id!)}
+                            checked={selectedWebhooks.includes(webhookId)}
+                            onChange={() => handleWebhookToggle(webhookId)}
                             className="h-4 w-4"
                           />
                           <span className="flex-1 text-sm">{webhook.name}</span>
@@ -673,7 +678,8 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             {webhook.webhook_type === 'discord' ? '🎮 Discord' : '🔗 Other'}
                           </span>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
 
