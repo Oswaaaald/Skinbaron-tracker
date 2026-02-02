@@ -226,28 +226,26 @@ async function registerPlugins() {
       } as typeof swaggerObject;
     },
     uiHooks: {
-      onRequest: (request, reply) => {
+      onRequest: async (request, reply) => {
         // Require authentication (any logged-in user)
-        void (async () => {
-          try {
-            await fastify.authenticate(request, reply);
-            
-            // Allow any authenticated user to view docs
-            if (!request.user) {
-              return reply.status(401).send({
-                success: false,
-                error: 'Unauthorized',
-                message: 'Authentication required to view API documentation',
-              });
-            }
-          } catch {
+        try {
+          await fastify.authenticate(request, reply);
+          
+          // Allow any authenticated user to view docs
+          if (!request.user) {
             return reply.status(401).send({
               success: false,
               error: 'Unauthorized',
               message: 'Authentication required to view API documentation',
             });
           }
-        })();
+        } catch {
+          return reply.status(401).send({
+            success: false,
+            error: 'Unauthorized',
+            message: 'Authentication required to view API documentation',
+          });
+        }
       },
     },
   });
