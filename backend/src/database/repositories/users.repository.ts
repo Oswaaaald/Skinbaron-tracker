@@ -52,28 +52,28 @@ export class UsersRepository {
     return user;
   }
 
-  findById(id: number): User | null {
+  findById(id: number, decrypt2FA: boolean = false): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
     const row = stmt.get(id) as UserRow | undefined;
     if (!row) return null;
     const user = rowToUser(row);
-    return this.decrypt2FASecrets(user);
+    return decrypt2FA ? this.decrypt2FASecrets(user) : user;
   }
 
-  findByEmail(email: string): User | null {
+  findByEmail(email: string, decrypt2FA: boolean = false): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
     const row = stmt.get(email) as UserRow | undefined;
     if (!row) return null;
     const user = rowToUser(row);
-    return this.decrypt2FASecrets(user);
+    return decrypt2FA ? this.decrypt2FASecrets(user) : user;
   }
 
-  findByUsername(username: string): User | null {
+  findByUsername(username: string, decrypt2FA: boolean = false): User | null {
     const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
     const row = stmt.get(username) as UserRow | undefined;
     if (!row) return null;
     const user = rowToUser(row);
-    return this.decrypt2FASecrets(user);
+    return decrypt2FA ? this.decrypt2FASecrets(user) : user;
   }
 
   update(id: number, updates: Partial<CreateUser> & { totp_secret?: string | null; recovery_codes?: string | null }): User {

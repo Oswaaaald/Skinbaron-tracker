@@ -212,8 +212,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Validate with Zod
       const loginData = validateWithZod(UserLoginSchema, request.body);
       
-      // Find user by email
-      const user = await store.getUserByEmail(loginData.email);
+      // Find user by email - decrypt 2FA secrets for verification
+      const user = await store.getUserByEmail(loginData.email, true);
       
       // SECURITY: Always execute bcrypt to prevent timing attacks
       // If user doesn't exist, use a fake hash to make response time consistent
