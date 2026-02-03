@@ -31,6 +31,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.6.1",
     "@fastify/swagger-ui": "^5.2.5",
+    "@types/zxcvbn": "^4.4.5",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.6.2",
     "cron": "^4.4.0",
@@ -41,7 +42,8 @@
     "otplib": "^13.2.1",
     "qrcode": "^1.5.4",
     "undici": "^7.20.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

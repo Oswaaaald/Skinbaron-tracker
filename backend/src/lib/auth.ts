@@ -2,6 +2,15 @@ import bcrypt from 'bcrypt';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { z } from 'zod';
 import crypto from 'crypto';
+import zxcvbn from 'zxcvbn';
+
+// Password strength validator using zxcvbn
+const strongPasswordValidator = (password: string) => {
+  const result = zxcvbn(password);
+  // Score 0-4: 0=weak, 1=weak, 2=fair, 3=good, 4=strong
+  // Require at least score 3 (good) to prevent common/weak passwords
+  return result.score >= 3;
+};
 
 // User schemas
 export const UserRegistrationSchema = z.object({
@@ -12,7 +21,10 @@ export const UserRegistrationSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number'),
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
+    .refine(strongPasswordValidator, {
+      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters. Try a passphrase with mixed words.',
+    }),
 });
 
 export const UserLoginSchema = z.object({
@@ -24,7 +36,10 @@ export const PasswordChangeSchema = z.object({
   current_password: z.string().min(1, 'Current password is required'),
   new_password: z.string()
     .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number'),
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
+    .refine(strongPasswordValidator, {
+      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters. Try a passphrase with mixed words.',
+    }),
 });
 
 export const WebhookSchema = z.object({
