@@ -23,7 +23,7 @@ export const UserRegistrationSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
     .refine(strongPasswordValidator, {
-      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters. Try a passphrase with mixed words.',
+      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
     }),
 });
 
@@ -38,7 +38,7 @@ export const PasswordChangeSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
     .refine(strongPasswordValidator, {
-      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters. Try a passphrase with mixed words.',
+      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
     }),
 });
 
