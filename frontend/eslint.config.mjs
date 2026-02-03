@@ -21,7 +21,12 @@ const eslintConfig = defineConfig([
       "@typescript-eslint": tseslint,
     },
     rules: {
+      // TypeScript recommended rules with type checking
+      ...tseslint.configs["recommended-type-checked"].rules,
+      // Custom overrides to match backend
       "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-non-null-assertion": "warn",
     },
   },
   // Override default ignores of eslint-config-next.
