@@ -299,8 +299,8 @@ export function AdminAuditLogs() {
                 if (log.event_type === 'user_deleted') {
                   try {
                     const data = JSON.parse(log.event_data || '{}') as Record<string, unknown>;
-                    displayUsername = String(data.username) || log.username;
-                    displayEmail = String(data.email) || log.email;
+                    displayUsername = String(data['username']) || log.username;
+                    displayEmail = String(data['email']) || log.email;
                   } catch {}
                 }
 

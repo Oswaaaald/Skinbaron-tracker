@@ -174,14 +174,14 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
 
     switch (eventType) {
       case "login_success":
-        return data.method === "2fa" ? "Login with 2FA" : "Login with password";
+        return data['method'] === "2fa" ? "Login with 2FA" : "Login with password";
       
       case "login_failed":
-        if (data.reason === "unknown_email") return "Failed: unknown email";
-        if (data.reason === "invalid_password") return "Failed: invalid password";
-        if (data.reason === "invalid_2fa_code") return "Failed: invalid 2FA code";
-        if (data.reason === "invalid_2fa_backup_code") return "Failed: invalid 2FA backup code";
-        return `Failed: ${String(data.reason)}`;
+        if (data['reason'] === "unknown_email") return "Failed: unknown email";
+        if (data['reason'] === "invalid_password") return "Failed: invalid password";
+        if (data['reason'] === "invalid_2fa_code") return "Failed: invalid 2FA code";
+        if (data['reason'] === "invalid_2fa_backup_code") return "Failed: invalid 2FA backup code";
+        return `Failed: ${String(data['reason'])}`;
       
       case "2fa_enabled":
         return "Two-factor authentication enabled";
@@ -190,36 +190,36 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return "Two-factor authentication disabled";
       
       case "2fa_recovery_code_used":
-        return `Recovery code used (${String(data.remaining_codes)} remaining)`;
+        return `Recovery code used (${String(data['remaining_codes'])} remaining)`;
       
       case "email_changed":
-        return `New email: ${String(data.new_email)}`;
+        return `New email: ${String(data['new_email'])}`;
       
       case "username_changed":
-        return `New username: ${String(data.new_username)}`;
+        return `New username: ${String(data['new_username'])}`;
       
       case "password_changed":
         return "Password successfully changed";
       
       case "password_change_failed":
-        if (data.reason === "invalid_current_password") return "Failed: invalid current password";
-        if (data.reason === "same_password") return "Failed: same password";
-        return `Failed: ${String(data.reason)}`;
+        if (data['reason'] === "invalid_current_password") return "Failed: invalid current password";
+        if (data['reason'] === "same_password") return "Failed: same password";
+        return `Failed: ${String(data['reason'])}`;
       
       case "user_approved":
-        return `Approved by ${String(data.admin_username) || `admin #${String(data.approved_by_admin_id)}`}`;
+        return `Approved by ${String(data['admin_username']) || `admin #${String(data['approved_by_admin_id'])}`}`;
       
       case "user_promoted":
-        return `Promoted to admin by ${String(data.admin_username) || `#${String(data.admin_id)}`}`;
+        return `Promoted to admin by ${String(data['admin_username']) || `#${String(data['admin_id'])}`}`;
       
       case "user_demoted":
-        return `Demoted by ${String(data.admin_username) || `admin #${String(data.admin_id)}`}`;
+        return `Demoted by ${String(data['admin_username']) || `admin #${String(data['admin_id'])}`}`;
       
       case "user_deleted":
         return "";
       
       case "logout":
-        return data.reason === "user_logout" ? "User logout" : "Logged out";
+        return data['reason'] === "user_logout" ? "User logout" : "Logged out";
       
       default:
         return eventDataJson;
