@@ -167,7 +167,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
             title: "✅ Rule created",
             description: "Your rule has been created successfully",
           })
-          syncStats() // Sync stats immediately after rule creation
+          void syncStats() // Sync stats immediately after rule creation
           onOpenChange(false)
         } else {
           toast({
@@ -200,7 +200,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
             title: "✅ Rule updated",
             description: "Your rule has been updated successfully",
           })
-          syncStats() // Sync stats immediately after rule update
+          void syncStats() // Sync stats immediately after rule update
           onOpenChange(false)
         } else {
           toast({
@@ -288,7 +288,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); void form.handleSubmit(onSubmit)(e); }} className="space-y-6">
             {/* Search Item */}
             <FormField
               control={form.control}

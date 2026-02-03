@@ -66,9 +66,9 @@ export function AlertsTable() {
       const response = await apiClient.clearAllAlerts()
       if (response.success) {
         // Invalidate alerts and stats cache - let auto-refresh handle the rest
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN_STATS] })
-        syncStats()
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ADMIN_STATS] })
+        void syncStats()
         
         toast({
           title: "✅ Alerts cleared",
@@ -109,7 +109,7 @@ export function AlertsTable() {
     
     // If alert count changed (and it's not the first load), invalidate user stats
     if (prevAlertCountRef.current !== null && prevAlertCountRef.current !== currentCount) {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
     }
     
     prevAlertCountRef.current = currentCount
@@ -342,7 +342,7 @@ export function AlertsTable() {
         description="This will permanently delete all your alerts. This action cannot be undone."
         confirmText="Delete All"
         variant="destructive"
-        onConfirm={confirmClear}
+        onConfirm={() => void confirmClear()}
       />
     </div>
   )

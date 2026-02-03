@@ -260,7 +260,7 @@ export function AdminAuditLogs() {
           <div className="space-y-2 flex-shrink-0 w-auto min-w-[220px] flex flex-col">
             <Label className="invisible">Actions</Label>
             <div className="flex items-end gap-2">
-              <Button onClick={() => refetch()} variant="outline" className="flex-1" disabled={isFetching}>
+              <Button onClick={() => void refetch()} variant="outline" className="flex-1" disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh results
               </Button>

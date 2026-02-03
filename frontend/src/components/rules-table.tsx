@@ -128,7 +128,7 @@ export function RulesTable() {
             ? "Rule is now active and monitoring items" 
             : "Rule has been paused",
         })
-        syncStats() // Sync stats immediately after rule change
+        void syncStats() // Sync stats immediately after rule change
       },
       onError: (error: unknown) => {
         toast({
@@ -149,7 +149,7 @@ export function RulesTable() {
           title: "✅ Rule deleted",
           description: "The monitoring rule has been permanently deleted",
         })
-        syncStats() // Sync stats immediately after rule deletion
+        void syncStats() // Sync stats immediately after rule deletion
       },
       onError: (error: unknown) => {
         toast({
@@ -171,7 +171,7 @@ export function RulesTable() {
           description: `${data?.count || 0} rule(s) have been enabled`,
         })
         setSelectedRules(new Set())
-        syncStats()
+        void syncStats()
       },
       onError: (error: unknown) => {
         toast({
@@ -193,7 +193,7 @@ export function RulesTable() {
           description: `${data?.count || 0} rule(s) have been disabled`,
         })
         setSelectedRules(new Set())
-        syncStats()
+        void syncStats()
       },
       onError: (error: unknown) => {
         toast({
@@ -216,7 +216,7 @@ export function RulesTable() {
           description: `${data?.count || 0} rule(s) have been permanently deleted`,
         })
         setSelectedRules(new Set())
-        syncStats()
+        void syncStats()
       },
       onError: (error: unknown) => {
         toast({
