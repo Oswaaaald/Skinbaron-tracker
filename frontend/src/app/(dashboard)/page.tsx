@@ -169,7 +169,7 @@ function DashboardContent() {
   const enabledRules = userStats?.data?.enabledRules || 0
   const todayAlerts = userStats?.data?.todayAlerts || 0
 
-  if (isLoadingStats) {
+  if (isLoadingStats && !userStats) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <LoadingSpinner size="lg" />

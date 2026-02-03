@@ -36,7 +36,7 @@ interface UserStats {
 }
 
 export function ProfileSettings() {
-  const { user, logout, updateUser } = useAuth()
+  const { user, logout, updateUser, isReady, isAuthenticated } = useAuth()
   const { state: formState, setError, setSuccess, clear } = useFormState()
   const { toast } = useToast()
   
@@ -67,8 +67,9 @@ export function ProfileSettings() {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/stats'), 'Failed to load user stats')
       return response.data as UserStats
     },
-    staleTime: 5_000,
-    refetchInterval: 5_000,
+    enabled: isReady && isAuthenticated,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   })
 
@@ -306,7 +307,11 @@ export function ProfileSettings() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.rules_count ?? 0}</div>
+            {isLoadingStats && !stats ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <div className="text-2xl font-bold">{stats?.rules_count ?? 0}</div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -315,7 +320,11 @@ export function ProfileSettings() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.alerts_count ?? 0}</div>
+            {isLoadingStats && !stats ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <div className="text-2xl font-bold">{stats?.alerts_count ?? 0}</div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -324,7 +333,11 @@ export function ProfileSettings() {
             <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.webhooks_count ?? 0}</div>
+            {isLoadingStats && !stats ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <div className="text-2xl font-bold">{stats?.webhooks_count ?? 0}</div>
+            )}
           </CardContent>
         </Card>
       </div>
