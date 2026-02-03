@@ -318,9 +318,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
           // Use constant-time comparison to prevent timing attacks
           let codeIndex = -1;
           for (let i = 0; i < recoveryCodes.length; i++) {
-            if (recoveryCodes[i].length === totp_code.length) {
+            const code = recoveryCodes[i];
+            if (code && code.length === totp_code.length) {
               try {
-                const a = Buffer.from(recoveryCodes[i], 'utf8');
+                const a = Buffer.from(code, 'utf8');
                 const b = Buffer.from(totp_code, 'utf8');
                 if (crypto.timingSafeEqual(a, b)) {
                   codeIndex = i;
