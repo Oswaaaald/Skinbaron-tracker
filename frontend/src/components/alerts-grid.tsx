@@ -216,7 +216,7 @@ export function AlertsGrid() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
             {alerts.map((alert, index) => {
-              const config = ALERT_TYPE_CONFIG[alert.alert_type as keyof typeof ALERT_TYPE_CONFIG] || ALERT_TYPE_CONFIG.match
+              const config = ALERT_TYPE_CONFIG[alert.alert_type] || ALERT_TYPE_CONFIG.match
               const Icon = config.icon
               const isFirstImage = index === 0
               

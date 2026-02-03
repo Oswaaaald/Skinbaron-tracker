@@ -170,7 +170,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
   if (!eventDataJson) return "";
 
   try {
-    const data = JSON.parse(eventDataJson);
+    const data = JSON.parse(eventDataJson) as Record<string, unknown>;
 
     switch (eventType) {
       case "login_success":
@@ -181,7 +181,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         if (data.reason === "invalid_password") return "Failed: invalid password";
         if (data.reason === "invalid_2fa_code") return "Failed: invalid 2FA code";
         if (data.reason === "invalid_2fa_backup_code") return "Failed: invalid 2FA backup code";
-        return `Failed: ${data.reason}`;
+        return `Failed: ${String(data.reason)}`;
       
       case "2fa_enabled":
         return "Two-factor authentication enabled";
@@ -190,13 +190,13 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return "Two-factor authentication disabled";
       
       case "2fa_recovery_code_used":
-        return `Recovery code used (${data.remaining_codes} remaining)`;
+        return `Recovery code used (${String(data.remaining_codes)} remaining)`;
       
       case "email_changed":
-        return `New email: ${data.new_email}`;
+        return `New email: ${String(data.new_email)}`;
       
       case "username_changed":
-        return `New username: ${data.new_username}`;
+        return `New username: ${String(data.new_username)}`;
       
       case "password_changed":
         return "Password successfully changed";
@@ -204,16 +204,16 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       case "password_change_failed":
         if (data.reason === "invalid_current_password") return "Failed: invalid current password";
         if (data.reason === "same_password") return "Failed: same password";
-        return `Failed: ${data.reason}`;
+        return `Failed: ${String(data.reason)}`;
       
       case "user_approved":
-        return `Approved by ${data.admin_username || `admin #${data.approved_by_admin_id}`}`;
+        return `Approved by ${String(data.admin_username) || `admin #${String(data.approved_by_admin_id)}`}`;
       
       case "user_promoted":
-        return `Promoted to admin by ${data.admin_username || `#${data.admin_id}`}`;
+        return `Promoted to admin by ${String(data.admin_username) || `#${String(data.admin_id)}`}`;
       
       case "user_demoted":
-        return `Demoted by ${data.admin_username || `admin #${data.admin_id}`}`;
+        return `Demoted by ${String(data.admin_username) || `admin #${String(data.admin_id)}`}`;
       
       case "user_deleted":
         return "";

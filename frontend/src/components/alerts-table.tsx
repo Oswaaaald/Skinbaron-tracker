@@ -254,8 +254,8 @@ export function AlertsTable() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={ALERT_TYPE_COLORS[alert.alert_type as keyof typeof ALERT_TYPE_COLORS] || 'default'}>
-                        {ALERT_TYPE_LABELS[alert.alert_type as keyof typeof ALERT_TYPE_LABELS] || alert.alert_type}
+                      <Badge variant={ALERT_TYPE_COLORS[alert.alert_type] || 'default'}>
+                        {ALERT_TYPE_LABELS[alert.alert_type] || alert.alert_type}
                       </Badge>
                     </TableCell>
                     <TableCell>

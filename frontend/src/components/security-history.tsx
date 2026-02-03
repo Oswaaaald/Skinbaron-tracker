@@ -115,12 +115,12 @@ export function SecurityHistory() {
                 let adminUsername = null;
                 if (log.event_type === 'user_deleted') {
                   try {
-                    const data = JSON.parse(log.event_data || '{}');
-                    displayUsername = data.username;
-                    displayEmail = data.email;
+                    const data = JSON.parse(log.event_data || '{}') as Record<string, unknown>;
+                    displayUsername = String(data.username);
+                    displayEmail = String(data.email);
                     // For user_deleted, the current log user is the admin who did the deletion
                     // We need to get admin info from a different source since this is the user's own audit log
-                    adminUsername = data.admin_username || null;
+                    adminUsername = String(data.admin_username) || null;
                   } catch {}
                 }
 

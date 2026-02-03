@@ -222,7 +222,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     }
   )
 
-  const onSubmit = async (data: RuleFormData) => {
+  const onSubmit = (data: RuleFormData) => {
     if (isSubmitting) return
     setIsSubmitting(true)
 

@@ -115,13 +115,13 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   }
 
   const copySecret = () => {
-    navigator.clipboard.writeText(secret)
+    void navigator.clipboard.writeText(secret)
     setCopiedSecret(true)
     setTimeout(() => setCopiedSecret(false), 2000)
   }
 
   const copyRecoveryCodes = () => {
-    navigator.clipboard.writeText(recoveryCodes.join('\n'))
+    void navigator.clipboard.writeText(recoveryCodes.join('\n'))
     setCopiedCodes(true)
     setTimeout(() => setCopiedCodes(false), 2000)
   }
