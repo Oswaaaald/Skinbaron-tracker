@@ -105,7 +105,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const userData = validateWithZod(UserRegistrationSchema, request.body);
       
       // Check if user already exists
-      const existingUser = await store.getUserByEmail(userData.email);
+      const existingUser = store.getUserByEmail(userData.email);
       if (existingUser) {
         // Check if account is pending approval
         if (!existingUser.is_approved) {
@@ -116,7 +116,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check if username is taken
-      const existingUsername = await store.getUserByUsername(userData.username);
+      const existingUsername = store.getUserByUsername(userData.username);
       if (existingUsername) {
         throw new AppError(409, 'This username is already taken', 'USERNAME_TAKEN');
       }
@@ -125,7 +125,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const passwordHash = await AuthService.hashPassword(userData.password);
 
       // Create user
-      const user = await store.createUser({
+      const user = store.createUser({
         username: userData.username,
         email: userData.email,
         password_hash: passwordHash,
@@ -213,7 +213,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const loginData = validateWithZod(UserLoginSchema, request.body);
       
       // Find user by email - decrypt 2FA secrets for verification
-      const user = await store.getUserByEmail(loginData.email, true);
+      const user = store.getUserByEmail(loginData.email, true);
       
       // SECURITY: Always execute bcrypt to prevent timing attacks
       // If user doesn't exist, use a fake hash to make response time consistent
@@ -313,7 +313,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         // If invalid, try recovery codes
         if (!isValidTotp) {
-          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) : [];
+          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) as string[] : [];
           
           // Use constant-time comparison to prevent timing attacks
           let codeIndex = -1;
