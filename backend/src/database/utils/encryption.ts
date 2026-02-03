@@ -8,8 +8,10 @@ const TAG_LENGTH = 16;
 const TAG_POSITION = SALT_LENGTH + IV_LENGTH;
 const ENCRYPTED_POSITION = TAG_POSITION + TAG_LENGTH;
 
-// OWASP 2024+ recommendation: 600,000+ iterations for PBKDF2-SHA512
-const PBKDF2_ITERATIONS = 600_000;
+// PBKDF2 iterations for data encryption (not passwords)
+// OWASP 600k is for passwords; for AES-256-GCM with strong random key, 100k is sufficient
+// Balances security with performance for encryption/decryption operations
+const PBKDF2_ITERATIONS = 100_000;
 
 /**
  * Derives a key from the encryption key using PBKDF2
