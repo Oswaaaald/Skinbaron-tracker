@@ -146,14 +146,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens (only for approved users)
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      store.addRefreshToken(user.id!, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
 
       setAuthCookies(reply, accessToken, refreshToken);
 
       return reply.status(201).send({
         success: true,
         data: {
-          id: user.id!,
+          id: user.id,
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
@@ -232,7 +232,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Audit log for failed login (only if user exists to avoid FK constraint error)
         if (user) {
           store.createAuditLog(
-            user.id!,
+            user.id,
             'login_failed',
             JSON.stringify({ reason: 'invalid_password' }),
             getClientIp(request),
@@ -286,7 +286,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         try {
           const result = await otp.verify({
             token: totp_code,
-            secret: user.totp_secret!,
+            secret: user.totp_secret,
             epochTolerance: 1, // ±30s tolerance for clock drift
           });
           isValidTotp = result.valid;
@@ -336,7 +336,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             // Audit log for failed 2FA
             const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
             store.createAuditLog(
-              user.id!,
+              user.id,
               'login_failed',
               JSON.stringify({ reason }),
               getClientIp(request),
@@ -356,13 +356,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           // Remove used recovery code
           recoveryCodes.splice(codeIndex, 1);
-          store.updateUser(user.id!, {
+          store.updateUser(user.id, {
             recovery_codes: JSON.stringify(recoveryCodes),
           });
 
           // Audit log
           store.createAuditLog(
-            user.id!,
+            user.id,
             '2fa_recovery_code_used',
             JSON.stringify({ remaining_codes: recoveryCodes.length }),
             getClientIp(request),
@@ -372,14 +372,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Generate tokens
-      const accessToken = AuthService.generateAccessToken(user.id!);
-      const refreshToken = AuthService.generateRefreshToken(user.id!);
-      store.addRefreshToken(user.id!, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      const accessToken = AuthService.generateAccessToken(user.id);
+      const refreshToken = AuthService.generateRefreshToken(user.id);
+      store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log for successful login
       store.createAuditLog(
-        user.id!,
+        user.id,
         'login_success',
         JSON.stringify({ method: user.totp_enabled ? '2fa' : 'password' }),
         getClientIp(request),
@@ -389,7 +389,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({
         success: true,
         data: {
-          id: user.id!,
+          id: user.id,
           username: user.username,
           email: user.email,
           avatar_url: AuthService.getGravatarUrl(user.email),
@@ -434,7 +434,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { refresh_token: refreshFromBody } = (request.body as { refresh_token?: string } | null) || {};
-      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
+      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE]);
 
       if (!refresh_token) {
         request.log.warn({ cookies: request.cookies }, 'Refresh token missing');
@@ -500,9 +500,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const authHeader = request.headers.authorization;
-      const accessToken = AuthService.extractTokenFromHeader(authHeader ?? '') || (request.cookies?.[ACCESS_COOKIE] as string | undefined);
+      const accessToken = AuthService.extractTokenFromHeader(authHeader ?? '') || (request.cookies?.[ACCESS_COOKIE]);
       const { refresh_token: refreshFromBody } = request.body as { refresh_token?: string };
-      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE] as string | undefined);
+      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE]);
 
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
       

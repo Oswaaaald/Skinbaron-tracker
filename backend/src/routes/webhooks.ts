@@ -334,7 +334,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       if (!webhook_ids || webhook_ids.length === 0) {
         // Enable all webhooks for this user
         const allWebhooks = store.getUserWebhooks(userId);
-        const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id!);
+        const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id);
         updated = store.enableWebhooksBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks
@@ -400,7 +400,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       if (!webhook_ids || webhook_ids.length === 0) {
         // Disable all webhooks for this user
         const allWebhooks = store.getUserWebhooks(userId);
-        const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id!);
+        const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id);
         updated = store.disableWebhooksBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks
@@ -474,7 +474,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         }
         
         const allWebhooks = store.getUserWebhooks(userId);
-        const allIds = allWebhooks.map(w => w.id!);
+        const allIds = allWebhooks.map(w => w.id);
         deleted = store.deleteWebhooksBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks

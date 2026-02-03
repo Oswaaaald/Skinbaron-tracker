@@ -81,7 +81,7 @@ export function AlertsGrid() {
     } finally {
       setIsClearingAll(false)
     }
-  }, [isClearingAll, queryClient, syncStats])
+  }, [isClearingAll, queryClient, syncStats, toast])
 
   const { data: alertsResponse, isLoading, error } = useQuery({
     queryKey: [QUERY_KEYS.ALERTS, page, alertTypeFilter],
