@@ -123,12 +123,13 @@ export class Store {
   }
   getUserStats(userId: number) {
     // Optimized single query like original store.ts
+    // Using datetime for 24h window instead of DATE comparison for timezone consistency
     const stats = this.db.prepare(`
       SELECT 
         (SELECT COUNT(*) FROM rules WHERE user_id = ?) as totalRules,
         (SELECT COUNT(*) FROM rules WHERE user_id = ? AND enabled = 1) as enabledRules,
         (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ?) as totalAlerts,
-        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ? AND DATE(a.sent_at) = DATE('now')) as todayAlerts
+        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ? AND a.sent_at >= datetime('now', '-24 hours')) as todayAlerts
     `).get(userId, userId, userId, userId) as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
 
     return stats;
@@ -147,7 +148,7 @@ export class Store {
         (SELECT COUNT(*) FROM rules) as totalRules,
         (SELECT COUNT(*) FROM rules WHERE enabled = 1) as enabledRules,
         (SELECT COUNT(*) FROM alerts) as totalAlerts,
-        (SELECT COUNT(*) FROM alerts WHERE DATE(sent_at) = DATE('now')) as todayAlerts
+        (SELECT COUNT(*) FROM alerts WHERE sent_at >= datetime('now', '-24 hours')) as todayAlerts
     `).get() as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
 
     return stats;
