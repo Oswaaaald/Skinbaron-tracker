@@ -314,45 +314,53 @@ export function WebhooksTable() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="webhook_type">Type</Label>
-                <Select
-                  value={formData.webhook_type}
-                  onValueChange={(value: 'discord' | 'slack' | 'teams' | 'generic') =>
-                    setFormData({ ...formData, webhook_type: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="discord">Discord</SelectItem>
-                    <SelectItem value="slack">Slack</SelectItem>
-                    <SelectItem value="teams">Microsoft Teams</SelectItem>
-                    <SelectItem value="generic">Generic</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="webhook_type">Type</Label>
+                  <Select
+                    value={formData.webhook_type}
+                    onValueChange={(value: 'discord' | 'slack' | 'teams' | 'generic') =>
+                      setFormData({ ...formData, webhook_type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="discord">Discord</SelectItem>
+                      <SelectItem value="slack">Slack</SelectItem>
+                      <SelectItem value="teams">Microsoft Teams</SelectItem>
+                      <SelectItem value="generic">Generic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notification_style">Notification Style</Label>
+                  <Select
+                    value={formData.notification_style}
+                    onValueChange={(value: 'compact' | 'detailed') =>
+                      setFormData({ ...formData, notification_style: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="compact">Compact</SelectItem>
+                      <SelectItem value="detailed">Detailed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notification_style">Notification Style</Label>
-                <Select
-                  value={formData.notification_style}
-                  onValueChange={(value: 'compact' | 'detailed') =>
-                    setFormData({ ...formData, notification_style: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="compact">Compact</SelectItem>
-                    <SelectItem value="detailed">Detailed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-row items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_active" className="text-sm font-medium">Enable Webhook</Label>
+                  <p className="text-[0.8rem] text-muted-foreground">
+                    Webhook will receive notifications when alerts are triggered
+                  </p>
+                </div>
                 <Switch
                   id="is_active"
                   checked={formData.is_active}
@@ -360,7 +368,6 @@ export function WebhooksTable() {
                     setFormData({ ...formData, is_active: checked })
                   }
                 />
-                <Label htmlFor="is_active">Active</Label>
               </div>
 
               {error && (
