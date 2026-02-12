@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 import { 
-  LayoutDashboard,
   ListFilter,
   Bell,
   Webhook,
@@ -19,9 +18,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 import { Button } from "@/components/ui/button"
 
 const navItems = [
-  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/", label: "Alerts", icon: Bell },
   { href: "/rules", label: "Rules", icon: ListFilter },
-  { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/webhooks", label: "Webhooks", icon: Webhook },
   { href: "/settings", label: "Settings", icon: Settings },
 ]
