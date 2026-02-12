@@ -114,7 +114,7 @@ export class NotificationService {
         const wearPercentage = (item.wearValue * 100).toFixed(2);
         embed.fields.push({
           name: '🔍 Wear Value',
-          value: `${wearPercentage}%`,
+          value: `${wearPercentage} %`,
           inline: true,
         });
       }
