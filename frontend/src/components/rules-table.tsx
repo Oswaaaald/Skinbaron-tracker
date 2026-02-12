@@ -437,7 +437,7 @@ export function RulesTable() {
                       )}
                       {rule.stattrak_filter === 'exclude' && (
                         <Badge variant="secondary" className="text-xs">
-                          ✗ No StatTrak
+                          🚫 No StatTrak
                         </Badge>
                       )}
                       {rule.souvenir_filter === 'only' && (
@@ -447,7 +447,7 @@ export function RulesTable() {
                       )}
                       {rule.souvenir_filter === 'exclude' && (
                         <Badge variant="secondary" className="text-xs">
-                          ✗ No Souvenir
+                          🚫 No Souvenir
                         </Badge>
                       )}
                       {rule.sticker_filter === 'only' && (
@@ -457,7 +457,7 @@ export function RulesTable() {
                       )}
                       {rule.sticker_filter === 'exclude' && (
                         <Badge variant="secondary" className="text-xs">
-                          ✗ No Stickers
+                          🚫 No Stickers
                         </Badge>
                       )}
                     </div>
