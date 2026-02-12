@@ -346,8 +346,8 @@ export function WebhooksTable() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="compact">Compact — Small thumbnail, text info</SelectItem>
-                    <SelectItem value="detailed">Detailed — Full image, fields layout</SelectItem>
+                    <SelectItem value="compact">Compact</SelectItem>
+                    <SelectItem value="detailed">Detailed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

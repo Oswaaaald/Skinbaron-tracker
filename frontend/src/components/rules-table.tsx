@@ -452,7 +452,7 @@ export function RulesTable() {
                       )}
                       {rule.sticker_filter === 'only' && (
                         <Badge variant="outline" className="text-xs">
-                          ⭐ Stickers Only
+                          🏷️ Stickers Only
                         </Badge>
                       )}
                       {rule.sticker_filter === 'exclude' && (

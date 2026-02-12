@@ -101,7 +101,7 @@ export class NotificationService {
 
     // Separate badge lines
     const badgeLines: string[] = [];
-    if (item.statTrak) badgeLines.push('🔥 **StatTrak™**');
+    if (item.statTrak) badgeLines.push('⭐ **StatTrak™**');
     if (item.souvenir) badgeLines.push('🏆 **Souvenir**');
     if (item.hasStickers) badgeLines.push('🏷️ **Stickers**');
 
@@ -182,8 +182,8 @@ export class NotificationService {
       // Individual badge fields on separate lines
       if (item.statTrak) {
         embed.fields.push({
-          name: '🔥 StatTrak™',
-          value: 'Yes',
+          name: '⭐ StatTrak™',
+          value: '\u200B',
           inline: true,
         });
       }
@@ -191,7 +191,7 @@ export class NotificationService {
       if (item.souvenir) {
         embed.fields.push({
           name: '🏆 Souvenir',
-          value: 'Yes',
+          value: '\u200B',
           inline: true,
         });
       }
@@ -199,7 +199,7 @@ export class NotificationService {
       if (item.hasStickers) {
         embed.fields.push({
           name: '🏷️ Stickers',
-          value: 'Yes',
+          value: '\u200B',
           inline: true,
         });
       }
