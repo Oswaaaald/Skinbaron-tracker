@@ -13,6 +13,8 @@ const AlertsQuerySchema = z.object({
   offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
   alert_type: z.enum(['match', 'best_deal', 'new_item']).optional(),
+  item_name: z.string().optional(),
+  sort_by: z.enum(['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc']).optional(),
 });
 
 // Route handlers
@@ -35,6 +37,8 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
           offset: { type: 'string', default: '0' },
           rule_id: { type: 'string' },
           alert_type: { type: 'string', enum: ['match', 'best_deal', 'new_item'] },
+          item_name: { type: 'string', description: 'Filter by item name (partial match)' },
+          sort_by: { type: 'string', enum: ['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc'], description: 'Sort order' },
         },
       },
       response: {
@@ -77,10 +81,18 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const query = validateWithZod(AlertsQuerySchema, request.query);
       
-      // Get user's alerts with pagination
-      let alerts = store.getAlertsByUserId(request.user!.id, query.limit, query.offset);
+      // Get user's alerts with pagination and filters
+      let alerts = store.getAlertsByUserId(
+        request.user!.id, 
+        query.limit, 
+        query.offset,
+        {
+          itemName: query.item_name,
+          sortBy: query.sort_by,
+        }
+      );
       
-      // Apply filters if provided
+      // Apply additional filters if provided
       if (query.rule_id !== undefined) {
         // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
@@ -105,6 +117,40 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Failed to get alerts');
+    }
+  });
+
+  /**
+   * GET /alerts/items - Get unique item names for filtering
+   */
+  fastify.get('/items', {
+    schema: {
+      description: 'Get unique item names from user alerts for filtering',
+      tags: ['Alerts'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const itemNames = store.getUniqueAlertItemNames(request.user!.id);
+      
+      return reply.status(200).send({
+        success: true,
+        data: itemNames,
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Failed to get item names');
     }
   });
 

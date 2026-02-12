@@ -44,6 +44,7 @@ export class Store {
   findAlertsByRuleId = this.alerts.findByRuleId.bind(this.alerts);
   deleteBySaleIds = this.alerts.deleteBySaleIds.bind(this.alerts);
   deleteBySaleIdAndRuleId = this.alerts.deleteBySaleIdAndRuleId.bind(this.alerts);
+  getUniqueAlertItemNames = this.alerts.getUniqueItemNames.bind(this.alerts);
 
   // Users
   createUser = this.users.create.bind(this.users);

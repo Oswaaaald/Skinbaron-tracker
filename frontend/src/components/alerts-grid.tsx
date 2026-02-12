@@ -44,6 +44,8 @@ const ALERT_TYPE_CONFIG = {
 export function AlertsGrid() {
   const [page, setPage] = useState(0)
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
+  const [itemNameFilter, setItemNameFilter] = useState<string>('')
+  const [sortBy, setSortBy] = useState<'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc'>('date')
   const [isClearingAll, setIsClearingAll] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const { toast } = useToast()
@@ -82,11 +84,13 @@ export function AlertsGrid() {
   }, [isClearingAll, queryClient, syncStats, toast])
 
   const { data: alertsResponse, isLoading, error } = useQuery({
-    queryKey: [QUERY_KEYS.ALERTS, page, alertTypeFilter],
+    queryKey: [QUERY_KEYS.ALERTS, page, alertTypeFilter, itemNameFilter, sortBy],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlerts({
       limit: ALERTS_PAGE_SIZE,
       offset: page * ALERTS_PAGE_SIZE,
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
+      item_name: itemNameFilter || undefined,
+      sort_by: sortBy,
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated,
     staleTime: 0, // Always consider alerts data stale to ensure fresh data
@@ -94,6 +98,14 @@ export function AlertsGrid() {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     notifyOnChangeProps: ['data', 'error'],
+  })
+
+  // Get unique item names for filter
+  const { data: itemNamesResponse } = useQuery({
+    queryKey: [QUERY_KEYS.ALERTS, 'items'],
+    queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlertItemNames(), 'Failed to load item names'),
+    enabled: isReady && isAuthenticated,
+    staleTime: 60000, // Cache for 1 minute
   })
 
   if (isLoading) {
@@ -118,6 +130,7 @@ export function AlertsGrid() {
   }
 
   const alerts = alertsResponse?.data || []
+  const itemNames = itemNamesResponse?.data || []
   const hasMorePages = alerts.length === ALERTS_PAGE_SIZE
 
   const getSkinBaronUrl = (saleId: string, itemName?: string) => {
@@ -129,7 +142,7 @@ export function AlertsGrid() {
     return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
   }
 
-  if (alerts.length === 0 && page === 0 && !alertTypeFilter) {
+  if (alerts.length === 0 && page === 0 && !alertTypeFilter && !itemNameFilter) {
     return (
       <Card>
         <CardHeader>
@@ -165,6 +178,53 @@ export function AlertsGrid() {
               <SelectItem value="match">Rule Match</SelectItem>
               <SelectItem value="best_deal">Best Deal</SelectItem>
               <SelectItem value="new_item">New Item</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="item-filter" className="text-sm font-medium mb-2 block">
+            Item
+          </label>
+          <Select
+            value={itemNameFilter}
+            onValueChange={(value) => {
+              setItemNameFilter(value === 'all' ? '' : value)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[220px]" aria-label="Filter alerts by item">
+              <SelectValue placeholder="All items" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              <SelectItem value="all">All Items</SelectItem>
+              {itemNames.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name.length > 35 ? name.substring(0, 35) + '...' : name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="sort-by" className="text-sm font-medium mb-2 block">
+            Sort By
+          </label>
+          <Select
+            value={sortBy}
+            onValueChange={(value) => {
+              setSortBy(value as typeof sortBy)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[180px]" aria-label="Sort alerts">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Date (Newest)</SelectItem>
+              <SelectItem value="price_asc">Price (Low to High)</SelectItem>
+              <SelectItem value="price_desc">Price (High to Low)</SelectItem>
+              <SelectItem value="wear_asc">Wear (Low to High)</SelectItem>
+              <SelectItem value="wear_desc">Wear (High to Low)</SelectItem>
             </SelectContent>
           </Select>
         </div>

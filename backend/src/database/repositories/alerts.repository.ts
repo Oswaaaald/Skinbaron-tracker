@@ -13,6 +13,21 @@ export interface AlertTypeCounts {
 export class AlertsRepository {
   constructor(private db: Database.Database) {}
 
+  /**
+   * Get unique item names for a user's alerts (for filtering UI)
+   */
+  getUniqueItemNames(userId: number): string[] {
+    const stmt = this.db.prepare(`
+      SELECT DISTINCT a.item_name 
+      FROM alerts a 
+      JOIN rules r ON a.rule_id = r.id 
+      WHERE r.user_id = ?
+      ORDER BY a.item_name ASC
+    `);
+    const rows = stmt.all(userId) as Array<{ item_name: string }>;
+    return rows.map(row => row.item_name);
+  }
+
   create(alert: CreateAlert): Alert {
     try {
       const validated = AlertSchema.omit({ id: true, sent_at: true }).parse(alert);
@@ -107,15 +122,53 @@ export class AlertsRepository {
     const rows = stmt.all(...saleIds) as AlertRow[];
     return rows.map(rowToAlert);
   }
-  findByUserId(userId: number, limit: number = 50, offset: number = 0): Alert[] {
-    const stmt = this.db.prepare(`
+  findByUserId(
+    userId: number, 
+    limit: number = 50, 
+    offset: number = 0,
+    options?: {
+      itemName?: string;
+      sortBy?: 'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc';
+    }
+  ): Alert[] {
+    let query = `
       SELECT a.* FROM alerts a 
       JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ? 
-      ORDER BY a.sent_at DESC 
-      LIMIT ? OFFSET ?
-    `);
-    const rows = stmt.all(userId, limit, offset) as AlertRow[];
+      WHERE r.user_id = ?
+    `;
+    const params: any[] = [userId];
+
+    // Add item name filter
+    if (options?.itemName) {
+      query += ` AND a.item_name LIKE ?`;
+      params.push(`%${options.itemName}%`);
+    }
+
+    // Add sorting
+    switch (options?.sortBy) {
+      case 'price_asc':
+        query += ` ORDER BY a.price ASC`;
+        break;
+      case 'price_desc':
+        query += ` ORDER BY a.price DESC`;
+        break;
+      case 'wear_asc':
+        query += ` ORDER BY a.wear_value ASC NULLS LAST`;
+        break;
+      case 'wear_desc':
+        query += ` ORDER BY a.wear_value DESC NULLS LAST`;
+        break;
+      case 'date':
+      default:
+        query += ` ORDER BY a.sent_at DESC`;
+        break;
+    }
+
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const stmt = this.db.prepare(query);
+    const rows = stmt.all(...params) as AlertRow[];
     return rows.map(rowToAlert);
   }
 

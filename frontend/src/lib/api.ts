@@ -438,6 +438,8 @@ class ApiClient {
     offset?: number;
     rule_id?: number;
     alert_type?: 'match' | 'best_deal' | 'new_item';
+    item_name?: string;
+    sort_by?: 'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc';
   } = {}): Promise<PaginatedResponse<Alert>> {
     const searchParams = new URLSearchParams();
     
@@ -445,9 +447,15 @@ class ApiClient {
     if (params.offset) searchParams.append('offset', params.offset.toString());
     if (params.rule_id) searchParams.append('rule_id', params.rule_id.toString());
     if (params.alert_type) searchParams.append('alert_type', params.alert_type);
+    if (params.item_name) searchParams.append('item_name', params.item_name);
+    if (params.sort_by) searchParams.append('sort_by', params.sort_by);
 
     const endpoint = `/api/alerts${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
     return this.request<Alert[]>(endpoint) as Promise<PaginatedResponse<Alert>>;
+  }
+
+  async getAlertItemNames(): Promise<ApiResponse<string[]>> {
+    return this.request('/api/alerts/items');
   }
 
   async getAlertStats(): Promise<ApiResponse<{
