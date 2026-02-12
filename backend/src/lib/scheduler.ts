@@ -193,8 +193,23 @@ export class AlertScheduler {
         limit: 1000, // High limit to catch all matching items
       });
 
+      // Get existing alerts for this rule to track changes
+      const existingAlerts = rule.id ? store.findAlertsByRuleId(rule.id) : [];
+      const existingAlertsMap = new Map(existingAlerts.map(alert => [alert.sale_id, alert]));
+
       if (!response.items || response.items.length === 0) {
-        this.logger.info({ ruleId: rule.id, searchItem: rule.search_item }, '[Scheduler] No items found from API');
+        // No items found - delete all existing alerts for this rule as offers are gone
+        if (existingAlerts.length > 0 && rule.id) {
+          const saleIdsToDelete = existingAlerts.map(a => a.sale_id);
+          const deletedCount = store.deleteBySaleIds(saleIdsToDelete);
+          if (deletedCount > 0) {
+            this.logger.info({ 
+              ruleId: rule.id, 
+              searchItem: rule.search_item, 
+              deletedCount 
+            }, '[Scheduler] Deleted alerts for sold/removed offers');
+          }
+        }
         return 0;
       }
 
@@ -204,9 +219,26 @@ export class AlertScheduler {
         foundItems: response.items.length 
       }, '[Scheduler] Items found from API');
 
+      // Track current sale_ids from API to detect removed offers
+      const currentSaleIds = new Set(response.items.map(item => item.saleId));
+      
+      // Delete alerts for offers that no longer exist
+      const obsoleteSaleIds = existingAlerts
+        .map(alert => alert.sale_id)
+        .filter(saleId => !currentSaleIds.has(saleId));
+      
+      if (obsoleteSaleIds.length > 0) {
+        const deletedCount = store.deleteBySaleIds(obsoleteSaleIds);
+        this.logger.info({ 
+          ruleId: rule.id, 
+          obsoleteCount: deletedCount 
+        }, '[Scheduler] Deleted alerts for sold/removed offers');
+      }
+
       let newAlerts = 0;
       let skippedAlreadyProcessed = 0;
       let skippedByFilters = 0;
+      let priceChanges = 0;
       
       // Batch check for already processed items to avoid N+1 queries
       const saleIds = response.items.map(item => item.saleId);
@@ -268,8 +300,27 @@ export class AlertScheduler {
           continue;
         }
 
-        // Item passed all filters, add to matching items
-        matchingItems.push(item);
+        // Check if this item already has an alert with different price
+        const existingAlert = existingAlertsMap.get(item.saleId);
+        if (existingAlert && existingAlert.price !== item.price) {
+          // Price changed - delete old alert and recreate with new price
+          if (rule.id) {
+            store.deleteBySaleIdAndRuleId(item.saleId, rule.id);
+            priceChanges++;
+            this.logger.debug({ 
+              saleId: item.saleId, 
+              oldPrice: existingAlert.price, 
+              newPrice: item.price 
+            }, '[Scheduler] Price changed, recreating alert');
+          }
+          // Remove from map so it will be recreated
+          existingAlertsMap.delete(item.saleId);
+        }
+
+        // Item passed all filters, add to matching items (skip if already alerted with same price)
+        if (!existingAlert || existingAlert.price !== item.price) {
+          matchingItems.push(item);
+        }
       }
 
       // Batch create alerts and send notifications
@@ -324,7 +375,9 @@ export class AlertScheduler {
         totalFound: response.items.length,
         skippedAlreadyProcessed,
         skippedByFilters,
-        newAlerts
+        newAlerts,
+        priceChanges,
+        obsoleteRemoved: obsoleteSaleIds.length
       }, '[Scheduler] Rule processing completed');
 
       return newAlerts;

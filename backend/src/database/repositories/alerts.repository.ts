@@ -191,4 +191,37 @@ export class AlertsRepository {
     }
     return counts;
   }
+
+  /**
+   * Get all alerts for a specific rule
+   */
+  findByRuleId(ruleId: number): Alert[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM alerts 
+      WHERE rule_id = ? 
+      ORDER BY sent_at DESC
+    `);
+    const rows = stmt.all(ruleId) as AlertRow[];
+    return rows.map(rowToAlert);
+  }
+
+  /**
+   * Delete alerts by sale_ids that are no longer available
+   */
+  deleteBySaleIds(saleIds: string[]): number {
+    if (saleIds.length === 0) return 0;
+    const placeholders = saleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`DELETE FROM alerts WHERE sale_id IN (${placeholders})`);
+    const result = stmt.run(...saleIds);
+    return result.changes;
+  }
+
+  /**
+   * Delete a specific alert by sale_id and rule_id
+   */
+  deleteBySaleIdAndRuleId(saleId: string, ruleId: number): boolean {
+    const stmt = this.db.prepare('DELETE FROM alerts WHERE sale_id = ? AND rule_id = ?');
+    const result = stmt.run(saleId, ruleId);
+    return result.changes > 0;
+  }
 }
