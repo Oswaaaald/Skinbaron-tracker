@@ -266,16 +266,14 @@ export function AlertsGrid() {
                     </div>
 
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Wear</span>
-                        <span className="font-medium">
-                          {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                            formatWearPercentage(alert.wear_value)
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
-                        </span>
-                      </div>
+                      {alert.wear_value !== undefined && alert.wear_value !== null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Wear</span>
+                          <span className="font-medium">
+                            {formatWearPercentage(alert.wear_value)}
+                          </span>
+                        </div>
+                      )}
 
                       {(alert.stattrak || alert.souvenir) && (
                         <div className="flex gap-1 flex-wrap">
