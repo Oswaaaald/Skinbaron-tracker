@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ExternalLink, ChevronLeft, ChevronRight, Sparkles, TrendingDown, Bell } from "lucide-react"
+import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { logger } from "@/lib/logger"
 import { extractErrorMessage } from "@/lib/utils"
@@ -20,30 +20,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ALERTS_PAGE_SIZE, POLL_INTERVAL, QUERY_KEYS } from "@/lib/constants"
 
-const ALERT_TYPE_CONFIG = {
-  match: {
-    label: 'Rule Match',
-    color: 'default' as const,
-    icon: Bell,
-    description: 'Matched your rule criteria'
-  },
-  best_deal: {
-    label: 'Best Deal',
-    color: 'destructive' as const,
-    icon: TrendingDown,
-    description: 'Exceptional price detected'
-  },
-  new_item: {
-    label: 'New Item',
-    color: 'secondary' as const,
-    icon: Sparkles,
-    description: 'Just listed on market'
-  }
-} as const
-
 export function AlertsGrid() {
   const [page, setPage] = useState(0)
-  const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [itemNameFilter, setItemNameFilter] = useState<string>('')
   const [statTrakFilter, setStatTrakFilter] = useState<string>('all')
   const [souvenirFilter, setSouvenirFilter] = useState<string>('all')
@@ -142,11 +120,6 @@ export function AlertsGrid() {
 
   // Client-side filtering and sorting
   let filteredAlerts = [...allAlerts]
-
-  // Apply alert type filter
-  if (alertTypeFilter) {
-    filteredAlerts = filteredAlerts.filter(alert => alert.alert_type === alertTypeFilter)
-  }
 
   // Apply item name filter (compare cleaned names)
   if (itemNameFilter) {
@@ -268,33 +241,11 @@ export function AlertsGrid() {
       {/* Filters */}
       <div className="flex gap-4 items-end flex-wrap">
         <div>
-          <label htmlFor="alert-type" className="text-sm font-medium mb-2 block">
-            Alert Type
-          </label>
-          <Select
-            value={alertTypeFilter}
-            onValueChange={(value) => {
-              setAlertTypeFilter(value === 'all' ? '' : value)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[180px]" aria-label="Filter alerts by type">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="match">Rule Match</SelectItem>
-              <SelectItem value="best_deal">Best Deal</SelectItem>
-              <SelectItem value="new_item">New Item</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
           <label htmlFor="item-filter" className="text-sm font-medium mb-2 block">
             Item
           </label>
           <Select
-            value={itemNameFilter}
+            value={itemNameFilter || 'all'}
             onValueChange={(value) => {
               setItemNameFilter(value === 'all' ? '' : value)
               setPage(0)
@@ -457,8 +408,6 @@ export function AlertsGrid() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
             {alerts.map((alert, index) => {
-              const config = ALERT_TYPE_CONFIG[alert.alert_type] || ALERT_TYPE_CONFIG.match
-              const Icon = config.icon
               const isFirstImage = index === 0
               
               return (
@@ -483,12 +432,6 @@ export function AlertsGrid() {
                         No Image
                       </div>
                     )}
-
-                    {/* Type badge */}
-                    <Badge variant={config.color} className="absolute top-2 right-2 shadow-sm">
-                      <Icon className="h-3 w-3 mr-1" />
-                      {config.label}
-                    </Badge>
 
                     {/* Price pill */}
                     <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">

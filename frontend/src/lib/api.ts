@@ -60,7 +60,6 @@ export interface Alert {
   stattrak: boolean;
   souvenir: boolean;
   skin_url: string;
-  alert_type: 'match' | 'best_deal' | 'new_item';
   sent_at?: string;
 }
 
@@ -437,7 +436,6 @@ class ApiClient {
     limit?: number;
     offset?: number;
     rule_id?: number;
-    alert_type?: 'match' | 'best_deal' | 'new_item';
     item_name?: string;
     sort_by?: 'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc';
   } = {}): Promise<PaginatedResponse<Alert>> {
@@ -446,7 +444,6 @@ class ApiClient {
     if (params.limit) searchParams.append('limit', params.limit.toString());
     if (params.offset) searchParams.append('offset', params.offset.toString());
     if (params.rule_id) searchParams.append('rule_id', params.rule_id.toString());
-    if (params.alert_type) searchParams.append('alert_type', params.alert_type);
     if (params.item_name) searchParams.append('item_name', params.item_name);
     if (params.sort_by) searchParams.append('sort_by', params.sort_by);
 

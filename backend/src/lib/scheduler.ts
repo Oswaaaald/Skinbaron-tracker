@@ -341,7 +341,6 @@ export class AlertScheduler {
           stattrak: item.statTrak ?? false,
           souvenir: item.souvenir ?? false,
           skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
-          alert_type: 'match',
         }));
 
         // Batch insert all alerts at once (much faster!)

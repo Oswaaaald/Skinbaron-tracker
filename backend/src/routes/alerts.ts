@@ -12,7 +12,6 @@ const AlertsQuerySchema = z.object({
   }),
   offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
-  alert_type: z.enum(['match', 'best_deal', 'new_item']).optional(),
   item_name: z.string().optional(),
   sort_by: z.enum(['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc']).optional(),
 });
@@ -36,7 +35,6 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
           limit: { type: 'string', default: '50' },
           offset: { type: 'string', default: '0' },
           rule_id: { type: 'string' },
-          alert_type: { type: 'string', enum: ['match', 'best_deal', 'new_item'] },
           item_name: { type: 'string', description: 'Filter by item name (partial match)' },
           sort_by: { type: 'string', enum: ['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc'], description: 'Sort order' },
         },
@@ -60,7 +58,6 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
                   stattrak: { type: 'boolean' },
                   souvenir: { type: 'boolean' },
                   skin_url: { type: 'string' },
-                  alert_type: { type: 'string' },
                   sent_at: { type: 'string' },
                 },
               },
@@ -100,10 +97,6 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
         alerts = alerts.filter(alert => alert.rule_id === query.rule_id);
-      }
-      
-      if (query.alert_type) {
-        alerts = alerts.filter(alert => alert.alert_type === query.alert_type);
       }
       
       return reply.status(200).send({
@@ -175,14 +168,6 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
                 enabledRules: { type: 'number' },
                 totalAlerts: { type: 'number' },
                 todayAlerts: { type: 'number' },
-                alertsByType: {
-                  type: 'object',
-                  properties: {
-                    match: { type: 'number' },
-                    best_deal: { type: 'number' },
-                    new_item: { type: 'number' },
-                  },
-                },
               },
             },
           },
@@ -193,15 +178,9 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const stats = store.getUserStats(request.user!.id);
       
-      // Get alert counts by type using efficient SQL aggregation
-      const alertsByType = store.getAlertCountsByType(request.user!.id);
-      
       return reply.status(200).send({
         success: true,
-        data: {
-          ...stats,
-          alertsByType,
-        },
+        data: stats,
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Failed to get alert stats');

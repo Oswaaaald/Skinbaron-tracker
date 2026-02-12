@@ -37,7 +37,6 @@ export function rowToAlert(row: AlertRow): Alert {
     stattrak: Boolean(row.stattrak),
     souvenir: Boolean(row.souvenir),
     skin_url: row.skin_url,
-    alert_type: row.alert_type as 'match' | 'best_deal' | 'new_item',
     sent_at: row.sent_at,
   };
 }

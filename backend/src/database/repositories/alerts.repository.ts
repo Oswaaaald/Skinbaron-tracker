@@ -3,13 +3,6 @@ import type { Alert, CreateAlert, AlertRow } from '../schemas.js';
 import { AlertSchema } from '../schemas.js';
 import { rowToAlert } from '../utils/converters.js';
 
-/** Alert type counts by category */
-export interface AlertTypeCounts {
-  match: number;
-  best_deal: number;
-  new_item: number;
-}
-
 export class AlertsRepository {
   constructor(private db: Database.Database) {}
 
@@ -34,8 +27,8 @@ export class AlertsRepository {
       
       const stmt = this.db.prepare(`
         INSERT INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                           stattrak, souvenir, skin_url, alert_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           stattrak, souvenir, skin_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const result = stmt.run(
@@ -46,8 +39,7 @@ export class AlertsRepository {
         validated.wear_value ?? null,
         validated.stattrak ? 1 : 0,
         validated.souvenir ? 1 : 0,
-        validated.skin_url,
-        validated.alert_type
+        validated.skin_url
       );
 
       return this.findById(result.lastInsertRowid as number)!;
@@ -66,11 +58,11 @@ export class AlertsRepository {
       AlertSchema.omit({ id: true, sent_at: true }).parse(alert)
     );
 
-    const placeholders = validated.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    const placeholders = validated.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
     
     const stmt = this.db.prepare(`
       INSERT OR IGNORE INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                                     stattrak, souvenir, skin_url, alert_type)
+                                     stattrak, souvenir, skin_url)
       VALUES ${placeholders}
     `);
 
@@ -82,8 +74,7 @@ export class AlertsRepository {
       alert.wear_value ?? null,
       alert.stattrak ? 1 : 0,
       alert.souvenir ? 1 : 0,
-      alert.skin_url,
-      alert.alert_type
+      alert.skin_url
     ]);
 
     const insertMany = this.db.transaction(() => {
@@ -217,32 +208,6 @@ export class AlertsRepository {
     `);
     const result = stmt.get(userId) as { count: number };
     return result.count;
-  }
-
-  /**
-   * Get alert counts by type for a user - efficient SQL aggregation
-   * Replaces fetching all alerts and filtering in memory
-   */
-  countByAlertType(userId: number): AlertTypeCounts {
-    const stmt = this.db.prepare(`
-      SELECT 
-        alert_type,
-        COUNT(*) as count
-      FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ?
-      GROUP BY alert_type
-    `);
-    const rows = stmt.all(userId) as Array<{ alert_type: string; count: number }>;
-    
-    // Initialize with zeros and populate from results
-    const counts: AlertTypeCounts = { match: 0, best_deal: 0, new_item: 0 };
-    for (const row of rows) {
-      if (row.alert_type in counts) {
-        counts[row.alert_type as keyof AlertTypeCounts] = row.count;
-      }
-    }
-    return counts;
   }
 
   /**

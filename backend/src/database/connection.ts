@@ -82,7 +82,6 @@ function createBaseTables(db: Database.Database) {
       stattrak BOOLEAN DEFAULT 0,
       souvenir BOOLEAN DEFAULT 0,
       skin_url TEXT NOT NULL,
-      alert_type TEXT DEFAULT 'match',
       sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE,
       UNIQUE(rule_id, sale_id)

@@ -47,7 +47,6 @@ export const AlertSchema = z.object({
   stattrak: z.boolean().default(false),
   souvenir: z.boolean().default(false),
   skin_url: z.string().url('Valid skin URL required'),
-  alert_type: z.enum(['match', 'best_deal', 'new_item']).default('match'),
   sent_at: z.string().optional(),
 });
 
@@ -171,7 +170,6 @@ export interface AlertRow {
   stattrak: number;
   souvenir: number;
   skin_url: string;
-  alert_type: string;
   sent_at: string;
 }
 
