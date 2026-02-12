@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -95,31 +95,6 @@ export function AlertsGrid() {
     refetchOnReconnect: true,
     notifyOnChangeProps: ['data', 'error'],
   })
-
-  // Track previous alert count to detect changes
-  const prevAlertIdsRef = useRef<Set<number>>(new Set())
-  
-  useEffect(() => {
-    const alerts = alertsResponse?.data ?? []
-    const currentIds = new Set(alerts.map(a => a.id).filter((id): id is number => id !== undefined))
-    
-    // Detect new alerts by finding IDs that weren't in previous set
-    if (prevAlertIdsRef.current.size > 0 && page === 0) {
-      const newAlerts = alerts.filter(a => a.id && !prevAlertIdsRef.current.has(a.id))
-      
-      if (newAlerts.length > 0) {
-        toast({
-          title: "🔔 New alerts",
-          description: `${newAlerts.length} new alert${newAlerts.length > 1 ? 's' : ''} received`,
-          duration: 3000,
-        })
-        // Invalidate stats when new alerts arrive
-        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
-      }
-    }
-    
-    prevAlertIdsRef.current = currentIds
-  }, [alertsResponse?.data, queryClient, page, toast])
 
   if (isLoading) {
     return (
