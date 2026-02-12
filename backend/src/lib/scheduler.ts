@@ -3,7 +3,7 @@ import { appConfig } from './config.js';
 import { store } from '../database/index.js';
 import type { Rule, CreateAlert } from '../database/schemas.js';
 import { getSkinBaronClient, type SkinBaronItem } from './sbclient.js';
-import { getNotificationService } from './notifier.js';
+import { getNotificationService, type NotificationStyle } from './notifier.js';
 import pino from 'pino';
 
 // Logger interface compatible with both pino.Logger and FastifyBaseLogger
@@ -361,6 +361,7 @@ export class AlertScheduler {
                     item,
                     rule,
                     skinUrl: offerUrl,
+                    style: (webhook.notification_style as NotificationStyle) || 'compact',
                   }
                 );
               }
@@ -394,7 +395,7 @@ export class AlertScheduler {
    */
   private queueWebhookNotification(
     webhookUrl: string,
-    options: { item: SkinBaronItem, rule?: Rule, skinUrl: string }
+    options: { item: SkinBaronItem, rule?: Rule, skinUrl: string, style?: NotificationStyle }
   ): void {
     // Get or create queue for this webhook URL
     const existingQueue = this.webhookQueues.get(webhookUrl) || Promise.resolve();

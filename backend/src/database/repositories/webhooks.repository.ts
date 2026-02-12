@@ -12,8 +12,8 @@ export class WebhooksRepository {
     const encryptedUrl = encryptData(validated.webhook_url);
     
     const stmt = this.db.prepare(`
-      INSERT INTO user_webhooks (user_id, name, webhook_url_encrypted, webhook_type, is_active)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO user_webhooks (user_id, name, webhook_url_encrypted, webhook_type, notification_style, is_active)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -21,6 +21,7 @@ export class WebhooksRepository {
       validated.name,
       encryptedUrl,
       validated.webhook_type,
+      validated.notification_style,
       validated.is_active ? 1 : 0
     );
 
@@ -69,6 +70,11 @@ export class WebhooksRepository {
     if (validatedUpdates.webhook_type) {
       fields.push('webhook_type = ?');
       values.push(validatedUpdates.webhook_type);
+    }
+
+    if (validatedUpdates.notification_style) {
+      fields.push('notification_style = ?');
+      values.push(validatedUpdates.notification_style);
     }
 
     if (validatedUpdates.is_active !== undefined) {

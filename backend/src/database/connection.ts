@@ -117,6 +117,7 @@ function createUserTables(db: Database.Database) {
       name TEXT NOT NULL CHECK(length(name) >= 1 AND length(name) <= 50),
       webhook_url_encrypted TEXT NOT NULL,
       webhook_type TEXT DEFAULT 'discord' CHECK(webhook_type IN ('discord', 'slack', 'teams', 'generic')),
+      notification_style TEXT DEFAULT 'compact' CHECK(notification_style IN ('compact', 'detailed')),
       is_active BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -324,6 +325,16 @@ function runDataMigrations(db: Database.Database) {
   if (hasHasStickers.count === 0) {
     db.exec(`ALTER TABLE alerts ADD COLUMN has_stickers BOOLEAN DEFAULT 0`);
     migrationLogger.info('Migration: Added has_stickers column to alerts table');
+  }
+
+  // Migration: Add notification_style column to user_webhooks
+  const hasNotificationStyle = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('user_webhooks') WHERE name='notification_style'
+  `).get() as { count: number };
+
+  if (hasNotificationStyle.count === 0) {
+    db.exec(`ALTER TABLE user_webhooks ADD COLUMN notification_style TEXT DEFAULT 'compact'`);
+    migrationLogger.info('Migration: Added notification_style column to user_webhooks table');
   }
 
   // Migration: Add encrypted 2FA columns (skip plaintext columns)

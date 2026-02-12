@@ -37,10 +37,13 @@ export const DiscordWebhookPayloadSchema = z.object({
 export type DiscordEmbed = z.infer<typeof DiscordEmbedSchema>;
 export type DiscordWebhookPayload = z.infer<typeof DiscordWebhookPayloadSchema>;
 
+export type NotificationStyle = 'compact' | 'detailed';
+
 export interface NotificationOptions {
   item: SkinBaronItem;
   rule?: Rule;
   skinUrl: string;
+  style?: NotificationStyle;
 }
 
 export class NotificationService {
@@ -58,7 +61,10 @@ export class NotificationService {
     options: NotificationOptions
   ): Promise<boolean> {
     try {
-      const embed = this.createEmbed(options);
+      const style = options.style || 'compact';
+      const embed = style === 'detailed'
+        ? this.createDetailedEmbed(options)
+        : this.createCompactEmbed(options);
       const payload = this.createWebhookPayload(embed);
 
       // Validate payload
@@ -83,31 +89,27 @@ export class NotificationService {
   }
 
   /**
-   * Create Discord embed for the notification
+   * Create compact Discord embed (thumbnail + description)
    */
-  private createEmbed(options: NotificationOptions): DiscordEmbed {
+  private createCompactEmbed(options: NotificationOptions): DiscordEmbed {
     const { item, skinUrl } = options;
 
-    // Build description with all item details
     const price = `${item.price.toFixed(2).replace('.', ',')} €`;
     const wearLine = item.wearValue !== undefined
       ? `🔍 **Wear:** ${(item.wearValue * 100).toFixed(2)} %`
       : null;
 
-    // Badges line
-    const badges: string[] = [];
-    if (item.statTrak) badges.push('StatTrak™');
-    if (item.souvenir) badges.push('Souvenir');
-    if (item.hasStickers) badges.push('Stickers');
-    const badgesLine = badges.length > 0
-      ? `🏷️ ${badges.join(' • ')}`
-      : null;
+    // Separate badge lines
+    const badgeLines: string[] = [];
+    if (item.statTrak) badgeLines.push('🔥 **StatTrak™**');
+    if (item.souvenir) badgeLines.push('🏆 **Souvenir**');
+    if (item.hasStickers) badgeLines.push('🏷️ **Stickers**');
 
     // Compose description block
     const descriptionParts = [
       `💰 **${price}**`,
       wearLine,
-      badgesLine,
+      ...badgeLines,
       '',
       `🔗 [**View on SkinBaron**](${skinUrl})`,
     ].filter((line): line is string => line !== null);
@@ -124,9 +126,95 @@ export class NotificationService {
       },
     };
 
-    // Item image as thumbnail (right side, compact) 
     if (item.imageUrl) {
       embed.thumbnail = {
+        url: item.imageUrl,
+      };
+    }
+
+    return embed;
+  }
+
+  /**
+   * Create detailed Discord embed (fields + large image)
+   */
+  private createDetailedEmbed(options: NotificationOptions): DiscordEmbed {
+    const { item, skinUrl } = options;
+
+    const embed: DiscordEmbed = {
+      title: item.itemName,
+      url: skinUrl,
+      color: DISCORD_COLORS.MATCH,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'SkinBaron Tracker • CS2 Skin Monitoring By Oswaaaald',
+        icon_url: this.botAvatar,
+      },
+      fields: [],
+    };
+
+    if (embed.fields) {
+      // Price field
+      embed.fields.push({
+        name: '💰 Price',
+        value: `**${item.price.toFixed(2).replace('.', ',')} €**`,
+        inline: true,
+      });
+
+      // Wear field
+      if (item.wearValue !== undefined) {
+        embed.fields.push({
+          name: '🔍 Wear',
+          value: `**${(item.wearValue * 100).toFixed(2)} %**`,
+          inline: true,
+        });
+      }
+
+      // Spacer for alignment
+      if (item.wearValue !== undefined) {
+        embed.fields.push({
+          name: '\u200B',
+          value: '\u200B',
+          inline: true,
+        });
+      }
+
+      // Individual badge fields on separate lines
+      if (item.statTrak) {
+        embed.fields.push({
+          name: '🔥 StatTrak™',
+          value: 'Yes',
+          inline: true,
+        });
+      }
+
+      if (item.souvenir) {
+        embed.fields.push({
+          name: '🏆 Souvenir',
+          value: 'Yes',
+          inline: true,
+        });
+      }
+
+      if (item.hasStickers) {
+        embed.fields.push({
+          name: '🏷️ Stickers',
+          value: 'Yes',
+          inline: true,
+        });
+      }
+
+      // View button
+      embed.fields.push({
+        name: '\u200B',
+        value: `🔗 [**View on SkinBaron**](${skinUrl})`,
+        inline: false,
+      });
+    }
+
+    // Large image at the bottom
+    if (item.imageUrl) {
+      embed.image = {
         url: item.imageUrl,
       };
     }

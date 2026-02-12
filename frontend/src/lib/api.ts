@@ -70,6 +70,7 @@ export interface Webhook {
   name: string;
   webhook_url?: string; // Only present when decrypt=true
   webhook_type: 'discord' | 'slack' | 'teams' | 'generic';
+  notification_style: 'compact' | 'detailed';
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

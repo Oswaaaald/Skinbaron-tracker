@@ -79,6 +79,7 @@ export const CreateUserWebhookSchema = z.object({
   name: z.string().min(1).max(50),
   webhook_url: z.string().url('Valid webhook URL required'),
   webhook_type: z.enum(['discord', 'slack', 'teams', 'generic']).default('discord'),
+  notification_style: z.enum(['compact', 'detailed']).default('compact'),
   is_active: z.boolean().default(true),
 });
 
@@ -88,6 +89,7 @@ export const UserWebhookSchema = z.object({
   name: z.string().min(1).max(50),
   webhook_url_encrypted: z.string(),
   webhook_type: z.enum(['discord', 'slack', 'teams', 'generic']),
+  notification_style: z.enum(['compact', 'detailed']),
   is_active: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -196,6 +198,7 @@ export interface WebhookRow {
   name: string;
   webhook_url_encrypted: string;
   webhook_type: string;
+  notification_style: string;
   is_active: number;
   created_at: string;
   updated_at: string;
