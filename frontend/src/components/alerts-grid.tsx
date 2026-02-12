@@ -45,6 +45,8 @@ export function AlertsGrid() {
   const [page, setPage] = useState(0)
   const [alertTypeFilter, setAlertTypeFilter] = useState<string>('')
   const [itemNameFilter, setItemNameFilter] = useState<string>('')
+  const [statTrakFilter, setStatTrakFilter] = useState<string>('all')
+  const [souvenirFilter, setSouvenirFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc'>('date')
   const [isClearingAll, setIsClearingAll] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
@@ -52,6 +54,22 @@ export function AlertsGrid() {
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
+
+  // Clean item name - remove StatTrak, Souvenir, and wear conditions
+  const cleanItemName = (name: string): string => {
+    let cleaned = name
+    
+    // Remove StatTrak™ prefix
+    cleaned = cleaned.replace(/^StatTrak™\s+/i, '')
+    
+    // Remove Souvenir prefix
+    cleaned = cleaned.replace(/^Souvenir\s+/i, '')
+    
+    // Remove wear conditions in parentheses
+    cleaned = cleaned.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/i, '')
+    
+    return cleaned.trim()
+  }
 
   const handleClearAllAlerts = useCallback(() => {
     setClearConfirmOpen(true)
@@ -100,8 +118,8 @@ export function AlertsGrid() {
 
   const allAlerts = alertsResponse?.data || []
 
-  // Get unique item names from fetched alerts
-  const itemNames = Array.from(new Set(allAlerts.map(a => a.item_name))).sort()
+  // Get unique CLEANED item names from fetched alerts
+  const itemNames = Array.from(new Set(allAlerts.map(a => cleanItemName(a.item_name)))).sort()
 
   // Client-side filtering and sorting
   let filteredAlerts = [...allAlerts]
@@ -111,9 +129,23 @@ export function AlertsGrid() {
     filteredAlerts = filteredAlerts.filter(alert => alert.alert_type === alertTypeFilter)
   }
 
-  // Apply item name filter
+  // Apply item name filter (compare cleaned names)
   if (itemNameFilter) {
-    filteredAlerts = filteredAlerts.filter(alert => alert.item_name === itemNameFilter)
+    filteredAlerts = filteredAlerts.filter(alert => cleanItemName(alert.item_name) === itemNameFilter)
+  }
+
+  // Apply StatTrak filter
+  if (statTrakFilter === 'only') {
+    filteredAlerts = filteredAlerts.filter(alert => alert.stattrak)
+  } else if (statTrakFilter === 'exclude') {
+    filteredAlerts = filteredAlerts.filter(alert => !alert.stattrak)
+  }
+
+  // Apply Souvenir filter
+  if (souvenirFilter === 'only') {
+    filteredAlerts = filteredAlerts.filter(alert => alert.souvenir)
+  } else if (souvenirFilter === 'exclude') {
+    filteredAlerts = filteredAlerts.filter(alert => !alert.souvenir)
   }
 
   // Apply sorting
@@ -124,11 +156,13 @@ export function AlertsGrid() {
       case 'price_desc':
         return b.price - a.price
       case 'wear_asc':
+        // Items without wear go to the end
         if (a.wear_value === undefined && b.wear_value === undefined) return 0
         if (a.wear_value === undefined) return 1
         if (b.wear_value === undefined) return -1
         return a.wear_value - b.wear_value
       case 'wear_desc':
+        // Items without wear go to the end
         if (a.wear_value === undefined && b.wear_value === undefined) return 0
         if (a.wear_value === undefined) return 1
         if (b.wear_value === undefined) return -1
@@ -238,6 +272,48 @@ export function AlertsGrid() {
                   {name.length > 35 ? name.substring(0, 35) + '...' : name}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="stattrak-filter" className="text-sm font-medium mb-2 block">
+            StatTrak™
+          </label>
+          <Select
+            value={statTrakFilter}
+            onValueChange={(value) => {
+              setStatTrakFilter(value)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[140px]" aria-label="Filter StatTrak items">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="only">Only StatTrak™</SelectItem>
+              <SelectItem value="exclude">No StatTrak™</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="souvenir-filter" className="text-sm font-medium mb-2 block">
+            Souvenir
+          </label>
+          <Select
+            value={souvenirFilter}
+            onValueChange={(value) => {
+              setSouvenirFilter(value)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[140px]" aria-label="Filter Souvenir items">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="only">Only Souvenir</SelectItem>
+              <SelectItem value="exclude">No Souvenir</SelectItem>
             </SelectContent>
           </Select>
         </div>
