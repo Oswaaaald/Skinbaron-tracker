@@ -19,7 +19,7 @@ import { formatPrice, formatShortDate } from "@/lib/formatters"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { ALERTS_PAGE_SIZE, QUERY_STALE_TIME, POLL_INTERVAL, QUERY_KEYS } from "@/lib/constants"
+import { ALERTS_PAGE_SIZE, POLL_INTERVAL, QUERY_KEYS } from "@/lib/constants"
 
 const ALERT_TYPE_CONFIG = {
   match: {
@@ -91,25 +91,37 @@ export function AlertsGrid() {
       alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated && isVisible,
-    staleTime: QUERY_STALE_TIME,
+    staleTime: 0, // Always consider alerts data stale to ensure fresh data
     refetchInterval: isVisible ? POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     notifyOnChangeProps: ['data', 'error'],
   })
 
   // Track previous alert count to detect changes
-  const prevAlertCountRef = useRef<number | null>(null)
+  const prevAlertIdsRef = useRef<Set<number>>(new Set())
   
   useEffect(() => {
-    const currentCount = alertsResponse?.data?.length ?? 0
+    const alerts = alertsResponse?.data ?? []
+    const currentIds = new Set(alerts.map(a => a.id).filter((id): id is number => id !== undefined))
     
-    // If alert count changed (and it's not the first load), invalidate user stats
-    if (prevAlertCountRef.current !== null && prevAlertCountRef.current !== currentCount) {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
+    // Detect new alerts by finding IDs that weren't in previous set
+    if (prevAlertIdsRef.current.size > 0 && page === 0) {
+      const newAlerts = alerts.filter(a => a.id && !prevAlertIdsRef.current.has(a.id))
+      
+      if (newAlerts.length > 0) {
+        toast({
+          title: "🔔 New alerts",
+          description: `${newAlerts.length} new alert${newAlerts.length > 1 ? 's' : ''} received`,
+          duration: 5000,
+        })
+        // Invalidate stats when new alerts arrive
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
+      }
     }
     
-    prevAlertCountRef.current = currentCount
-  }, [alertsResponse?.data?.length, queryClient])
+    prevAlertIdsRef.current = currentIds
+  }, [alertsResponse?.data, queryClient, page, toast])
 
   if (isLoading) {
     return (
