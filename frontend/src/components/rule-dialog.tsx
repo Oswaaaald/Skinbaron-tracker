@@ -580,7 +580,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         <SelectContent>
                           <SelectItem value="all">✓ Accept all</SelectItem>
                           <SelectItem value="only">⭐ Only StatTrak™</SelectItem>
-                          <SelectItem value="exclude">✗ Exclude StatTrak™</SelectItem>
+                          <SelectItem value="exclude">🚫 Exclude StatTrak™</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
@@ -639,7 +639,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         <SelectContent>
                           <SelectItem value="all">✓ Accept all</SelectItem>
                           <SelectItem value="only">⭐ Only with Stickers</SelectItem>
-                          <SelectItem value="exclude">✗ Exclude Stickers</SelectItem>
+                          <SelectItem value="exclude">🚫 Exclude Stickers</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
