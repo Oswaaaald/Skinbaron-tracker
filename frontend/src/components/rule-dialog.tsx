@@ -606,7 +606,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         <SelectContent>
                           <SelectItem value="all">✓ Accept all</SelectItem>
                           <SelectItem value="only">🏆 Only Souvenir</SelectItem>
-                          <SelectItem value="exclude">✗ Exclude Souvenir</SelectItem>
+                          <SelectItem value="exclude">🚫 Exclude Souvenir</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
