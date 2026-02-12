@@ -426,6 +426,27 @@ export function AlertsGrid() {
                       </div>
                     )}
 
+                    {/* Badges */}
+                    {(alert.stattrak || alert.souvenir || alert.has_stickers) && (
+                      <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
+                        {alert.stattrak && (
+                          <Badge variant="outline" className="text-[11px] bg-background/80 backdrop-blur-sm shadow-sm">
+                            StatTrak™
+                          </Badge>
+                        )}
+                        {alert.souvenir && (
+                          <Badge variant="outline" className="text-[11px] bg-background/80 backdrop-blur-sm shadow-sm">
+                            Souvenir
+                          </Badge>
+                        )}
+                        {alert.has_stickers && (
+                          <Badge variant="outline" className="text-[11px] bg-background/80 backdrop-blur-sm shadow-sm">
+                            Stickers
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
                     {/* Price pill */}
                     <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
                       {formatPrice(alert.price)}
@@ -449,26 +470,6 @@ export function AlertsGrid() {
                           <span className="font-medium">
                             {formatWearPercentage(alert.wear_value)}
                           </span>
-                        </div>
-                      )}
-
-                      {(alert.stattrak || alert.souvenir || alert.has_stickers) && (
-                        <div className="flex gap-1 flex-wrap">
-                          {alert.stattrak && (
-                            <Badge variant="outline" className="text-[11px]">
-                              StatTrak™
-                            </Badge>
-                          )}
-                          {alert.souvenir && (
-                            <Badge variant="outline" className="text-[11px]">
-                              Souvenir
-                            </Badge>
-                          )}
-                          {alert.has_stickers && (
-                            <Badge variant="outline" className="text-[11px]">
-                              Stickers
-                            </Badge>
-                          )}
                         </div>
                       )}
                     </div>
