@@ -66,7 +66,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       const webhookData = validateWithZod(CreateUserWebhookSchema, request.body);
       
       // SECURITY: Validate webhook URL against SSRF attacks
-      const urlValidation = await validateWebhookUrl(webhookData.webhook_url, webhookData.webhook_type);
+      const urlValidation = await validateWebhookUrl(webhookData.webhook_url);
       if (!urlValidation.valid) {
         throw new AppError(400, urlValidation.error || 'Invalid webhook URL', 'INVALID_WEBHOOK_URL');
       }
@@ -215,8 +215,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
       
       // SECURITY: Validate webhook URL against SSRF attacks if URL is being updated
       if (updates.webhook_url) {
-        const webhookType = updates.webhook_type || existingWebhook.webhook_type;
-        const urlValidation = await validateWebhookUrl(updates.webhook_url, webhookType);
+        const urlValidation = await validateWebhookUrl(updates.webhook_url);
         if (!urlValidation.valid) {
           throw new AppError(400, urlValidation.error || 'Invalid webhook URL', 'INVALID_WEBHOOK_URL');
         }

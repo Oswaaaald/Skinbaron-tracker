@@ -83,13 +83,11 @@ export interface WebhookValidationResult {
  * Validate a webhook URL for SSRF protection
  * 
  * @param url - The webhook URL to validate
- * @param webhookType - The type of webhook (discord only)
  * @param skipDnsCheck - Skip DNS resolution check (for testing)
  * @returns Validation result with error message if invalid
  */
 export async function validateWebhookUrl(
   url: string,
-  _webhookType: string = 'discord',
   skipDnsCheck: boolean = false
 ): Promise<WebhookValidationResult> {
   try {
@@ -177,8 +175,7 @@ export async function validateWebhookUrl(
  * Synchronous version for quick validation (without DNS check)
  */
 export function validateWebhookUrlSync(
-  url: string,
-  _webhookType: string = 'discord'
+  url: string
 ): WebhookValidationResult {
   try {
     const parsed = new URL(url);

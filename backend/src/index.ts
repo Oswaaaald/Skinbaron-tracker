@@ -335,11 +335,11 @@ async function registerPlugins() {
       const refreshToken = cookies?.['sb_refresh'];
       return accessToken ?? refreshToken ?? request.ip ?? 'unknown';
     },
-    errorResponseBuilder: (_request, context) => ({
+    errorResponseBuilder: (request, context) => ({
       statusCode: 429,
       success: false,
       error: 'Rate limit exceeded',
-      message: `Too many requests, please try again in ${Math.ceil(context.ttl / 1000)} seconds`,
+      message: `Too many requests on ${request.method} ${request.url}, please try again in ${Math.ceil(context.ttl / 1000)} seconds`,
     }),
   });
 
@@ -461,7 +461,8 @@ function setupHealthCheck() {
         },
       },
     },
-  }, async (_request, reply) => {
+  }, async (request, reply) => {
+    request.log.debug('Health check requested');
     // Lightweight health check - only check database, not external APIs
     let dbHealth = 'healthy';
     try {
@@ -531,7 +532,8 @@ function setupCsrfEndpoint() {
         },
       },
     },
-  }, async (_request, reply) => {
+  }, async (request, reply) => {
+    request.log.debug('CSRF token requested');
     const token = generateCsrfToken();
     setCsrfCookie(reply, token, appConfig.NODE_ENV === 'production');
     
