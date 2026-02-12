@@ -83,30 +83,70 @@ export function AlertsGrid() {
     }
   }, [isClearingAll, queryClient, syncStats, toast])
 
+  // Fetch ALL alerts without pagination (client-side filtering/sorting)
   const { data: alertsResponse, isLoading, error } = useQuery({
-    queryKey: [QUERY_KEYS.ALERTS, page, alertTypeFilter, itemNameFilter, sortBy],
+    queryKey: [QUERY_KEYS.ALERTS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlerts({
-      limit: ALERTS_PAGE_SIZE,
-      offset: page * ALERTS_PAGE_SIZE,
-      alert_type: alertTypeFilter ? (alertTypeFilter as 'match' | 'best_deal' | 'new_item') : undefined,
-      item_name: itemNameFilter || undefined,
-      sort_by: sortBy,
+      limit: 500, // Get all alerts (max 500)
+      offset: 0,
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated,
-    staleTime: 0, // Always consider alerts data stale to ensure fresh data
-    refetchInterval: POLL_INTERVAL, // Always poll when component is mounted
+    staleTime: 0,
+    refetchInterval: POLL_INTERVAL,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     notifyOnChangeProps: ['data', 'error'],
   })
 
-  // Get unique item names for filter
-  const { data: itemNamesResponse } = useQuery({
-    queryKey: [QUERY_KEYS.ALERTS, 'items'],
-    queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlertItemNames(), 'Failed to load item names'),
-    enabled: isReady && isAuthenticated,
-    staleTime: 60000, // Cache for 1 minute
+  const allAlerts = alertsResponse?.data || []
+
+  // Get unique item names from fetched alerts
+  const itemNames = Array.from(new Set(allAlerts.map(a => a.item_name))).sort()
+
+  // Client-side filtering and sorting
+  let filteredAlerts = [...allAlerts]
+
+  // Apply alert type filter
+  if (alertTypeFilter) {
+    filteredAlerts = filteredAlerts.filter(alert => alert.alert_type === alertTypeFilter)
+  }
+
+  // Apply item name filter
+  if (itemNameFilter) {
+    filteredAlerts = filteredAlerts.filter(alert => alert.item_name === itemNameFilter)
+  }
+
+  // Apply sorting
+  filteredAlerts.sort((a, b) => {
+    switch (sortBy) {
+      case 'price_asc':
+        return a.price - b.price
+      case 'price_desc':
+        return b.price - a.price
+      case 'wear_asc':
+        if (a.wear_value === undefined && b.wear_value === undefined) return 0
+        if (a.wear_value === undefined) return 1
+        if (b.wear_value === undefined) return -1
+        return a.wear_value - b.wear_value
+      case 'wear_desc':
+        if (a.wear_value === undefined && b.wear_value === undefined) return 0
+        if (a.wear_value === undefined) return 1
+        if (b.wear_value === undefined) return -1
+        return b.wear_value - a.wear_value
+      case 'date':
+      default:
+        // Sort by sent_at descending (newest first)
+        const dateA = a.sent_at ? new Date(a.sent_at).getTime() : 0
+        const dateB = b.sent_at ? new Date(b.sent_at).getTime() : 0
+        return dateB - dateA
+    }
   })
+
+  // Client-side pagination
+  const startIndex = page * ALERTS_PAGE_SIZE
+  const endIndex = startIndex + ALERTS_PAGE_SIZE
+  const alerts = filteredAlerts.slice(startIndex, endIndex)
+  const hasMorePages = endIndex < filteredAlerts.length
 
   if (isLoading) {
     return (
@@ -129,10 +169,6 @@ export function AlertsGrid() {
     )
   }
 
-  const alerts = alertsResponse?.data || []
-  const itemNames = itemNamesResponse?.data || []
-  const hasMorePages = alerts.length === ALERTS_PAGE_SIZE
-
   const getSkinBaronUrl = (saleId: string, itemName?: string) => {
     if (itemName) {
       const productName = itemName.replace(/StatTrak™\s+/, '').replace(/Souvenir\s+/, '')
@@ -142,7 +178,7 @@ export function AlertsGrid() {
     return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
   }
 
-  if (alerts.length === 0 && page === 0 && !alertTypeFilter && !itemNameFilter) {
+  if (allAlerts.length === 0) {
     return (
       <Card>
         <CardHeader>
