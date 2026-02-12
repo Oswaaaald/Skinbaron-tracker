@@ -358,7 +358,7 @@ export function WebhooksTable() {
                 <div className="space-y-0.5">
                   <Label htmlFor="is_active" className="text-sm font-medium">Enable Webhook</Label>
                   <p className="text-[0.8rem] text-muted-foreground">
-                    Webhook will send notifications about triggered alerts
+                    Webhook will send notifications about alerts
                   </p>
                 </div>
                 <Switch
