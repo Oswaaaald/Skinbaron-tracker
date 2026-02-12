@@ -113,6 +113,11 @@ export class SkinBaronClient {
         throw new Error(`SkinBaron API rate limit exceeded after ${MAX_RETRIES} retries`);
       }
 
+      // Handle authentication errors (don't retry these)
+      if (statusCode === 401 || statusCode === 403) {
+        throw new Error(`SkinBaron API authentication failed: Invalid or missing API key (${statusCode})`);
+      }
+
       if (statusCode !== 200) {
         throw new Error(`SkinBaron API error: ${statusCode}`);
       }
@@ -203,14 +208,7 @@ export class SkinBaronClient {
     }
 
     try {
-      // Lightweight test - just validate API key format if provided
-      if (!this.apiKey) {
-        // No API key = public access only, assume healthy
-        this.lastConnectionTest = { timestamp: now, result: true };
-        return true;
-      }
-
-      // For authenticated users, do a minimal search
+      // Test with a minimal search (works for both public and authenticated access)
       await this.search({ 
         search_item: 'AK-47',
         limit: 1
@@ -218,7 +216,11 @@ export class SkinBaronClient {
       
       this.lastConnectionTest = { timestamp: now, result: true };
       return true;
-    } catch {
+    } catch (error) {
+      // Log the specific error for debugging
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[SkinBaron] Connection test failed:', errorMessage);
+      
       this.lastConnectionTest = { timestamp: now, result: false };
       return false;
     }
