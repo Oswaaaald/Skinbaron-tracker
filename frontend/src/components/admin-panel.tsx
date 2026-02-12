@@ -212,7 +212,7 @@ export function AdminPanel() {
       onSuccess: () => {
         toast({
           title: "✅ Scheduler executed",
-          description: "Alerts have been checked successfully",
+          description: "Check completed. New alerts will appear shortly.",
         })
       },
       onError: (error) => {

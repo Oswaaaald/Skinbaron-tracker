@@ -110,13 +110,18 @@ export function AlertsGrid() {
       const newAlerts = alerts.filter(a => a.id && !prevAlertIdsRef.current.has(a.id))
       
       if (newAlerts.length > 0) {
+        toast({
+          title: "🔔 New alerts",
+          description: `${newAlerts.length} new alert${newAlerts.length > 1 ? 's' : ''} received`,
+          duration: 3000,
+        })
         // Invalidate stats when new alerts arrive
         void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_STATS] })
       }
     }
     
     prevAlertIdsRef.current = currentIds
-  }, [alertsResponse?.data, queryClient, page])
+  }, [alertsResponse?.data, queryClient, page, toast])
 
   if (isLoading) {
     return (
