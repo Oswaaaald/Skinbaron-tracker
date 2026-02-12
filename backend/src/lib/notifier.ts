@@ -88,60 +88,45 @@ export class NotificationService {
   private createEmbed(options: NotificationOptions): DiscordEmbed {
     const { item, skinUrl } = options;
 
-    // Base embed structure
+    // Build description with all item details
+    const price = `${item.price.toFixed(2).replace('.', ',')} €`;
+    const wearLine = item.wearValue !== undefined
+      ? `🔍 **Wear:** ${(item.wearValue * 100).toFixed(2)} %`
+      : null;
+
+    // Badges line
+    const badges: string[] = [];
+    if (item.statTrak) badges.push('StatTrak™');
+    if (item.souvenir) badges.push('Souvenir');
+    if (item.hasStickers) badges.push('Stickers');
+    const badgesLine = badges.length > 0
+      ? `🏷️ ${badges.join(' • ')}`
+      : null;
+
+    // Compose description block
+    const descriptionParts = [
+      `💰 **${price}**`,
+      wearLine,
+      badgesLine,
+      '',
+      `🔗 [**View on SkinBaron**](${skinUrl})`,
+    ].filter((line): line is string => line !== null);
+
     const embed: DiscordEmbed = {
       title: item.itemName,
       url: skinUrl,
+      description: descriptionParts.join('\n'),
       color: DISCORD_COLORS.MATCH,
       timestamp: new Date().toISOString(),
       footer: {
         text: 'SkinBaron Tracker • CS2 Skin Monitoring By Oswaaaald',
         icon_url: this.botAvatar,
       },
-      fields: [],
     };
 
-    // Add item details horizontally
-    if (embed.fields) {
-      embed.fields.push({
-        name: '💰 Price',
-        value: `${item.price} ${item.currency}`,
-        inline: true,
-      });
-
-      if (item.wearValue !== undefined) {
-        const wearPercentage = (item.wearValue * 100).toFixed(2);
-        embed.fields.push({
-          name: '🔍 Wear Value',
-          value: `${wearPercentage} %`,
-          inline: true,
-        });
-      }
-
-      // StatTrak and Souvenir indicators
-      const badges: string[] = [];
-      if (item.statTrak) badges.push('🔥 StatTrak™');
-      if (item.souvenir) badges.push('🏆 Souvenir');
-      
-      if (badges.length > 0) {
-        embed.fields.push({
-          name: '🏷️ Special',
-          value: badges.join('\n'),
-          inline: true,
-        });
-      }
-
-      // Add action button after info
-      embed.fields.push({
-        name: '\u200B', // Invisible character for spacing
-        value: `🔗 [**VIEW ON SKINBARON**](${skinUrl})`,
-        inline: false,
-      });
-    }
-
-    // Add item image (will appear at the bottom, closest to being "between" content and footer)
+    // Item image as thumbnail (right side, compact) 
     if (item.imageUrl) {
-      embed.image = {
+      embed.thumbnail = {
         url: item.imageUrl,
       };
     }
