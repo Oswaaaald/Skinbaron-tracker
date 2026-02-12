@@ -357,7 +357,6 @@ export class AlertScheduler {
                 this.queueWebhookNotification(
                   webhook.webhook_url,
                   {
-                    alertType: 'match',
                     item,
                     rule,
                     skinUrl: offerUrl,
@@ -394,7 +393,7 @@ export class AlertScheduler {
    */
   private queueWebhookNotification(
     webhookUrl: string,
-    options: { alertType: 'match' | 'best_deal' | 'new_item', item: SkinBaronItem, rule?: Rule, skinUrl: string }
+    options: { item: SkinBaronItem, rule?: Rule, skinUrl: string }
   ): void {
     // Get or create queue for this webhook URL
     const existingQueue = this.webhookQueues.get(webhookUrl) || Promise.resolve();

@@ -460,11 +460,6 @@ class ApiClient {
     enabledRules: number;
     totalAlerts: number;
     todayAlerts: number;
-    alertsByType: {
-      match: number;
-      best_deal: number;
-      new_item: number;
-    };
   }>> {
     return this.request('/api/alerts/stats');
   }
@@ -474,11 +469,6 @@ class ApiClient {
     enabledRules: number;
     totalAlerts: number;
     todayAlerts: number;
-    alertsByType: {
-      match: number;
-      best_deal: number;
-      new_item: number;
-    };
   }>> {
     return this.request('/api/alerts/stats');
   }

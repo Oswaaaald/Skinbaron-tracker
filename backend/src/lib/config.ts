@@ -90,8 +90,6 @@ export const SKINBARON_API = {
 // Discord embed colors
 export const DISCORD_COLORS = {
   MATCH: 0x00ff00,      // Green for matches
-  BEST_DEAL: 0xff9500,  // Orange for best deals
-  NEW_ITEM: 0x0099ff,   // Blue for new items
   ERROR: 0xff0000,      // Red for errors
 } as const;
 

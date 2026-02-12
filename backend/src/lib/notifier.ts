@@ -38,7 +38,6 @@ export type DiscordEmbed = z.infer<typeof DiscordEmbedSchema>;
 export type DiscordWebhookPayload = z.infer<typeof DiscordWebhookPayloadSchema>;
 
 export interface NotificationOptions {
-  alertType: 'match' | 'best_deal' | 'new_item';
   item: SkinBaronItem;
   rule?: Rule;
   skinUrl: string;
@@ -60,7 +59,7 @@ export class NotificationService {
   ): Promise<boolean> {
     try {
       const embed = this.createEmbed(options);
-      const payload = this.createWebhookPayload(embed, options.alertType);
+      const payload = this.createWebhookPayload(embed);
 
       // Validate payload
       const validatedPayload = DiscordWebhookPayloadSchema.parse(payload);
@@ -87,13 +86,13 @@ export class NotificationService {
    * Create Discord embed for the notification
    */
   private createEmbed(options: NotificationOptions): DiscordEmbed {
-    const { alertType, item, skinUrl } = options;
+    const { item, skinUrl } = options;
 
     // Base embed structure
     const embed: DiscordEmbed = {
-      title: this.getEmbedTitle(alertType, item),
+      title: item.itemName,
       url: skinUrl,
-      color: this.getEmbedColor(alertType),
+      color: DISCORD_COLORS.MATCH,
       timestamp: new Date().toISOString(),
       footer: {
         text: 'SkinBaron Tracker • CS2 Skin Monitoring By Oswaaaald',
@@ -154,65 +153,14 @@ export class NotificationService {
    * Create complete webhook payload
    */
   private createWebhookPayload(
-    embed: DiscordEmbed, 
-    alertType: 'match' | 'best_deal' | 'new_item'
+    embed: DiscordEmbed
   ): DiscordWebhookPayload {
     return {
       username: this.botName,
       avatar_url: this.botAvatar,
-      content: this.getAlertMessage(alertType),
+      content: '🎯 **Your alert rule matched a new item!**',
       embeds: [embed],
     };
-  }
-
-  /**
-   * Get embed title based on alert type
-   */
-  private getEmbedTitle(alertType: 'match' | 'best_deal' | 'new_item', item: SkinBaronItem): string {
-    const baseTitle = item.itemName;
-    
-    switch (alertType) {
-      case 'match':
-        return `${baseTitle}`;
-      case 'best_deal':
-        return `💎 Best Deal • ${baseTitle}`;
-      case 'new_item':
-        return `🆕 New Item • ${baseTitle}`;
-      default:
-        return `🔔 Alert • ${baseTitle}`;
-    }
-  }
-
-  /**
-   * Get embed color based on alert type
-   */
-  private getEmbedColor(alertType: 'match' | 'best_deal' | 'new_item'): number {
-    switch (alertType) {
-      case 'match':
-        return DISCORD_COLORS.MATCH;
-      case 'best_deal':
-        return DISCORD_COLORS.BEST_DEAL;
-      case 'new_item':
-        return DISCORD_COLORS.NEW_ITEM;
-      default:
-        return DISCORD_COLORS.MATCH;
-    }
-  }
-
-  /**
-   * Get alert message for content field
-   */
-  private getAlertMessage(alertType: 'match' | 'best_deal' | 'new_item'): string {
-    switch (alertType) {
-      case 'match':
-        return '🎯 **Your alert rule matched a new item!**';
-      case 'best_deal':
-        return '💎 **New best deal available!**';
-      case 'new_item':
-        return '🆕 **Fresh item just listed!**';
-      default:
-        return '🔔 **New item alert!**';
-    }
   }
 
   /**
