@@ -4,6 +4,9 @@ import { handleRouteError } from '../lib/validation-handler.js';
 
 export default async function itemsRoutes(fastify: FastifyInstance) {
   
+  // All routes require authentication
+  fastify.addHook('preHandler', fastify.authenticate);
+  
   // Rate limiting for item search (protect SkinBaron API quota)
   const searchRateLimitConfig = {
     max: 30,
@@ -24,6 +27,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Search SkinBaron items for autocomplete',
       tags: ['Items'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
