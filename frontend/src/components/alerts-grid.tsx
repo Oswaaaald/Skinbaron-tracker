@@ -61,11 +61,6 @@ export function AlertsGrid() {
     return 'bs'
   }
 
-  // Check if alert has stickers
-  const hasStickers = (alert: typeof allAlerts[0]): boolean => {
-    return alert.has_stickers ?? false
-  }
-
   const handleClearAllAlerts = useCallback(() => {
     setClearConfirmOpen(true)
   }, [])
@@ -152,9 +147,9 @@ export function AlertsGrid() {
 
   // Apply Sticker filter
   if (stickerFilter === 'only') {
-    filteredAlerts = filteredAlerts.filter(alert => hasStickers(alert))
+    filteredAlerts = filteredAlerts.filter(alert => alert.has_stickers)
   } else if (stickerFilter === 'exclude') {
-    filteredAlerts = filteredAlerts.filter(alert => !hasStickers(alert))
+    filteredAlerts = filteredAlerts.filter(alert => !alert.has_stickers)
   }
 
   // Apply sorting
@@ -457,7 +452,7 @@ export function AlertsGrid() {
                         </div>
                       )}
 
-                      {(alert.stattrak || alert.souvenir) && (
+                      {(alert.stattrak || alert.souvenir || alert.has_stickers) && (
                         <div className="flex gap-1 flex-wrap">
                           {alert.stattrak && (
                             <Badge variant="outline" className="text-[11px]">
@@ -467,6 +462,11 @@ export function AlertsGrid() {
                           {alert.souvenir && (
                             <Badge variant="outline" className="text-[11px]">
                               Souvenir
+                            </Badge>
+                          )}
+                          {alert.has_stickers && (
+                            <Badge variant="outline" className="text-[11px]">
+                              Stickers
                             </Badge>
                           )}
                         </div>
