@@ -430,17 +430,17 @@ export function AlertsGrid() {
                     {(alert.stattrak || alert.souvenir || alert.has_stickers) && (
                       <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
                         {alert.stattrak && (
-                          <Badge variant="outline" className="text-[11px] bg-background/80 backdrop-blur-sm shadow-sm">
+                          <Badge variant="outline" className="text-[11px] font-semibold bg-background/80 backdrop-blur-sm shadow-sm">
                             StatTrak™
                           </Badge>
                         )}
                         {alert.souvenir && (
-                          <Badge variant="outline" className="text-[11px] bg-background/80 backdrop-blur-sm shadow-sm">
+                          <Badge variant="outline" className="text-[11px] font-semibold bg-background/80 backdrop-blur-sm shadow-sm">
                             Souvenir
                           </Badge>
                         )}
                         {alert.has_stickers && (
-                          <Badge variant="outline" className="text-[11px] bg-background/80 backdrop-blur-sm shadow-sm">
+                          <Badge variant="outline" className="text-[11px] font-semibold bg-background/80 backdrop-blur-sm shadow-sm">
                             Stickers
                           </Badge>
                         )}
@@ -448,7 +448,7 @@ export function AlertsGrid() {
                     )}
 
                     {/* Date */}
-                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-[11px]">
+                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-[11px] font-semibold">
                       {formatShortDate(alert.sent_at)}
                     </div>
 
@@ -459,7 +459,7 @@ export function AlertsGrid() {
 
                     {/* Wear */}
                     {alert.wear_value !== undefined && alert.wear_value !== null && (
-                      <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-medium">
+                      <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-semibold">
                         {formatWearPercentage(alert.wear_value)}
                       </div>
                     )}
