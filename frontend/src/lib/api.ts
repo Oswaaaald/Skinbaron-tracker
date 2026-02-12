@@ -59,6 +59,7 @@ export interface Alert {
   wear_value?: number;
   stattrak: boolean;
   souvenir: boolean;
+  has_stickers: boolean;
   skin_url: string;
   sent_at?: string;
 }

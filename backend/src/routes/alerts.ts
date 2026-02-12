@@ -57,6 +57,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
                   wear_value: { type: 'number', nullable: true },
                   stattrak: { type: 'boolean' },
                   souvenir: { type: 'boolean' },
+                  has_stickers: { type: 'boolean' },
                   skin_url: { type: 'string' },
                   sent_at: { type: 'string' },
                 },

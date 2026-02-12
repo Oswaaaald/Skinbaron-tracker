@@ -36,6 +36,7 @@ export function rowToAlert(row: AlertRow): Alert {
     wear_value: row.wear_value ?? undefined,
     stattrak: Boolean(row.stattrak),
     souvenir: Boolean(row.souvenir),
+    has_stickers: Boolean(row.has_stickers),
     skin_url: row.skin_url,
     sent_at: row.sent_at,
   };

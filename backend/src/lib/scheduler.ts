@@ -340,6 +340,7 @@ export class AlertScheduler {
           wear_value: item.wearValue,
           stattrak: item.statTrak ?? false,
           souvenir: item.souvenir ?? false,
+          has_stickers: item.hasStickers ?? false,
           skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
         }));
 

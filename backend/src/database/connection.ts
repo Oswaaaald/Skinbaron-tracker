@@ -81,6 +81,7 @@ function createBaseTables(db: Database.Database) {
       wear_value REAL,
       stattrak BOOLEAN DEFAULT 0,
       souvenir BOOLEAN DEFAULT 0,
+      has_stickers BOOLEAN DEFAULT 0,
       skin_url TEXT NOT NULL,
       sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE,
@@ -313,6 +314,16 @@ function runDataMigrations(db: Database.Database) {
     // Migrate data: allow_stickers=1 -> 'all', allow_stickers=0 -> 'exclude'
     db.exec(`UPDATE rules SET sticker_filter = CASE WHEN allow_stickers = 1 THEN 'all' ELSE 'exclude' END`);
     migrationLogger.info('Migration: Migrated allow_stickers to sticker_filter');
+  }
+
+  // Migration: Add has_stickers column to alerts table
+  const hasHasStickers = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('alerts') WHERE name='has_stickers'
+  `).get() as { count: number };
+
+  if (hasHasStickers.count === 0) {
+    db.exec(`ALTER TABLE alerts ADD COLUMN has_stickers BOOLEAN DEFAULT 0`);
+    migrationLogger.info('Migration: Added has_stickers column to alerts table');
   }
 
   // Migration: Add encrypted 2FA columns (skip plaintext columns)

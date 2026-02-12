@@ -46,6 +46,7 @@ export const AlertSchema = z.object({
   wear_value: z.number().min(0).max(1).optional(),
   stattrak: z.boolean().default(false),
   souvenir: z.boolean().default(false),
+  has_stickers: z.boolean().default(false),
   skin_url: z.string().url('Valid skin URL required'),
   sent_at: z.string().optional(),
 });
@@ -169,6 +170,7 @@ export interface AlertRow {
   wear_value: number | null;
   stattrak: number;
   souvenir: number;
+  has_stickers: number;
   skin_url: string;
   sent_at: string;
 }

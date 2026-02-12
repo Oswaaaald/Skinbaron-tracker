@@ -27,8 +27,8 @@ export class AlertsRepository {
       
       const stmt = this.db.prepare(`
         INSERT INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                           stattrak, souvenir, skin_url)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                           stattrak, souvenir, has_stickers, skin_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const result = stmt.run(
@@ -39,6 +39,7 @@ export class AlertsRepository {
         validated.wear_value ?? null,
         validated.stattrak ? 1 : 0,
         validated.souvenir ? 1 : 0,
+        validated.has_stickers ? 1 : 0,
         validated.skin_url
       );
 
@@ -58,11 +59,11 @@ export class AlertsRepository {
       AlertSchema.omit({ id: true, sent_at: true }).parse(alert)
     );
 
-    const placeholders = validated.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    const placeholders = validated.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
     
     const stmt = this.db.prepare(`
       INSERT OR IGNORE INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                                     stattrak, souvenir, skin_url)
+                                     stattrak, souvenir, has_stickers, skin_url)
       VALUES ${placeholders}
     `);
 
@@ -74,6 +75,7 @@ export class AlertsRepository {
       alert.wear_value ?? null,
       alert.stattrak ? 1 : 0,
       alert.souvenir ? 1 : 0,
+      alert.has_stickers ? 1 : 0,
       alert.skin_url
     ]);
 

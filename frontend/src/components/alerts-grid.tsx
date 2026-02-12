@@ -61,11 +61,9 @@ export function AlertsGrid() {
     return 'bs'
   }
 
-  // Check if alert has stickers (from item name or skin URL)
-  const hasStickers = (_alert: typeof allAlerts[0]): boolean => {
-    // Could check alert.item_name for sticker info or other fields if available
-    // For now, return false as we don't have sticker data in alerts
-    return false
+  // Check if alert has stickers
+  const hasStickers = (alert: typeof allAlerts[0]): boolean => {
+    return alert.has_stickers ?? false
   }
 
   const handleClearAllAlerts = useCallback(() => {
