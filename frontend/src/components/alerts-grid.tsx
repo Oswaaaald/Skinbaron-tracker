@@ -452,25 +452,25 @@ export function AlertsGrid() {
                       {formatShortDate(alert.sent_at)}
                     </div>
 
-                    {/* Wear */}
-                    {alert.wear_value !== undefined && alert.wear_value !== null && (
-                      <div className="absolute bottom-3 left-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-medium">
-                        Wear {formatWearPercentage(alert.wear_value)}
-                      </div>
-                    )}
-
                     {/* Price pill */}
-                    <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
+                    <div className="absolute bottom-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
                       {formatPrice(alert.price)}
                     </div>
+
+                    {/* Wear */}
+                    {alert.wear_value !== undefined && alert.wear_value !== null && (
+                      <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-medium">
+                        {formatWearPercentage(alert.wear_value)}
+                      </div>
+                    )}
                   </div>
 
-                  <CardHeader className="flex-1 flex flex-col justify-between pb-3 pt-2 space-y-2">
-                    <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
+                  <CardHeader className="flex-1 flex flex-col justify-between px-3 pb-2.5 pt-2 gap-1.5">
+                    <CardTitle className="text-sm leading-snug line-clamp-2">
                       {alert.item_name}
                     </CardTitle>
 
-                    <div className="pt-2">
+                    <div>
                       <Button asChild className="w-full" size="sm">
                         <a
                           href={getSkinBaronUrl(alert.sale_id, alert.item_name)}
