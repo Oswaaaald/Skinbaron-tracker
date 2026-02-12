@@ -61,7 +61,7 @@ function createBaseTables(db: Database.Database) {
       max_wear REAL CHECK (max_wear >= 0 AND max_wear <= 1),
       stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
       souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
-      allow_stickers BOOLEAN DEFAULT 1,
+      sticker_filter TEXT DEFAULT 'all' CHECK (sticker_filter IN ('all', 'only', 'exclude')),
       webhook_ids TEXT,
       enabled BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -295,8 +295,25 @@ function runDataMigrations(db: Database.Database) {
   if (hasStattrakFilter.count === 0) {
     db.exec(`ALTER TABLE rules ADD COLUMN stattrak_filter TEXT DEFAULT 'all'`);
     db.exec(`ALTER TABLE rules ADD COLUMN souvenir_filter TEXT DEFAULT 'all'`);
-    db.exec(`ALTER TABLE rules ADD COLUMN allow_stickers BOOLEAN DEFAULT 1`);
+    db.exec(`ALTER TABLE rules ADD COLUMN sticker_filter TEXT DEFAULT 'all'`);
     migrationLogger.info('Migration: Added filter columns to rules table');
+  }
+
+  // Migration: Replace allow_stickers with sticker_filter
+  const hasAllowStickers = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('rules') WHERE name='allow_stickers'
+  `).get() as { count: number };
+
+  const hasStickerFilter = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('rules') WHERE name='sticker_filter'
+  `).get() as { count: number };
+
+  if (hasAllowStickers.count > 0 && hasStickerFilter.count === 0) {
+    // Add sticker_filter column
+    db.exec(`ALTER TABLE rules ADD COLUMN sticker_filter TEXT DEFAULT 'all'`);
+    // Migrate data: allow_stickers=1 -> 'all', allow_stickers=0 -> 'exclude'
+    db.exec(`UPDATE rules SET sticker_filter = CASE WHEN allow_stickers = 1 THEN 'all' ELSE 'exclude' END`);
+    migrationLogger.info('Migration: Migrated allow_stickers to sticker_filter');
   }
 
   // Migration: Add encrypted 2FA columns (skip plaintext columns)

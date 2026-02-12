@@ -113,7 +113,7 @@ export function RulesTable() {
         max_wear: rule.max_wear ?? undefined,
         stattrak_filter: rule.stattrak_filter ?? 'all',
         souvenir_filter: rule.souvenir_filter ?? 'all',
-        allow_stickers: rule.allow_stickers ?? true,
+        sticker_filter: rule.sticker_filter ?? 'all',
         webhook_ids: rule.webhook_ids,
         enabled: enabled,
       };
@@ -450,9 +450,14 @@ export function RulesTable() {
                           ✗ No Souvenir
                         </Badge>
                       )}
-                      {rule.allow_stickers === false && (
+                      {rule.sticker_filter === 'only' && (
+                        <Badge variant="outline" className="text-xs">
+                          ⭐ Stickers Only
+                        </Badge>
+                      )}
+                      {rule.sticker_filter === 'exclude' && (
                         <Badge variant="secondary" className="text-xs">
-                          🚫 No Stickers
+                          ✗ No Stickers
                         </Badge>
                       )}
                     </div>

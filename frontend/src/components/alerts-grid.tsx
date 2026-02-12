@@ -48,6 +48,7 @@ export function AlertsGrid() {
   const [statTrakFilter, setStatTrakFilter] = useState<string>('all')
   const [souvenirFilter, setSouvenirFilter] = useState<string>('all')
   const [wearFilter, setWearFilter] = useState<string>('all')
+  const [stickerFilter, setStickerFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc'>('date')
   const [isClearingAll, setIsClearingAll] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
@@ -80,6 +81,13 @@ export function AlertsGrid() {
     if (wearValue < 0.38) return 'ft'
     if (wearValue < 0.45) return 'ww'
     return 'bs'
+  }
+
+  // Check if alert has stickers (from item name or skin URL)
+  const hasStickers = (_alert: typeof allAlerts[0]): boolean => {
+    // Could check alert.item_name for sticker info or other fields if available
+    // For now, return false as we don't have sticker data in alerts
+    return false
   }
 
   const handleClearAllAlerts = useCallback(() => {
@@ -161,10 +169,21 @@ export function AlertsGrid() {
 
   // Apply Wear condition filter
   if (wearFilter !== 'all') {
-    filteredAlerts = filteredAlerts.filter(alert => {
-      const condition = getWearCondition(alert.wear_value)
-      return condition === wearFilter
-    })
+    if (wearFilter === 'no_wear') {
+      filteredAlerts = filteredAlerts.filter(alert => alert.wear_value === undefined)
+    } else {
+      filteredAlerts = filteredAlerts.filter(alert => {
+        const condition = getWearCondition(alert.wear_value)
+        return condition === wearFilter
+      })
+    }
+  }
+
+  // Apply Sticker filter
+  if (stickerFilter === 'only') {
+    filteredAlerts = filteredAlerts.filter(alert => hasStickers(alert))
+  } else if (stickerFilter === 'exclude') {
+    filteredAlerts = filteredAlerts.filter(alert => !hasStickers(alert))
   }
 
   // Apply sorting
@@ -295,6 +314,52 @@ export function AlertsGrid() {
           </Select>
         </div>
         <div>
+          <label htmlFor="wear-filter" className="text-sm font-medium mb-2 block">
+            Wear
+          </label>
+          <Select
+            value={wearFilter}
+            onValueChange={(value) => {
+              setWearFilter(value)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[160px]" aria-label="Filter by wear condition">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Conditions</SelectItem>
+              <SelectItem value="no_wear">No Wear</SelectItem>
+              <SelectItem value="fn">Factory New</SelectItem>
+              <SelectItem value="mw">Minimal Wear</SelectItem>
+              <SelectItem value="ft">Field-Tested</SelectItem>
+              <SelectItem value="ww">Well-Worn</SelectItem>
+              <SelectItem value="bs">Battle-Scarred</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="sticker-filter" className="text-sm font-medium mb-2 block">
+            Stickers
+          </label>
+          <Select
+            value={stickerFilter}
+            onValueChange={(value) => {
+              setStickerFilter(value)
+              setPage(0)
+            }}
+          >
+            <SelectTrigger className="w-[140px]" aria-label="Filter Sticker items">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="only">Only Stickers</SelectItem>
+              <SelectItem value="exclude">No Stickers</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <label htmlFor="stattrak-filter" className="text-sm font-medium mb-2 block">
             StatTrak™
           </label>
@@ -333,30 +398,6 @@ export function AlertsGrid() {
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="only">Only Souvenir</SelectItem>
               <SelectItem value="exclude">No Souvenir</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label htmlFor="wear-filter" className="text-sm font-medium mb-2 block">
-            Wear
-          </label>
-          <Select
-            value={wearFilter}
-            onValueChange={(value) => {
-              setWearFilter(value)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[160px]" aria-label="Filter by wear condition">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Conditions</SelectItem>
-              <SelectItem value="fn">Factory New</SelectItem>
-              <SelectItem value="mw">Minimal Wear</SelectItem>
-              <SelectItem value="ft">Field-Tested</SelectItem>
-              <SelectItem value="ww">Well-Worn</SelectItem>
-              <SelectItem value="bs">Battle-Scarred</SelectItem>
             </SelectContent>
           </Select>
         </div>

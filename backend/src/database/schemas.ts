@@ -28,7 +28,7 @@ export const RuleSchema = z.object({
   max_wear: z.number().min(0).max(1).optional(),
   stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   souvenir_filter: z.enum(['all', 'only', 'exclude']).default('all'),
-  allow_stickers: z.boolean().default(true),
+  sticker_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   webhook_ids: z.array(z.number()).min(0).default([]),
   enabled: z.boolean().default(true),
   created_at: z.string().optional(),
@@ -154,7 +154,7 @@ export interface RuleRow {
   max_wear: number | null;
   stattrak_filter: string;
   souvenir_filter: string;
-  allow_stickers: number;
+  sticker_filter: string;
   webhook_ids: string | null;
   enabled: number;
   created_at: string;

@@ -51,7 +51,7 @@ const ruleFormSchema = z.object({
   max_wear: z.number().min(0, "Max wear must be between 0 and 100").max(100, "Max wear must be between 0 and 100").optional(),
   stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   souvenir_filter: z.enum(['all', 'only', 'exclude']).default('all'),
-  allow_stickers: z.boolean().default(true),
+  sticker_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   webhook_ids: z.array(z.number()).max(10, "Maximum 10 webhooks allowed").default([]),
   enabled: z.boolean().optional(),
 })
@@ -99,7 +99,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       max_wear: undefined,
       stattrak_filter: 'all' as const,
       souvenir_filter: 'all' as const,
-      allow_stickers: true,
+      sticker_filter: 'all' as const,
       webhook_ids: [],
       enabled: true,
     },
@@ -117,7 +117,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         max_wear: rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined,
         stattrak_filter: rule.stattrak_filter || 'all',
         souvenir_filter: rule.souvenir_filter || 'all',
-        allow_stickers: rule.allow_stickers ?? true,
+        sticker_filter: rule.sticker_filter || 'all',
         webhook_ids: rule.webhook_ids || [],
         enabled: rule.enabled ?? true,
       })
@@ -139,7 +139,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         max_wear: undefined,
         stattrak_filter: 'all',
         souvenir_filter: 'all',
-        allow_stickers: true,
+        sticker_filter: 'all' as const,
         webhook_ids: [],
         enabled: true,
       })
@@ -236,7 +236,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         max_wear: data.max_wear !== undefined ? percentageToWear(data.max_wear) : undefined,
         stattrak_filter: data.stattrak_filter,
         souvenir_filter: data.souvenir_filter,
-        allow_stickers: data.allow_stickers,
+        sticker_filter: data.sticker_filter,
         webhook_ids: data.webhook_ids,
         enabled: data.enabled ?? true,
       }
@@ -618,27 +618,38 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="allow_stickers"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel>Allow Stickers</FormLabel>
-                      <FormDescription className="text-sm">
-                        Include items with stickers
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="sticker_filter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stickers</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
                         disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select sticker filter" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="all">✓ Accept all</SelectItem>
+                          <SelectItem value="only">⭐ Only with Stickers</SelectItem>
+                          <SelectItem value="exclude">✗ Exclude Stickers</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Filter items with stickers
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* Webhook Selection */}

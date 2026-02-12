@@ -11,7 +11,7 @@ export class RulesRepository {
     
     const stmt = this.db.prepare(`
       INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                        stattrak_filter, souvenir_filter, allow_stickers, webhook_ids, enabled)
+                        stattrak_filter, souvenir_filter, sticker_filter, webhook_ids, enabled)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -24,7 +24,7 @@ export class RulesRepository {
       validated.max_wear ?? null,
       validated.stattrak_filter,
       validated.souvenir_filter,
-      validated.allow_stickers ? 1 : 0,
+      validated.sticker_filter,
       JSON.stringify(validated.webhook_ids),
       validated.enabled ? 1 : 0
     );
@@ -102,9 +102,9 @@ export class RulesRepository {
       values.push(validated.souvenir_filter);
     }
 
-    if (validated.allow_stickers !== undefined) {
-      fields.push('allow_stickers = ?');
-      values.push(validated.allow_stickers ? 1 : 0);
+    if (validated.sticker_filter !== undefined) {
+      fields.push('sticker_filter = ?');
+      values.push(validated.sticker_filter);
     }
 
     if (validated.webhook_ids !== undefined) {

@@ -278,12 +278,14 @@ export class AlertScheduler {
           continue;
         }
 
-        // Filter stickers - check if item HAS stickers applied
-        // allow_stickers = true means accept items with stickers
-        // allow_stickers = false means reject items with stickers
-        if (!rule.allow_stickers && item.hasStickers) {
+        // Filter stickers
+        if (rule.sticker_filter === 'only' && !item.hasStickers) {
           skippedByFilters++;
-          continue; // Skip items with stickers if not allowed
+          continue;
+        }
+        if (rule.sticker_filter === 'exclude' && item.hasStickers) {
+          skippedByFilters++;
+          continue;
         }
 
         // Double-check basic filters (API might not be perfect)
@@ -469,10 +471,9 @@ export class AlertScheduler {
       if (rule.souvenir_filter === 'only' && !itemIsSouvenir) return false;
       if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) return false;
 
-      // Filter stickers - check if item HAS stickers applied
-      if (!rule.allow_stickers && item.hasStickers) {
-        return false;
-      }
+      // Filter stickers
+      if (rule.sticker_filter === 'only' && !item.hasStickers) return false;
+      if (rule.sticker_filter === 'exclude' && item.hasStickers) return false;
 
       return client.matchesFilters(item, {
         search_item: rule.search_item,

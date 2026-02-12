@@ -30,7 +30,7 @@ export interface Rule {
   max_wear?: number;
   stattrak_filter?: 'all' | 'only' | 'exclude';
   souvenir_filter?: 'all' | 'only' | 'exclude';
-  allow_stickers?: boolean;
+  sticker_filter?: 'all' | 'only' | 'exclude';
   webhook_ids: number[]; // Array of webhook IDs (optional)
   enabled?: boolean;
   created_at?: string;
@@ -45,7 +45,7 @@ export interface CreateRuleData {
   max_wear?: number;
   stattrak_filter?: 'all' | 'only' | 'exclude';
   souvenir_filter?: 'all' | 'only' | 'exclude';
-  allow_stickers?: boolean;
+  sticker_filter?: 'all' | 'only' | 'exclude';
   webhook_ids: number[];
   enabled?: boolean;
 }
