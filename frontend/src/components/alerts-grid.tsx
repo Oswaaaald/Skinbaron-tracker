@@ -280,12 +280,12 @@ export function AlertsGrid() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Conditions</SelectItem>
-              <SelectItem value="no_wear">No Wear</SelectItem>
               <SelectItem value="fn">Factory New</SelectItem>
               <SelectItem value="mw">Minimal Wear</SelectItem>
               <SelectItem value="ft">Field-Tested</SelectItem>
               <SelectItem value="ww">Well-Worn</SelectItem>
               <SelectItem value="bs">Battle-Scarred</SelectItem>
+              <SelectItem value="no_wear">No Wear</SelectItem>
             </SelectContent>
           </Select>
         </div>
