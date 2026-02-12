@@ -7,7 +7,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { appConfig } from './lib/config.js';
 import { store } from './database/index.js';
-import { closeDatabase } from './database/connection.js';
+import { closeDatabase, getDatabase } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler, type AlertScheduler } from './lib/scheduler.js';
@@ -367,11 +367,15 @@ async function registerPlugins() {
 async function buildSystemSnapshot() {
   const scheduler: AlertScheduler = getScheduler();
 
-  // Check database health
-  let dbHealth = 'healthy';
+  // Check database health - actually query it
+  let dbHealth = 'unhealthy';
   try {
-    store.getStats();
-  } catch {
+    // Perform a real database query to verify it works
+    const db = getDatabase();
+    const result = db.prepare('SELECT 1 as test').get() as { test: number } | undefined;
+    dbHealth = result?.test === 1 ? 'healthy' : 'unhealthy';
+  } catch (error) {
+    fastify.log.error({ error }, 'Database health check failed');
     dbHealth = 'unhealthy';
   }
 
@@ -380,30 +384,32 @@ async function buildSystemSnapshot() {
   let simplifiedScheduler: Record<string, string | number | boolean | null> = {};
   try {
     const schedulerStats = scheduler.getStats();
-    schedulerHealth = schedulerStats.isRunning ? 'running' : 'stopped';
+    // Scheduler is healthy if running, or if stopped but has no errors
+    schedulerHealth = schedulerStats.isRunning ? 'running' : 
+                     (schedulerStats.errorCount === 0 ? 'stopped' : 'unhealthy');
     simplifiedScheduler = {
       isRunning: schedulerStats.isRunning,
       lastRunTime: schedulerStats.lastRunTime ? schedulerStats.lastRunTime.toISOString() : null,
       nextRunTime: schedulerStats.nextRunTime ? schedulerStats.nextRunTime.toISOString() : null,
       totalRuns: schedulerStats.totalRuns,
       totalAlerts: schedulerStats.totalAlerts,
+      errorCount: schedulerStats.errorCount,
+      lastError: schedulerStats.lastError,
     };
-  } catch {
+  } catch (error) {
+    fastify.log.error({ error }, 'Scheduler stats retrieval failed');
     schedulerHealth = 'unhealthy';
   }
 
-  // SkinBaron API health (lightweight check)
+  // SkinBaron API health - force a fresh test, ignore cache
   let skinbaronHealth = 'unhealthy';
   try {
     const skinbaronClient = getSkinBaronClient();
-    const healthStatus = skinbaronClient.getHealthStatus();
-    if (healthStatus === 'unknown') {
-      const isConnected = await skinbaronClient.testConnection();
-      skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
-    } else {
-      skinbaronHealth = healthStatus;
-    }
-  } catch {
+    // Force a fresh connection test by calling testConnection directly
+    const isConnected = await skinbaronClient.testConnection();
+    skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
+  } catch (error) {
+    fastify.log.error({ error }, 'SkinBaron API health check failed');
     skinbaronHealth = 'unhealthy';
   }
 
