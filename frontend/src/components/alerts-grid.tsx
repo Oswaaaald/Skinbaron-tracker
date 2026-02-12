@@ -447,6 +447,18 @@ export function AlertsGrid() {
                       </div>
                     )}
 
+                    {/* Date */}
+                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-[11px]">
+                      {formatShortDate(alert.sent_at)}
+                    </div>
+
+                    {/* Wear */}
+                    {alert.wear_value !== undefined && alert.wear_value !== null && (
+                      <div className="absolute bottom-3 left-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-medium">
+                        Wear {formatWearPercentage(alert.wear_value)}
+                      </div>
+                    )}
+
                     {/* Price pill */}
                     <div className="absolute bottom-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
                       {formatPrice(alert.price)}
@@ -454,25 +466,9 @@ export function AlertsGrid() {
                   </div>
 
                   <CardHeader className="flex-1 flex flex-col justify-between pb-3 pt-2 space-y-2">
-                    <div>
-                      <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
-                        {alert.item_name}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        {formatShortDate(alert.sent_at)}
-                      </CardDescription>
-                    </div>
-
-                    <div className="space-y-1">
-                      {alert.wear_value !== undefined && alert.wear_value !== null && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Wear</span>
-                          <span className="font-medium">
-                            {formatWearPercentage(alert.wear_value)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    <CardTitle className="text-base leading-tight line-clamp-2 min-h-[2.5rem]">
+                      {alert.item_name}
+                    </CardTitle>
 
                     <div className="pt-2">
                       <Button asChild className="w-full" size="sm">
