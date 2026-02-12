@@ -84,7 +84,7 @@ export function rowToWebhook(row: WebhookRow, decryptUrl: boolean = false): User
     user_id: row.user_id,
     name: row.name,
     webhook_url_encrypted: row.webhook_url_encrypted,
-    webhook_type: row.webhook_type as 'discord' | 'slack' | 'teams' | 'generic',
+    webhook_type: row.webhook_type as 'discord',
     notification_style: (row.notification_style as 'compact' | 'detailed') || 'compact',
     is_active: Boolean(row.is_active),
     created_at: row.created_at,

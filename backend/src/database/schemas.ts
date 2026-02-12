@@ -78,7 +78,7 @@ export const UserSchema = z.object({
 export const CreateUserWebhookSchema = z.object({
   name: z.string().min(1).max(50),
   webhook_url: z.string().url('Valid webhook URL required'),
-  webhook_type: z.enum(['discord', 'slack', 'teams', 'generic']).default('discord'),
+  webhook_type: z.enum(['discord']).default('discord'),
   notification_style: z.enum(['compact', 'detailed']).default('compact'),
   is_active: z.boolean().default(true),
 });
@@ -88,7 +88,7 @@ export const UserWebhookSchema = z.object({
   user_id: z.number(),
   name: z.string().min(1).max(50),
   webhook_url_encrypted: z.string(),
-  webhook_type: z.enum(['discord', 'slack', 'teams', 'generic']),
+  webhook_type: z.enum(['discord']),
   notification_style: z.enum(['compact', 'detailed']),
   is_active: z.boolean(),
   created_at: z.string(),

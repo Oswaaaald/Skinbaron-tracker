@@ -116,7 +116,7 @@ function createUserTables(db: Database.Database) {
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL CHECK(length(name) >= 1 AND length(name) <= 50),
       webhook_url_encrypted TEXT NOT NULL,
-      webhook_type TEXT DEFAULT 'discord' CHECK(webhook_type IN ('discord', 'slack', 'teams', 'generic')),
+      webhook_type TEXT DEFAULT 'discord',
       notification_style TEXT DEFAULT 'compact' CHECK(notification_style IN ('compact', 'detailed')),
       is_active BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

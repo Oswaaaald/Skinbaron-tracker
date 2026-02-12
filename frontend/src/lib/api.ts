@@ -69,7 +69,7 @@ export interface Webhook {
   user_id: number;
   name: string;
   webhook_url?: string; // Only present when decrypt=true
-  webhook_type: 'discord' | 'slack' | 'teams' | 'generic';
+  webhook_type: 'discord';
   notification_style: 'compact' | 'detailed';
   is_active: boolean;
   created_at?: string;
@@ -490,10 +490,10 @@ class ApiClient {
     return this.request<Webhook[]>(`/api/webhooks${query}`);
   }
 
-  async createWebhook(webhook: Omit<Webhook, 'id' | 'user_id' | 'created_at' | 'updated_at'> & { webhook_url: string }): Promise<ApiResponse<Webhook>> {
+  async createWebhook(webhook: Omit<Webhook, 'id' | 'user_id' | 'webhook_type' | 'created_at' | 'updated_at'> & { webhook_url: string }): Promise<ApiResponse<Webhook>> {
     return this.request<Webhook>('/api/webhooks', {
       method: 'POST',
-      body: JSON.stringify(webhook),
+      body: JSON.stringify({ ...webhook, webhook_type: 'discord' }),
     });
   }
 

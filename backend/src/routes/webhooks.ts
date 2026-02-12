@@ -33,7 +33,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 50 },
           webhook_url: { type: 'string', format: 'uri' },
-          webhook_type: { type: 'string', enum: ['discord', 'slack', 'teams', 'generic'] },
+          webhook_type: { type: 'string', enum: ['discord'] },
           notification_style: { type: 'string', enum: ['compact', 'detailed'] },
           is_active: { type: 'boolean' },
         },
@@ -164,7 +164,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 50 },
           webhook_url: { type: 'string', format: 'uri' },
-          webhook_type: { type: 'string', enum: ['discord', 'slack', 'teams', 'generic'] },
+          webhook_type: { type: 'string', enum: ['discord'] },
           notification_style: { type: 'string', enum: ['compact', 'detailed'] },
           is_active: { type: 'boolean' },
         },

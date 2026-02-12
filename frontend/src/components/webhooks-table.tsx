@@ -23,7 +23,6 @@ import { QUERY_KEYS } from '@/lib/constants'
 interface WebhookFormData {
   name: string
   webhook_url: string
-  webhook_type: 'discord' | 'slack' | 'teams' | 'generic'
   notification_style: 'compact' | 'detailed'
   is_active: boolean
 }
@@ -31,7 +30,6 @@ interface WebhookFormData {
 const initialFormData: WebhookFormData = {
   name: '',
   webhook_url: '',
-  webhook_type: 'discord',
   notification_style: 'compact',
   is_active: true,
 }
@@ -151,7 +149,6 @@ export function WebhooksTable() {
       setFormData({
         name: webhook.name,
         webhook_url: '', // Don't pre-fill encrypted URL
-        webhook_type: webhook.webhook_type,
         notification_style: webhook.notification_style || 'compact',
         is_active: webhook.is_active,
       })
@@ -174,7 +171,6 @@ export function WebhooksTable() {
       // Only send fields that might have changed
       const updates: Partial<WebhookFormData> = {
         name: formData.name,
-        webhook_type: formData.webhook_type,
         notification_style: formData.notification_style,
         is_active: formData.is_active,
       }
@@ -247,19 +243,6 @@ export function WebhooksTable() {
     setSelectedWebhooks(new Set())
   }
 
-  const getWebhookTypeColor = (type: string) => {
-    switch (type) {
-      case 'discord':
-        return 'bg-blue-500'
-      case 'slack':
-        return 'bg-green-500'
-      case 'teams':
-        return 'bg-purple-500'
-      default:
-        return 'bg-gray-500'
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-[400px] flex flex-col items-center justify-center">
@@ -314,44 +297,22 @@ export function WebhooksTable() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="webhook_type">Type</Label>
-                  <Select
-                    value={formData.webhook_type}
-                    onValueChange={(value: 'discord' | 'slack' | 'teams' | 'generic') =>
-                      setFormData({ ...formData, webhook_type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="discord">Discord</SelectItem>
-                      <SelectItem value="slack">Slack</SelectItem>
-                      <SelectItem value="teams">Microsoft Teams</SelectItem>
-                      <SelectItem value="generic">Generic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notification_style">Notification Style</Label>
-                  <Select
-                    value={formData.notification_style}
-                    onValueChange={(value: 'compact' | 'detailed') =>
-                      setFormData({ ...formData, notification_style: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="compact">Compact</SelectItem>
-                      <SelectItem value="detailed">Detailed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="notification_style">Notification Style</Label>
+                <Select
+                  value={formData.notification_style}
+                  onValueChange={(value: 'compact' | 'detailed') =>
+                    setFormData({ ...formData, notification_style: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="compact">Compact</SelectItem>
+                    <SelectItem value="detailed">Detailed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-row items-center justify-between rounded-lg border p-3">
@@ -526,7 +487,6 @@ export function WebhooksTable() {
                 />
               </TableHead>
               <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Style</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
@@ -546,11 +506,6 @@ export function WebhooksTable() {
                     />
                   </TableCell>
                   <TableCell className="font-medium">{webhook.name}</TableCell>
-                  <TableCell>
-                    <Badge className={getWebhookTypeColor(webhook.webhook_type)}>
-                      {webhook.webhook_type.toUpperCase()}
-                    </Badge>
-                  </TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {webhook.notification_style === 'detailed' ? 'Detailed' : 'Compact'}

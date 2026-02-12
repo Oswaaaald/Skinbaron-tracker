@@ -10,18 +10,9 @@ import dns from 'dns/promises';
 
 // Allowed webhook domains (whitelist approach for security)
 const ALLOWED_DOMAINS = [
-  // Discord
   'discord.com',
   'discordapp.com',
   'discord.gg',
-  // Slack
-  'slack.com',
-  'hooks.slack.com',
-  // Microsoft Teams
-  'webhook.office.com',
-  'outlook.office.com',
-  // Generic (for testing or self-hosted)
-  // Note: Generic webhooks are validated but allowed to any HTTPS URL
 ] as const;
 
 // Blocked hostnames (localhost, loopback, etc.)
@@ -76,12 +67,7 @@ function isPrivateIP(ip: string): boolean {
 /**
  * Check if a hostname is in the allowed list
  */
-function isAllowedDomain(hostname: string, webhookType: string): boolean {
-  // Generic webhooks are allowed to any non-private HTTPS URL
-  if (webhookType === 'generic') {
-    return true;
-  }
-
+function isAllowedDomain(hostname: string): boolean {
   const normalizedHostname = hostname.toLowerCase();
   return ALLOWED_DOMAINS.some(domain => 
     normalizedHostname === domain || normalizedHostname.endsWith(`.${domain}`)
@@ -97,13 +83,13 @@ export interface WebhookValidationResult {
  * Validate a webhook URL for SSRF protection
  * 
  * @param url - The webhook URL to validate
- * @param webhookType - The type of webhook (discord, slack, teams, generic)
+ * @param webhookType - The type of webhook (discord only)
  * @param skipDnsCheck - Skip DNS resolution check (for testing)
  * @returns Validation result with error message if invalid
  */
 export async function validateWebhookUrl(
   url: string,
-  webhookType: string = 'generic',
+  _webhookType: string = 'discord',
   skipDnsCheck: boolean = false
 ): Promise<WebhookValidationResult> {
   try {
@@ -144,10 +130,10 @@ export async function validateWebhookUrl(
     }
 
     // 4. Domain allowlist check
-    if (!isAllowedDomain(hostname, webhookType)) {
+    if (!isAllowedDomain(hostname)) {
       return {
         valid: false,
-        error: `Webhook URL must be from an allowed domain for ${webhookType} webhooks. Allowed: Discord, Slack, Microsoft Teams, or use "generic" type for custom webhooks.`,
+        error: 'Webhook URL must be from a Discord domain (discord.com, discordapp.com).',
       };
     }
 
@@ -192,7 +178,7 @@ export async function validateWebhookUrl(
  */
 export function validateWebhookUrlSync(
   url: string,
-  webhookType: string = 'generic'
+  _webhookType: string = 'discord'
 ): WebhookValidationResult {
   try {
     const parsed = new URL(url);
@@ -220,10 +206,10 @@ export function validateWebhookUrlSync(
       };
     }
 
-    if (!isAllowedDomain(hostname, webhookType)) {
+    if (!isAllowedDomain(hostname)) {
       return {
         valid: false,
-        error: `Webhook URL must be from an allowed domain for ${webhookType} webhooks`,
+        error: 'Webhook URL must be from a Discord domain (discord.com, discordapp.com).',
       };
     }
 
