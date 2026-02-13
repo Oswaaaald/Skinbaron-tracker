@@ -72,10 +72,3 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
     throw new AppError(403, 'Invalid CSRF token', 'CSRF_TOKEN_INVALID');
   }
 }
-
-/**
- * Endpoint to get a new CSRF token (for initial page loads)
- */
-export function getCsrfToken(): string {
-  return generateCsrfToken();
-}

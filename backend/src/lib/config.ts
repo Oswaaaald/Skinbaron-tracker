@@ -73,7 +73,6 @@ function loadConfig() {
   }
 }
 
-export type Config = z.infer<typeof ConfigSchema>;
 export const appConfig = loadConfig();
 
 // SkinBaron API constants
@@ -88,10 +87,7 @@ export const SKINBARON_API = {
 // Discord embed colors
 export const DISCORD_COLORS = {
   MATCH: 0x00ff00,      // Green for matches
-  ERROR: 0xff0000,      // Red for errors
 } as const;
 
 // User limits
 export const MAX_RULES_PER_USER = 50;
-
-export default appConfig;

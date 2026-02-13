@@ -2,16 +2,15 @@ import { request } from 'undici';
 import { z } from 'zod';
 import { appConfig, SKINBARON_API } from './config.js';
 
-// SkinBaron API Response Schemas (matching official API)
-export const SkinBaronSaleSchema = z.object({
-  id: z.string(), // SkinBaron sale ID
+// SkinBaron API Response Schemas (internal)
+const SkinBaronSaleSchema = z.object({
+  id: z.string(),
   price: z.number(),
-  img: z.string().optional(), // Steam image URL
-  market_name: z.string(), // Steam market hash name
-  sbinspect: z.string().optional(), // SkinBaron offer URL
-  inspect: z.string().optional(), // Inspect link
-  stickers: z.string().optional(), // Stickers applied on the item (JSON string or description)
-  // Additional fields that might be returned
+  img: z.string().optional(),
+  market_name: z.string(),
+  sbinspect: z.string().optional(),
+  inspect: z.string().optional(),
+  stickers: z.string().optional(),
   wear: z.number().optional(),
   stattrak: z.boolean().optional(),
   souvenir: z.boolean().optional(),
@@ -22,13 +21,10 @@ export const SkinBaronSaleSchema = z.object({
   appid: z.number().optional(),
 });
 
-export const SearchResponseSchema = z.object({
+const SearchResponseSchema = z.object({
   sales: z.array(SkinBaronSaleSchema).optional(),
 });
 
-// Types for the actual API response structure
-export type SkinBaronSale = z.infer<typeof SkinBaronSaleSchema>;
-export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 
 // Legacy type for backward compatibility - we'll adapt sales to items
 export interface SkinBaronItem {
@@ -49,7 +45,7 @@ export interface SkinBaronItem {
 }
 
 // Search parameters
-export interface SearchParams {
+interface SearchParams {
   search_item: string;
   min?: number;
   max?: number;
@@ -227,26 +223,10 @@ export class SkinBaronClient {
   }
 
   /**
-   * Check API health status without making actual requests
-   */
-  getHealthStatus(): 'healthy' | 'unhealthy' | 'unknown' {
-    if (!this.lastConnectionTest) return 'unknown';
-    
-    const now = Date.now();
-    const age = now - this.lastConnectionTest.timestamp;
-    
-    // If test is older than 5 minutes, consider it unknown
-    if (age > 300000) return 'unknown';
-    
-    return this.lastConnectionTest.result ? 'healthy' : 'unhealthy';
-  }
-
-  /**
    * Generate SkinBaron listing URL (fallback si sbinspect non disponible)
    */
   getSkinUrl(saleId: string, itemName?: string): string {
     if (itemName) {
-      // Extraire les infos du nom pour construire l'URL
       const productName = itemName.replace(/StatTrak™\s+/, '').replace(/Souvenir\s+/, '');
       const encodedProductName = encodeURIComponent(productName);
       return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodedProductName}`;
@@ -258,7 +238,6 @@ export class SkinBaronClient {
    * Check if an item matches the given search parameters
    */
   matchesFilters(item: SkinBaronItem, params: SearchParams): boolean {
-    // Check StatTrak filter - amélioration de la logique
     if (params.statTrak !== undefined) {
       const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
       if (itemIsStatTrak !== params.statTrak) {
@@ -266,7 +245,6 @@ export class SkinBaronClient {
       }
     }
 
-    // Check Souvenir filter - amélioration de la logique
     if (params.souvenir !== undefined) {
       const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
       if (itemIsSouvenir !== params.souvenir) {
@@ -274,7 +252,6 @@ export class SkinBaronClient {
       }
     }
 
-    // Check price range
     if (params.min !== undefined && params.min !== null && item.price < params.min) {
       return false;
     }
@@ -283,7 +260,6 @@ export class SkinBaronClient {
       return false;
     }
 
-    // Check wear range
     if (params.minWear !== undefined && params.minWear !== null && item.wearValue && item.wearValue < params.minWear) {
       return false;
     }
@@ -293,21 +269,6 @@ export class SkinBaronClient {
     }
 
     return true;
-  }
-
-  /**
-   * Format item for display
-   */
-  formatItem(item: SkinBaronItem): string {
-    const parts = [item.itemName];
-    
-    if (item.statTrak) parts.push('StatTrak™');
-    if (item.souvenir) parts.push('Souvenir');
-    if (item.wearValue) parts.push(`Wear: ${item.wearValue.toFixed(6)}`);
-    
-    parts.push(`${item.price} ${item.currency}`);
-    
-    return parts.join(' | ');
   }
 }
 
@@ -320,5 +281,3 @@ export const getSkinBaronClient = (): SkinBaronClient => {
   }
   return clientInstance;
 };
-
-export default getSkinBaronClient;

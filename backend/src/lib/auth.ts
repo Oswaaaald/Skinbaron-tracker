@@ -42,18 +42,6 @@ export const PasswordChangeSchema = z.object({
     }),
 });
 
-export const WebhookSchema = z.object({
-  id: z.number().optional(),
-  user_id: z.number(),
-  name: z.string().min(1, 'Webhook name is required').max(50, 'Webhook name must be at most 50 characters'),
-  webhook_url: z.string().url('Please enter a valid webhook URL'),
-  created_at: z.string().optional(),
-});
-
-// Types
-export type UserWebhook = z.infer<typeof WebhookSchema>;
-export type CreateWebhook = Omit<UserWebhook, 'id' | 'created_at'>;
-
 import { appConfig } from './config.js';
 
 // JWT secret from config

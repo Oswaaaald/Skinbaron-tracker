@@ -5,69 +5,13 @@
 
 // ==================== QUERY CONFIGURATION ====================
 
-/** Time in ms before cached data is considered stale */
-export const QUERY_STALE_TIME = 15_000; // 15 seconds
-
 /** Default polling interval for real-time data */
 export const POLL_INTERVAL = 10_000; // 10 seconds
-
-/** Polling interval when page is in background */
-export const BACKGROUND_POLL_INTERVAL = 30_000; // 30 seconds
 
 // ==================== PAGINATION ====================
 
 /** Number of alerts per page in the alerts grid */
 export const ALERTS_PAGE_SIZE = 12;
-
-/** Number of rules per page in the rules table */
-export const RULES_PAGE_SIZE = 10;
-
-/** Number of audit logs per page */
-export const AUDIT_LOGS_PAGE_SIZE = 20;
-
-// ==================== UI CONSTANTS ====================
-
-/** Debounce delay for search inputs (ms) */
-export const SEARCH_DEBOUNCE_MS = 300;
-
-/** Toast notification duration (ms) */
-export const TOAST_DURATION = 5_000;
-
-/** Animation duration for transitions (ms) */
-export const ANIMATION_DURATION = 200;
-
-// ==================== LIMITS ====================
-
-/** Maximum number of rules per user */
-export const MAX_RULES_PER_USER = 50;
-
-/** Maximum number of webhooks per user */
-export const MAX_WEBHOOKS_PER_USER = 10;
-
-/** Maximum length for webhook names */
-export const MAX_WEBHOOK_NAME_LENGTH = 50;
-
-/** Maximum length for rule search items */
-export const MAX_SEARCH_ITEM_LENGTH = 100;
-
-// ==================== VALIDATION ====================
-
-/** Minimum password length */
-export const MIN_PASSWORD_LENGTH = 8;
-
-/** Minimum username length */
-export const MIN_USERNAME_LENGTH = 3;
-
-/** Maximum username length */
-export const MAX_USERNAME_LENGTH = 20;
-
-// ==================== API ====================
-
-/** Default request timeout (ms) */
-export const API_TIMEOUT = 30_000;
-
-/** Number of retries for failed requests */
-export const API_RETRY_COUNT = 3;
 
 // ==================== AUDIT LOG CONFIGURATION ====================
 
@@ -161,17 +105,4 @@ export const QUERY_KEYS = {
   
   // Legacy (for sync)
   SYNC_STATS: 'sync-stats',
-} as const;
-
-/** Type-safe query key builder for compound keys */
-export const buildQueryKey = {
-  admin: {
-    users: () => [QUERY_KEYS.ADMIN_USERS] as const,
-    pending: () => [QUERY_KEYS.ADMIN_PENDING] as const,
-    stats: () => [QUERY_KEYS.ADMIN_STATS] as const,
-  },
-  user: {
-    stats: () => [QUERY_KEYS.USER_STATS] as const,
-    profile: () => [QUERY_KEYS.USER_PROFILE] as const,
-  },
 } as const;

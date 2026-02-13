@@ -73,24 +73,3 @@ export function handleRouteError(
     error: 'An unexpected error occurred',
   });
 }
-
-/**
- * Optional: Safe parse wrapper for non-throwing validation
- * Returns validation result without throwing
- */
-export function safeValidateWithZod<T>(
-  schema: ZodSchema<T>,
-  data: unknown
-): { success: true; data: T } | { success: false; error: string } {
-  const result = schema.safeParse(data);
-  
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-  
-  const firstIssue = result.error.issues[0];
-  return {
-    success: false,
-    error: firstIssue?.message || 'Validation failed',
-  };
-}

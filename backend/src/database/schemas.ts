@@ -124,14 +124,6 @@ export type RefreshTokenRecord = {
   created_at: string;
 };
 
-export type AccessTokenBlacklistRecord = {
-  jti: string;
-  user_id: number;
-  expires_at: string;
-  reason?: string | null;
-  created_at: string;
-};
-
 export type AuditLog = {
   id: number;
   user_id: number;

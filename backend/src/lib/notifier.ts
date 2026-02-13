@@ -3,8 +3,8 @@ import { DISCORD_COLORS, appConfig } from './config.js';
 import type { Rule } from '../database/schemas.js';
 import type { SkinBaronItem } from './sbclient.js';
 
-// Discord Webhook Schemas
-export const DiscordEmbedSchema = z.object({
+// Discord Webhook Schemas (internal)
+const DiscordEmbedSchema = z.object({
   title: z.string().max(256),
   description: z.string().max(4096).optional(),
   url: z.string().url().optional(),
@@ -27,19 +27,19 @@ export const DiscordEmbedSchema = z.object({
   })).max(25).optional(),
 });
 
-export const DiscordWebhookPayloadSchema = z.object({
+const DiscordWebhookPayloadSchema = z.object({
   username: z.string().max(80).optional(),
   avatar_url: z.string().url().optional(),
   content: z.string().max(2000).optional(),
   embeds: z.array(DiscordEmbedSchema).max(10).optional(),
 });
 
-export type DiscordEmbed = z.infer<typeof DiscordEmbedSchema>;
-export type DiscordWebhookPayload = z.infer<typeof DiscordWebhookPayloadSchema>;
+type DiscordEmbed = z.infer<typeof DiscordEmbedSchema>;
+type DiscordWebhookPayload = z.infer<typeof DiscordWebhookPayloadSchema>;
 
 export type NotificationStyle = 'compact' | 'detailed';
 
-export interface NotificationOptions {
+interface NotificationOptions {
   item: SkinBaronItem;
   rule?: Rule;
   skinUrl: string;
@@ -235,95 +235,6 @@ export class NotificationService {
       embeds: [embed],
     };
   }
-
-  /**
-   * Test webhook connection
-   */
-  async testWebhook(webhookUrl: string): Promise<boolean> {
-    try {
-      const testEmbed: DiscordEmbed = {
-        title: '🧪 Test Notification',
-        description: 'SkinBaron Tracker is working correctly!',
-        color: DISCORD_COLORS.MATCH,
-        timestamp: new Date().toISOString(),
-        footer: {
-          text: 'Test completed successfully',
-        },
-      };
-
-      const payload: DiscordWebhookPayload = {
-        username: this.botName,
-        avatar_url: this.botAvatar,
-        content: '✅ **Test notification from SkinBaron Tracker**',
-        embeds: [testEmbed],
-      };
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'SkinBaron-Tracker/1.0',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      return response.status === 204;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Send error notification
-   */
-  async sendErrorNotification(webhookUrl: string, error: string): Promise<boolean> {
-    try {
-      const errorEmbed: DiscordEmbed = {
-        title: '⚠️ SkinBaron Tracker Error',
-        description: `An error occurred while monitoring:\n\`\`\`${error}\`\`\``,
-        color: DISCORD_COLORS.ERROR,
-        timestamp: new Date().toISOString(),
-        footer: {
-          text: 'Error notification',
-        },
-      };
-
-      const payload: DiscordWebhookPayload = {
-        username: this.botName,
-        avatar_url: this.botAvatar,
-        content: '⚠️ **System Alert**',
-        embeds: [errorEmbed],
-      };
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'SkinBaron-Tracker/1.0',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      return response.status === 204;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Format item for plain text display
-   */
-  formatItemText(item: SkinBaronItem): string {
-    const parts = [item.itemName];
-    
-    if (item.statTrak) parts.push('StatTrak™');
-    if (item.souvenir) parts.push('Souvenir');
-    if (item.wearValue) parts.push(`Wear: ${(item.wearValue * 100).toFixed(2)}%`);
-    
-    parts.push(`${item.price} ${item.currency}`);
-    
-    return parts.join(' | ');
-  }
 }
 
 // Singleton instance
@@ -335,5 +246,3 @@ export const getNotificationService = (): NotificationService => {
   }
   return notificationInstance;
 };
-
-export default getNotificationService;

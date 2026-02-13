@@ -187,28 +187,3 @@ export function requireSuperAdmin(request: FastifyRequest): Promise<void> {
   return Promise.resolve();
 }
 
-/**
- * Optional authentication middleware (allows anonymous access)
- * Attaches user to request if valid token provided, but doesn't fail if missing
- */
-export function optionalAuthMiddleware(request: FastifyRequest): Promise<void> {
-  try {
-    const token = extractToken(request);
-    if (!token) return Promise.resolve();
-
-    const payload = AuthService.verifyToken(token, 'access');
-    if (!payload) return Promise.resolve();
-
-    if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) return Promise.resolve();
-
-    const user = getUserById(payload.userId);
-    if (!user || !user.is_approved) return Promise.resolve();
-
-    attachUser(request, user);
-    return Promise.resolve();
-  } catch (error) {
-    // Log but don't fail - optional auth
-    request.log.debug({ error }, 'Optional authentication failed');
-    return Promise.resolve();
-  }
-}

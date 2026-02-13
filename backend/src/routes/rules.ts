@@ -12,13 +12,6 @@ function getAuthUser(request: FastifyRequest) {
   return request.user;
 }
 
-// Extend FastifyInstance type for authenticate
-declare module 'fastify' {
-  interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
 // Request/Response schemas
 /**
  * Rule request schemas

@@ -14,7 +14,7 @@ interface SchedulerLogger {
   debug(obj: object, msg?: string): void;
 }
 
-export interface SchedulerStats {
+interface SchedulerStats {
   isRunning: boolean;
   lastRunTime: Date | null;
   nextRunTime: Date | null;
@@ -512,5 +512,3 @@ export const getScheduler = (): AlertScheduler => {
   }
   return schedulerInstance;
 };
-
-export default getScheduler;

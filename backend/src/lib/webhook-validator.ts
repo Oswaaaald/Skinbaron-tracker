@@ -74,7 +74,7 @@ function isAllowedDomain(hostname: string): boolean {
   );
 }
 
-export interface WebhookValidationResult {
+interface WebhookValidationResult {
   valid: boolean;
   error?: string;
 }
@@ -171,50 +171,3 @@ export async function validateWebhookUrl(
   }
 }
 
-/**
- * Synchronous version for quick validation (without DNS check)
- */
-export function validateWebhookUrlSync(
-  url: string
-): WebhookValidationResult {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.protocol !== 'https:') {
-      return {
-        valid: false,
-        error: 'Webhook URL must use HTTPS protocol for security',
-      };
-    }
-
-    const hostname = parsed.hostname.toLowerCase();
-    if (BLOCKED_HOSTNAMES.includes(hostname)) {
-      return {
-        valid: false,
-        error: 'Webhook URL cannot point to localhost or internal addresses',
-      };
-    }
-
-    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    if (ipv4Regex.test(hostname) && isPrivateIP(hostname)) {
-      return {
-        valid: false,
-        error: 'Webhook URL cannot point to private IP addresses',
-      };
-    }
-
-    if (!isAllowedDomain(hostname)) {
-      return {
-        valid: false,
-        error: 'Webhook URL must be from a Discord domain (discord.com, discordapp.com).',
-      };
-    }
-
-    return { valid: true };
-  } catch {
-    return {
-      valid: false,
-      error: 'Invalid webhook URL format',
-    };
-  }
-}

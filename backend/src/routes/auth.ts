@@ -8,13 +8,6 @@ import { AppError } from '../lib/errors.js';
 import { OTP } from 'otplib';
 import crypto from 'crypto';
 
-// Extend FastifyInstance type
-declare module 'fastify' {
-  interface FastifyInstance {
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-  }
-}
-
 /**
  * Authentication routes
  */

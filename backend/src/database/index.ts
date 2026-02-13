@@ -17,8 +17,6 @@ export class Store {
   public auth = new AuthRepository(this.db);
   public audit = new AuditRepository(this.db);
 
-  // Legacy compatibility methods - delegate to repositories
-
   // Rules
   createRule = this.rules.create.bind(this.rules);
   getRuleById = this.rules.findById.bind(this.rules);
@@ -31,14 +29,8 @@ export class Store {
   deleteRulesBatch = this.rules.deleteBatch.bind(this.rules);
 
   // Alerts
-  createAlert = this.alerts.create.bind(this.alerts);
   createAlertsBatch = this.alerts.createBatch.bind(this.alerts);
-  getAlertById = this.alerts.findById.bind(this.alerts);
-  getAlertsBySaleId = this.alerts.findBySaleId.bind(this.alerts);
   getAlertsByUserId = this.alerts.findByUserId.bind(this.alerts);
-  getAlertByIdForUser = this.alerts.findByIdForUser.bind(this.alerts);
-  getAlertsByRuleIdForUser = this.alerts.findByRuleIdForUser.bind(this.alerts);
-  deleteAlertsByRuleId = this.alerts.deleteByRuleId.bind(this.alerts);
   deleteAllUserAlerts = this.alerts.deleteByUserId.bind(this.alerts);
   findAlertsByRuleId = this.alerts.findByRuleId.bind(this.alerts);
   deleteBySaleIds = this.alerts.deleteBySaleIds.bind(this.alerts);
@@ -71,7 +63,6 @@ export class Store {
     const result = this.webhooks.delete(id, userId);
     
     if (result) {
-      // Clean up rules that reference this webhook
       this.cleanupRulesAfterWebhookDeletion(id, userId);
     }
     
@@ -88,7 +79,6 @@ export class Store {
       
       if (updatedWebhookIds.length !== rule.webhook_ids.length) {
         if (updatedWebhookIds.length === 0) {
-          // Disable rule if no webhooks remain
           if (rule.id !== undefined) {
             this.rules.update(rule.id, { ...rule, enabled: false, webhook_ids: [] });
           }
@@ -104,10 +94,6 @@ export class Store {
   enableWebhooksBatch = this.webhooks.enableBatch.bind(this.webhooks);
   disableWebhooksBatch = this.webhooks.disableBatch.bind(this.webhooks);
   deleteWebhooksBatch = this.webhooks.deleteBatch.bind(this.webhooks);
-  
-  getUserActiveWebhooks(userId: number) {
-    return this.webhooks.findByUserId(userId, true).filter(w => w.is_active);
-  }
 
   getRuleWebhooksForNotification(ruleId: number) {
     const rule = this.rules.findById(ruleId);
@@ -116,17 +102,9 @@ export class Store {
     return this.webhooks.findByIds(rule.webhook_ids, true).filter(w => w.is_active && w.webhook_url);
   }
 
-  // Legacy method aliases
   getUserWebhooks = this.webhooks.findByUserId.bind(this.webhooks);
-  getUserRules(userId: number) {
-    return this.rules.findByUserId(userId);
-  }
-  getUserAlerts(userId: number) {
-    return this.alerts.findByUserId(userId);
-  }
+
   getUserStats(userId: number) {
-    // Optimized single query like original store.ts
-    // Using datetime for 24h window instead of DATE comparison for timezone consistency
     const stats = this.db.prepare(`
       SELECT 
         (SELECT COUNT(*) FROM rules WHERE user_id = ?) as totalRules,
@@ -137,14 +115,11 @@ export class Store {
 
     return stats;
   }
+
   toggleUserAdmin(userId: number, isAdmin: boolean): boolean {
     return this.users.setAdmin(userId, isAdmin);
   }
-  setUserAdmin(userId: number, isAdmin: boolean): boolean {
-    return this.users.setAdmin(userId, isAdmin);
-  }
   
-  // Global stats (original store.ts format)
   getStats() {
     const stats = this.db.prepare(`
       SELECT 
@@ -160,19 +135,15 @@ export class Store {
   getGlobalStats() {
     return this.audit.getSystemStats();
   }
+
   getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number) {
     return this.audit.getAllAuditLogs(limit, eventType, userId);
   }
-  isProcessed(saleId: string, ruleId: number): boolean {
-    const alert = this.alerts.findBySaleId(saleId);
-    return alert !== null && alert.rule_id === ruleId;
-  }
+
   addRefreshToken = this.auth.saveRefreshToken.bind(this.auth);
 
   // Auth
-  saveRefreshToken = this.auth.saveRefreshToken.bind(this.auth);
   getRefreshToken = this.auth.getRefreshToken.bind(this.auth);
-  getRefreshTokenByHash = this.auth.getRefreshTokenByHash.bind(this.auth);
   revokeRefreshToken = this.auth.revokeRefreshToken.bind(this.auth);
   revokeAllRefreshTokensForUser = this.auth.revokeAllRefreshTokensForUser.bind(this.auth);
   cleanupRefreshTokens = this.auth.cleanupRefreshTokens.bind(this.auth);
@@ -185,12 +156,7 @@ export class Store {
   cleanOldAuditLogs(daysToKeep: number = 90): number {
     return this.audit.cleanupOldAuditLogs(daysToKeep);
   }
-  cleanupOldAuditLogs(daysToKeep: number = 90): number {
-    return this.audit.cleanupOldAuditLogs(daysToKeep);
-  }
   logAdminAction = this.audit.logAdminAction.bind(this.audit);
-  getAdminLogs = this.audit.getAdminLogs.bind(this.audit);
-  getSystemStats = this.audit.getSystemStats.bind(this.audit);
 
   close() {
     this.db.close();
