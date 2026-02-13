@@ -33,6 +33,9 @@ export class AlertScheduler {
   private readonly DISCORD_DELAY_MS = 2100; // ~2 seconds between messages (allows ~28 per minute with safety margin)
   private webhookQueues = new Map<string, Promise<void>>();
 
+  // Concurrency guard — prevents overlapping poll executions
+  private polling = false;
+
   // Statistics
   private stats: SchedulerStats = {
     isRunning: false,
@@ -100,6 +103,21 @@ export class AlertScheduler {
    * Execute polling cycle
    */
   private async executePoll(): Promise<void> {
+    // Concurrency guard — skip if a previous poll is still running
+    if (this.polling) {
+      this.logger.warn({}, '[Scheduler] Skipping poll — previous execution still running');
+      return;
+    }
+
+    this.polling = true;
+    try {
+      await this._executePollInner();
+    } finally {
+      this.polling = false;
+    }
+  }
+
+  private async _executePollInner(): Promise<void> {
     this.stats.lastRunTime = new Date();
     this.stats.totalRuns++;
 
