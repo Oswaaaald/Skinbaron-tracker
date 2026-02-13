@@ -167,6 +167,9 @@ export function formatUptime(uptimeSeconds?: number): string {
  * @returns Human-readable description of the event
  */
 export function formatEventData(eventType: string, eventDataJson: string | null): string {
+  // Events with static messages that don't need event_data
+  if (eventType === "data_export") return "Personal data exported";
+
   if (!eventDataJson) return "";
 
   try {
