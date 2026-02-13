@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Eye, EyeOff, Mail, Lock, User, Shield } from 'lucide-react'
+import Link from 'next/link'
 
 interface AuthFormProps {
   mode: 'login' | 'register'
@@ -30,7 +31,8 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    tosAccepted: false,
   })
 
   const handleInputChange = (field: string, value: string) => {
@@ -49,6 +51,11 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       
       if (!result.valid) {
         setError(result.error || 'Validation failed')
+        return false
+      }
+
+      if (!formData.tosAccepted) {
+        setError('You must accept the Terms of Service to create an account')
         return false
       }
     } else {
@@ -325,6 +332,29 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                         disabled={isLoading}
                       />
                     </div>
+                  </div>
+                )}
+
+                {!isLogin && (
+                  <div className="flex items-start gap-2">
+                    <input
+                      id="tos"
+                      type="checkbox"
+                      checked={formData.tosAccepted}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tosAccepted: e.target.checked }))}
+                      disabled={isLoading}
+                      className="mt-1 h-4 w-4 rounded border-border accent-primary"
+                    />
+                    <Label htmlFor="tos" className="text-sm font-normal leading-snug">
+                      I agree to the{' '}
+                      <Link href="/tos" target="_blank" className="underline hover:text-foreground">
+                        Terms of Service
+                      </Link>{' '}
+                      and{' '}
+                      <Link href="/privacy" target="_blank" className="underline hover:text-foreground">
+                        Privacy Policy
+                      </Link>
+                    </Label>
                   </div>
                 )}
               </>

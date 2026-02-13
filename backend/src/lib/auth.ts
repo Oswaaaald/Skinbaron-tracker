@@ -25,6 +25,7 @@ export const UserRegistrationSchema = z.object({
     .refine(strongPasswordValidator, {
       message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
     }),
+  tos_accepted: z.literal(true, { error: 'You must accept the Terms of Service' }),
 });
 
 export const UserLoginSchema = z.object({

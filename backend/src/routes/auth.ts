@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { store } from '../database/index.js';
+import { getDatabase } from '../database/connection.js';
 import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/middleware.js';
 import { appConfig } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
@@ -68,6 +69,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
           password: { type: 'string', minLength: 8 },
+          tos_accepted: { type: 'boolean' },
         },
       },
       response: {
@@ -123,6 +125,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
         email: userData.email,
         password_hash: passwordHash,
       });
+
+      // Record ToS acceptance timestamp
+      getDatabase().prepare('UPDATE users SET tos_accepted_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
 
       // Check if user is approved
       if (!user.is_approved) {

@@ -374,6 +374,16 @@ function runDataMigrations(db: Database.Database) {
     migrationLogger.info('Migration: Added encrypted 2FA columns to users table');
   }
 
+  // Migration: Add tos_accepted_at column
+  const hasTosAccepted = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='tos_accepted_at'
+  `).get() as { count: number };
+
+  if (hasTosAccepted.count === 0) {
+    db.exec(`ALTER TABLE users ADD COLUMN tos_accepted_at DATETIME`);
+    migrationLogger.info('Migration: Added tos_accepted_at column to users table');
+  }
+
   // Migration: Remove plaintext 2FA columns (security fix)
   const hasPlaintextSecret = db.prepare(`
     SELECT COUNT(*) as count FROM pragma_table_info('users') WHERE name='totp_secret'

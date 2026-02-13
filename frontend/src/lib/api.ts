@@ -351,7 +351,7 @@ class ApiClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, tos_accepted: true }),
       }, false);
   }
 
