@@ -45,12 +45,17 @@ export const PasswordChangeSchema = z.object({
 
 import { appConfig } from './config.js';
 
-// JWT secret from config
-const JWT_SECRET = appConfig.JWT_SECRET;
+// Separate JWT secrets for access and refresh tokens (falls back to JWT_SECRET)
+const JWT_ACCESS_SECRET = appConfig.JWT_ACCESS_SECRET;
+const JWT_REFRESH_SECRET = appConfig.JWT_REFRESH_SECRET;
 const ACCESS_TOKEN_TTL = '10m';
 const REFRESH_TOKEN_TTL = '14d';
 
 type TokenType = 'access' | 'refresh';
+
+function getSecret(type: TokenType): string {
+  return type === 'access' ? JWT_ACCESS_SECRET : JWT_REFRESH_SECRET;
+}
 
 export type TokenPayload = JwtPayload & {
   userId: number;
@@ -80,7 +85,7 @@ export class AuthService {
    */
   static generateAccessToken(userId: number): { token: string; jti: string; expiresAt: number } {
     const jti = crypto.randomUUID();
-    const token = jwt.sign({ userId, jti, type: 'access' satisfies TokenType }, JWT_SECRET, {
+    const token = jwt.sign({ userId, jti, type: 'access' satisfies TokenType }, getSecret('access'), {
       expiresIn: ACCESS_TOKEN_TTL,
     });
     const payload = this.decodeToken(token);
@@ -96,7 +101,7 @@ export class AuthService {
    */
   static generateRefreshToken(userId: number): { token: string; jti: string; expiresAt: number } {
     const jti = crypto.randomUUID();
-    const token = jwt.sign({ userId, jti, type: 'refresh' satisfies TokenType }, JWT_SECRET, {
+    const token = jwt.sign({ userId, jti, type: 'refresh' satisfies TokenType }, getSecret('refresh'), {
       expiresIn: REFRESH_TOKEN_TTL,
     });
     const payload = this.decodeToken(token);
@@ -112,8 +117,22 @@ export class AuthService {
    */
   static verifyToken(token: string, expectedType?: TokenType): TokenPayload | null {
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
-      if (expectedType && payload.type !== expectedType) return null;
+      // If expectedType is given, use the matching secret directly.
+      // Otherwise try access first, then refresh (covers decode-only callers).
+      if (expectedType) {
+        const payload = jwt.verify(token, getSecret(expectedType)) as TokenPayload;
+        if (payload.type !== expectedType) return null;
+        return payload;
+      }
+
+      // No expected type — try access secret first
+      try {
+        const payload = jwt.verify(token, getSecret('access')) as TokenPayload;
+        return payload;
+      } catch {
+        // Fall through to refresh secret
+      }
+      const payload = jwt.verify(token, getSecret('refresh')) as TokenPayload;
       return payload;
     } catch {
       return null;

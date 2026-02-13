@@ -24,6 +24,8 @@ const ConfigSchema = z.object({
   
   // Authentication
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
+  JWT_ACCESS_SECRET: z.string().min(32).optional(),
+  JWT_REFRESH_SECRET: z.string().min(32).optional(),
   // Note: A strong JWT secret should be randomly generated with high entropy
   // Encryption key for sensitive data (defaults to JWT_SECRET for backward compatibility)
   ENCRYPTION_KEY: z.string().optional(),
@@ -63,6 +65,8 @@ function loadConfig() {
     const config = {
       ...parsed,
       ENCRYPTION_KEY: parsed.ENCRYPTION_KEY || parsed.JWT_SECRET,
+      JWT_ACCESS_SECRET: parsed.JWT_ACCESS_SECRET || parsed.JWT_SECRET,
+      JWT_REFRESH_SECRET: parsed.JWT_REFRESH_SECRET || parsed.JWT_SECRET,
     };
     return config;
   } catch (error) {
