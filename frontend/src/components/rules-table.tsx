@@ -298,7 +298,7 @@ export function RulesTable() {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-center text-red-600">
+          <div className="text-center text-red-600" role="alert">
             Error loading rules: {extractErrorMessage(error)}
           </div>
         </CardContent>
@@ -328,7 +328,7 @@ export function RulesTable() {
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
                   {selectedRules.size > 0 ? `${selectedRules.size} selected` : `${rules.length} total`}
                 </span>
               </div>

@@ -27,14 +27,14 @@ const variantClasses: Record<LoadingVariant, string> = {
 export function LoadingState({ variant = 'card', message = 'Loading...' }: LoadingStateProps) {
   if (variant === 'inline') {
     return (
-      <div className={variantClasses.inline}>
+      <div className={variantClasses.inline} role="status" aria-live="polite">
         <LoadingSpinner />
       </div>
     )
   }
 
   return (
-    <div className={variantClasses[variant]}>
+    <div className={variantClasses[variant]} role="status" aria-live="polite">
       <LoadingSpinner size="lg" />
       <p className="text-muted-foreground mt-2">{message}</p>
     </div>

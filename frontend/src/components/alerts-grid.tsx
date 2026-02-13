@@ -194,7 +194,7 @@ export function AlertsGrid() {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-center text-red-600">
+          <div className="text-center text-red-600" role="alert">
             Error loading alerts: {extractErrorMessage(error)}
           </div>
         </CardContent>
@@ -388,7 +388,7 @@ export function AlertsGrid() {
       {/* Grid */}
       {alerts.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
+          <CardContent className="p-12 text-center text-muted-foreground" role="status" aria-live="polite">
             No alerts found matching your criteria.
           </CardContent>
         </Card>
@@ -484,7 +484,7 @@ export function AlertsGrid() {
 
           {/* Pagination */}
           <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
               Showing {page * ALERTS_PAGE_SIZE + 1} - {page * ALERTS_PAGE_SIZE + alerts.length} alerts
             </div>
             <div className="flex gap-2">
