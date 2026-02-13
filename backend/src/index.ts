@@ -21,8 +21,8 @@ const fastify = Fastify({
   logger: {
     level: appConfig.LOG_LEVEL,
   },
-  // Respect X-Forwarded-* headers from the reverse proxy for accurate client IPs
-  trustProxy: true,
+  // Trust only the first proxy hop (e.g. nginx/Traefik directly in front of the app)
+  trustProxy: 1,
   // Custom error formatter for validation errors (makes them user-friendly)
   schemaErrorFormatter: (errors) => {
     const error = errors[0];
