@@ -14,8 +14,8 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       
       # RECOMMENDED: Separate JWT signing keys (fall back to JWT_SECRET if unset)
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       
       # RECOMMENDED: Set for proper functionality
       SB_API_KEY: ${SB_API_KEY}
