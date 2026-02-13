@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   ShieldOff,
   AlertCircle,
+  Download,
   type LucideIcon
 } from "lucide-react"
 
@@ -48,6 +49,7 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   user_promoted: { icon: Shield, label: "Promoted to Admin", variant: "default" },
   user_demoted: { icon: ShieldOff, label: "Admin Privileges Revoked", variant: "secondary" },
   user_deleted: { icon: ShieldAlert, label: "Account Deleted", variant: "destructive" },
+  data_export: { icon: Download, label: "Data Export", variant: "outline" },
 } as const;
 
 /** Event type options for filter dropdowns */
@@ -67,6 +69,7 @@ export const AUDIT_EVENT_TYPES = [
   { value: "user_promoted", label: "User Promoted" },
   { value: "user_demoted", label: "User Demoted" },
   { value: "user_deleted", label: "User Deleted" },
+  { value: "data_export", label: "Data Export" },
 ] as const;
 
 // ==================== QUERY KEYS ====================
