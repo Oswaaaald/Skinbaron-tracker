@@ -415,14 +415,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = request.params as { id: number };
+      // Log admin action BEFORE deleting so the FK to target_user_id is still valid
+      store.logAdminAction(request.user!.id, 'REJECT_USER', id, `Rejected user ID ${id}`);
+
       const success = store.rejectUser(id);
 
       if (!success) {
         throw Errors.notFound('User');
       }
-
-      // Log admin action
-      store.logAdminAction(request.user!.id, 'REJECT_USER', id, `Rejected user ID ${id}`);
 
       return reply.status(200).send({
         success: true,

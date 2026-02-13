@@ -12,7 +12,7 @@ export default function TermsOfService() {
       </Link>
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
-        <h1 className="text-3xl font-bold">Terms of Service</h1>
+        <h1 className="text-3xl font-bold">Terms of Service &amp; Legal Notice</h1>
         <p className="text-muted-foreground">
           By creating an account or using SkinBaron Tracker you agree to these
           terms. If you do not agree, please do not use the service.
@@ -125,6 +125,46 @@ export default function TermsOfService() {
           These terms are governed by the laws of Belgium. Any disputes will be
           resolved in the courts of Belgium.
         </p>
+      </section>
+
+      <hr className="border-border" />
+
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold">Legal Notice</h2>
+      </div>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Publisher</h2>
+        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+          <li>Operator: Personal project (individual, not ASBL/company).</li>
+          <li>
+            Contact email:{" "}
+            <a className="underline" href="mailto:admin@oswaaaald.be">
+              admin@oswaaaald.be
+            </a>
+          </li>
+          <li>Country: Belgium.</li>
+          <li>Purpose: hobby project providing non-commercial alerts.</li>
+        </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Hosting</h2>
+        <p className="text-muted-foreground">
+          Hosting provider: OVHcloud (EU infrastructure).
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold">Content and liability</h2>
+        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+          <li>Service offered as-is without commercial guarantees.</li>
+          <li>No resale of data; see the{" "}
+            <Link className="underline" href="/privacy">Privacy Policy</Link>{" "}
+            for processing details.
+          </li>
+          <li>External links and webhook destinations are the responsibility of the user configuring them.</li>
+        </ul>
       </section>
 
       <section className="space-y-2">

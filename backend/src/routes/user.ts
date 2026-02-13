@@ -358,15 +358,6 @@ export default function userRoutes(fastify: FastifyInstance) {
       description: 'Export all personal data (GDPR Art. 20)',
       tags: ['User'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: { type: 'object' },
-          },
-        },
-      },
     },
   }, async (request, reply) => {
     try {
