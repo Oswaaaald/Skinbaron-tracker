@@ -149,7 +149,7 @@ export class UsersRepository {
   findAll(): User[] {
     const stmt = this.db.prepare('SELECT * FROM users WHERE is_approved = 1 ORDER BY created_at DESC');
     const rows = stmt.all() as UserRow[];
-    return rows.map(row => this.decrypt2FASecrets(rowToUser(row)));
+    return rows.map(row => rowToUser(row));
   }
 
   countAll(): number {
@@ -166,7 +166,7 @@ export class UsersRepository {
       LIMIT ? OFFSET ?
     `);
     const rows = stmt.all(limit, offset) as UserRow[];
-    return rows.map(row => this.decrypt2FASecrets(rowToUser(row)));
+    return rows.map(row => rowToUser(row));
   }
 
   approve(id: number): boolean {
@@ -197,7 +197,7 @@ export class UsersRepository {
     `);
     const term = `%${searchTerm}%`;
     const rows = stmt.all(term, term, limit) as UserRow[];
-    return rows.map(row => this.decrypt2FASecrets(rowToUser(row)));
+    return rows.map(row => rowToUser(row));
   }
 
   /**
@@ -220,7 +220,7 @@ export class UsersRepository {
     
     return rows.map(row => {
       const { rules_count, alerts_count, webhooks_count, ...userRow } = row;
-      const user = this.decrypt2FASecrets(rowToUser(userRow as UserRow));
+      const user = rowToUser(userRow as UserRow);
       return {
         ...user,
         stats: { rules_count, alerts_count, webhooks_count }
