@@ -12,10 +12,35 @@ const ENCRYPTED_POSITION = TAG_POSITION + TAG_LENGTH;
 const PBKDF2_ITERATIONS = 600_000;
 
 /**
- * Derives a key from the encryption key using PBKDF2
+ * LRU cache for PBKDF2 derived keys — avoids re-deriving 600K iterations
+ * for the same salt when decrypting the same value multiple times (e.g.
+ * webhook URLs loaded on every poll cycle).
+ */
+const KEY_CACHE_MAX = 100;
+const keyCache = new Map<string, Buffer>();
+
+/**
+ * Derives a key from the encryption key using PBKDF2 (cached per salt)
  */
 function getKey(salt: Buffer): Buffer {
-  return crypto.pbkdf2Sync(appConfig.ENCRYPTION_KEY, salt, PBKDF2_ITERATIONS, 32, 'sha512');
+  const saltHex = salt.toString('hex');
+  const cached = keyCache.get(saltHex);
+  if (cached) {
+    // Move to end (LRU freshness)
+    keyCache.delete(saltHex);
+    keyCache.set(saltHex, cached);
+    return cached;
+  }
+
+  const key = crypto.pbkdf2Sync(appConfig.ENCRYPTION_KEY, salt, PBKDF2_ITERATIONS, 32, 'sha512');
+
+  // Evict oldest entry if full
+  if (keyCache.size >= KEY_CACHE_MAX) {
+    const oldest = keyCache.keys().next().value;
+    if (oldest !== undefined) keyCache.delete(oldest);
+  }
+  keyCache.set(saltHex, key);
+  return key;
 }
 
 /**
