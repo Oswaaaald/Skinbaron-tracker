@@ -51,6 +51,19 @@ export class WebhooksRepository {
     return rows.map(row => rowToWebhook(row, decrypt));
   }
 
+  /**
+   * Find active webhooks associated with a rule via the junction table
+   */
+  findActiveByRuleId(ruleId: number, decrypt: boolean = false): UserWebhook[] {
+    const stmt = this.db.prepare(`
+      SELECT w.* FROM user_webhooks w
+      INNER JOIN rule_webhooks rw ON rw.webhook_id = w.id
+      WHERE rw.rule_id = ? AND w.is_active = 1
+    `);
+    const rows = stmt.all(ruleId) as WebhookRow[];
+    return rows.map(row => rowToWebhook(row, decrypt));
+  }
+
   update(id: number, userId: number, updates: Partial<CreateUserWebhook>): UserWebhook | null {
     const validatedUpdates = CreateUserWebhookSchema.partial().parse(updates);
     

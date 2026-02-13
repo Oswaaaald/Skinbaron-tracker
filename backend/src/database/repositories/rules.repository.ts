@@ -6,13 +6,65 @@ import { rowToRule } from '../utils/converters.js';
 export class RulesRepository {
   constructor(private db: Database.Database) {}
 
+  /**
+   * Load webhook_ids from the junction table for a single rule
+   */
+  private loadWebhookIds(ruleId: number): number[] {
+    const stmt = this.db.prepare('SELECT webhook_id FROM rule_webhooks WHERE rule_id = ?');
+    const rows = stmt.all(ruleId) as Array<{ webhook_id: number }>;
+    return rows.map(r => r.webhook_id);
+  }
+
+  /**
+   * Load webhook_ids from the junction table for multiple rules in one query
+   */
+  private loadWebhookIdsBatch(ruleIds: number[]): Map<number, number[]> {
+    const map = new Map<number, number[]>();
+    if (ruleIds.length === 0) return map;
+    
+    const placeholders = ruleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`SELECT rule_id, webhook_id FROM rule_webhooks WHERE rule_id IN (${placeholders})`);
+    const rows = stmt.all(...ruleIds) as Array<{ rule_id: number; webhook_id: number }>;
+    
+    for (const row of rows) {
+      const existing = map.get(row.rule_id) ?? [];
+      existing.push(row.webhook_id);
+      map.set(row.rule_id, existing);
+    }
+    
+    return map;
+  }
+
+  /**
+   * Set webhook_ids for a rule (replace all associations)
+   */
+  private setWebhookIds(ruleId: number, webhookIds: number[]): void {
+    this.db.prepare('DELETE FROM rule_webhooks WHERE rule_id = ?').run(ruleId);
+    
+    if (webhookIds.length > 0) {
+      const insertStmt = this.db.prepare('INSERT OR IGNORE INTO rule_webhooks (rule_id, webhook_id) VALUES (?, ?)');
+      for (const webhookId of webhookIds) {
+        insertStmt.run(ruleId, webhookId);
+      }
+    }
+  }
+
+  /**
+   * Convert a rule row + webhook_ids into a full Rule object
+   */
+  private toRuleWithWebhooks(row: RuleRow, webhookIds: number[]): Rule {
+    const rule = rowToRule(row);
+    rule.webhook_ids = webhookIds;
+    return rule;
+  }
+
   create(rule: CreateRule): Rule {
     const validated = CreateRuleSchema.parse(rule);
     
     const stmt = this.db.prepare(`
       INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                        stattrak_filter, souvenir_filter, sticker_filter, webhook_ids, enabled)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        stattrak_filter, souvenir_filter, sticker_filter, enabled)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -25,11 +77,17 @@ export class RulesRepository {
       validated.stattrak_filter,
       validated.souvenir_filter,
       validated.sticker_filter,
-      JSON.stringify(validated.webhook_ids),
       validated.enabled ? 1 : 0
     );
 
-    const created = this.findById(result.lastInsertRowid as number);
+    const ruleId = result.lastInsertRowid as number;
+    
+    // Insert webhook associations into junction table
+    if (validated.webhook_ids && validated.webhook_ids.length > 0) {
+      this.setWebhookIds(ruleId, validated.webhook_ids);
+    }
+
+    const created = this.findById(ruleId);
     if (!created) throw new Error('Failed to create rule');
     return created;
   }
@@ -37,25 +95,29 @@ export class RulesRepository {
   findById(id: number): Rule | null {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE id = ?');
     const row = stmt.get(id) as RuleRow | undefined;
-    return row ? rowToRule(row) : null;
+    if (!row) return null;
+    return this.toRuleWithWebhooks(row, this.loadWebhookIds(id));
   }
 
   findAll(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules ORDER BY created_at DESC');
     const rows = stmt.all() as RuleRow[];
-    return rows.map(rowToRule);
+    const webhookMap = this.loadWebhookIdsBatch(rows.map(r => r.id));
+    return rows.map(row => this.toRuleWithWebhooks(row, webhookMap.get(row.id) ?? []));
   }
 
   findByUserId(userId: number): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY created_at DESC');
     const rows = stmt.all(userId) as RuleRow[];
-    return rows.map(rowToRule);
+    const webhookMap = this.loadWebhookIdsBatch(rows.map(r => r.id));
+    return rows.map(row => this.toRuleWithWebhooks(row, webhookMap.get(row.id) ?? []));
   }
 
   findEnabled(): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE enabled = 1 ORDER BY created_at DESC');
     const rows = stmt.all() as RuleRow[];
-    return rows.map(rowToRule);
+    const webhookMap = this.loadWebhookIdsBatch(rows.map(r => r.id));
+    return rows.map(row => this.toRuleWithWebhooks(row, webhookMap.get(row.id) ?? []));
   }
 
   update(id: number, updates: Partial<CreateRule>): Rule | null {
@@ -107,25 +169,22 @@ export class RulesRepository {
       values.push(validated.sticker_filter);
     }
 
-    if (validated.webhook_ids !== undefined) {
-      fields.push('webhook_ids = ?');
-      values.push(JSON.stringify(validated.webhook_ids));
-    }
-
     if (validated.enabled !== undefined) {
       fields.push('enabled = ?');
       values.push(validated.enabled ? 1 : 0);
     }
 
-    if (fields.length === 0) {
-      return current;
+    if (fields.length > 0) {
+      fields.push('updated_at = CURRENT_TIMESTAMP');
+      const setClause = fields.join(', ');
+      const stmt = this.db.prepare(`UPDATE rules SET ${setClause} WHERE id = ?`);
+      stmt.run(...values, id);
     }
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    const setClause = fields.join(', ');
-    
-    const stmt = this.db.prepare(`UPDATE rules SET ${setClause} WHERE id = ?`);
-    stmt.run(...values, id);
+    // Update webhook associations in junction table
+    if (validated.webhook_ids !== undefined) {
+      this.setWebhookIds(id, validated.webhook_ids);
+    }
 
     return this.findById(id);
   }

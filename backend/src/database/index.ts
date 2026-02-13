@@ -69,37 +69,42 @@ export class Store {
     return result;
   }
   
-  private cleanupRulesAfterWebhookDeletion(webhookId: number, userId: number): void {
-    const rules = this.rules.findByUserId(userId);
+  /**
+   * After a webhook is deleted, the junction table CASCADE handles removing associations.
+   * But we still need to disable rules that end up with no webhooks.
+   */
+  private cleanupRulesAfterWebhookDeletion(_webhookId: number, userId: number): void {
+    // Find user's rules that now have zero webhooks in the junction table
+    const orphanedRules = this.db.prepare(`
+      SELECT r.id FROM rules r
+      WHERE r.user_id = ?
+        AND r.enabled = 1
+        AND NOT EXISTS (SELECT 1 FROM rule_webhooks rw WHERE rw.rule_id = r.id)
+    `).all(userId) as Array<{ id: number }>;
 
-    for (const rule of rules) {
-      if (!rule.webhook_ids || rule.webhook_ids.length === 0) continue;
-      
-      const updatedWebhookIds = rule.webhook_ids.filter(id => id !== webhookId);
-      
-      if (updatedWebhookIds.length !== rule.webhook_ids.length) {
-        if (updatedWebhookIds.length === 0) {
-          if (rule.id !== undefined) {
-            this.rules.update(rule.id, { ...rule, enabled: false, webhook_ids: [] });
-          }
-        } else {
-          if (rule.id !== undefined) {
-            this.rules.update(rule.id, { ...rule, webhook_ids: updatedWebhookIds });
-          }
-        }
-      }
+    if (orphanedRules.length > 0) {
+      const placeholders = orphanedRules.map(() => '?').join(',');
+      this.db.prepare(`UPDATE rules SET enabled = 0 WHERE id IN (${placeholders})`).run(
+        ...orphanedRules.map(r => r.id)
+      );
     }
   }
 
   enableWebhooksBatch = this.webhooks.enableBatch.bind(this.webhooks);
   disableWebhooksBatch = this.webhooks.disableBatch.bind(this.webhooks);
-  deleteWebhooksBatch = this.webhooks.deleteBatch.bind(this.webhooks);
+  
+  deleteWebhooksBatch(webhookIds: number[], userId: number): number {
+    const result = this.webhooks.deleteBatch(webhookIds, userId);
+    if (result > 0) {
+      // CASCADE removes junction rows; disable orphaned rules
+      this.cleanupRulesAfterWebhookDeletion(0, userId);
+    }
+    return result;
+  }
 
   getRuleWebhooksForNotification(ruleId: number) {
-    const rule = this.rules.findById(ruleId);
-    if (!rule || !rule.webhook_ids?.length) return [];
-    
-    return this.webhooks.findByIds(rule.webhook_ids, true).filter(w => w.is_active && w.webhook_url);
+    // Direct JOIN through the junction table — no JSON parsing needed
+    return this.webhooks.findActiveByRuleId(ruleId, true).filter(w => w.webhook_url);
   }
 
   getUserWebhooks = this.webhooks.findByUserId.bind(this.webhooks);

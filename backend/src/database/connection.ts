@@ -42,6 +42,7 @@ function runMigrations(db: Database.Database) {
     createUserTables(db);
     createIndexes(db);
     runDataMigrations(db);
+    migrateWebhookIdsToJunctionTable(db);
   } finally {
     // Re-enable foreign keys
     db.pragma('foreign_keys = ON');
@@ -86,6 +87,17 @@ function createBaseTables(db: Database.Database) {
       sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (rule_id) REFERENCES rules (id) ON DELETE CASCADE,
       UNIQUE(rule_id, sale_id)
+    )
+  `);
+
+  // Rule-webhook junction table (many-to-many)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rule_webhooks (
+      rule_id INTEGER NOT NULL,
+      webhook_id INTEGER NOT NULL,
+      PRIMARY KEY (rule_id, webhook_id),
+      FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE CASCADE,
+      FOREIGN KEY (webhook_id) REFERENCES user_webhooks(id) ON DELETE CASCADE
     )
   `);
 }
@@ -244,6 +256,11 @@ function createIndexes(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_token_blacklist_expiry ON access_token_blacklist(expires_at);
     CREATE INDEX IF NOT EXISTS idx_token_blacklist_user ON access_token_blacklist(user_id);
   `);
+
+  // Rule-webhook junction table indexes
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_rule_webhooks_webhook ON rule_webhooks(webhook_id);
+  `);
 }
 
 function runDataMigrations(db: Database.Database) {
@@ -396,4 +413,54 @@ function runDataMigrations(db: Database.Database) {
     `);
     migrationLogger.info('Migration: Removed plaintext 2FA columns from users table (security fix)');
   }
+}
+/**
+ * Migration: Move webhook_ids from JSON TEXT column to rule_webhooks junction table
+ * This provides proper FK constraints and enables JOINs instead of app-level JSON parsing
+ */
+function migrateWebhookIdsToJunctionTable(db: Database.Database) {
+  // Check if there are still rules with non-null webhook_ids TEXT column
+  const hasWebhookIdsColumn = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('rules') WHERE name='webhook_ids'
+  `).get() as { count: number };
+
+  if (hasWebhookIdsColumn.count === 0) return; // Column already removed
+
+  // Check if migration is needed (any rules with non-null webhook_ids that haven't been migrated)
+  const rulesToMigrate = db.prepare(`
+    SELECT id, webhook_ids FROM rules WHERE webhook_ids IS NOT NULL AND webhook_ids != '[]' AND webhook_ids != ''
+  `).all() as Array<{ id: number; webhook_ids: string }>;
+
+  // Check if junction table already has data (migration already ran)
+  const junctionCount = db.prepare('SELECT COUNT(*) as count FROM rule_webhooks').get() as { count: number };
+
+  if (rulesToMigrate.length > 0 && junctionCount.count === 0) {
+    // Migrate data from JSON TEXT to junction table
+    const insertStmt = db.prepare('INSERT OR IGNORE INTO rule_webhooks (rule_id, webhook_id) VALUES (?, ?)');
+    
+    const migrateTransaction = db.transaction(() => {
+      let migratedCount = 0;
+      for (const rule of rulesToMigrate) {
+        try {
+          const webhookIds = JSON.parse(rule.webhook_ids) as number[];
+          for (const webhookId of webhookIds) {
+            insertStmt.run(rule.id, webhookId);
+            migratedCount++;
+          }
+        } catch {
+          // Skip rules with malformed JSON
+          migrationLogger.warn(`Migration: Skipped rule ${rule.id} with malformed webhook_ids JSON`);
+        }
+      }
+      return migratedCount;
+    });
+
+    const count = migrateTransaction();
+    if (count > 0) {
+      migrationLogger.info(`Migration: Migrated ${count} webhook associations from JSON to rule_webhooks junction table`);
+    }
+  }
+
+  // Clear the old TEXT column (keep column for backward compat, just null it out)
+  db.exec(`UPDATE rules SET webhook_ids = NULL WHERE webhook_ids IS NOT NULL`);
 }

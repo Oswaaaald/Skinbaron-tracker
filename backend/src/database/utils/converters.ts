@@ -3,6 +3,7 @@ import { decryptData } from './encryption.js';
 
 /**
  * Converts SQLite RuleRow to Rule model
+ * Note: webhook_ids is populated by RulesRepository from the junction table, not from the row
  */
 export function rowToRule(row: RuleRow): Rule {
   return {
@@ -16,7 +17,7 @@ export function rowToRule(row: RuleRow): Rule {
     stattrak_filter: row.stattrak_filter as 'all' | 'only' | 'exclude',
     souvenir_filter: row.souvenir_filter as 'all' | 'only' | 'exclude',
     sticker_filter: row.sticker_filter as 'all' | 'only' | 'exclude',
-    webhook_ids: row.webhook_ids ? (JSON.parse(row.webhook_ids) as number[]) : [],
+    webhook_ids: [],
     enabled: Boolean(row.enabled),
     created_at: row.created_at,
     updated_at: row.updated_at,
