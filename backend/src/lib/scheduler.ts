@@ -197,7 +197,7 @@ export class AlertScheduler {
         maxWear: rule.max_wear || undefined,
         statTrak: statTrakParam,
         souvenir: souvenirParam,
-        limit: 1000, // High limit to catch all matching items
+        limit: 250, // SkinBaron page size — balances coverage vs response time
       });
 
       // Get existing alerts for this rule to track changes
