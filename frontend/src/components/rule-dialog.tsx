@@ -39,6 +39,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { ItemCombobox } from "@/components/ui/item-combobox"
 import { useApiMutation } from "@/hooks/use-api-mutation"
+import { useNumericInputHandlers } from "@/hooks/use-numeric-input"
 import { useToast } from "@/hooks/use-toast"
 import { extractErrorMessage } from "@/lib/utils"
 import { QUERY_KEYS } from "@/lib/constants"
@@ -317,7 +318,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_price"
-                render={({ field }) => (
+                render={({ field }) => {
+                  const handlers = useNumericInputHandlers({ min: 0, onCommit: field.onChange, setDisplay: setMinPriceDisplay })
+                  return (
                   <FormItem>
                     <FormLabel>Min Price (€)</FormLabel>
                     <FormControl>
@@ -325,45 +328,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 10.50"
                         value={minPriceDisplay}
-                        onChange={(e) => {
-                          setMinPriceDisplay(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = e.currentTarget.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setMinPriceDisplay('')
-                            } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0) {
-                                const rounded = Math.round(num * 100) / 100
-                                field.onChange(rounded)
-                                setMinPriceDisplay(rounded.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setMinPriceDisplay('')
-                              }
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                            setMinPriceDisplay('')
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0) {
-                              const rounded = Math.round(num * 100) / 100
-                              field.onChange(rounded)
-                              setMinPriceDisplay(rounded.toString())
-                            } else {
-                              field.onChange(undefined)
-                              setMinPriceDisplay('')
-                            }
-                          }
-                        }}
+                        {...handlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -372,13 +337,15 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}
+                )}}
               />
 
               <FormField
                 control={form.control}
                 name="max_price"
-                render={({ field }) => (
+                render={({ field }) => {
+                  const handlers = useNumericInputHandlers({ min: 0, onCommit: field.onChange, setDisplay: setMaxPriceDisplay })
+                  return (
                   <FormItem>
                     <FormLabel>Max Price (€)</FormLabel>
                     <FormControl>
@@ -386,45 +353,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 50"
                         value={maxPriceDisplay}
-                        onChange={(e) => {
-                          setMaxPriceDisplay(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = e.currentTarget.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setMaxPriceDisplay('')
-                            } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0) {
-                                const rounded = Math.round(num * 100) / 100
-                                field.onChange(rounded)
-                                setMaxPriceDisplay(rounded.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setMaxPriceDisplay('')
-                              }
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                            setMaxPriceDisplay('')
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0) {
-                              const rounded = Math.round(num * 100) / 100
-                              field.onChange(rounded)
-                              setMaxPriceDisplay(rounded.toString())
-                            } else {
-                              field.onChange(undefined)
-                              setMaxPriceDisplay('')
-                            }
-                          }
-                        }}
+                        {...handlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -433,7 +362,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}
+                )}}
               />
             </div>
 
@@ -442,7 +371,9 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_wear"
-                render={({ field }) => (
+                render={({ field }) => {
+                  const handlers = useNumericInputHandlers({ min: 0, max: 100, onCommit: field.onChange, setDisplay: setMinWearDisplay })
+                  return (
                   <FormItem>
                     <FormLabel>Min Wear (0-100%)</FormLabel>
                     <FormControl>
@@ -450,45 +381,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 15"
                         value={minWearDisplay}
-                        onChange={(e) => {
-                          setMinWearDisplay(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = e.currentTarget.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setMinWearDisplay('')
-                            } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0 && num <= 100) {
-                                const rounded = Math.round(num * 100) / 100
-                                field.onChange(rounded)
-                                setMinWearDisplay(rounded.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setMinWearDisplay('')
-                              }
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                            setMinWearDisplay('')
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              const rounded = Math.round(num * 100) / 100
-                              field.onChange(rounded)
-                              setMinWearDisplay(rounded.toString())
-                            } else {
-                              field.onChange(undefined)
-                              setMinWearDisplay('')
-                            }
-                          }
-                        }}
+                        {...handlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -497,13 +390,15 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}
+                )}}
               />
 
               <FormField
                 control={form.control}
                 name="max_wear"
-                render={({ field }) => (
+                render={({ field }) => {
+                  const handlers = useNumericInputHandlers({ min: 0, max: 100, onCommit: field.onChange, setDisplay: setMaxWearDisplay })
+                  return (
                   <FormItem>
                     <FormLabel>Max Wear (0-100%)</FormLabel>
                     <FormControl>
@@ -511,45 +406,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 85"
                         value={maxWearDisplay}
-                        onChange={(e) => {
-                          setMaxWearDisplay(e.target.value)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = e.currentTarget.value.trim()
-                            if (val === '') {
-                              field.onChange(undefined)
-                              setMaxWearDisplay('')
-                            } else {
-                              const num = parseFloat(val)
-                              if (!isNaN(num) && num >= 0 && num <= 100) {
-                                const rounded = Math.round(num * 100) / 100
-                                field.onChange(rounded)
-                                setMaxWearDisplay(rounded.toString())
-                              } else {
-                                field.onChange(undefined)
-                                setMaxWearDisplay('')
-                              }
-                            }
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const val = e.target.value.trim()
-                          if (val === '') {
-                            field.onChange(undefined)
-                            setMaxWearDisplay('')
-                          } else {
-                            const num = parseFloat(val)
-                            if (!isNaN(num) && num >= 0 && num <= 100) {
-                              const rounded = Math.round(num * 100) / 100
-                              field.onChange(rounded)
-                              setMaxWearDisplay(rounded.toString())
-                            } else {
-                              field.onChange(undefined)
-                              setMaxWearDisplay('')
-                            }
-                          }
-                        }}
+                        {...handlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -558,7 +415,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}
+                )}}
               />
             </div>
 

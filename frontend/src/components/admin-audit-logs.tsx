@@ -25,7 +25,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { QUERY_KEYS, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
 import { formatRelativeDate, formatEventData } from "@/lib/formatters"
 
@@ -125,9 +125,7 @@ export function AdminAuditLogs() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center py-8">
-            <LoadingSpinner />
-          </div>
+          <LoadingState variant="inline" />
         </CardContent>
       </Card>
     );

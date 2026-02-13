@@ -2,7 +2,7 @@
 
 import { AlertsGrid } from "@/components/alerts-grid"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -146,12 +146,7 @@ function AlertsContent() {
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="card" />
   }
 
   return (
@@ -172,12 +167,7 @@ export default function HomePage() {
   
   // Show loading state while checking authentication
   if (isLoading || !isReady) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="page" />
   }
   
   if (!isAuthenticated) {

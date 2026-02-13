@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LoadingState } from '@/components/ui/loading-state'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { 
   Dialog,
@@ -274,12 +275,7 @@ export function ProfileSettings() {
   }
 
   if (isLoadingStats) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="card" />
   }
 
   return (

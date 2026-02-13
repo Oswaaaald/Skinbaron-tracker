@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { LoadingState } from '@/components/ui/loading-state'
 import Link from 'next/link'
 
 interface ProtectedRouteProps {
@@ -23,22 +23,12 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
 
   // Show loading spinner while checking authentication status
   if (isLoading || !isReady) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="page" />
   }
 
   // Redirect if not authenticated (handled by useEffect)
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Redirecting...</p>
-      </div>
-    )
+    return <LoadingState variant="page" message="Redirecting..." />
   }
 
   // Check admin requirement

@@ -5,19 +5,14 @@ import { Button } from "@/components/ui/button"
 import { RulesTable } from "@/components/rules-table"
 import { RuleDialog } from "@/components/rule-dialog"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 export default function RulesPage() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="page" />
   }
 
   return (

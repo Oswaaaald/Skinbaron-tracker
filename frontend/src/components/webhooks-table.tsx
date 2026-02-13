@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { LoadingState } from '@/components/ui/loading-state'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -244,12 +245,7 @@ export function WebhooksTable() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-[400px] flex flex-col items-center justify-center">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="section" />
   }
 
   const hasWebhooks = webhooks && webhooks.length > 0

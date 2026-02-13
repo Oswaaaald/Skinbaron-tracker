@@ -4,7 +4,7 @@ import { AuthForm } from "@/components/auth-form"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useEffect } from "react"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,12 +17,7 @@ export default function LoginPage() {
   }, [isAuthenticated, router])
 
   if (isLoading || !isReady || isAuthenticated) {
-    return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="page" />
   }
 
   return (

@@ -15,7 +15,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 export function SecurityHistory() {
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
@@ -49,9 +49,7 @@ export function SecurityHistory() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center py-8">
-            <LoadingSpinner />
-          </div>
+          <LoadingState variant="inline" />
         </CardContent>
       </Card>
     );

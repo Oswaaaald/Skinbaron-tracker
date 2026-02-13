@@ -13,7 +13,7 @@ import {
 import { apiClient, type ApiResponse, type SystemStats as SystemStatsType } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 import { formatUptime, formatSystemDate } from "@/lib/formatters"
 import { QUERY_KEYS, POLL_INTERVAL } from "@/lib/constants"
 
@@ -47,12 +47,7 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
 
 
   if (shouldFetch && isLoadingStatus) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="card" />
   }
 
   const status = prefetched?.data || statusResponse?.data

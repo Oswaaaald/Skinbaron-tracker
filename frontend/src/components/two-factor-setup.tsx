@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LoadingState } from '@/components/ui/loading-state'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AlertCircle, CheckCircle, Copy, Shield } from 'lucide-react'
 import { apiClient } from '@/lib/api'
@@ -152,9 +153,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
         {step === 'qr' && (
           <div className="space-y-4">
             {setupLoading ? (
-              <div className="flex justify-center py-8">
-                <LoadingSpinner size="lg" />
-              </div>
+              <LoadingState variant="inline" />
             ) : setupData ? (
               <>
                 <div className="flex justify-center p-4 bg-white rounded-lg">

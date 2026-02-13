@@ -2,18 +2,13 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import { ProfileSettings } from "@/components/profile-settings"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 export default function SettingsPage() {
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground mt-2">Loading...</p>
-      </div>
-    )
+    return <LoadingState variant="page" />
   }
 
   return (
