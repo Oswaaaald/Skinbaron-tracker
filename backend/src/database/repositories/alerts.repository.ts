@@ -129,7 +129,7 @@ export class AlertsRepository {
       JOIN rules r ON a.rule_id = r.id 
       WHERE r.user_id = ?
     `;
-    const params: any[] = [userId];
+    const params: (string | number)[] = [userId];
 
     // Add item name filter
     if (options?.itemName) {
