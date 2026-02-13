@@ -333,7 +333,7 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token_expires_at?: number } & UserProfile>> {
+  async login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token_expires_at?: number; requires_2fa?: boolean } & UserProfile>> {
     this.hasCalledLogout = false; // Reset logout flag on new login
     return this.request(`/api/auth/login`, {
       method: 'POST',
@@ -344,7 +344,7 @@ class ApiClient {
       }, false);
   }
 
-  async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number } & Partial<UserProfile>>> {
+  async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number; token?: string } & Partial<UserProfile>>> {
     this.hasCalledLogout = false; // Reset logout flag on new register
     return this.request(`/api/auth/register`, {
       method: 'POST',

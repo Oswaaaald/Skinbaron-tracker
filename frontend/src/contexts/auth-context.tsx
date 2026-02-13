@@ -77,7 +77,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         // Fetch profile; only attempt refresh if we believe a session exists
         const me = await apiClient.getUserProfile({ allowRefresh: hasSessionFlag })
         if (me.success && me.data) {
-          setUser(me.data as User)
+          setUser(me.data)
           // Set session flag on success
           if (typeof window !== 'undefined') {
             localStorage.setItem('has_session', 'true')
@@ -167,11 +167,11 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       const data = await apiClient.login(email, password, totpCode)
 
       if (data.success && data.data) {
-        if ((data.data as { requires_2fa?: boolean }).requires_2fa) {
+        if (data.data.requires_2fa) {
           return { success: false, requires2FA: true }
         }
 
-        const { token_expires_at: _exp, ...userData } = data.data as User & { token_expires_at?: number }
+        const { token_expires_at: _exp, requires_2fa: _r2fa, ...userData } = data.data
         setUser(userData)
         setAccessExpiry(_exp ?? null)
         setIsReady(true)
@@ -199,15 +199,15 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       const data = await apiClient.register(username, email, password)
 
       if (data.success) {
-        if (data.data && !(data.data as { token?: string }).token) {
+        if (data.data && !data.data.token) {
           return {
             success: true,
             error: data.message || 'Registration successful! Your account is awaiting admin approval.',
           }
         }
 
-        if (data.data && (data.data as { token?: string }).token) {
-          const { token_expires_at: _exp, ...userData } = data.data as User & { token_expires_at?: number }
+        if (data.data && data.data.token) {
+          const { token_expires_at: _exp, token: _token, ...userData } = data.data
           setUser(userData as User)
           setAccessExpiry(_exp ?? null)
           setIsReady(true)
