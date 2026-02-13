@@ -5,6 +5,7 @@ import { Github } from "lucide-react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { CookieBanner } from "@/components/cookie-banner";
 import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 
@@ -85,6 +86,7 @@ export default function RootLayout({
                 </footer>
               </div>
               <Toaster />
+              <CookieBanner />
             </QueryProvider>
           </AuthProvider>
         </ThemeProvider>
