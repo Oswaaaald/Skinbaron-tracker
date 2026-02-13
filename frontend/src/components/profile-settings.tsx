@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck } from 'lucide-react'
+import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck, Download } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { usePageVisible } from '@/hooks/use-page-visible'
@@ -555,6 +555,45 @@ export function ProfileSettings() {
               </AlertDescription>
             </Alert>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Data Export (GDPR Art. 20) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Your Data
+          </CardTitle>
+          <CardDescription>Download or delete all your personal data (GDPR)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.
+          </p>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                const response = await apiClient.get('/api/user/data-export')
+                if (response.success && response.data) {
+                  const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `skinbaron-tracker-export-${new Date().toISOString().split('T')[0]}.json`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                  toast({ title: '✅ Data exported', description: 'Your data has been downloaded' })
+                }
+              } catch (error) {
+                toast({ variant: 'destructive', title: '❌ Export failed', description: extractErrorMessage(error, 'Failed to export data') })
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export My Data
+          </Button>
         </CardContent>
       </Card>
 

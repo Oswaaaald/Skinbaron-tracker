@@ -351,6 +351,105 @@ export default function userRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * GET /api/user/data-export - GDPR data export (Art. 20 data portability)
+   */
+  fastify.get('/data-export', {
+    schema: {
+      description: 'Export all personal data (GDPR Art. 20)',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const user = store.getUserById(userId);
+
+      if (!user) {
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+      }
+
+      // Collect all user data
+      const rules = store.getRulesByUserId(userId);
+      const webhooks = store.getUserWebhooksByUserId(userId, false); // Don't decrypt URLs
+      const alerts = store.getAlertsByUserId(userId, 500, 0);
+      const auditLogs = store.getAuditLogsByUserId(userId, 500);
+
+      const exportData = {
+        profile: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          is_admin: user.is_admin,
+          two_factor_enabled: user.totp_enabled ? true : false,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+        },
+        rules: rules.map(r => ({
+          id: r.id,
+          search_item: r.search_item,
+          min_price: r.min_price,
+          max_price: r.max_price,
+          min_wear: r.min_wear,
+          max_wear: r.max_wear,
+          stattrak_filter: r.stattrak_filter,
+          souvenir_filter: r.souvenir_filter,
+          sticker_filter: r.sticker_filter,
+          enabled: r.enabled,
+          webhook_ids: r.webhook_ids,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        })),
+        webhooks: webhooks.map(w => ({
+          id: w.id,
+          name: w.name,
+          notification_style: w.notification_style,
+          is_active: w.is_active,
+          created_at: w.created_at,
+          updated_at: w.updated_at,
+          // webhook_url omitted for security (encrypted)
+        })),
+        alerts: alerts.map(a => ({
+          id: a.id,
+          rule_id: a.rule_id,
+          item_name: a.item_name,
+          price: a.price,
+          wear_value: a.wear_value,
+          stattrak: a.stattrak,
+          souvenir: a.souvenir,
+          sale_id: a.sale_id,
+          sent_at: a.sent_at,
+        })),
+        audit_logs: auditLogs.map(l => ({
+          id: l.id,
+          event_type: l.event_type,
+          ip_address: l.ip_address,
+          created_at: l.created_at,
+        })),
+        exported_at: new Date().toISOString(),
+      };
+
+      // Log the export action
+      store.createAuditLog(userId, 'data_export', undefined, getClientIp(request));
+
+      return reply.status(200).send({
+        success: true,
+        data: exportData,
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Data export');
+    }
+  });
+
+  /**
    * DELETE /api/user/account - Delete current user account
    */
   fastify.delete('/account', {
