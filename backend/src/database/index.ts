@@ -149,6 +149,7 @@ export class Store {
   cleanupRefreshTokens = this.auth.cleanupRefreshTokens.bind(this.auth);
   blacklistAccessToken = this.auth.blacklistAccessToken.bind(this.auth);
   isAccessTokenBlacklisted = this.auth.isAccessTokenBlacklisted.bind(this.auth);
+  cleanupExpiredBlacklistTokens = this.auth.cleanupExpiredBlacklistTokens.bind(this.auth);
 
   // Audit
   createAuditLog = this.audit.createAuditLog.bind(this.audit);

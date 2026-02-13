@@ -116,6 +116,13 @@ export class AlertScheduler {
         }
       }
 
+      // Clean expired blacklisted access tokens periodically (every run)
+      try {
+        store.cleanupExpiredBlacklistTokens();
+      } catch (error) {
+        this.logger.error({ error }, '[Scheduler] Failed to cleanup expired blacklist tokens');
+      }
+
       // Get all enabled rules
       const rules = store.getEnabledRules();
       if (rules.length === 0) {

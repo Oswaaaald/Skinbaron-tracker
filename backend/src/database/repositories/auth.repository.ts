@@ -78,14 +78,13 @@ export class AuthRepository {
   }
 
   isAccessTokenBlacklisted(jti: string): boolean {
-    // Cleanup expired tokens first
-    const cleanupStmt = this.db.prepare(`
-      DELETE FROM access_token_blacklist WHERE expires_at < CURRENT_TIMESTAMP
-    `);
-    cleanupStmt.run();
-
-    const stmt = this.db.prepare('SELECT 1 FROM access_token_blacklist WHERE jti = ?');
+    const stmt = this.db.prepare('SELECT 1 FROM access_token_blacklist WHERE jti = ? AND expires_at >= CURRENT_TIMESTAMP');
     const row = stmt.get(jti) as { 1: number } | undefined;
     return Boolean(row);
+  }
+
+  cleanupExpiredBlacklistTokens(): void {
+    const stmt = this.db.prepare('DELETE FROM access_token_blacklist WHERE expires_at < CURRENT_TIMESTAMP');
+    stmt.run();
   }
 }
