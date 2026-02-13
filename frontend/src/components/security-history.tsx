@@ -16,14 +16,16 @@ import {
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingState } from "@/components/ui/loading-state"
+import { usePageVisible } from "@/hooks/use-page-visible"
 
 export function SecurityHistory() {
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+  const isVisible = usePageVisible();
 
   const { data, isLoading, error } = useQuery({
     queryKey: [QUERY_KEYS.USER_AUDIT_LOGS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserAuditLogs(50), 'Failed to load audit logs'),
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: isVisible ? 60000 : false, // Refresh every minute when visible
   });
 
   const toggleExpanded = (logId: number) => {

@@ -24,6 +24,7 @@ import {
 import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
+import { usePageVisible } from '@/hooks/use-page-visible'
 import { TwoFactorSetup } from '@/components/two-factor-setup'
 import { SecurityHistory } from '@/components/security-history'
 import { useFormState } from '@/hooks/use-form-state'
@@ -38,6 +39,7 @@ interface UserStats {
 
 export function ProfileSettings() {
   const { user, logout, updateUser, isReady, isAuthenticated } = useAuth()
+  const isVisible = usePageVisible()
   const { state: formState, setError, setSuccess, clear } = useFormState()
   const { toast } = useToast()
   
@@ -70,7 +72,7 @@ export function ProfileSettings() {
     },
     enabled: isReady && isAuthenticated,
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: isVisible ? 30_000 : false,
     refetchOnWindowFocus: true,
   })
 

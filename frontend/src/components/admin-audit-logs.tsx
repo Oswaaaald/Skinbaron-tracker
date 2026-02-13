@@ -25,6 +25,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
+import { usePageVisible } from "@/hooks/use-page-visible"
 import { LoadingState } from "@/components/ui/loading-state"
 import { QUERY_KEYS, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
 import { formatRelativeDate, formatEventData } from "@/lib/formatters"
@@ -36,6 +37,7 @@ export function AdminAuditLogs() {
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [limit, setLimit] = useState<number>(100);
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+  const isVisible = usePageVisible();
 
   // Search users with debounce
   const { data: searchResults } = useQuery({
@@ -67,7 +69,7 @@ export function AdminAuditLogs() {
       }), 'Failed to load audit logs');
       return result;
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: isVisible ? 30000 : false, // Refresh every 30 seconds when visible
     notifyOnChangeProps: ['data', 'error'],
     refetchOnMount: 'always', // Force refresh to get new backend data
     refetchOnWindowFocus: false,

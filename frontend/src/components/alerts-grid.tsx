@@ -18,6 +18,7 @@ import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { formatPrice, formatShortDate } from "@/lib/formatters"
 import { useAuth } from "@/contexts/auth-context"
+import { usePageVisible } from "@/hooks/use-page-visible"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ALERTS_PAGE_SIZE, POLL_INTERVAL, QUERY_KEYS } from "@/lib/constants"
 
@@ -54,6 +55,7 @@ export function AlertsGrid() {
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
+  const isVisible = usePageVisible()
 
   const handleClearAllAlerts = useCallback(() => {
     setClearConfirmOpen(true)
@@ -94,7 +96,7 @@ export function AlertsGrid() {
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated,
     staleTime: 0,
-    refetchInterval: POLL_INTERVAL,
+    refetchInterval: isVisible ? POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     notifyOnChangeProps: ['data', 'error'],
