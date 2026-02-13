@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,25 @@ import { useAuth } from "@/contexts/auth-context"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ALERTS_PAGE_SIZE, POLL_INTERVAL, QUERY_KEYS } from "@/lib/constants"
 
+// Clean item name - remove StatTrak, Souvenir, and wear conditions
+function cleanItemName(name: string): string {
+  let cleaned = name
+  cleaned = cleaned.replace(/^StatTrak™\s+/i, '')
+  cleaned = cleaned.replace(/^Souvenir\s+/i, '')
+  cleaned = cleaned.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/i, '')
+  return cleaned.trim()
+}
+
+// Get wear condition from wear value
+function getWearCondition(wearValue?: number): string | null {
+  if (wearValue === undefined) return null
+  if (wearValue < 0.07) return 'fn'
+  if (wearValue < 0.15) return 'mw'
+  if (wearValue < 0.38) return 'ft'
+  if (wearValue < 0.45) return 'ww'
+  return 'bs'
+}
+
 export function AlertsGrid() {
   const [page, setPage] = useState(0)
   const [itemNameFilter, setItemNameFilter] = useState<string>('')
@@ -35,32 +54,6 @@ export function AlertsGrid() {
   const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
-
-  // Clean item name - remove StatTrak, Souvenir, and wear conditions
-  const cleanItemName = (name: string): string => {
-    let cleaned = name
-    
-    // Remove StatTrak™ prefix
-    cleaned = cleaned.replace(/^StatTrak™\s+/i, '')
-    
-    // Remove Souvenir prefix
-    cleaned = cleaned.replace(/^Souvenir\s+/i, '')
-    
-    // Remove wear conditions in parentheses
-    cleaned = cleaned.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/i, '')
-    
-    return cleaned.trim()
-  }
-
-  // Get wear condition from wear value
-  const getWearCondition = (wearValue?: number): string | null => {
-    if (wearValue === undefined) return null
-    if (wearValue < 0.07) return 'fn'
-    if (wearValue < 0.15) return 'mw'
-    if (wearValue < 0.38) return 'ft'
-    if (wearValue < 0.45) return 'ww'
-    return 'bs'
-  }
 
   const handleClearAllAlerts = useCallback(() => {
     setClearConfirmOpen(true)
@@ -110,76 +103,80 @@ export function AlertsGrid() {
   const allAlerts = alertsResponse?.data || []
 
   // Get unique CLEANED item names from fetched alerts
-  const itemNames = Array.from(new Set(allAlerts.map(a => cleanItemName(a.item_name)))).sort()
+  const itemNames = useMemo(
+    () => Array.from(new Set(allAlerts.map(a => cleanItemName(a.item_name)))).sort(),
+    [allAlerts]
+  )
 
-  // Client-side filtering and sorting
-  let filteredAlerts = [...allAlerts]
+  // Client-side filtering and sorting (memoized)
+  const filteredAlerts = useMemo(() => {
+    let result = [...allAlerts]
 
-  // Apply item name filter (compare cleaned names)
-  if (itemNameFilter) {
-    filteredAlerts = filteredAlerts.filter(alert => cleanItemName(alert.item_name) === itemNameFilter)
-  }
-
-  // Apply StatTrak filter
-  if (statTrakFilter === 'only') {
-    filteredAlerts = filteredAlerts.filter(alert => alert.stattrak)
-  } else if (statTrakFilter === 'exclude') {
-    filteredAlerts = filteredAlerts.filter(alert => !alert.stattrak)
-  }
-
-  // Apply Souvenir filter
-  if (souvenirFilter === 'only') {
-    filteredAlerts = filteredAlerts.filter(alert => alert.souvenir)
-  } else if (souvenirFilter === 'exclude') {
-    filteredAlerts = filteredAlerts.filter(alert => !alert.souvenir)
-  }
-
-  // Apply Wear condition filter
-  if (wearFilter !== 'all') {
-    if (wearFilter === 'no_wear') {
-      filteredAlerts = filteredAlerts.filter(alert => alert.wear_value === undefined)
-    } else {
-      filteredAlerts = filteredAlerts.filter(alert => {
-        const condition = getWearCondition(alert.wear_value)
-        return condition === wearFilter
-      })
+    // Apply item name filter (compare cleaned names)
+    if (itemNameFilter) {
+      result = result.filter(alert => cleanItemName(alert.item_name) === itemNameFilter)
     }
-  }
 
-  // Apply Sticker filter
-  if (stickerFilter === 'only') {
-    filteredAlerts = filteredAlerts.filter(alert => alert.has_stickers)
-  } else if (stickerFilter === 'exclude') {
-    filteredAlerts = filteredAlerts.filter(alert => !alert.has_stickers)
-  }
-
-  // Apply sorting
-  filteredAlerts.sort((a, b) => {
-    switch (sortBy) {
-      case 'price_asc':
-        return a.price - b.price
-      case 'price_desc':
-        return b.price - a.price
-      case 'wear_asc':
-        // Items without wear go to the end
-        if (a.wear_value === undefined && b.wear_value === undefined) return 0
-        if (a.wear_value === undefined) return 1
-        if (b.wear_value === undefined) return -1
-        return a.wear_value - b.wear_value
-      case 'wear_desc':
-        // Items without wear go to the end
-        if (a.wear_value === undefined && b.wear_value === undefined) return 0
-        if (a.wear_value === undefined) return 1
-        if (b.wear_value === undefined) return -1
-        return b.wear_value - a.wear_value
-      case 'date':
-      default:
-        // Sort by sent_at descending (newest first)
-        const dateA = a.sent_at ? new Date(a.sent_at).getTime() : 0
-        const dateB = b.sent_at ? new Date(b.sent_at).getTime() : 0
-        return dateB - dateA
+    // Apply StatTrak filter
+    if (statTrakFilter === 'only') {
+      result = result.filter(alert => alert.stattrak)
+    } else if (statTrakFilter === 'exclude') {
+      result = result.filter(alert => !alert.stattrak)
     }
-  })
+
+    // Apply Souvenir filter
+    if (souvenirFilter === 'only') {
+      result = result.filter(alert => alert.souvenir)
+    } else if (souvenirFilter === 'exclude') {
+      result = result.filter(alert => !alert.souvenir)
+    }
+
+    // Apply Wear condition filter
+    if (wearFilter !== 'all') {
+      if (wearFilter === 'no_wear') {
+        result = result.filter(alert => alert.wear_value === undefined)
+      } else {
+        result = result.filter(alert => {
+          const condition = getWearCondition(alert.wear_value)
+          return condition === wearFilter
+        })
+      }
+    }
+
+    // Apply Sticker filter
+    if (stickerFilter === 'only') {
+      result = result.filter(alert => alert.has_stickers)
+    } else if (stickerFilter === 'exclude') {
+      result = result.filter(alert => !alert.has_stickers)
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'price_asc':
+          return a.price - b.price
+        case 'price_desc':
+          return b.price - a.price
+        case 'wear_asc':
+          if (a.wear_value === undefined && b.wear_value === undefined) return 0
+          if (a.wear_value === undefined) return 1
+          if (b.wear_value === undefined) return -1
+          return a.wear_value - b.wear_value
+        case 'wear_desc':
+          if (a.wear_value === undefined && b.wear_value === undefined) return 0
+          if (a.wear_value === undefined) return 1
+          if (b.wear_value === undefined) return -1
+          return b.wear_value - a.wear_value
+        case 'date':
+        default:
+          const dateA = a.sent_at ? new Date(a.sent_at).getTime() : 0
+          const dateB = b.sent_at ? new Date(b.sent_at).getTime() : 0
+          return dateB - dateA
+      }
+    })
+
+    return result
+  }, [allAlerts, itemNameFilter, statTrakFilter, souvenirFilter, wearFilter, stickerFilter, sortBy])
 
   // Client-side pagination
   const startIndex = page * ALERTS_PAGE_SIZE
