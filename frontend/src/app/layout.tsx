@@ -70,6 +70,7 @@ export default function RootLayout({
                   <div className="container mx-auto px-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span>© 2026 SkinBaron Tracker. Personal non-commercial project.</span>
                     <div className="flex gap-4">
+                      <Link className="hover:text-foreground transition-colors" href="/tos">Terms of Service</Link>
                       <Link className="hover:text-foreground transition-colors" href="/legal">Legal Notice</Link>
                       <Link className="hover:text-foreground transition-colors" href="/privacy">Privacy Policy</Link>
                       <a 
