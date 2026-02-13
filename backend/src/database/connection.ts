@@ -11,6 +11,9 @@ export function getDatabase(): Database.Database {
     // Enable WAL mode for better concurrency
     dbInstance.pragma('journal_mode = WAL');
     
+    // Prevent SQLITE_BUSY errors under concurrent writes (wait up to 5 seconds)
+    dbInstance.pragma('busy_timeout = 5000');
+    
     // Enable foreign key constraints
     dbInstance.pragma('foreign_keys = ON');
     
@@ -197,7 +200,6 @@ function createUserTables(db: Database.Database) {
 function createIndexes(db: Database.Database) {
   // Rules indexes
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_rules_user_id ON rules (user_id);
     CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules (enabled);
     CREATE INDEX IF NOT EXISTS idx_rules_user_enabled ON rules (user_id, enabled);
   `);
@@ -220,13 +222,11 @@ function createIndexes(db: Database.Database) {
 
   // Webhooks indexes
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_webhooks_user_id ON user_webhooks(user_id);
     CREATE INDEX IF NOT EXISTS idx_webhooks_user_active ON user_webhooks(user_id, is_active);
   `);
 
   // Audit log indexes
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
     CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log(event_type);
     CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
     CREATE INDEX IF NOT EXISTS idx_audit_log_user_created ON audit_log(user_id, created_at);
@@ -244,7 +244,6 @@ function createIndexes(db: Database.Database) {
 
   // Refresh tokens indexes
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expiry ON refresh_tokens(expires_at);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked ON refresh_tokens(revoked_at);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_expires ON refresh_tokens(user_id, expires_at);
