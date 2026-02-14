@@ -237,6 +237,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         }
       }
 
+      // Prevent modifying admin status of super admins (would create inconsistent state)
+      if (user.is_super_admin) {
+        throw Errors.forbidden('Cannot modify administrator privileges of a super administrator');
+      }
+
       // If removing admin, check if this is the last admin
       if (user.is_admin && !is_admin) {
         const adminCount = store.users.countAdmins();
