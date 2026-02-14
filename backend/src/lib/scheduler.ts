@@ -240,8 +240,11 @@ export class AlertScheduler {
     const statTrakFilters = new Set(rules.map(r => r.stattrak_filter));
     const souvenirFilters = new Set(rules.map(r => r.souvenir_filter));
 
+    const firstRule = rules[0];
+    if (!firstRule) throw new Error('Empty rules group');
+
     return {
-      search_item: rules[0].search_item,
+      search_item: firstRule.search_item,
       min: anyNoMin ? undefined : minPrice,
       max: anyNoMax ? undefined : maxPrice,
       minWear: anyNoMinWear ? undefined : minWear,

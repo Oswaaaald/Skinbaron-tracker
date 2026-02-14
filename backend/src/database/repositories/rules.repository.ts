@@ -64,6 +64,8 @@ export class RulesRepository {
         enabled: ruleData.enabled,
       }).returning();
 
+      if (!rule) throw new Error('Failed to insert rule');
+
       if (ruleData.webhook_ids.length > 0) {
         await tx.insert(ruleWebhooks).values(
           ruleData.webhook_ids.map(webhookId => ({
