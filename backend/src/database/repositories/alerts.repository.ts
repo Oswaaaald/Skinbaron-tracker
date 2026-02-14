@@ -120,6 +120,7 @@ export class AlertsRepository {
     limit: number = 50, 
     offset: number = 0,
     options?: {
+      ruleId?: number;
       itemName?: string;
       sortBy?: 'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc';
     }
@@ -130,6 +131,12 @@ export class AlertsRepository {
       WHERE r.user_id = ?
     `;
     const params: (string | number)[] = [userId];
+
+    // Add rule_id filter (SQL instead of JS filtering)
+    if (options?.ruleId !== undefined) {
+      query += ` AND a.rule_id = ?`;
+      params.push(options.ruleId);
+    }
 
     // Add item name filter
     if (options?.itemName) {

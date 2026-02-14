@@ -3,9 +3,17 @@ import type { User, CreateUser, UserRow } from '../schemas.js';
 import { CreateUserSchema } from '../schemas.js';
 import { rowToUser } from '../utils/converters.js';
 import { encryptData, decryptData } from '../utils/encryption.js';
+import pino from 'pino';
+
+const logger = pino({ name: 'users-repository' });
 
 export class UsersRepository {
   constructor(private db: Database.Database) {}
+
+  /** Structured warning log instead of console.warn */
+  private logWarning(message: string, error: unknown): void {
+    logger.warn({ err: error instanceof Error ? error.message : String(error) }, message);
+  }
 
   create(user: CreateUser): User {
     const validated = CreateUserSchema.parse(user);
@@ -38,7 +46,7 @@ export class UsersRepository {
         user.totp_secret = decryptData(user.totp_secret_encrypted);
       } catch (error) {
         // If decryption fails (wrong key or corrupted data), leave encrypted
-        console.warn(`Failed to decrypt 2FA secret for user ${user.id}:`, error instanceof Error ? error.message : 'Unknown error');
+        this.logWarning(`Failed to decrypt 2FA secret for user ${user.id}`, error);
       }
     }
     if (user.recovery_codes_encrypted) {
@@ -46,7 +54,7 @@ export class UsersRepository {
         user.recovery_codes = decryptData(user.recovery_codes_encrypted);
       } catch (error) {
         // If decryption fails (wrong key or corrupted data), leave encrypted
-        console.warn(`Failed to decrypt recovery codes for user ${user.id}:`, error instanceof Error ? error.message : 'Unknown error');
+        this.logWarning(`Failed to decrypt recovery codes for user ${user.id}`, error);
       }
     }
     return user;
@@ -179,6 +187,11 @@ export class UsersRepository {
     const stmt = this.db.prepare('UPDATE users SET is_approved = 1 WHERE id = ?');
     const result = stmt.run(id);
     return result.changes > 0;
+  }
+
+  /** Record ToS acceptance timestamp */
+  acceptTos(id: number): void {
+    this.db.prepare('UPDATE users SET tos_accepted_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
   }
 
   setAdmin(id: number, isAdmin: boolean): boolean {

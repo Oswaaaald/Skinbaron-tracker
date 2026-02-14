@@ -10,6 +10,26 @@ import { z } from 'zod';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 
+/**
+ * Server-side store for pending 2FA secrets.
+ * Keyed by userId → { secret, expiresAt }.
+ * Prevents the client from supplying a secret they control.
+ */
+const pending2FASecrets = new Map<number, { secret: string; expiresAt: number }>();
+const PENDING_2FA_TTL = 10 * 60 * 1000; // 10 minutes
+
+function storePending2FA(userId: number, secret: string): void {
+  pending2FASecrets.set(userId, { secret, expiresAt: Date.now() + PENDING_2FA_TTL });
+}
+
+function consumePending2FA(userId: number): string | null {
+  const entry = pending2FASecrets.get(userId);
+  if (!entry) return null;
+  pending2FASecrets.delete(userId);
+  if (Date.now() > entry.expiresAt) return null;
+  return entry.secret;
+}
+
 /** Get authenticated user or throw - use after authenticate middleware */
 function getAuthUser(request: FastifyRequest) {
   if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
@@ -540,6 +560,9 @@ export default function userRoutes(fastify: FastifyInstance) {
       // Generate QR code
       const qrCode = await QRCode.toDataURL(otpauth);
 
+      // Store secret server-side (client only gets it for display, cannot tamper on enable)
+      storePending2FA(userId, secret);
+
       return reply.status(200).send({
         success: true,
         data: {
@@ -566,10 +589,9 @@ export default function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          secret: { type: 'string' },
           code: { type: 'string' },
         },
-        required: ['secret', 'code'],
+        required: ['code'],
       },
       response: {
         200: {
@@ -592,7 +614,13 @@ export default function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { secret, code } = request.body as { secret: string; code: string };
+      const { code } = request.body as { code: string };
+
+      // Retrieve the secret stored server-side during /2fa/setup
+      const secret = consumePending2FA(userId);
+      if (!secret) {
+        throw new AppError(400, 'No pending 2FA setup found. Please start setup again.', 'NO_PENDING_2FA');
+      }
 
       // Verify the code
       const otp = new OTP({ strategy: 'totp' });

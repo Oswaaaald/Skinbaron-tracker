@@ -56,7 +56,6 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   const enableMutation = useApiMutation(
     async () => {
       const response = await apiClient.post('/api/user/2fa/enable', {
-        secret,
         code: verificationCode,
       })
       if (!response.success) {

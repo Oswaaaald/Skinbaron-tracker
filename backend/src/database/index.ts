@@ -49,6 +49,7 @@ export class Store {
   searchUsers = this.users.searchUsers.bind(this.users);
   getPendingUsers = this.users.findPendingApproval.bind(this.users);
   approveUser = this.users.approve.bind(this.users);
+  acceptTos = this.users.acceptTos.bind(this.users);
   
   rejectUser(userId: number): boolean {
     return this.users.delete(userId);

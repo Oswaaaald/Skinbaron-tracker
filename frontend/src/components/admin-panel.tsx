@@ -10,21 +10,12 @@ import { AlertCircle, Shield, ShieldOff, Trash2, Users } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS } from '@/lib/constants'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
 
 interface UserStats {
@@ -586,84 +577,47 @@ export function AdminPanel() {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete <strong>{deleteDialog.user?.username}</strong>?
-              This will permanently delete their account and all associated data (rules, alerts, webhooks).
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, user: null })}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleteUserMutation.isPending}>
-              {deleteUserMutation.isPending ? <LoadingSpinner size="sm" inline /> : 'Delete User'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        title="Delete User"
+        description={`Are you sure you want to delete ${deleteDialog.user?.username}? This will permanently delete their account and all associated data (rules, alerts, webhooks).`}
+        confirmText={deleteUserMutation.isPending ? 'Deleting...' : 'Delete User'}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
 
       {/* Admin Toggle Confirmation Dialog */}
-      <Dialog open={adminDialog.open} onOpenChange={(open) => setAdminDialog({ ...adminDialog, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {adminDialog.action === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to {adminDialog.action === 'grant' ? 'grant' : 'revoke'} administrator privileges{' '}
-              {adminDialog.action === 'grant' ? 'to' : 'from'} <strong>{adminDialog.user?.username}</strong>?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAdminDialog({ open: false, user: null, action: 'grant' })}>
-              Cancel
-            </Button>
-            <Button onClick={confirmToggleAdmin} disabled={toggleAdminMutation.isPending}>
-              {toggleAdminMutation.isPending ? <LoadingSpinner size="sm" inline /> : 'Confirm'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={adminDialog.open}
+        onOpenChange={(open) => setAdminDialog({ ...adminDialog, open })}
+        title={adminDialog.action === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}
+        description={`Are you sure you want to ${adminDialog.action === 'grant' ? 'grant' : 'revoke'} administrator privileges ${adminDialog.action === 'grant' ? 'to' : 'from'} ${adminDialog.user?.username}?`}
+        confirmText={toggleAdminMutation.isPending ? 'Updating...' : 'Confirm'}
+        variant="default"
+        onConfirm={confirmToggleAdmin}
+      />
 
       {/* Pending User Approval/Reject Dialog */}
-      <Dialog open={pendingUserDialog.open} onOpenChange={(open) => setpendingUserDialog({ ...pendingUserDialog, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {pendingUserDialog.action === 'approve' ? 'Approve User' : 'Reject User'}
-            </DialogTitle>
-            <DialogDescription>
-              {pendingUserDialog.action === 'approve' 
-                ? 'This user will be able to log in and use the application.'
-                : 'This will permanently delete the user registration.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setpendingUserDialog({ open: false, userId: null, action: 'approve' })}>
-              Cancel
-            </Button>
-            <Button 
-              variant={pendingUserDialog.action === 'approve' ? 'default' : 'destructive'}
-              onClick={() => {
-                if (pendingUserDialog.userId) {
-                  if (pendingUserDialog.action === 'approve') {
-                    approveUserMutation.mutate(pendingUserDialog.userId)
-                  } else {
-                    rejectUserMutation.mutate(pendingUserDialog.userId)
-                  }
-                }
-              }}
-              disabled={approveUserMutation.isPending || rejectUserMutation.isPending}
-            >
-              {(approveUserMutation.isPending || rejectUserMutation.isPending) ? <LoadingSpinner size="sm" inline /> : 'Confirm'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={pendingUserDialog.open}
+        onOpenChange={(open) => setpendingUserDialog({ ...pendingUserDialog, open })}
+        title={pendingUserDialog.action === 'approve' ? 'Approve User' : 'Reject User'}
+        description={pendingUserDialog.action === 'approve'
+          ? 'This user will be able to log in and use the application.'
+          : 'This will permanently delete the user registration.'}
+        confirmText={(approveUserMutation.isPending || rejectUserMutation.isPending) ? 'Processing...' : 'Confirm'}
+        variant={pendingUserDialog.action === 'approve' ? 'default' : 'destructive'}
+        onConfirm={() => {
+          if (pendingUserDialog.userId) {
+            if (pendingUserDialog.action === 'approve') {
+              approveUserMutation.mutate(pendingUserDialog.userId)
+            } else {
+              rejectUserMutation.mutate(pendingUserDialog.userId)
+            }
+          }
+        }}
+      />
 
       {/* Scheduler Confirmation Dialog */}
       <ConfirmDialog

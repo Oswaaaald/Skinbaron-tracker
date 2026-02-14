@@ -36,21 +36,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var path = window.location.pathname;
-                  var normalized = path.replace(/\\/+/g, '/');
-                  if (normalized !== path) {
-                    window.location.replace(normalized + window.location.search + window.location.hash);
-                  }
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

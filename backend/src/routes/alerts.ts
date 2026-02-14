@@ -79,26 +79,25 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const query = validateWithZod(AlertsQuerySchema, request.query);
       
-      // Get user's alerts with pagination and filters
-      let alerts = store.getAlertsByUserId(
-        request.user!.id, 
-        query.limit, 
-        query.offset,
-        {
-          itemName: query.item_name,
-          sortBy: query.sort_by,
-        }
-      );
-      
-      // Apply additional filters if provided
+      // Validate rule ownership if rule_id filter is provided
       if (query.rule_id !== undefined) {
-        // Ensure the rule belongs to the user
         const rule = store.getRuleById(query.rule_id);
         if (!rule || rule.user_id !== request.user!.id) {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
-        alerts = alerts.filter(alert => alert.rule_id === query.rule_id);
       }
+
+      // Get user's alerts with pagination and filters (all filtering in SQL)
+      const alerts = store.getAlertsByUserId(
+        request.user!.id, 
+        query.limit, 
+        query.offset,
+        {
+          ruleId: query.rule_id,
+          itemName: query.item_name,
+          sortBy: query.sort_by,
+        }
+      );
       
       return reply.status(200).send({
         success: true,

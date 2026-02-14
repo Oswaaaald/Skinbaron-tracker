@@ -1,5 +1,8 @@
 import type { Rule, Alert, User, UserWebhook, RuleRow, AlertRow, UserRow, WebhookRow } from '../schemas.js';
 import { decryptData } from './encryption.js';
+import pino from 'pino';
+
+const logger = pino({ name: 'converters' });
 
 /**
  * Converts SQLite RuleRow to Rule model
@@ -96,7 +99,7 @@ export function rowToWebhook(row: WebhookRow, decryptUrl: boolean = false): User
     try {
       webhook.webhook_url = decryptData(row.webhook_url_encrypted);
     } catch (error) {
-      console.warn(`Failed to decrypt webhook URL for webhook ${row.id}:`, error instanceof Error ? error.message : 'Unknown error');
+      logger.warn({ err: error instanceof Error ? error.message : 'Unknown error', webhookId: row.id }, 'Failed to decrypt webhook URL');
     }
   }
 

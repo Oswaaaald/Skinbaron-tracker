@@ -283,9 +283,11 @@ async function registerPlugins() {
         appConfig.CORS_ORIGIN,          // Frontend URL
       ];
       
-      // Allow requests with no origin (e.g., mobile apps, Postman)
+      // Reject browser requests without Origin header.
+      // Non-browser clients (curl, Postman) are unaffected by CORS.
+      // CSRF protection guards mutations as a second layer.
       if (!origin) {
-        callback(null, true);
+        callback(new Error('Origin header required'), false);
         return;
       }
       
@@ -312,28 +314,8 @@ async function registerPlugins() {
       'x-ratelimit-reset': true,
     },
     keyGenerator: (request) => {
-      const cfConnectingIp = request.headers['cf-connecting-ip'];
-      if (typeof cfConnectingIp === 'string' && cfConnectingIp.trim()) {
-        return cfConnectingIp.trim();
-      }
-
-      const realIp = request.headers['x-real-ip'];
-      if (typeof realIp === 'string' && realIp.trim()) {
-        return realIp.trim();
-      }
-
-      const forwardedFor = request.headers['x-forwarded-for'];
-      if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
-        const clientIp = forwardedFor.split(',')[0];
-        if (clientIp) {
-          return clientIp.trim();
-        }
-      }
-
-      const cookies = request.cookies as Record<string, string | undefined> | undefined;
-      const accessToken = cookies?.['sb_access'];
-      const refreshToken = cookies?.['sb_refresh'];
-      return accessToken ?? refreshToken ?? request.ip ?? 'unknown';
+      // Use request.ip which respects Fastify's trustProxy setting
+      return request.ip;
     },
     errorResponseBuilder: (request, context) => ({
       statusCode: 429,

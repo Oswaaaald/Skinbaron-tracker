@@ -6,7 +6,7 @@ export default function PrivacyPolicy() {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <Link href="/">
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" aria-label="Go back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
       </Link>
