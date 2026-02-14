@@ -1,227 +1,147 @@
-import type Database from 'better-sqlite3';
-import type { Rule, CreateRule, RuleRow } from '../schemas.js';
-import { CreateRuleSchema } from '../schemas.js';
-import { rowToRule } from '../utils/converters.js';
+import { eq, and, desc, count, inArray } from 'drizzle-orm';
+import { rules, ruleWebhooks } from '../schema.js';
+import type { AppDatabase } from '../connection.js';
+import type { Rule, CreateRule } from '../schema.js';
 
 export class RulesRepository {
-  constructor(private db: Database.Database) {}
+  constructor(private db: AppDatabase) {}
 
-  /**
-   * Load webhook_ids from the junction table for a single rule
-   */
-  private loadWebhookIds(ruleId: number): number[] {
-    const stmt = this.db.prepare('SELECT webhook_id FROM rule_webhooks WHERE rule_id = ?');
-    const rows = stmt.all(ruleId) as Array<{ webhook_id: number }>;
-    return rows.map(r => r.webhook_id);
-  }
+  private async attachWebhookIds(ruleRows: Array<typeof rules.$inferSelect>): Promise<Rule[]> {
+    if (ruleRows.length === 0) return [];
 
-  /**
-   * Load webhook_ids from the junction table for multiple rules in one query
-   */
-  private loadWebhookIdsBatch(ruleIds: number[]): Map<number, number[]> {
-    const map = new Map<number, number[]>();
-    if (ruleIds.length === 0) return map;
-    
-    const placeholders = ruleIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`SELECT rule_id, webhook_id FROM rule_webhooks WHERE rule_id IN (${placeholders})`);
-    const rows = stmt.all(...ruleIds) as Array<{ rule_id: number; webhook_id: number }>;
-    
-    for (const row of rows) {
-      const existing = map.get(row.rule_id) ?? [];
-      existing.push(row.webhook_id);
-      map.set(row.rule_id, existing);
+    const ruleIds = ruleRows.map(r => r.id);
+    const webhookLinks = await this.db.select()
+      .from(ruleWebhooks)
+      .where(inArray(ruleWebhooks.rule_id, ruleIds));
+
+    const webhookMap = new Map<number, number[]>();
+    for (const link of webhookLinks) {
+      const existing = webhookMap.get(link.rule_id) ?? [];
+      existing.push(link.webhook_id);
+      webhookMap.set(link.rule_id, existing);
     }
-    
-    return map;
+
+    return ruleRows.map(rule => ({
+      ...rule,
+      webhook_ids: webhookMap.get(rule.id) ?? [],
+    }));
   }
 
-  /**
-   * Set webhook_ids for a rule (replace all associations)
-   */
-  private setWebhookIds(ruleId: number, webhookIds: number[]): void {
-    this.db.prepare('DELETE FROM rule_webhooks WHERE rule_id = ?').run(ruleId);
-    
-    if (webhookIds.length > 0) {
-      const insertStmt = this.db.prepare('INSERT OR IGNORE INTO rule_webhooks (rule_id, webhook_id) VALUES (?, ?)');
-      for (const webhookId of webhookIds) {
-        insertStmt.run(ruleId, webhookId);
-      }
-    }
+  async findById(id: number): Promise<Rule | null> {
+    const [rule] = await this.db.select().from(rules).where(eq(rules.id, id)).limit(1);
+    if (!rule) return null;
+    const [withWebhooks] = await this.attachWebhookIds([rule]);
+    return withWebhooks ?? null;
   }
 
-  /**
-   * Convert a rule row + webhook_ids into a full Rule object
-   */
-  private toRuleWithWebhooks(row: RuleRow, webhookIds: number[]): Rule {
-    const rule = rowToRule(row);
-    rule.webhook_ids = webhookIds;
-    return rule;
+  async findByUserId(userId: number): Promise<Rule[]> {
+    const ruleRows = await this.db.select()
+      .from(rules)
+      .where(eq(rules.user_id, userId))
+      .orderBy(desc(rules.created_at));
+    return this.attachWebhookIds(ruleRows);
   }
 
-  create(rule: CreateRule): Rule {
-    const validated = CreateRuleSchema.parse(rule);
-    
-    // Wrap in transaction to ensure atomicity (rule + webhook associations)
-    const createTransaction = this.db.transaction(() => {
-      const stmt = this.db.prepare(`
-        INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                          stattrak_filter, souvenir_filter, sticker_filter, enabled)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+  async findAllEnabled(): Promise<Rule[]> {
+    const ruleRows = await this.db.select()
+      .from(rules)
+      .where(eq(rules.enabled, true));
+    return this.attachWebhookIds(ruleRows);
+  }
 
-      const result = stmt.run(
-        validated.user_id,
-        validated.search_item,
-        validated.min_price ?? null,
-        validated.max_price ?? null,
-        validated.min_wear ?? null,
-        validated.max_wear ?? null,
-        validated.stattrak_filter,
-        validated.souvenir_filter,
-        validated.sticker_filter,
-        validated.enabled ? 1 : 0
-      );
+  async create(ruleData: CreateRule): Promise<Rule> {
+    return this.db.transaction(async (tx) => {
+      const [rule] = await tx.insert(rules).values({
+        user_id: ruleData.user_id,
+        search_item: ruleData.search_item,
+        min_price: ruleData.min_price ?? null,
+        max_price: ruleData.max_price ?? null,
+        min_wear: ruleData.min_wear ?? null,
+        max_wear: ruleData.max_wear ?? null,
+        stattrak_filter: ruleData.stattrak_filter,
+        souvenir_filter: ruleData.souvenir_filter,
+        sticker_filter: ruleData.sticker_filter,
+        enabled: ruleData.enabled,
+      }).returning();
 
-      const ruleId = result.lastInsertRowid as number;
-      
-      // Insert webhook associations into junction table
-      if (validated.webhook_ids && validated.webhook_ids.length > 0) {
-        this.setWebhookIds(ruleId, validated.webhook_ids);
+      if (ruleData.webhook_ids.length > 0) {
+        await tx.insert(ruleWebhooks).values(
+          ruleData.webhook_ids.map(webhookId => ({
+            rule_id: rule!.id,
+            webhook_id: webhookId,
+          }))
+        );
       }
 
-      return ruleId;
+      return { ...rule!, webhook_ids: ruleData.webhook_ids };
     });
-
-    const ruleId = createTransaction();
-    const created = this.findById(ruleId);
-    if (!created) throw new Error('Failed to create rule');
-    return created;
   }
 
-  findById(id: number): Rule | null {
-    const stmt = this.db.prepare('SELECT * FROM rules WHERE id = ?');
-    const row = stmt.get(id) as RuleRow | undefined;
-    if (!row) return null;
-    return this.toRuleWithWebhooks(row, this.loadWebhookIds(id));
+  async update(id: number, updates: Partial<CreateRule>): Promise<Rule | null> {
+    return this.db.transaction(async (tx) => {
+      const { webhook_ids, user_id: _userId, ...ruleUpdates } = updates;
+
+      const [updatedRule] = await tx.update(rules)
+        .set({ ...ruleUpdates, updated_at: new Date() })
+        .where(eq(rules.id, id))
+        .returning();
+
+      if (!updatedRule) return null;
+
+      // Update webhook junctions if provided
+      if (webhook_ids !== undefined) {
+        await tx.delete(ruleWebhooks).where(eq(ruleWebhooks.rule_id, id));
+        if (webhook_ids.length > 0) {
+          await tx.insert(ruleWebhooks).values(
+            webhook_ids.map(wid => ({ rule_id: id, webhook_id: wid }))
+          );
+        }
+      }
+
+      // Fetch current webhook_ids
+      const links = await tx.select({ webhook_id: ruleWebhooks.webhook_id })
+        .from(ruleWebhooks)
+        .where(eq(ruleWebhooks.rule_id, id));
+
+      return { ...updatedRule, webhook_ids: links.map(l => l.webhook_id) };
+    });
   }
 
-  findByUserId(userId: number): Rule[] {
-    const stmt = this.db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY created_at DESC');
-    const rows = stmt.all(userId) as RuleRow[];
-    const webhookMap = this.loadWebhookIdsBatch(rows.map(r => r.id));
-    return rows.map(row => this.toRuleWithWebhooks(row, webhookMap.get(row.id) ?? []));
+  async delete(id: number): Promise<boolean> {
+    const result = await this.db.delete(rules).where(eq(rules.id, id)).returning({ id: rules.id });
+    return result.length > 0;
   }
 
-  findEnabled(): Rule[] {
-    const stmt = this.db.prepare('SELECT * FROM rules WHERE enabled = 1 ORDER BY created_at DESC');
-    const rows = stmt.all() as RuleRow[];
-    const webhookMap = this.loadWebhookIdsBatch(rows.map(r => r.id));
-    return rows.map(row => this.toRuleWithWebhooks(row, webhookMap.get(row.id) ?? []));
-  }
-
-  update(id: number, updates: Partial<CreateRule>): Rule | null {
-    const current = this.findById(id);
-    if (!current) return null;
-
-    const validated = CreateRuleSchema.partial().parse(updates);
-    
-    const fields: string[] = [];
-    const values: (string | number)[] = [];
-
-    if (validated.search_item !== undefined) {
-      fields.push('search_item = ?');
-      values.push(validated.search_item);
-    }
-
-    if (validated.min_price !== undefined) {
-      fields.push('min_price = ?');
-      values.push(validated.min_price ?? null);
-    }
-
-    if (validated.max_price !== undefined) {
-      fields.push('max_price = ?');
-      values.push(validated.max_price ?? null);
-    }
-
-    if (validated.min_wear !== undefined) {
-      fields.push('min_wear = ?');
-      values.push(validated.min_wear ?? null);
-    }
-
-    if (validated.max_wear !== undefined) {
-      fields.push('max_wear = ?');
-      values.push(validated.max_wear ?? null);
-    }
-
-    if (validated.stattrak_filter !== undefined) {
-      fields.push('stattrak_filter = ?');
-      values.push(validated.stattrak_filter);
-    }
-
-    if (validated.souvenir_filter !== undefined) {
-      fields.push('souvenir_filter = ?');
-      values.push(validated.souvenir_filter);
-    }
-
-    if (validated.sticker_filter !== undefined) {
-      fields.push('sticker_filter = ?');
-      values.push(validated.sticker_filter);
-    }
-
-    if (validated.enabled !== undefined) {
-      fields.push('enabled = ?');
-      values.push(validated.enabled ? 1 : 0);
-    }
-
-    if (fields.length > 0) {
-      fields.push('updated_at = CURRENT_TIMESTAMP');
-      const setClause = fields.join(', ');
-      const stmt = this.db.prepare(`UPDATE rules SET ${setClause} WHERE id = ?`);
-      stmt.run(...values, id);
-    }
-
-    // Update webhook associations in junction table
-    if (validated.webhook_ids !== undefined) {
-      this.setWebhookIds(id, validated.webhook_ids);
-    }
-
-    return this.findById(id);
-  }
-
-  delete(id: number): boolean {
-    const stmt = this.db.prepare('DELETE FROM rules WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
-  }
-
-  // Batch operations
-  enableBatch(ruleIds: number[], userId: number): number {
+  async enableBatch(ruleIds: number[], userId: number): Promise<number> {
     if (ruleIds.length === 0) return 0;
-    const placeholders = ruleIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`UPDATE rules SET enabled = 1 WHERE id IN (${placeholders}) AND user_id = ?`);
-    const result = stmt.run(...ruleIds, userId);
-    return result.changes;
+    const result = await this.db.update(rules)
+      .set({ enabled: true, updated_at: new Date() })
+      .where(and(inArray(rules.id, ruleIds), eq(rules.user_id, userId)))
+      .returning({ id: rules.id });
+    return result.length;
   }
 
-  disableBatch(ruleIds: number[], userId: number): number {
+  async disableBatch(ruleIds: number[], userId: number): Promise<number> {
     if (ruleIds.length === 0) return 0;
-    const placeholders = ruleIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`UPDATE rules SET enabled = 0 WHERE id IN (${placeholders}) AND user_id = ?`);
-    const result = stmt.run(...ruleIds, userId);
-    return result.changes;
+    const result = await this.db.update(rules)
+      .set({ enabled: false, updated_at: new Date() })
+      .where(and(inArray(rules.id, ruleIds), eq(rules.user_id, userId)))
+      .returning({ id: rules.id });
+    return result.length;
   }
 
-  deleteBatch(ruleIds: number[], userId: number): number {
+  async deleteBatch(ruleIds: number[], userId: number): Promise<number> {
     if (ruleIds.length === 0) return 0;
-    const placeholders = ruleIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`DELETE FROM rules WHERE id IN (${placeholders}) AND user_id = ?`);
-    const result = stmt.run(...ruleIds, userId);
-    return result.changes;
+    const result = await this.db.delete(rules)
+      .where(and(inArray(rules.id, ruleIds), eq(rules.user_id, userId)))
+      .returning({ id: rules.id });
+    return result.length;
   }
 
-  count(userId: number): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM rules WHERE user_id = ?');
-    const result = stmt.get(userId) as { count: number };
-    return result.count;
+  async count(userId: number): Promise<number> {
+    const [result] = await this.db.select({ value: count() })
+      .from(rules)
+      .where(eq(rules.user_id, userId));
+    return result?.value ?? 0;
   }
 }

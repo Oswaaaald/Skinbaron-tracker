@@ -30,11 +30,11 @@ export function invalidateUserCache(userId: number): void {
 /**
  * Get user from cache or database
  */
-function getUserById(id: number): User | null {
+async function getUserById(id: number): Promise<User | null> {
   const cached = userCache.get(id);
   if (cached) return cached;
 
-  const user = store.getUserById(id);
+  const user = await store.getUserById(id);
 
   if (user) {
     userCache.set(id, user);
@@ -51,8 +51,8 @@ function attachUser(request: FastifyRequest, user: User): void {
     id: user.id,
     username: user.username,
     email: user.email,
-    is_admin: Boolean(user.is_admin),
-    is_super_admin: Boolean(user.is_super_admin),
+    is_admin: user.is_admin,
+    is_super_admin: user.is_super_admin,
   };
 }
 
@@ -100,7 +100,7 @@ function extractToken(request: FastifyRequest): string | null {
  * - Type-safe user attachment
  * - Comprehensive security checks
  */
-export function authMiddleware(request: FastifyRequest): Promise<void> {
+export async function authMiddleware(request: FastifyRequest): Promise<void> {
   const token = extractToken(request);
   
   if (!token) {
@@ -112,11 +112,11 @@ export function authMiddleware(request: FastifyRequest): Promise<void> {
     throw new AppError(401, 'Token is invalid or expired', 'INVALID_TOKEN');
   }
 
-  if (payload.jti && store.isAccessTokenBlacklisted(payload.jti)) {
+  if (payload.jti && await store.isAccessTokenBlacklisted(payload.jti)) {
     throw new AppError(401, 'Token has been revoked', 'TOKEN_REVOKED');
   }
 
-  const user = getUserById(payload.userId);
+  const user = await getUserById(payload.userId);
   if (!user) {
     throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
   }
@@ -127,7 +127,6 @@ export function authMiddleware(request: FastifyRequest): Promise<void> {
 
   // Attach user to request (type-safe)
   attachUser(request, user);
-  return Promise.resolve();
 }
 
 /**

@@ -1,153 +1,127 @@
-import type Database from 'better-sqlite3';
-import type { UserWebhook, CreateUserWebhook, WebhookRow } from '../schemas.js';
-import { CreateUserWebhookSchema } from '../schemas.js';
-import { rowToWebhook } from '../utils/converters.js';
-import { encryptData } from '../utils/encryption.js';
+import { eq, and, count, inArray, getTableColumns } from 'drizzle-orm';
+import { userWebhooks, ruleWebhooks } from '../schema.js';
+import type { AppDatabase } from '../connection.js';
+import type { UserWebhook } from '../schema.js';
+import { encryptData, decryptData } from '../utils/encryption.js';
+
+interface WebhookInput {
+  name: string;
+  webhook_url: string;
+  webhook_type?: 'discord';
+  notification_style?: 'compact' | 'detailed';
+  is_active?: boolean;
+}
 
 export class WebhooksRepository {
-  constructor(private db: Database.Database) {}
+  constructor(private db: AppDatabase) {}
 
-  create(userId: number, webhook: CreateUserWebhook): UserWebhook {
-    const validated = CreateUserWebhookSchema.parse(webhook);
-    const encryptedUrl = encryptData(validated.webhook_url);
-    
-    const stmt = this.db.prepare(`
-      INSERT INTO user_webhooks (user_id, name, webhook_url_encrypted, webhook_type, notification_style, is_active)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
-      userId,
-      validated.name,
-      encryptedUrl,
-      validated.webhook_type,
-      validated.notification_style,
-      validated.is_active ? 1 : 0
-    );
-
-    const created = this.findById(result.lastInsertRowid as number);
-    if (!created) throw new Error('Failed to create webhook');
-    return created;
+  private withDecryptedUrl(webhook: typeof userWebhooks.$inferSelect): UserWebhook {
+    return {
+      ...webhook,
+      webhook_url: decryptData(webhook.webhook_url_encrypted),
+    };
   }
 
-  findById(id: number, decrypt: boolean = false): UserWebhook | null {
-    const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE id = ?');
-    const row = stmt.get(id) as WebhookRow | undefined;
-    if (!row) return null;
-    return rowToWebhook(row, decrypt);
+  async findById(id: number): Promise<UserWebhook | null> {
+    const [webhook] = await this.db.select().from(userWebhooks).where(eq(userWebhooks.id, id)).limit(1);
+    return webhook ?? null;
   }
 
-  findByUserId(userId: number, decrypt: boolean = false): UserWebhook[] {
-    const stmt = this.db.prepare('SELECT * FROM user_webhooks WHERE user_id = ? ORDER BY created_at DESC');
-    const rows = stmt.all(userId) as WebhookRow[];
-    return rows.map(row => rowToWebhook(row, decrypt));
-  }
+  async findByUserId(userId: number, decrypt = false): Promise<UserWebhook[]> {
+    const webhooks = await this.db.select()
+      .from(userWebhooks)
+      .where(eq(userWebhooks.user_id, userId))
+      .orderBy(userWebhooks.created_at);
 
-  findByIds(ids: number[], decrypt: boolean = false): UserWebhook[] {
-    if (ids.length === 0) return [];
-    const placeholders = ids.map(() => '?').join(',');
-    const stmt = this.db.prepare(`SELECT * FROM user_webhooks WHERE id IN (${placeholders})`);
-    const rows = stmt.all(...ids) as WebhookRow[];
-    return rows.map(row => rowToWebhook(row, decrypt));
-  }
-
-  /**
-   * Find active webhooks associated with a rule via the junction table
-   */
-  findActiveByRuleId(ruleId: number, decrypt: boolean = false): UserWebhook[] {
-    const stmt = this.db.prepare(`
-      SELECT w.* FROM user_webhooks w
-      INNER JOIN rule_webhooks rw ON rw.webhook_id = w.id
-      WHERE rw.rule_id = ? AND w.is_active = 1
-    `);
-    const rows = stmt.all(ruleId) as WebhookRow[];
-    return rows.map(row => rowToWebhook(row, decrypt));
-  }
-
-  update(id: number, userId: number, updates: Partial<CreateUserWebhook>): UserWebhook | null {
-    const validatedUpdates = CreateUserWebhookSchema.partial().parse(updates);
-    
-    const fields: string[] = [];
-    const values: (string | number)[] = [];
-
-    if (validatedUpdates.name) {
-      fields.push('name = ?');
-      values.push(validatedUpdates.name);
+    if (decrypt) {
+      return webhooks.map(w => this.withDecryptedUrl(w));
     }
-
-    if (validatedUpdates.webhook_url) {
-      fields.push('webhook_url_encrypted = ?');
-      values.push(encryptData(validatedUpdates.webhook_url));
-    }
-
-    if (validatedUpdates.webhook_type) {
-      fields.push('webhook_type = ?');
-      values.push(validatedUpdates.webhook_type);
-    }
-
-    if (validatedUpdates.notification_style) {
-      fields.push('notification_style = ?');
-      values.push(validatedUpdates.notification_style);
-    }
-
-    if (validatedUpdates.is_active !== undefined) {
-      fields.push('is_active = ?');
-      values.push(validatedUpdates.is_active ? 1 : 0);
-    }
-
-    if (fields.length === 0) {
-      return this.findById(id);
-    }
-
-    fields.push('updated_at = CURRENT_TIMESTAMP');
-    const setClause = fields.join(', ');
-    
-    const stmt = this.db.prepare(`UPDATE user_webhooks SET ${setClause} WHERE id = ? AND user_id = ?`);
-    const result = stmt.run(...values, id, userId);
-    
-    if (result.changes === 0) {
-      return null;
-    }
-    
-    const updated = this.findById(id);
-    if (!updated) throw new Error('Failed to update webhook');
-    return updated;
+    return webhooks;
   }
 
-  delete(id: number, userId: number): boolean {
-    const stmt = this.db.prepare('DELETE FROM user_webhooks WHERE id = ? AND user_id = ?');
-    const result = stmt.run(id, userId);
-    return result.changes > 0;
+  async create(userId: number, data: WebhookInput): Promise<UserWebhook> {
+    const [webhook] = await this.db.insert(userWebhooks).values({
+      user_id: userId,
+      name: data.name,
+      webhook_url_encrypted: encryptData(data.webhook_url),
+      webhook_type: data.webhook_type ?? 'discord',
+      notification_style: data.notification_style ?? 'compact',
+      is_active: data.is_active ?? true,
+    }).returning();
+    return webhook!;
   }
 
-  // Batch operations
-  enableBatch(webhookIds: number[], userId: number): number {
-    if (webhookIds.length === 0) return 0;
-    const placeholders = webhookIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`UPDATE user_webhooks SET is_active = 1 WHERE id IN (${placeholders}) AND user_id = ?`);
-    const result = stmt.run(...webhookIds, userId);
-    return result.changes;
+  async update(id: number, userId: number, data: Partial<WebhookInput>): Promise<UserWebhook | null> {
+    const setValues: Record<string, unknown> = { updated_at: new Date() };
+
+    if (data.name !== undefined) setValues['name'] = data.name;
+    if (data.webhook_url !== undefined) setValues['webhook_url_encrypted'] = encryptData(data.webhook_url);
+    if (data.webhook_type !== undefined) setValues['webhook_type'] = data.webhook_type;
+    if (data.notification_style !== undefined) setValues['notification_style'] = data.notification_style;
+    if (data.is_active !== undefined) setValues['is_active'] = data.is_active;
+
+    const [webhook] = await this.db.update(userWebhooks)
+      .set(setValues)
+      .where(and(eq(userWebhooks.id, id), eq(userWebhooks.user_id, userId)))
+      .returning();
+
+    return webhook ?? null;
   }
 
-  disableBatch(webhookIds: number[], userId: number): number {
-    if (webhookIds.length === 0) return 0;
-    const placeholders = webhookIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`UPDATE user_webhooks SET is_active = 0 WHERE id IN (${placeholders}) AND user_id = ?`);
-    const result = stmt.run(...webhookIds, userId);
-    return result.changes;
+  async delete(id: number, userId: number): Promise<boolean> {
+    const result = await this.db.delete(userWebhooks)
+      .where(and(eq(userWebhooks.id, id), eq(userWebhooks.user_id, userId)))
+      .returning({ id: userWebhooks.id });
+    return result.length > 0;
   }
 
-  deleteBatch(webhookIds: number[], userId: number): number {
-    if (webhookIds.length === 0) return 0;
-    const placeholders = webhookIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`DELETE FROM user_webhooks WHERE id IN (${placeholders}) AND user_id = ?`);
-    const result = stmt.run(...webhookIds, userId);
-    return result.changes;
+  async enableBatch(ids: number[], userId: number): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await this.db.update(userWebhooks)
+      .set({ is_active: true, updated_at: new Date() })
+      .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)))
+      .returning({ id: userWebhooks.id });
+    return result.length;
   }
 
-  count(userId: number): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM user_webhooks WHERE user_id = ?');
-    const result = stmt.get(userId) as { count: number };
-    return result.count;
+  async disableBatch(ids: number[], userId: number): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await this.db.update(userWebhooks)
+      .set({ is_active: false, updated_at: new Date() })
+      .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)))
+      .returning({ id: userWebhooks.id });
+    return result.length;
+  }
+
+  async deleteBatch(ids: number[], userId: number): Promise<number> {
+    if (ids.length === 0) return 0;
+    // Clean up junction table entries first
+    if (ids.length > 0) {
+      await this.db.delete(ruleWebhooks).where(inArray(ruleWebhooks.webhook_id, ids));
+    }
+    const result = await this.db.delete(userWebhooks)
+      .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)))
+      .returning({ id: userWebhooks.id });
+    return result.length;
+  }
+
+  async count(userId: number): Promise<number> {
+    const [result] = await this.db.select({ value: count() })
+      .from(userWebhooks)
+      .where(eq(userWebhooks.user_id, userId));
+    return result?.value ?? 0;
+  }
+
+  async getRuleWebhooksForNotification(ruleId: number): Promise<UserWebhook[]> {
+    const webhookCols = getTableColumns(userWebhooks);
+    const result = await this.db.select(webhookCols)
+      .from(ruleWebhooks)
+      .innerJoin(userWebhooks, eq(ruleWebhooks.webhook_id, userWebhooks.id))
+      .where(and(
+        eq(ruleWebhooks.rule_id, ruleId),
+        eq(userWebhooks.is_active, true)
+      ));
+
+    return result.map(w => this.withDecryptedUrl(w));
   }
 }

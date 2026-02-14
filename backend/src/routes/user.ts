@@ -119,7 +119,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
       
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
@@ -171,11 +171,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
 
       // Use COUNT(*) queries instead of loading all data into memory
-      const rulesCount = store.rules.count(userId);
-      const webhooksCount = store.webhooks.count(userId);
+      const rulesCount = await store.rules.count(userId);
+      const webhooksCount = await store.webhooks.count(userId);
       
       // Alerts count via JOIN to get user's alerts through their rules
-      const alertsCount = store.alerts.countByUserId(userId);
+      const alertsCount = await store.alerts.countByUserId(userId);
 
       return reply.status(200).send({
         success: true,
@@ -235,14 +235,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const updates = validateWithZod(UpdateProfileSchema, request.body);
 
       // Get current user to check admin status
-      const currentUser = store.getUserById(userId);
+      const currentUser = await store.getUserById(userId);
       if (!currentUser) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Check if username is already taken by another user
       if (updates.username) {
-        const existingUser = store.getUserByUsername(updates.username);
+        const existingUser = await store.getUserByUsername(updates.username);
         if (existingUser && existingUser.id !== userId) {
           throw new AppError(400, 'Username already taken', 'USERNAME_TAKEN');
         }
@@ -255,18 +255,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Check if email is already taken by another user
       if (updates.email) {
-        const existingUser = store.getUserByEmail(updates.email);
+        const existingUser = await store.getUserByEmail(updates.email);
         if (existingUser && existingUser.id !== userId) {
           throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
       }
 
       // Update user profile
-      store.updateUser(userId, updates);
+      await store.updateUser(userId, updates);
       
       // Audit log for profile update - create separate logs for email and username changes
       if (updates.email) {
-        store.createAuditLog(
+        await store.createAuditLog(
           userId,
           'email_changed',
           JSON.stringify({ new_email: updates.email }),
@@ -276,7 +276,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
       
       if (updates.username) {
-        store.createAuditLog(
+        await store.createAuditLog(
           userId,
           'username_changed',
           JSON.stringify({ new_username: updates.username }),
@@ -286,7 +286,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
       
       // Get updated user data
-      const updatedUser = store.getUserById(userId);
+      const updatedUser = await store.getUserById(userId);
       if (!updatedUser) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -343,7 +343,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const passwordData = validateWithZod(PasswordChangeSchema, request.body);
 
       // Get user
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -352,7 +352,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const isValidPassword = await AuthService.verifyPassword(passwordData.current_password, user.password_hash);
       if (!isValidPassword) {
         // Audit log for failed password change attempt
-        store.createAuditLog(
+        await store.createAuditLog(
           userId,
           'password_change_failed',
           JSON.stringify({ reason: 'invalid_current_password' }),
@@ -365,7 +365,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Check if new password is same as current password
       const isSamePassword = await AuthService.verifyPassword(passwordData.new_password, user.password_hash);
       if (isSamePassword) {
-        store.createAuditLog(
+        await store.createAuditLog(
           userId,
           'password_change_failed',
           JSON.stringify({ reason: 'same_password' }),
@@ -379,11 +379,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const newPasswordHash = await AuthService.hashPassword(passwordData.new_password);
 
       // Update password
-      store.updateUser(userId, { password_hash: newPasswordHash });
+      await store.updateUser(userId, { password_hash: newPasswordHash });
 
       // Invalidate all existing sessions (revoke all refresh tokens)
       // This forces re-login on all devices after a password change
-      store.revokeAllRefreshTokensForUser(userId);
+      await store.revokeAllRefreshTokensForUser(userId);
 
       // Blacklist the current access token so it cannot be reused
       const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
@@ -391,12 +391,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const tokenPayload = AuthService.verifyToken(accessToken, 'access');
         if (tokenPayload?.jti) {
           const exp = tokenPayload.exp ? tokenPayload.exp * 1000 : Date.now();
-          store.blacklistAccessToken(tokenPayload.jti, userId, exp, 'password_change');
+          await store.blacklistAccessToken(tokenPayload.jti, userId, exp, 'password_change');
         }
       }
 
       // Audit log for successful password change
-      store.createAuditLog(
+      await store.createAuditLog(
         userId,
         'password_changed',
         JSON.stringify({ success: true }),
@@ -428,17 +428,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Collect all user data (no limits — full GDPR export)
-      const rules = store.getRulesByUserId(userId);
-      const webhooks = store.getUserWebhooksByUserId(userId, false); // Don't decrypt URLs
-      const alerts = store.getAlertsByUserId(userId, 0, 0); // limit=0 → all alerts
-      const auditLogs = store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
+      const rules = await store.getRulesByUserId(userId);
+      const webhooks = await store.getUserWebhooksByUserId(userId, false); // Don't decrypt URLs
+      const alerts = await store.getAlertsByUserId(userId, 0, 0); // limit=0 → all alerts
+      const auditLogs = await store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
 
       const exportData = {
         profile: {
@@ -446,7 +446,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           is_admin: user.is_admin,
-          two_factor_enabled: user.totp_enabled ? true : false,
+          two_factor_enabled: user.totp_enabled,
           created_at: user.created_at,
           updated_at: user.updated_at,
         },
@@ -496,7 +496,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       };
 
       // Log the export action
-      store.createAuditLog(userId, 'data_export', undefined, getClientIp(request));
+      await store.createAuditLog(userId, 'data_export', undefined, getClientIp(request));
 
       return reply.status(200).send({
         success: true,
@@ -540,7 +540,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { password } = request.body as { password: string };
 
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -552,7 +552,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
-      store.deleteUser(userId);
+      await store.deleteUser(userId);
 
       // Clear auth cookies so the browser doesn't retain stale tokens
       clearAuthCookies(reply);
@@ -596,7 +596,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
@@ -705,14 +705,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       );
 
       // Encrypt and save to database
-      store.updateUser(userId, {
+      await store.updateUser(userId, {
         totp_secret_encrypted: encryptData(secret),
-        totp_enabled: 1,
+        totp_enabled: true,
         recovery_codes_encrypted: encryptData(JSON.stringify(recoveryCodes)),
       });
 
       // Audit log
-      store.createAuditLog(
+      await store.createAuditLog(
         userId,
         '2fa_enabled',
         JSON.stringify({ method: '2fa_enabled' }),
@@ -765,7 +765,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { password } = request.body as { password: string };
 
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -777,14 +777,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Disable 2FA
-      store.updateUser(userId, {
+      await store.updateUser(userId, {
         totp_secret_encrypted: null,
-        totp_enabled: 0,
+        totp_enabled: false,
         recovery_codes_encrypted: null,
       });
 
       // Audit log
-      store.createAuditLog(
+      await store.createAuditLog(
         userId,
         '2fa_disabled',
         JSON.stringify({ method: '2fa_disabled' }),
@@ -827,7 +827,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
@@ -836,7 +836,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(200).send({
         success: true,
         data: {
-          enabled: Boolean(user.totp_enabled),
+          enabled: user.totp_enabled,
         },
       });
     } catch (error) {
@@ -886,7 +886,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { limit = 100 } = request.query as { limit?: number };
 
-      const logs = store.getAuditLogsByUserId(userId, limit);
+      const logs = await store.getAuditLogsByUserId(userId, limit);
 
       return reply.status(200).send({
         success: true,

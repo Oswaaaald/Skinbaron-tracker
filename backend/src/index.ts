@@ -7,7 +7,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { appConfig } from './lib/config.js';
 import { store } from './database/index.js';
-import { closeDatabase, getDatabase } from './database/connection.js';
+import { closeDatabase, checkDatabaseHealth } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler, type AlertScheduler } from './lib/scheduler.js';
@@ -88,8 +88,8 @@ const gracefulShutdown = async (signal: string) => {
     const scheduler = getScheduler();
     scheduler.stop();
     
-    // Close database with optimization
-    closeDatabase();
+    // Close database connection pool
+    await closeDatabase();
     
     // Close Fastify
     await fastify.close();
@@ -352,10 +352,8 @@ async function buildSystemSnapshot() {
   // Check database health - actually query it
   let dbHealth = 'unhealthy';
   try {
-    // Perform a real database query to verify it works
-    const db = getDatabase();
-    const result = db.prepare('SELECT 1 as test').get() as { test: number } | undefined;
-    dbHealth = result?.test === 1 ? 'healthy' : 'unhealthy';
+    const isHealthy = await checkDatabaseHealth();
+    dbHealth = isHealthy ? 'healthy' : 'unhealthy';
   } catch (error) {
     fastify.log.error({ error }, 'Database health check failed');
     dbHealth = 'unhealthy';
@@ -448,7 +446,7 @@ function setupHealthCheck() {
     // Lightweight health check - only check database, not external APIs
     let dbHealth = 'healthy';
     try {
-      store.getStats();
+      await store.getStats();
     } catch {
       dbHealth = 'unhealthy';
     }

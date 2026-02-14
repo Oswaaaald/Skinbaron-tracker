@@ -88,7 +88,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const userData = validateWithZod(UserRegistrationSchema, request.body);
       
       // Check if user already exists
-      const existingUser = store.getUserByEmail(userData.email);
+      const existingUser = await store.getUserByEmail(userData.email);
       if (existingUser) {
         // Check if account is pending approval
         if (!existingUser.is_approved) {
@@ -99,7 +99,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check if username is taken
-      const existingUsername = store.getUserByUsername(userData.username);
+      const existingUsername = await store.getUserByUsername(userData.username);
       if (existingUsername) {
         throw new AppError(409, 'This username is already taken', 'USERNAME_TAKEN');
       }
@@ -108,14 +108,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const passwordHash = await AuthService.hashPassword(userData.password);
 
       // Create user
-      const user = store.createUser({
+      const user = await store.createUser({
         username: userData.username,
         email: userData.email,
         password_hash: passwordHash,
       });
 
       // Record ToS acceptance timestamp via repository
-      store.acceptTos(user.id);
+      await store.acceptTos(user.id);
 
       // Check if user is approved
       if (!user.is_approved) {
@@ -132,7 +132,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens (only for approved users)
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
 
       setAuthCookies(reply, accessToken, refreshToken);
 
@@ -199,7 +199,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const loginData = validateWithZod(UserLoginSchema, request.body);
       
       // Find user by email - decrypt 2FA secrets for verification
-      const user = store.getUserByEmail(loginData.email, true);
+      const user = await store.getUserByEmail(loginData.email, true);
       
       // SECURITY: Always execute bcrypt to prevent timing attacks
       // If user doesn't exist, use a fake hash to make response time consistent
@@ -217,7 +217,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!user || !isValidPassword) {
         // Audit log for failed login (only if user exists to avoid FK constraint error)
         if (user) {
-          store.createAuditLog(
+          await store.createAuditLog(
             user.id,
             'login_failed',
             JSON.stringify({ reason: 'invalid_password' }),
@@ -255,8 +255,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
           request.log.warn({ email: user.email, reason }, 'Disabling 2FA');
           // Disable 2FA for this user
-          store.updateUser(user.id, {
-            totp_enabled: 0,
+          await store.updateUser(user.id, {
+            totp_enabled: false,
             totp_secret_encrypted: null,
             recovery_codes_encrypted: null,
           });
@@ -280,8 +280,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
           // Handle SecretTooShortError from otplib v13 (legacy secrets)
           if (error instanceof Error && error.name === 'SecretTooShortError') {
             request.log.warn({ email: user.email }, '2FA secret validation failed, disabling 2FA');
-            store.updateUser(user.id, {
-              totp_enabled: 0,
+            await store.updateUser(user.id, {
+              totp_enabled: false,
               totp_secret_encrypted: null,
               recovery_codes_encrypted: null,
             });
@@ -322,7 +322,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           if (codeIndex === -1) {
             // Audit log for failed 2FA
             const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
-            store.createAuditLog(
+            await store.createAuditLog(
               user.id,
               'login_failed',
               JSON.stringify({ reason }),
@@ -343,12 +343,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           // Remove used recovery code
           recoveryCodes.splice(codeIndex, 1);
-          store.updateUser(user.id, {
+          await store.updateUser(user.id, {
             recovery_codes: JSON.stringify(recoveryCodes),
           });
 
           // Audit log
-          store.createAuditLog(
+          await store.createAuditLog(
             user.id,
             '2fa_recovery_code_used',
             JSON.stringify({ remaining_codes: recoveryCodes.length }),
@@ -361,11 +361,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log for successful login
-      store.createAuditLog(
+      await store.createAuditLog(
         user.id,
         'login_success',
         JSON.stringify({ method: user.totp_enabled ? '2fa' : 'password' }),
@@ -434,8 +434,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(401, 'Invalid refresh token', 'INVALID_REFRESH_TOKEN');
       }
 
-      const tokenRecord = store.getRefreshToken(refresh_token);
-      const isExpired = tokenRecord ? new Date(tokenRecord.expires_at).getTime() <= Date.now() : true;
+      const tokenRecord = await store.getRefreshToken(refresh_token);
+      const isExpired = tokenRecord ? tokenRecord.expires_at.getTime() <= Date.now() : true;
       if (!tokenRecord || tokenRecord.revoked_at || tokenRecord.replaced_by_jti || isExpired) {
         request.log.warn({ 
           hasRecord: !!tokenRecord, 
@@ -451,9 +451,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const newAccess = AuthService.generateAccessToken(payload.userId);
       const newRefresh = AuthService.generateRefreshToken(payload.userId);
 
-      store.revokeRefreshToken(refresh_token, newRefresh.jti);
-      store.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
-      store.cleanupRefreshTokens();
+      await store.revokeRefreshToken(refresh_token, newRefresh.jti);
+      await store.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
+      await store.cleanupRefreshTokens();
 
       setAuthCookies(reply, newAccess, newRefresh);
 
@@ -494,24 +494,24 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
       
       // Check if user still exists (may have been deleted)
-      const userExists = accessPayload ? store.getUserById(accessPayload.userId) !== null : false;
+      const userExists = accessPayload ? (await store.getUserById(accessPayload.userId)) !== null : false;
       
       if (accessPayload?.jti && userExists) {
         const exp = accessPayload.exp ? accessPayload.exp * 1000 : Date.now();
-        store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
+        await store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
       }
 
       if (refresh_token && userExists) {
-        store.revokeRefreshToken(refresh_token, 'logout');
+        await store.revokeRefreshToken(refresh_token, 'logout');
       } else if (accessPayload && userExists) {
-        store.revokeAllRefreshTokensForUser(accessPayload.userId);
+        await store.revokeAllRefreshTokensForUser(accessPayload.userId);
       }
 
       // Clean up revoked tokens from database
-      store.cleanupRefreshTokens();
+      await store.cleanupRefreshTokens();
 
       if (accessPayload && userExists) {
-        store.createAuditLog(
+        await store.createAuditLog(
           accessPayload.userId,
           'logout',
           JSON.stringify({ reason: 'user_logout' }),

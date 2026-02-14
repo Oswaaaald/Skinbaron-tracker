@@ -72,7 +72,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       // Get rules only for the authenticated user
-      const rules = store.getRulesByUserId(getAuthUser(request).id);
+      const rules = await store.getRulesByUserId(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
@@ -139,7 +139,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       // Check max rules limit
-      const userRuleCount = store.rules.count(getAuthUser(request).id);
+      const userRuleCount = await store.rules.count(getAuthUser(request).id);
       if (userRuleCount >= MAX_RULES_PER_USER) {
         throw new AppError(400, `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`, 'MAX_RULES_REACHED');
       }
@@ -154,7 +154,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       
       // Validate webhook_ids if provided - must belong to user
       if (ruleData.webhook_ids && ruleData.webhook_ids.length > 0) {
-        const userWebhooks = store.getUserWebhooksByUserId(getAuthUser(request).id);
+        const userWebhooks = await store.getUserWebhooksByUserId(getAuthUser(request).id);
         const userWebhookIds = userWebhooks.map(w => w.id);
         
         const invalidWebhooks = ruleData.webhook_ids.filter((id: number) => !userWebhookIds.includes(id));
@@ -166,7 +166,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         ruleData.webhook_ids = [];
       }
 
-      const rule = store.createRule(ruleData);
+      const rule = await store.createRule(ruleData);
       
       request.log.info(`Created rule ${rule.id} for user ${rule.user_id}`);
       
@@ -248,7 +248,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(RuleParamsSchema, request.params);
       
       // Check if rule exists and user owns it
-      const existingRule = store.getRuleById(id);
+      const existingRule = await store.getRuleById(id);
       if (!existingRule) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
@@ -266,7 +266,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       });
       
       // Validate webhook_ids - filter out deleted webhooks automatically
-      const userWebhooks = store.getUserWebhooksByUserId(getAuthUser(request).id);
+      const userWebhooks = await store.getUserWebhooksByUserId(getAuthUser(request).id);
       const userWebhookIds = userWebhooks.map(w => w.id);
       
       if (updates.webhook_ids !== undefined) {
@@ -291,7 +291,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         }
       }
       
-      const rule = store.updateRule(id, updates);
+      const rule = await store.updateRule(id, updates);
       
       if (!rule) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
@@ -344,7 +344,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(RuleParamsSchema, request.params);
       
       // Check if rule exists and user owns it
-      const existingRule = store.getRuleById(id);
+      const existingRule = await store.getRuleById(id);
       if (!existingRule) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
@@ -353,7 +353,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
       }
 
-      const deleted = store.deleteRule(id);
+      const deleted = await store.deleteRule(id);
       
       if (!deleted) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
@@ -408,15 +408,15 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       
       if (!rule_ids || rule_ids.length === 0) {
         // Enable all rules for this user
-        const allRules = store.getRulesByUserId(userId);
+        const allRules = await store.getRulesByUserId(userId);
         const allIds = allRules
           .filter(r => !r.enabled && r.id !== undefined)
           .map(r => r.id as number);
-        updated = store.enableRulesBatch(allIds, userId);
+        updated = await store.enableRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules
         for (const ruleId of rule_ids) {
-          const rule = store.getRuleById(ruleId);
+          const rule = await store.getRuleById(ruleId);
           if (!rule) {
             throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
           }
@@ -425,7 +425,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           }
         }
         // Enable specific rules (optimized batch operation)
-        updated = store.enableRulesBatch(rule_ids, userId);
+        updated = await store.enableRulesBatch(rule_ids, userId);
       }
 
       return reply.status(200).send({
@@ -476,15 +476,15 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       
       if (!rule_ids || rule_ids.length === 0) {
         // Disable all rules for this user
-        const allRules = store.getRulesByUserId(userId);
+        const allRules = await store.getRulesByUserId(userId);
         const allIds = allRules
           .filter(r => r.enabled && r.id !== undefined)
           .map(r => r.id as number);
-        updated = store.disableRulesBatch(allIds, userId);
+        updated = await store.disableRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules
         for (const ruleId of rule_ids) {
-          const rule = store.getRuleById(ruleId);
+          const rule = await store.getRuleById(ruleId);
           if (!rule) {
             throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
           }
@@ -493,7 +493,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           }
         }
         // Disable specific rules (optimized batch operation)
-        updated = store.disableRulesBatch(rule_ids, userId);
+        updated = await store.disableRulesBatch(rule_ids, userId);
       }
 
       return reply.status(200).send({
@@ -552,15 +552,15 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           throw new AppError(400, 'Set confirm_all: true to delete all rules', 'CONFIRMATION_REQUIRED');
         }
 
-        const allRules = store.getRulesByUserId(userId);
+        const allRules = await store.getRulesByUserId(userId);
         const allIds = allRules
           .filter((r): r is typeof r & { id: number } => r.id !== undefined)
           .map(r => r.id);
-        deleted = store.deleteRulesBatch(allIds, userId);
+        deleted = await store.deleteRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules
         for (const ruleId of rule_ids) {
-          const rule = store.getRuleById(ruleId);
+          const rule = await store.getRuleById(ruleId);
           if (!rule) {
             throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
           }
@@ -569,7 +569,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           }
         }
         // Delete specific rules (optimized batch operation)
-        deleted = store.deleteRulesBatch(rule_ids, userId);
+        deleted = await store.deleteRulesBatch(rule_ids, userId);
       }
 
       return reply.status(200).send({

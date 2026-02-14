@@ -32,7 +32,7 @@ const OPTIONAL_VARS = {
   PORT: { default: '8080', description: 'Server port' },
   COOKIE_DOMAIN: { default: 'undefined', description: 'Cookie domain for authentication' },
   SB_API_KEY: { default: 'undefined', description: 'SkinBaron API key (required for price tracking)' },
-  SQLITE_PATH: { default: './data/alerts.db', description: 'SQLite database file path' },
+  DATABASE_URL: { default: undefined, description: 'PostgreSQL connection URL' },
   APP_VERSION: { default: 'dev', description: 'Application version' },
   POLL_CRON: { default: '*/5 * * * *', description: 'Cron schedule for polling' },
   RATE_LIMIT_MAX: { default: '1000', description: 'Maximum requests per window' },

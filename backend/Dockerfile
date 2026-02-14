@@ -11,26 +11,20 @@ RUN apk update && apk add --no-cache ca-certificates && \
 FROM base AS deps
 WORKDIR /app
 
-RUN apk add --no-cache --virtual .build-deps \
-    python3 make g++ sqlite-dev libc6-compat
-
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev && apk del .build-deps
+    npm ci --omit=dev
 
 # ---------- builder ----------
 FROM base AS builder
 WORKDIR /app
-
-RUN apk add --no-cache --virtual .build-deps \
-    python3 make g++ sqlite-dev libc6-compat
 
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
 COPY . .
-RUN npm run build && apk del .build-deps
+RUN npm run build
 
 # ---------- runner ----------
 FROM base AS runner
@@ -40,8 +34,6 @@ ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 skinbaron
-
-RUN mkdir -p /app/data && chown skinbaron:nodejs /app/data
 
 COPY --from=deps --chown=skinbaron:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=skinbaron:nodejs /app/dist ./dist

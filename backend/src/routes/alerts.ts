@@ -83,17 +83,17 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
       
       // Validate rule ownership if rule_id filter is provided
       if (query.rule_id !== undefined) {
-        const rule = store.getRuleById(query.rule_id);
+        const rule = await store.getRuleById(query.rule_id);
         if (!rule || rule.user_id !== getAuthUser(request).id) {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
       }
 
       // Get total count for pagination metadata
-      const total = store.alerts.countByUserId(getAuthUser(request).id);
+      const total = await store.alerts.countByUserId(getAuthUser(request).id);
 
       // Get user's alerts with filters (limit=0 means return all)
-      const alerts = store.getAlertsByUserId(
+      const alerts = await store.getAlertsByUserId(
         getAuthUser(request).id, 
         query.limit, 
         query.offset,
@@ -142,7 +142,7 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const itemNames = store.getUniqueAlertItemNames(getAuthUser(request).id);
+      const itemNames = await store.getUniqueAlertItemNames(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
@@ -182,7 +182,7 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const stats = store.getUserStats(getAuthUser(request).id);
+      const stats = await store.getUserStats(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
@@ -205,7 +205,7 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const deletedCount = store.deleteAllUserAlerts(userId);
+      const deletedCount = await store.deleteAllUserAlerts(userId);
       
       request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);
       

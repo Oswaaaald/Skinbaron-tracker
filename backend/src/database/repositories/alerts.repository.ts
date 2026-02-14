@@ -1,242 +1,119 @@
-import type Database from 'better-sqlite3';
-import type { Alert, CreateAlert, AlertRow } from '../schemas.js';
-import { AlertSchema } from '../schemas.js';
-import { rowToAlert } from '../utils/converters.js';
+import { eq, and, desc, asc, count, sql, ilike, inArray, getTableColumns } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import { alerts, rules } from '../schema.js';
+import type { AppDatabase } from '../connection.js';
+import type { Alert, CreateAlert } from '../schema.js';
 
 export class AlertsRepository {
-  constructor(private db: Database.Database) {}
+  constructor(private db: AppDatabase) {}
 
-  /**
-   * Get unique item names for a user's alerts (for filtering UI)
-   */
-  getUniqueItemNames(userId: number): string[] {
-    const stmt = this.db.prepare(`
-      SELECT DISTINCT a.item_name 
-      FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ?
-      ORDER BY a.item_name ASC
-    `);
-    const rows = stmt.all(userId) as Array<{ item_name: string }>;
-    return rows.map(row => row.item_name);
-  }
-
-  create(alert: CreateAlert): Alert {
-    try {
-      const validated = AlertSchema.omit({ id: true, sent_at: true }).parse(alert);
-      
-      const stmt = this.db.prepare(`
-        INSERT INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                           stattrak, souvenir, has_stickers, skin_url)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      const result = stmt.run(
-        validated.rule_id,
-        validated.sale_id,
-        validated.item_name,
-        validated.price,
-        validated.wear_value ?? null,
-        validated.stattrak ? 1 : 0,
-        validated.souvenir ? 1 : 0,
-        validated.has_stickers ? 1 : 0,
-        validated.skin_url
-      );
-
-      return this.findById(result.lastInsertRowid as number)!;
-    } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        throw new Error('DUPLICATE_SALE');
-      }
-      throw error;
-    }
-  }
-
-  createBatch(alerts: CreateAlert[]): number {
-    if (alerts.length === 0) return 0;
-
-    const validated = alerts.map(alert => 
-      AlertSchema.omit({ id: true, sent_at: true }).parse(alert)
-    );
-
-    // Chunk inserts to stay within SQLite variable limits (max ~999 variables per statement)
-    const VARS_PER_ROW = 9;
-    const MAX_ROWS_PER_CHUNK = Math.floor(900 / VARS_PER_ROW); // ~100 rows per chunk
-    
-    const insertChunked = this.db.transaction(() => {
-      let totalChanges = 0;
-      for (let i = 0; i < validated.length; i += MAX_ROWS_PER_CHUNK) {
-        const chunk = validated.slice(i, i + MAX_ROWS_PER_CHUNK);
-        const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
-
-        const stmt = this.db.prepare(`
-          INSERT OR IGNORE INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                                         stattrak, souvenir, has_stickers, skin_url)
-          VALUES ${placeholders}
-        `);
-
-        const values = chunk.flatMap(alert => [
-          alert.rule_id,
-          alert.sale_id,
-          alert.item_name,
-          alert.price,
-          alert.wear_value ?? null,
-          alert.stattrak ? 1 : 0,
-          alert.souvenir ? 1 : 0,
-          alert.has_stickers ? 1 : 0,
-          alert.skin_url
-        ]);
-
-        const result = stmt.run(...values);
-        totalChanges += result.changes;
-      }
-      return totalChanges;
-    });
-
-    return insertChunked();
-  }
-
-  findById(id: number): Alert | null {
-    const stmt = this.db.prepare('SELECT * FROM alerts WHERE id = ?');
-    const row = stmt.get(id) as AlertRow | undefined;
-    return row ? rowToAlert(row) : null;
-  }
-
-  findByUserId(
-    userId: number, 
-    limit: number = 50, 
+  async findByUserId(
+    userId: number,
+    limit: number = 0,
     offset: number = 0,
     options?: {
       ruleId?: number;
       itemName?: string;
       sortBy?: 'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc';
     }
-  ): Alert[] {
-    let query = `
-      SELECT a.* FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ?
-    `;
-    const params: (string | number)[] = [userId];
+  ): Promise<Alert[]> {
+    const conditions: SQL[] = [eq(rules.user_id, userId)];
 
-    // Add rule_id filter (SQL instead of JS filtering)
     if (options?.ruleId !== undefined) {
-      query += ` AND a.rule_id = ?`;
-      params.push(options.ruleId);
+      conditions.push(eq(alerts.rule_id, options.ruleId));
     }
-
-    // Add item name filter
     if (options?.itemName) {
-      query += ` AND a.item_name LIKE ? ESCAPE '\\'`;
       const escaped = options.itemName.replace(/[%_\\]/g, '\\$&');
-      params.push(`%${escaped}%`);
+      conditions.push(ilike(alerts.item_name, `%${escaped}%`));
     }
 
-    // Add sorting
+    let orderByClause: SQL;
     switch (options?.sortBy) {
-      case 'price_asc':
-        query += ` ORDER BY a.price ASC`;
-        break;
-      case 'price_desc':
-        query += ` ORDER BY a.price DESC`;
-        break;
-      case 'wear_asc':
-        query += ` ORDER BY a.wear_value ASC NULLS LAST`;
-        break;
-      case 'wear_desc':
-        query += ` ORDER BY a.wear_value DESC NULLS LAST`;
-        break;
-      case 'date':
-      default:
-        query += ` ORDER BY a.sent_at DESC`;
-        break;
+      case 'price_asc': orderByClause = asc(alerts.price); break;
+      case 'price_desc': orderByClause = desc(alerts.price); break;
+      case 'wear_asc': orderByClause = sql`${alerts.wear_value} ASC NULLS LAST`; break;
+      case 'wear_desc': orderByClause = sql`${alerts.wear_value} DESC NULLS LAST`; break;
+      default: orderByClause = desc(alerts.sent_at); break;
     }
 
-    // Apply pagination only when limit > 0 (0 = no limit)
+    const alertCols = getTableColumns(alerts);
+
     if (limit > 0) {
-      query += ` LIMIT ? OFFSET ?`;
-      params.push(limit, offset);
+      return this.db.select(alertCols)
+        .from(alerts)
+        .innerJoin(rules, eq(alerts.rule_id, rules.id))
+        .where(and(...conditions))
+        .orderBy(orderByClause)
+        .limit(limit)
+        .offset(offset);
     }
 
-    const stmt = this.db.prepare(query);
-    const rows = stmt.all(...params) as AlertRow[];
-    return rows.map(rowToAlert);
+    return this.db.select(alertCols)
+      .from(alerts)
+      .innerJoin(rules, eq(alerts.rule_id, rules.id))
+      .where(and(...conditions))
+      .orderBy(orderByClause);
   }
 
-  findByIdForUser(alertId: number, userId: number): Alert | null {
-    const stmt = this.db.prepare(`
-      SELECT a.* FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE a.id = ? AND r.user_id = ?
-    `);
-    const row = stmt.get(alertId, userId) as AlertRow | undefined;
-    return row ? rowToAlert(row) : null;
+  async createBatch(alertsData: CreateAlert[]): Promise<number> {
+    if (alertsData.length === 0) return 0;
+    const result = await this.db.insert(alerts)
+      .values(alertsData)
+      .onConflictDoNothing({ target: [alerts.rule_id, alerts.sale_id] })
+      .returning({ id: alerts.id });
+    return result.length;
   }
 
-  deleteByRuleId(ruleId: number): boolean {
-    const stmt = this.db.prepare('DELETE FROM alerts WHERE rule_id = ?');
-    const result = stmt.run(ruleId);
-    return result.changes > 0;
+  async findSaleIdPricesByRuleId(ruleId: number): Promise<Array<{ sale_id: string; price: number }>> {
+    return this.db.select({
+      sale_id: alerts.sale_id,
+      price: alerts.price,
+    }).from(alerts)
+      .where(eq(alerts.rule_id, ruleId));
   }
 
-  deleteByUserId(userId: number): number {
-    const stmt = this.db.prepare(`
-      DELETE FROM alerts 
-      WHERE rule_id IN (SELECT id FROM rules WHERE user_id = ?)
-    `);
-    const result = stmt.run(userId);
-    return result.changes;
-  }
-
-  countByUserId(userId: number): number {
-    const stmt = this.db.prepare(`
-      SELECT COUNT(*) as count FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE r.user_id = ?
-    `);
-    const result = stmt.get(userId) as { count: number };
-    return result.count;
-  }
-
-  /**
-   * Get all alerts for a specific rule
-   */
-  findByRuleId(ruleId: number): Alert[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM alerts 
-      WHERE rule_id = ? 
-      ORDER BY sent_at DESC
-    `);
-    const rows = stmt.all(ruleId) as AlertRow[];
-    return rows.map(rowToAlert);
-  }
-
-  /**
-   * Delete a specific alert by sale_id and rule_id
-   */
-  deleteBySaleIdAndRuleId(saleId: string, ruleId: number): boolean {
-    const stmt = this.db.prepare('DELETE FROM alerts WHERE sale_id = ? AND rule_id = ?');
-    const result = stmt.run(saleId, ruleId);
-    return result.changes > 0;
-  }
-
-  /**
-   * Lightweight: returns only sale_id + price for the scheduler
-   * Avoids loading full Alert objects with all columns
-   */
-  findSaleIdPricesByRuleId(ruleId: number): Array<{ sale_id: string; price: number }> {
-    const stmt = this.db.prepare('SELECT sale_id, price FROM alerts WHERE rule_id = ?');
-    return stmt.all(ruleId) as Array<{ sale_id: string; price: number }>;
-  }
-
-  /**
-   * Batch delete alerts by sale_ids scoped to a specific rule (avoids cross-rule deletion)
-   */
-  deleteBySaleIdsForRule(saleIds: string[], ruleId: number): number {
+  async deleteBySaleIdsForRule(saleIds: string[], ruleId: number): Promise<number> {
     if (saleIds.length === 0) return 0;
-    const placeholders = saleIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`DELETE FROM alerts WHERE sale_id IN (${placeholders}) AND rule_id = ?`);
-    const result = stmt.run(...saleIds, ruleId);
-    return result.changes;
+    const result = await this.db.delete(alerts)
+      .where(and(
+        inArray(alerts.sale_id, saleIds),
+        eq(alerts.rule_id, ruleId)
+      ))
+      .returning({ id: alerts.id });
+    return result.length;
+  }
+
+  async deleteBySaleIdAndRuleId(saleId: string, ruleId: number): Promise<void> {
+    await this.db.delete(alerts)
+      .where(and(eq(alerts.sale_id, saleId), eq(alerts.rule_id, ruleId)));
+  }
+
+  async deleteAllByUserId(userId: number): Promise<number> {
+    const result = await this.db.delete(alerts)
+      .where(
+        inArray(
+          alerts.rule_id,
+          this.db.select({ id: rules.id }).from(rules).where(eq(rules.user_id, userId))
+        )
+      )
+      .returning({ id: alerts.id });
+    return result.length;
+  }
+
+  async countByUserId(userId: number): Promise<number> {
+    const [result] = await this.db.select({ value: count() })
+      .from(alerts)
+      .innerJoin(rules, eq(alerts.rule_id, rules.id))
+      .where(eq(rules.user_id, userId));
+    return result?.value ?? 0;
+  }
+
+  async getUniqueItemNames(userId: number): Promise<string[]> {
+    const result = await this.db.selectDistinct({ item_name: alerts.item_name })
+      .from(alerts)
+      .innerJoin(rules, eq(alerts.rule_id, rules.id))
+      .where(eq(rules.user_id, userId))
+      .orderBy(alerts.item_name);
+    return result.map(r => r.item_name);
   }
 }

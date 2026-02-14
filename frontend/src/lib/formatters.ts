@@ -16,16 +16,14 @@ export function formatPrice(price: number): string {
 
 /**
  * Format a date with relative time and full date
- * Handles SQLite dates (without timezone) by treating them as UTC
  * 
- * @param dateString - Date string from API (e.g., "2026-01-11 23:37:14" or ISO string)
+ * @param dateString - ISO date string from API
  * @param locale - Locale for formatting ('en' or 'fr'), defaults to 'en'
  * @returns Formatted string like "Just now • 11 Jan 2026, 23:37"
  */
 export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en'): string {
-  // SQLite returns dates without timezone (e.g., "2026-01-11 23:37:14")
-  // We need to append 'Z' to treat it as UTC, then convert to local time
-  const utcDate = dateString.includes('Z') ? dateString : dateString.replace(' ', 'T') + 'Z';
+  // Ensure the date is treated as UTC if no timezone marker is present
+  const utcDate = dateString.includes('Z') || dateString.includes('+') ? dateString : dateString.replace(' ', 'T') + 'Z';
   const date = new Date(utcDate);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -105,7 +103,6 @@ export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en
 
 /**
  * Format a date with short relative time (for compact displays)
- * Handles SQLite dates (without timezone) by treating them as UTC
  * 
  * @param dateString - Date string from API
  * @returns Short formatted string like "Just now", "5m ago", "2h ago", "11/01/2026"
@@ -113,7 +110,7 @@ export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en
 export function formatShortDate(dateString?: string | null): string {
   if (!dateString) return 'N/A';
   
-  // SQLite returns dates without timezone - treat as UTC
+  // Ensure the date is treated as UTC if no timezone marker is present
   const utcDate = dateString.includes('Z') || dateString.includes('+') 
     ? dateString 
     : dateString.replace(' ', 'T') + 'Z';
@@ -130,7 +127,6 @@ export function formatShortDate(dateString?: string | null): string {
 
 /**
  * Format a date/time for system displays (no relative time)
- * Handles SQLite dates (without timezone) by treating them as UTC
  * 
  * @param dateString - Date string or Date object
  * @returns Formatted string like "11/01/2026, 23:37"
@@ -143,7 +139,7 @@ export function formatSystemDate(dateString?: Date | string | null): string {
   if (dateString instanceof Date) {
     date = dateString;
   } else {
-    // SQLite returns dates without timezone - treat as UTC
+    // Ensure the date is treated as UTC if no timezone marker is present
     const utcDate = dateString.includes('Z') || dateString.includes('+') 
       ? dateString 
       : dateString.replace(' ', 'T') + 'Z';

@@ -20,7 +20,7 @@ const ConfigSchema = z.object({
   DISCORD_BOT_AVATAR: z.string().url().default('https://skinbaron.de/favicon.png'),
   
   // Database
-  SQLITE_PATH: z.string().default('./data/alerts.db'),
+  DATABASE_URL: z.string().url(),
   
   // Authentication
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),

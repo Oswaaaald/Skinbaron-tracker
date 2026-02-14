@@ -1,244 +1,173 @@
-import type Database from 'better-sqlite3';
-import type { User, CreateUser, UserRow } from '../schemas.js';
-import { CreateUserSchema } from '../schemas.js';
-import { rowToUser } from '../utils/converters.js';
+import { eq, and, or, ilike, desc, count, sql, getTableColumns } from 'drizzle-orm';
+import { users } from '../schema.js';
+import type { AppDatabase } from '../connection.js';
+import type { User } from '../schema.js';
 import { encryptData, decryptData } from '../utils/encryption.js';
-import pino from 'pino';
 
-const logger = pino({ name: 'users-repository' });
+interface UserUpdate {
+  username?: string;
+  email?: string;
+  password_hash?: string;
+  is_admin?: boolean;
+  is_super_admin?: boolean;
+  is_approved?: boolean;
+  totp_enabled?: boolean;
+  totp_secret_encrypted?: string | null;
+  recovery_codes_encrypted?: string | null;
+  tos_accepted_at?: Date | null;
+  // Virtual fields (encrypted before storage):
+  recovery_codes?: string | null;
+  totp_secret?: string | null;
+}
 
 export class UsersRepository {
-  constructor(private db: Database.Database) {}
+  constructor(private db: AppDatabase) {}
 
-  /** Structured warning log instead of console.warn */
-  private logWarning(message: string, error: unknown): void {
-    logger.warn({ err: error instanceof Error ? error.message : String(error) }, message);
+  private withDecryptedFields(user: typeof users.$inferSelect): User {
+    return {
+      ...user,
+      totp_secret: user.totp_secret_encrypted ? decryptData(user.totp_secret_encrypted) : null,
+      recovery_codes: user.recovery_codes_encrypted ? decryptData(user.recovery_codes_encrypted) : null,
+    };
   }
 
-  create(user: CreateUser): User {
-    const validated = CreateUserSchema.parse(user);
-    
-    const stmt = this.db.prepare(`
-      INSERT INTO users (username, email, password_hash, is_approved)
-      VALUES (?, ?, ?, 0)
-    `);
-
-    try {
-      const result = stmt.run(validated.username, validated.email, validated.password_hash);
-      return this.findById(result.lastInsertRowid as number)!;
-    } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        const errorMessage = error && typeof error === 'object' && 'message' in error ? String(error.message) : '';
-        if (errorMessage.includes('users.email')) {
-          throw new Error('Email already exists');
-        }
-        if (errorMessage.includes('users.username')) {
-          throw new Error('Username already taken');
-        }
-      }
-      throw error;
-    }
+  async findById(id: number, decrypt2FA = false): Promise<User | null> {
+    const [user] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!user) return null;
+    return decrypt2FA ? this.withDecryptedFields(user) : user;
   }
 
-  private decrypt2FASecrets(user: User): User {
-    if (user.totp_secret_encrypted) {
-      try {
-        user.totp_secret = decryptData(user.totp_secret_encrypted);
-      } catch (error) {
-        // If decryption fails (wrong key or corrupted data), leave encrypted
-        this.logWarning(`Failed to decrypt 2FA secret for user ${user.id}`, error);
-      }
-    }
-    if (user.recovery_codes_encrypted) {
-      try {
-        user.recovery_codes = decryptData(user.recovery_codes_encrypted);
-      } catch (error) {
-        // If decryption fails (wrong key or corrupted data), leave encrypted
-        this.logWarning(`Failed to decrypt recovery codes for user ${user.id}`, error);
-      }
-    }
-    return user;
+  async findByEmail(email: string, decrypt2FA = false): Promise<User | null> {
+    const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    if (!user) return null;
+    return decrypt2FA ? this.withDecryptedFields(user) : user;
   }
 
-  findById(id: number, decrypt2FA: boolean = false): User | null {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE id = ?');
-    const row = stmt.get(id) as UserRow | undefined;
-    if (!row) return null;
-    const user = rowToUser(row);
-    return decrypt2FA ? this.decrypt2FASecrets(user) : user;
+  async findByUsername(username: string): Promise<User | null> {
+    const [user] = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    return user ?? null;
   }
 
-  findByEmail(email: string, decrypt2FA: boolean = false): User | null {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-    const row = stmt.get(email) as UserRow | undefined;
-    if (!row) return null;
-    const user = rowToUser(row);
-    return decrypt2FA ? this.decrypt2FASecrets(user) : user;
+  async findAllWithStats(): Promise<Array<typeof users.$inferSelect & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }>> {
+    const result = await this.db.select({
+      ...getTableColumns(users),
+      rules_count: sql<number>`(SELECT COUNT(*)::int FROM rules WHERE rules.user_id = ${users.id})`,
+      alerts_count: sql<number>`(SELECT COUNT(*)::int FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ${users.id})`,
+      webhooks_count: sql<number>`(SELECT COUNT(*)::int FROM user_webhooks WHERE user_webhooks.user_id = ${users.id})`,
+    }).from(users)
+      .where(eq(users.is_approved, true))
+      .orderBy(desc(users.created_at));
+
+    return result.map(row => ({
+      id: row.id,
+      username: row.username,
+      email: row.email,
+      password_hash: row.password_hash,
+      is_admin: row.is_admin,
+      is_super_admin: row.is_super_admin,
+      is_approved: row.is_approved,
+      totp_enabled: row.totp_enabled,
+      totp_secret_encrypted: row.totp_secret_encrypted,
+      recovery_codes_encrypted: row.recovery_codes_encrypted,
+      tos_accepted_at: row.tos_accepted_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      stats: {
+        rules_count: row.rules_count,
+        alerts_count: row.alerts_count,
+        webhooks_count: row.webhooks_count,
+      },
+    }));
   }
 
-  findByUsername(username: string, decrypt2FA: boolean = false): User | null {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
-    const row = stmt.get(username) as UserRow | undefined;
-    if (!row) return null;
-    const user = rowToUser(row);
-    return decrypt2FA ? this.decrypt2FASecrets(user) : user;
+  async findPendingUsers(): Promise<Array<typeof users.$inferSelect>> {
+    return this.db.select().from(users)
+      .where(eq(users.is_approved, false))
+      .orderBy(desc(users.created_at));
   }
 
-  update(id: number, updates: Partial<CreateUser> & { totp_secret?: string | null; recovery_codes?: string | null }): User {
-    const currentUser = this.findById(id);
-    if (!currentUser) {
-      throw new Error('User not found');
-    }
+  async searchUsers(query: string): Promise<Array<{ id: number; username: string; email: string }>> {
+    const escaped = query.replace(/[%_\\]/g, '\\$&');
+    const pattern = `%${escaped}%`;
+    return this.db.select({
+      id: users.id,
+      username: users.username,
+      email: users.email,
+    }).from(users)
+      .where(or(ilike(users.username, pattern), ilike(users.email, pattern)))
+      .limit(20);
+  }
 
-    const processedUpdates: Record<string, string | number | null> = { ...updates } as Record<string, string | number | null>;
-    
-    if ('totp_secret' in updates) {
-      if (updates.totp_secret) {
-        processedUpdates['totp_secret_encrypted'] = encryptData(updates.totp_secret);
-      } else {
-        processedUpdates['totp_secret_encrypted'] = null;
-      }
-      delete processedUpdates['totp_secret'];
-    }
-    
-    if ('recovery_codes' in updates) {
-      if (updates.recovery_codes) {
-        processedUpdates['recovery_codes_encrypted'] = encryptData(updates.recovery_codes);
-      } else {
-        processedUpdates['recovery_codes_encrypted'] = null;
-      }
-      delete processedUpdates['recovery_codes'];
-    }
+  async create(userData: { username: string; email: string; password_hash: string }): Promise<typeof users.$inferSelect> {
+    const [user] = await this.db.insert(users).values({
+      username: userData.username,
+      email: userData.email,
+      password_hash: userData.password_hash,
+    }).returning();
+    return user!;
+  }
 
-    const validatedUpdates = CreateUserSchema.partial().parse(processedUpdates);
-    
-    const fields = Object.keys(validatedUpdates).filter(key => key !== 'updated_at');
-    if (fields.length === 0) {
-      return currentUser;
+  async update(id: number, input: UserUpdate): Promise<typeof users.$inferSelect | null> {
+    const { totp_secret, recovery_codes, ...rest } = input;
+
+    const setValues: Record<string, unknown> = {
+      ...rest,
+      updated_at: new Date(),
+    };
+
+    if (totp_secret !== undefined) {
+      setValues['totp_secret_encrypted'] = totp_secret ? encryptData(totp_secret) : null;
+    }
+    if (recovery_codes !== undefined) {
+      setValues['recovery_codes_encrypted'] = recovery_codes ? encryptData(recovery_codes) : null;
     }
 
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const values = fields.map(field => (validatedUpdates as Record<string, unknown>)[field]);
-    
-    const stmt = this.db.prepare(`
-      UPDATE users 
-      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
+    const [user] = await this.db.update(users)
+      .set(setValues)
+      .where(eq(users.id, id))
+      .returning();
 
-    stmt.run(...values, id);
-    
-    // Invalidate cache
-    import('../../lib/middleware.js')
-      .then(({ invalidateUserCache }) => invalidateUserCache(id))
-      .catch(() => {});
-    
-    return this.findById(id)!;
+    return user ?? null;
   }
 
-  delete(id: number): boolean {
-    const user = this.findById(id);
-    if (user?.is_super_admin) {
-      throw new Error('Cannot delete super admin');
-    }
-    
-    const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
-    const result = stmt.run(id);
-    
-    if (result.changes > 0) {
-      import('../../lib/middleware.js')
-        .then(({ invalidateUserCache }) => invalidateUserCache(id))
-        .catch(() => {});
-    }
-    
-    return result.changes > 0;
+  async delete(id: number): Promise<boolean> {
+    const result = await this.db.delete(users).where(eq(users.id, id)).returning({ id: users.id });
+    return result.length > 0;
   }
 
-  findAll(): User[] {
-    const stmt = this.db.prepare('SELECT * FROM users WHERE is_approved = 1 ORDER BY created_at DESC');
-    const rows = stmt.all() as UserRow[];
-    return rows.map(row => rowToUser(row));
+  async approveUser(id: number): Promise<boolean> {
+    const result = await this.db.update(users)
+      .set({ is_approved: true, updated_at: new Date() })
+      .where(and(eq(users.id, id), eq(users.is_approved, false)))
+      .returning({ id: users.id });
+    return result.length > 0;
   }
 
-  countAdmins(): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1');
-    const result = stmt.get() as { count: number };
-    return result.count;
+  async rejectUser(id: number): Promise<boolean> {
+    const result = await this.db.delete(users)
+      .where(and(eq(users.id, id), eq(users.is_approved, false)))
+      .returning({ id: users.id });
+    return result.length > 0;
   }
 
-  findPendingApproval(limit: number = 50, offset: number = 0): User[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM users 
-      WHERE is_approved = 0 
-      ORDER BY created_at ASC 
-      LIMIT ? OFFSET ?
-    `);
-    const rows = stmt.all(limit, offset) as UserRow[];
-    return rows.map(row => rowToUser(row));
+  async toggleAdmin(id: number, isAdmin: boolean): Promise<boolean> {
+    const result = await this.db.update(users)
+      .set({ is_admin: isAdmin, updated_at: new Date() })
+      .where(eq(users.id, id))
+      .returning({ id: users.id });
+    return result.length > 0;
   }
 
-  approve(id: number): boolean {
-    const stmt = this.db.prepare('UPDATE users SET is_approved = 1 WHERE id = ?');
-    const result = stmt.run(id);
-    return result.changes > 0;
+  async countAdmins(): Promise<number> {
+    const [result] = await this.db.select({ value: count() })
+      .from(users)
+      .where(and(eq(users.is_admin, true), eq(users.is_approved, true)));
+    return result?.value ?? 0;
   }
 
-  /** Record ToS acceptance timestamp */
-  acceptTos(id: number): void {
-    this.db.prepare('UPDATE users SET tos_accepted_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
-  }
-
-  setAdmin(id: number, isAdmin: boolean): boolean {
-    const stmt = this.db.prepare('UPDATE users SET is_admin = ? WHERE id = ?');
-    const result = stmt.run(isAdmin ? 1 : 0, id);
-    
-    if (result.changes > 0) {
-      import('../../lib/middleware.js')
-        .then(({ invalidateUserCache }) => invalidateUserCache(id))
-        .catch(() => {});
-    }
-    
-    return result.changes > 0;
-  }
-
-  searchUsers(searchTerm: string, limit: number = 20): User[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM users 
-      WHERE is_approved = 1 AND (username LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\') 
-      ORDER BY username ASC 
-      LIMIT ?
-    `);
-    const escaped = searchTerm.replace(/[%_\\]/g, '\\$&');
-    const term = `%${escaped}%`;
-    const rows = stmt.all(term, term, limit) as UserRow[];
-    return rows.map(row => rowToUser(row));
-  }
-
-  /**
-   * Get all approved users with their stats in a single efficient query
-   * Replaces N+1 pattern of fetching users then iterating for counts
-   */
-  findAllWithStats(): Array<User & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }> {
-    const stmt = this.db.prepare(`
-      SELECT 
-        u.*,
-        (SELECT COUNT(*) FROM rules WHERE user_id = u.id) as rules_count,
-        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = u.id) as alerts_count,
-        (SELECT COUNT(*) FROM user_webhooks WHERE user_id = u.id) as webhooks_count
-      FROM users u
-      WHERE u.is_approved = 1
-      ORDER BY u.created_at DESC
-    `);
-    
-    const rows = stmt.all() as Array<UserRow & { rules_count: number; alerts_count: number; webhooks_count: number }>;
-    
-    return rows.map(row => {
-      const { rules_count, alerts_count, webhooks_count, ...userRow } = row;
-      const user = rowToUser(userRow as UserRow);
-      return {
-        ...user,
-        stats: { rules_count, alerts_count, webhooks_count }
-      };
-    });
+  async acceptTos(userId: number): Promise<void> {
+    await this.db.update(users)
+      .set({ tos_accepted_at: new Date(), updated_at: new Date() })
+      .where(eq(users.id, userId));
   }
 }

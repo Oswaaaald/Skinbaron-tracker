@@ -130,7 +130,7 @@ export class AlertScheduler {
       if (now - this.lastCleanupTime >= ONE_DAY_MS) {
         this.lastCleanupTime = now;
         try {
-          const result = store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
+          const result = await store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
           if (result > 0) {
             this.logger.info({ deleted: result, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old audit logs');
           }
@@ -141,13 +141,13 @@ export class AlertScheduler {
 
       // Clean expired blacklisted access tokens periodically (every run)
       try {
-        store.cleanupExpiredBlacklistTokens();
+        await store.cleanupExpiredBlacklistTokens();
       } catch (error) {
         this.logger.error({ error }, '[Scheduler] Failed to cleanup expired blacklist tokens');
       }
 
       // Get all enabled rules
-      const rules = store.getEnabledRules();
+      const rules = await store.getEnabledRules();
       if (rules.length === 0) {
         return;
       }
@@ -277,9 +277,9 @@ export class AlertScheduler {
     if (allItems.length === 0) {
       for (const rule of rules) {
         if (!rule.id) continue;
-        const existing = store.alerts.findSaleIdPricesByRuleId(rule.id);
+        const existing = await store.alerts.findSaleIdPricesByRuleId(rule.id);
         if (existing.length > 0) {
-          store.alerts.deleteBySaleIdsForRule(existing.map(p => p.sale_id), rule.id);
+          await store.alerts.deleteBySaleIdsForRule(existing.map(p => p.sale_id), rule.id);
           this.logger.info({ ruleId: rule.id, deletedCount: existing.length }, '[Scheduler] Cleaned stale alerts — no items found');
         }
       }
@@ -292,7 +292,7 @@ export class AlertScheduler {
     let totalNewAlerts = 0;
     for (const rule of rules) {
       try {
-        totalNewAlerts += this.processRuleWithItems(rule, allItems, allApiSaleIds, client, hitPageLimit);
+        totalNewAlerts += await this.processRuleWithItems(rule, allItems, allApiSaleIds, client, hitPageLimit);
       } catch (error) {
         this.stats.errorCount++;
         this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
@@ -306,13 +306,13 @@ export class AlertScheduler {
    * Process a single rule against pre-fetched items from a shared API call.
    * Applies per-rule filters, detects new items & price changes, creates alerts.
    */
-  private processRuleWithItems(
+  private async processRuleWithItems(
     rule: Rule,
     allItems: SkinBaronItem[],
     allApiSaleIds: Set<string>,
     client: SkinBaronClient,
     hitPageLimit: boolean
-  ): number {
+  ): Promise<number> {
     if (!rule.id) return 0;
     const ruleId = rule.id;
 
@@ -343,7 +343,7 @@ export class AlertScheduler {
     });
 
     // ── Lightweight existing alerts lookup (sale_id + price only, not full rows) ──
-    const existingPairs = store.alerts.findSaleIdPricesByRuleId(ruleId);
+    const existingPairs = await store.alerts.findSaleIdPricesByRuleId(ruleId);
     const existingMap = new Map(existingPairs.map(p => [p.sale_id, p.price]));
 
     // ── Delete stale alerts — items no longer available on SkinBaron ──
@@ -354,7 +354,7 @@ export class AlertScheduler {
         .filter(p => !allApiSaleIds.has(p.sale_id))
         .map(p => p.sale_id);
       if (obsoleteSaleIds.length > 0) {
-        obsoleteRemoved = store.alerts.deleteBySaleIdsForRule(obsoleteSaleIds, ruleId);
+        obsoleteRemoved = await store.alerts.deleteBySaleIdsForRule(obsoleteSaleIds, ruleId);
       }
     }
 
@@ -373,7 +373,7 @@ export class AlertScheduler {
           continue;
         }
         // Price changed — remove old alert so it gets recreated below
-        store.deleteBySaleIdAndRuleId(item.saleId, ruleId);
+        await store.deleteBySaleIdAndRuleId(item.saleId, ruleId);
         priceChanges++;
       }
 
@@ -382,7 +382,7 @@ export class AlertScheduler {
 
     // ── Batch insert new alerts + queue notifications ──
     if (matchingItems.length > 0) {
-      const webhooks = store.getRuleWebhooksForNotification(ruleId);
+      const webhooks = await store.getRuleWebhooksForNotification(ruleId);
 
       const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
         rule_id: ruleId,
@@ -396,7 +396,7 @@ export class AlertScheduler {
         skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
       }));
 
-      const insertedCount = store.createAlertsBatch(alertsToCreate);
+      const insertedCount = await store.createAlertsBatch(alertsToCreate);
       newAlerts = insertedCount;
 
       // Send Discord notifications if webhooks are configured

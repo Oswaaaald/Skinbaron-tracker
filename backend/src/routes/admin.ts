@@ -69,7 +69,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       // Use optimized single query with stats instead of N+1 pattern
-      const usersWithStats = store.getAllUsersWithStats();
+      const usersWithStats = await store.getAllUsersWithStats();
 
       const result = usersWithStats.map(user => ({
         id: user.id,
@@ -120,7 +120,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Check if user exists
-      const user = store.getUserById(id);
+      const user = await store.getUserById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -132,12 +132,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Only super admins can delete admins
       if (user.is_admin) {
-        const currentAdmin = store.getUserById(adminId);
+        const currentAdmin = await store.getUserById(adminId);
         if (!currentAdmin?.is_super_admin) {
           throw Errors.forbidden('Only super administrators can delete other administrators');
         }
 
-        const adminCount = store.users.countAdmins();
+        const adminCount = await store.users.countAdmins();
         
         if (adminCount <= 1) {
           throw Errors.badRequest('You cannot delete the last administrator account');
@@ -145,13 +145,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action BEFORE deleting user (for audit trail)
-      store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
+      await store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
 
       // Get admin info for the audit log
-      const admin = store.getUserById(adminId);
+      const admin = await store.getUserById(adminId);
 
       // Create audit log for the ADMIN who performed the deletion
-      store.createAuditLog(
+      await store.createAuditLog(
         adminId,  // Use admin's ID, not the deleted user's ID
         'user_deleted',
         JSON.stringify({ 
@@ -166,7 +166,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       );
 
       // Delete user (CASCADE will handle rules, alerts, webhooks)
-      const deleted = store.deleteUser(id);
+      const deleted = await store.deleteUser(id);
 
       if (!deleted) {
         throw Errors.internal('Failed to delete user');
@@ -219,7 +219,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Check if user exists
-      const user = store.getUserById(id);
+      const user = await store.getUserById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -231,7 +231,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Only super admins can grant or revoke admin status to/from admins
       if (user.is_admin || is_admin) {
-        const currentAdmin = store.getUserById(adminId);
+        const currentAdmin = await store.getUserById(adminId);
         if (!currentAdmin?.is_super_admin) {
           throw Errors.forbidden('Only super administrators can manage admin privileges');
         }
@@ -244,7 +244,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // If removing admin, check if this is the last admin
       if (user.is_admin && !is_admin) {
-        const adminCount = store.users.countAdmins();
+        const adminCount = await store.users.countAdmins();
         
         if (adminCount <= 1) {
           throw Errors.badRequest('You cannot remove administrator privileges from the last admin');
@@ -252,7 +252,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Toggle admin status
-      const updated = store.toggleUserAdmin(id, is_admin);
+      const updated = await store.toggleUserAdmin(id, is_admin);
 
       if (!updated) {
         throw Errors.internal('Failed to update admin status');
@@ -261,11 +261,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       // Log admin action
       const action = is_admin ? 'grant_admin' : 'revoke_admin';
       const details = `${is_admin ? 'Granted' : 'Revoked'} admin privileges for ${user.username}`;
-      store.logAdminAction(adminId, action, id, details);
+      await store.logAdminAction(adminId, action, id, details);
 
       // Create audit log
       const eventType = is_admin ? 'user_promoted' : 'user_demoted';
-      store.createAuditLog(
+      await store.createAuditLog(
         id,
         eventType,
         JSON.stringify({ 
@@ -298,7 +298,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const stats = store.getGlobalStats();
+      const stats = await store.getGlobalStats();
 
       return reply.status(200).send({
         success: true,
@@ -340,7 +340,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const pendingUsers = store.getPendingUsers();
+      const pendingUsers = await store.getPendingUsers();
 
       return reply.status(200).send({
         success: true,
@@ -382,17 +382,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = request.params as { id: number };
-      const success = store.approveUser(id);
+      const success = await store.approveUser(id);
 
       if (!success) {
         throw Errors.notFound('User');
       }
 
       // Log admin action
-      store.logAdminAction(getAuthUser(request).id, 'APPROVE_USER', id, `Approved user ID ${id}`);
+      await store.logAdminAction(getAuthUser(request).id, 'APPROVE_USER', id, `Approved user ID ${id}`);
 
       // Create audit log
-      store.createAuditLog(
+      await store.createAuditLog(
         id,
         'user_approved',
         JSON.stringify({ 
@@ -444,7 +444,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: number };
 
       // Verify user exists and is actually pending approval
-      const user = store.getUserById(id);
+      const user = await store.getUserById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -453,9 +453,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action BEFORE deleting so the FK to target_user_id is still valid
-      store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ${user.username} (${user.email})`);
+      await store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ${user.username} (${user.email})`);
 
-      const success = store.rejectUser(id);
+      const success = await store.rejectUser(id);
 
       if (!success) {
         throw Errors.notFound('User');
@@ -497,7 +497,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await scheduler.forceRun();
 
       // Log admin action
-      store.logAdminAction(getAuthUser(request).id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
+      await store.logAdminAction(getAuthUser(request).id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
 
       return reply.status(200).send({
         success: true,
@@ -570,12 +570,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { userId } = request.params as { userId: number };
       const { limit = 100 } = request.query as { limit?: number };
 
-      const user = store.getUserById(userId);
+      const user = await store.getUserById(userId);
       if (!user) {
         throw Errors.notFound('User');
       }
 
-      const logs = store.getAuditLogsByUserId(userId, limit);
+      const logs = await store.getAuditLogsByUserId(userId, limit);
 
       return reply.status(200).send({
         success: true,
@@ -639,7 +639,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { limit = 100, event_type, user_id } = request.query as { limit?: number; event_type?: string; user_id?: number };
 
-      const logs = store.getAllAuditLogs(limit, event_type, user_id);
+      const logs = await store.getAllAuditLogs(limit, event_type, user_id);
 
       return reply.status(200).send({
         success: true,
@@ -688,7 +688,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { q } = request.query as { q: string };
-      const users = store.searchUsers(q);
+      const users = await store.searchUsers(q);
 
       return reply.status(200).send({
         success: true,

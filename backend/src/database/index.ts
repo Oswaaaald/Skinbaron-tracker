@@ -1,173 +1,258 @@
-import { getDatabase } from './connection.js';
+import { db } from './connection.js';
+import type { AppDatabase } from './connection.js';
+import { UsersRepository } from './repositories/users.repository.js';
 import { RulesRepository } from './repositories/rules.repository.js';
 import { AlertsRepository } from './repositories/alerts.repository.js';
-import { UsersRepository } from './repositories/users.repository.js';
 import { WebhooksRepository } from './repositories/webhooks.repository.js';
 import { AuthRepository } from './repositories/auth.repository.js';
 import { AuditRepository } from './repositories/audit.repository.js';
+import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog } from './schema.js';
 
-export class Store {
-  private db = getDatabase();
+class Store {
+  public users: UsersRepository;
+  public rules: RulesRepository;
+  public alerts: AlertsRepository;
+  public webhooks: WebhooksRepository;
+  public auth: AuthRepository;
+  public audit: AuditRepository;
 
-  // Repositories
-  public rules = new RulesRepository(this.db);
-  public alerts = new AlertsRepository(this.db);
-  public users = new UsersRepository(this.db);
-  public webhooks = new WebhooksRepository(this.db);
-  public auth = new AuthRepository(this.db);
-  public audit = new AuditRepository(this.db);
-
-  // Rules
-  createRule = this.rules.create.bind(this.rules);
-  getRuleById = this.rules.findById.bind(this.rules);
-  getRulesByUserId = this.rules.findByUserId.bind(this.rules);
-  getEnabledRules = this.rules.findEnabled.bind(this.rules);
-  updateRule = this.rules.update.bind(this.rules);
-  deleteRule = this.rules.delete.bind(this.rules);
-  enableRulesBatch = this.rules.enableBatch.bind(this.rules);
-  disableRulesBatch = this.rules.disableBatch.bind(this.rules);
-  deleteRulesBatch = this.rules.deleteBatch.bind(this.rules);
-
-  // Alerts
-  createAlertsBatch = this.alerts.createBatch.bind(this.alerts);
-  getAlertsByUserId = this.alerts.findByUserId.bind(this.alerts);
-  deleteAllUserAlerts = this.alerts.deleteByUserId.bind(this.alerts);
-  findAlertsByRuleId = this.alerts.findByRuleId.bind(this.alerts);
-  deleteBySaleIdAndRuleId = this.alerts.deleteBySaleIdAndRuleId.bind(this.alerts);
-  getUniqueAlertItemNames = this.alerts.getUniqueItemNames.bind(this.alerts);
-
-  // Users
-  createUser = this.users.create.bind(this.users);
-  getUserById = this.users.findById.bind(this.users);
-  getUserByEmail = this.users.findByEmail.bind(this.users);
-  getUserByUsername = this.users.findByUsername.bind(this.users);
-  updateUser = this.users.update.bind(this.users);
-  deleteUser = this.users.delete.bind(this.users);
-  getAllUsers = this.users.findAll.bind(this.users);
-  getAllUsersWithStats = this.users.findAllWithStats.bind(this.users);
-  searchUsers = this.users.searchUsers.bind(this.users);
-  getPendingUsers = this.users.findPendingApproval.bind(this.users);
-  approveUser = this.users.approve.bind(this.users);
-  acceptTos = this.users.acceptTos.bind(this.users);
-  
-  rejectUser(userId: number): boolean {
-    return this.users.delete(userId);
+  constructor(database: AppDatabase) {
+    this.users = new UsersRepository(database);
+    this.rules = new RulesRepository(database);
+    this.alerts = new AlertsRepository(database);
+    this.webhooks = new WebhooksRepository(database);
+    this.auth = new AuthRepository(database);
+    this.audit = new AuditRepository(database);
   }
 
-  // Webhooks
-  createUserWebhook = this.webhooks.create.bind(this.webhooks);
-  getUserWebhookById = this.webhooks.findById.bind(this.webhooks);
-  getUserWebhooksByUserId = this.webhooks.findByUserId.bind(this.webhooks);
-  updateUserWebhook = this.webhooks.update.bind(this.webhooks);
-  deleteUserWebhook(id: number, userId: number): boolean {
-    const result = this.webhooks.delete(id, userId);
-    
-    if (result) {
-      this.cleanupRulesAfterWebhookDeletion(id, userId);
-    }
-    
-    return result;
-  }
-  
-  /**
-   * After a webhook is deleted, the junction table CASCADE handles removing associations.
-   * But we still need to disable rules that end up with no webhooks.
-   */
-  private cleanupRulesAfterWebhookDeletion(_webhookId: number, userId: number): void {
-    // Find user's rules that now have zero webhooks in the junction table
-    const orphanedRules = this.db.prepare(`
-      SELECT r.id FROM rules r
-      WHERE r.user_id = ?
-        AND r.enabled = 1
-        AND NOT EXISTS (SELECT 1 FROM rule_webhooks rw WHERE rw.rule_id = r.id)
-    `).all(userId) as Array<{ id: number }>;
+  // ==================== User operations ====================
 
-    if (orphanedRules.length > 0) {
-      const placeholders = orphanedRules.map(() => '?').join(',');
-      this.db.prepare(`UPDATE rules SET enabled = 0 WHERE id IN (${placeholders})`).run(
-        ...orphanedRules.map(r => r.id)
-      );
-    }
+  async getUserById(id: number, decrypt2FA = false): Promise<User | null> {
+    return this.users.findById(id, decrypt2FA);
   }
 
-  enableWebhooksBatch = this.webhooks.enableBatch.bind(this.webhooks);
-  disableWebhooksBatch = this.webhooks.disableBatch.bind(this.webhooks);
-  
-  deleteWebhooksBatch(webhookIds: number[], userId: number): number {
-    const result = this.webhooks.deleteBatch(webhookIds, userId);
-    if (result > 0) {
-      // CASCADE removes junction rows; disable orphaned rules
-      this.cleanupRulesAfterWebhookDeletion(0, userId);
-    }
-    return result;
+  async getUserByEmail(email: string, decrypt2FA = false): Promise<User | null> {
+    return this.users.findByEmail(email, decrypt2FA);
   }
 
-  getRuleWebhooksForNotification(ruleId: number) {
-    // Direct JOIN through the junction table — no JSON parsing needed
-    return this.webhooks.findActiveByRuleId(ruleId, true).filter(w => w.webhook_url);
+  async getUserByUsername(username: string): Promise<User | null> {
+    return this.users.findByUsername(username);
   }
 
-  getUserWebhooks = this.webhooks.findByUserId.bind(this.webhooks);
-
-  getUserStats(userId: number) {
-    const stats = this.db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM rules WHERE user_id = ?) as totalRules,
-        (SELECT COUNT(*) FROM rules WHERE user_id = ? AND enabled = 1) as enabledRules,
-        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ?) as totalAlerts,
-        (SELECT COUNT(*) FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ? AND a.sent_at >= datetime('now', '-24 hours')) as todayAlerts
-    `).get(userId, userId, userId, userId) as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
-
-    return stats;
+  async createUser(data: { username: string; email: string; password_hash: string }): Promise<User> {
+    return this.users.create(data);
   }
 
-  toggleUserAdmin(userId: number, isAdmin: boolean): boolean {
-    return this.users.setAdmin(userId, isAdmin);
-  }
-  
-  getStats() {
-    const stats = this.db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM rules) as totalRules,
-        (SELECT COUNT(*) FROM rules WHERE enabled = 1) as enabledRules,
-        (SELECT COUNT(*) FROM alerts) as totalAlerts,
-        (SELECT COUNT(*) FROM alerts WHERE sent_at >= datetime('now', '-24 hours')) as todayAlerts
-    `).get() as { totalRules: number; enabledRules: number; totalAlerts: number; todayAlerts: number };
-
-    return stats;
-  }
-  
-  getGlobalStats() {
-    return this.audit.getSystemStats();
+  async updateUser(id: number, updates: Record<string, unknown>): Promise<User | null> {
+    return this.users.update(id, updates);
   }
 
-  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number) {
-    return this.audit.getAllAuditLogs(limit, eventType, userId);
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
   }
 
-  addRefreshToken = this.auth.saveRefreshToken.bind(this.auth);
-
-  // Auth
-  getRefreshToken = this.auth.getRefreshToken.bind(this.auth);
-  revokeRefreshToken = this.auth.revokeRefreshToken.bind(this.auth);
-  revokeAllRefreshTokensForUser = this.auth.revokeAllRefreshTokensForUser.bind(this.auth);
-  cleanupRefreshTokens = this.auth.cleanupRefreshTokens.bind(this.auth);
-  blacklistAccessToken = this.auth.blacklistAccessToken.bind(this.auth);
-  isAccessTokenBlacklisted = this.auth.isAccessTokenBlacklisted.bind(this.auth);
-  cleanupExpiredBlacklistTokens = this.auth.cleanupExpiredBlacklistTokens.bind(this.auth);
-
-  // Audit
-  createAuditLog = this.audit.createAuditLog.bind(this.audit);
-  getAuditLogsByUserId = this.audit.getAuditLogsByUserId.bind(this.audit);
-  cleanOldAuditLogs(daysToKeep: number = 90): number {
-    return this.audit.cleanupOldAuditLogs(daysToKeep);
+  async acceptTos(userId: number): Promise<void> {
+    return this.users.acceptTos(userId);
   }
-  logAdminAction = this.audit.logAdminAction.bind(this.audit);
 
-  close() {
-    this.db.close();
+  async toggleUserAdmin(id: number, isAdmin: boolean): Promise<boolean> {
+    return this.users.toggleAdmin(id, isAdmin);
+  }
+
+  async approveUser(id: number): Promise<boolean> {
+    return this.users.approveUser(id);
+  }
+
+  async rejectUser(id: number): Promise<boolean> {
+    return this.users.rejectUser(id);
+  }
+
+  async getAllUsersWithStats() {
+    return this.users.findAllWithStats();
+  }
+
+  async getPendingUsers() {
+    return this.users.findPendingUsers();
+  }
+
+  async searchUsers(query: string) {
+    return this.users.searchUsers(query);
+  }
+
+  // ==================== Rule operations ====================
+
+  async getRuleById(id: number): Promise<Rule | null> {
+    return this.rules.findById(id);
+  }
+
+  async getRulesByUserId(userId: number): Promise<Rule[]> {
+    return this.rules.findByUserId(userId);
+  }
+
+  async getEnabledRules(): Promise<Rule[]> {
+    return this.rules.findAllEnabled();
+  }
+
+  async createRule(data: CreateRule): Promise<Rule> {
+    return this.rules.create(data);
+  }
+
+  async updateRule(id: number, updates: Partial<CreateRule>): Promise<Rule | null> {
+    return this.rules.update(id, updates);
+  }
+
+  async deleteRule(id: number): Promise<boolean> {
+    return this.rules.delete(id);
+  }
+
+  async enableRulesBatch(ruleIds: number[], userId: number): Promise<number> {
+    return this.rules.enableBatch(ruleIds, userId);
+  }
+
+  async disableRulesBatch(ruleIds: number[], userId: number): Promise<number> {
+    return this.rules.disableBatch(ruleIds, userId);
+  }
+
+  async deleteRulesBatch(ruleIds: number[], userId: number): Promise<number> {
+    return this.rules.deleteBatch(ruleIds, userId);
+  }
+
+  // ==================== Alert operations ====================
+
+  async getAlertsByUserId(userId: number, limit: number = 0, offset: number = 0, options?: {
+    ruleId?: number;
+    itemName?: string;
+    sortBy?: 'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc';
+  }): Promise<Alert[]> {
+    return this.alerts.findByUserId(userId, limit, offset, options);
+  }
+
+  async createAlertsBatch(alertsData: CreateAlert[]): Promise<number> {
+    return this.alerts.createBatch(alertsData);
+  }
+
+  async deleteBySaleIdAndRuleId(saleId: string, ruleId: number): Promise<void> {
+    return this.alerts.deleteBySaleIdAndRuleId(saleId, ruleId);
+  }
+
+  async deleteAllUserAlerts(userId: number): Promise<number> {
+    return this.alerts.deleteAllByUserId(userId);
+  }
+
+  async getUniqueAlertItemNames(userId: number): Promise<string[]> {
+    return this.alerts.getUniqueItemNames(userId);
+  }
+
+  async getUserStats(userId: number) {
+    return this.audit.getUserStats(userId);
+  }
+
+  // ==================== Webhook operations ====================
+
+  async getUserWebhookById(id: number): Promise<UserWebhook | null> {
+    return this.webhooks.findById(id);
+  }
+
+  async getUserWebhooksByUserId(userId: number, decrypt = false): Promise<UserWebhook[]> {
+    return this.webhooks.findByUserId(userId, decrypt);
+  }
+
+  async getUserWebhooks(userId: number): Promise<UserWebhook[]> {
+    return this.webhooks.findByUserId(userId, false);
+  }
+
+  async createUserWebhook(userId: number, data: { name: string; webhook_url: string; webhook_type?: 'discord'; notification_style?: 'compact' | 'detailed'; is_active?: boolean }): Promise<UserWebhook> {
+    return this.webhooks.create(userId, data);
+  }
+
+  async updateUserWebhook(id: number, userId: number, data: Partial<{ name: string; webhook_url: string; webhook_type: 'discord'; notification_style: 'compact' | 'detailed'; is_active: boolean }>): Promise<UserWebhook | null> {
+    return this.webhooks.update(id, userId, data);
+  }
+
+  async deleteUserWebhook(id: number, userId: number): Promise<boolean> {
+    return this.webhooks.delete(id, userId);
+  }
+
+  async enableWebhooksBatch(ids: number[], userId: number): Promise<number> {
+    return this.webhooks.enableBatch(ids, userId);
+  }
+
+  async disableWebhooksBatch(ids: number[], userId: number): Promise<number> {
+    return this.webhooks.disableBatch(ids, userId);
+  }
+
+  async deleteWebhooksBatch(ids: number[], userId: number): Promise<number> {
+    return this.webhooks.deleteBatch(ids, userId);
+  }
+
+  async getRuleWebhooksForNotification(ruleId: number): Promise<UserWebhook[]> {
+    return this.webhooks.getRuleWebhooksForNotification(ruleId);
+  }
+
+  // ==================== Auth operations ====================
+
+  async addRefreshToken(userId: number, rawToken: string, jti: string, expiresAt: number): Promise<void> {
+    return this.auth.addRefreshToken(userId, rawToken, jti, expiresAt);
+  }
+
+  async getRefreshToken(rawToken: string): Promise<RefreshTokenRecord | null> {
+    return this.auth.getRefreshToken(rawToken);
+  }
+
+  async revokeRefreshToken(rawToken: string, replacedByJti: string): Promise<void> {
+    return this.auth.revokeRefreshToken(rawToken, replacedByJti);
+  }
+
+  async revokeAllRefreshTokensForUser(userId: number): Promise<void> {
+    return this.auth.revokeAllForUser(userId);
+  }
+
+  async cleanupRefreshTokens(): Promise<void> {
+    return this.auth.cleanupRefreshTokens();
+  }
+
+  async blacklistAccessToken(jti: string, userId: number, expiresAt: number, reason: string): Promise<void> {
+    return this.auth.blacklistAccessToken(jti, userId, expiresAt, reason);
+  }
+
+  async isAccessTokenBlacklisted(jti: string): Promise<boolean> {
+    return this.auth.isBlacklisted(jti);
+  }
+
+  async cleanupExpiredBlacklistTokens(): Promise<void> {
+    return this.auth.cleanupExpiredBlacklistTokens();
+  }
+
+  // ==================== Audit operations ====================
+
+  async createAuditLog(userId: number, eventType: string, eventData?: string, ipAddress?: string, userAgent?: string): Promise<void> {
+    return this.audit.createLog(userId, eventType, eventData, ipAddress, userAgent);
+  }
+
+  async getAuditLogsByUserId(userId: number, limit: number = 100): Promise<AuditLog[]> {
+    return this.audit.getLogsByUserId(userId, limit);
+  }
+
+  async getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): Promise<AuditLog[]> {
+    return this.audit.getAllLogs(limit, eventType, userId);
+  }
+
+  async logAdminAction(adminUserId: number, action: string, targetUserId: number | null, details?: string): Promise<void> {
+    return this.audit.logAdminAction(adminUserId, action, targetUserId, details);
+  }
+
+  async cleanOldAuditLogs(daysToKeep: number): Promise<number> {
+    return this.audit.cleanupOldLogs(daysToKeep);
+  }
+
+  async getGlobalStats() {
+    return this.audit.getGlobalStats();
+  }
+
+  /** Lightweight check used by health endpoint */
+  async getStats() {
+    return this.audit.getGlobalStats();
   }
 }
 
-// Singleton instance
-export const store = new Store();
+export const store = new Store(db);

@@ -1,90 +1,86 @@
-import type Database from 'better-sqlite3';
+import { eq, and, or, lt, sql, isNotNull } from 'drizzle-orm';
+import { refreshTokens, accessTokenBlacklist } from '../schema.js';
+import type { AppDatabase } from '../connection.js';
+import type { RefreshTokenRecord } from '../schema.js';
 import { hashToken } from '../utils/encryption.js';
 
-export interface RefreshTokenRecord {
-  id: number;
-  user_id: number;
-  token_hash: string;
-  token_jti: string;
-  expires_at: string;
-  revoked_at: string | null;
-  replaced_by_jti: string | null;
-  created_at: string;
-}
-
 export class AuthRepository {
-  constructor(private db: Database.Database) {}
+  constructor(private db: AppDatabase) {}
 
-  // Refresh tokens
-  saveRefreshToken(userId: number, token: string, jti: string, expiresAt: number): void {
-    const tokenHash = hashToken(token);
-    const stmt = this.db.prepare(`
-      INSERT INTO refresh_tokens (user_id, token_hash, token_jti, expires_at)
-      VALUES (?, ?, ?, ?)
-    `);
-    stmt.run(userId, tokenHash, jti, new Date(expiresAt).toISOString());
+  async addRefreshToken(userId: number, rawToken: string, jti: string, expiresAt: number): Promise<void> {
+    const tokenHash = hashToken(rawToken);
+    await this.db.insert(refreshTokens).values({
+      user_id: userId,
+      token_hash: tokenHash,
+      token_jti: jti,
+      expires_at: new Date(expiresAt),
+    });
   }
 
-  getRefreshTokenByHash(tokenHash: string): RefreshTokenRecord | null {
-    const stmt = this.db.prepare('SELECT * FROM refresh_tokens WHERE token_hash = ?');
-    const row = stmt.get(tokenHash) as RefreshTokenRecord | undefined;
-    return row ?? null;
+  async getRefreshToken(rawToken: string): Promise<RefreshTokenRecord | null> {
+    const tokenHash = hashToken(rawToken);
+    const [token] = await this.db.select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.token_hash, tokenHash))
+      .limit(1);
+    return token ?? null;
   }
 
-  getRefreshToken(token: string): RefreshTokenRecord | null {
-    const tokenHash = hashToken(token);
-    return this.getRefreshTokenByHash(tokenHash);
+  async revokeRefreshToken(rawToken: string, replacedByJti: string): Promise<void> {
+    const tokenHash = hashToken(rawToken);
+    await this.db.update(refreshTokens)
+      .set({ revoked_at: new Date(), replaced_by_jti: replacedByJti })
+      .where(eq(refreshTokens.token_hash, tokenHash));
   }
 
-  revokeRefreshToken(token: string, replacedByJti?: string): void {
-    const tokenHash = hashToken(token);
-    const stmt = this.db.prepare(`
-      UPDATE refresh_tokens
-      SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP), 
-          replaced_by_jti = COALESCE(?, replaced_by_jti)
-      WHERE token_hash = ?
-    `);
-    stmt.run(replacedByJti ?? null, tokenHash);
+  async revokeAllForUser(userId: number): Promise<void> {
+    await this.db.update(refreshTokens)
+      .set({ revoked_at: new Date() })
+      .where(and(
+        eq(refreshTokens.user_id, userId),
+        sql`${refreshTokens.revoked_at} IS NULL`
+      ));
   }
 
-  revokeAllRefreshTokensForUser(userId: number): void {
-    const stmt = this.db.prepare(`
-      UPDATE refresh_tokens
-      SET revoked_at = CURRENT_TIMESTAMP, 
-          replaced_by_jti = COALESCE(replaced_by_jti, 'logout_all')
-      WHERE user_id = ? AND revoked_at IS NULL
-    `);
-    stmt.run(userId);
+  async cleanupRefreshTokens(): Promise<void> {
+    await this.db.delete(refreshTokens).where(
+      or(
+        isNotNull(refreshTokens.revoked_at),
+        lt(refreshTokens.expires_at, sql`NOW()`)
+      )
+    );
   }
 
-  cleanupRefreshTokens(): void {
-    const stmt = this.db.prepare(`
-      DELETE FROM refresh_tokens
-      WHERE (revoked_at IS NOT NULL) OR (expires_at < CURRENT_TIMESTAMP)
-    `);
-    stmt.run();
+  async blacklistAccessToken(jti: string, userId: number, expiresAt: number, reason: string): Promise<void> {
+    await this.db.insert(accessTokenBlacklist)
+      .values({
+        jti,
+        user_id: userId,
+        expires_at: new Date(expiresAt),
+        reason,
+      })
+      .onConflictDoUpdate({
+        target: accessTokenBlacklist.jti,
+        set: {
+          user_id: userId,
+          expires_at: new Date(expiresAt),
+          reason,
+          created_at: new Date(),
+        },
+      });
   }
 
-  // Access token blacklist
-  blacklistAccessToken(jti: string, userId: number, expiresAt: number, reason?: string): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO access_token_blacklist (jti, user_id, expires_at, reason)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(jti) DO UPDATE SET 
-        expires_at = excluded.expires_at, 
-        reason = COALESCE(excluded.reason, access_token_blacklist.reason)
-    `);
-    stmt.run(jti, userId, new Date(expiresAt).toISOString(), reason ?? null);
+  async isBlacklisted(jti: string): Promise<boolean> {
+    const [token] = await this.db.select({ jti: accessTokenBlacklist.jti })
+      .from(accessTokenBlacklist)
+      .where(eq(accessTokenBlacklist.jti, jti))
+      .limit(1);
+    return !!token;
   }
 
-  isAccessTokenBlacklisted(jti: string): boolean {
-    const stmt = this.db.prepare('SELECT 1 FROM access_token_blacklist WHERE jti = ? AND expires_at >= CURRENT_TIMESTAMP');
-    const row = stmt.get(jti) as { 1: number } | undefined;
-    return Boolean(row);
-  }
-
-  cleanupExpiredBlacklistTokens(): void {
-    const stmt = this.db.prepare('DELETE FROM access_token_blacklist WHERE expires_at < CURRENT_TIMESTAMP');
-    stmt.run();
+  async cleanupExpiredBlacklistTokens(): Promise<void> {
+    await this.db.delete(accessTokenBlacklist).where(
+      lt(accessTokenBlacklist.expires_at, sql`NOW()`)
+    );
   }
 }

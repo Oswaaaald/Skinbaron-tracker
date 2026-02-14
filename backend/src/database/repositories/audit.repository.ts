@@ -1,187 +1,182 @@
-import type Database from 'better-sqlite3';
-
-export interface AuditLog {
-  id: number;
-  user_id: number;
-  event_type: string;
-  event_data: string | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-}
-
-export interface AdminAction {
-  id: number;
-  admin_user_id: number;
-  admin_username: string;
-  action: string;
-  target_user_id: number | null;
-  target_username: string | null;
-  details: string;
-  created_at: string;
-}
+import { eq, and, desc, lt, count, sql, inArray, getTableColumns } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { auditLog, adminActions, users, rules, alerts, userWebhooks } from '../schema.js';
+import type { AppDatabase } from '../connection.js';
+import type { AuditLog, AdminAction } from '../schema.js';
 
 export class AuditRepository {
-  constructor(private db: Database.Database) {}
+  constructor(private db: AppDatabase) {}
 
-  /**
-   * Batch-enrich audit logs with admin usernames from event_data JSON
-   * Collects all referenced admin IDs, fetches usernames in one query, then injects them
-   */
-  private enrichLogsWithAdminUsernames<T extends AuditLog>(logs: T[]): T[] {
-    const adminIds = new Set<number>();
-    for (const log of logs) {
-      if (!log.event_data || typeof log.event_data !== 'string') continue;
-      try {
-        const data = JSON.parse(log.event_data) as Record<string, unknown>;
-        const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
-        if (typeof adminId === 'number') adminIds.add(adminId);
-      } catch { /* invalid JSON, skip */ }
-    }
-
-    if (adminIds.size === 0) return logs;
-
-    const ids = Array.from(adminIds);
-    const placeholders = ids.map(() => '?').join(',');
-    const admins = this.db.prepare(`SELECT id, username FROM users WHERE id IN (${placeholders})`)
-      .all(...ids) as Array<{ id: number; username: string }>;
-    const adminMap = new Map(admins.map(a => [a.id, a.username]));
-
-    return logs.map(log => {
-      if (!log.event_data || typeof log.event_data !== 'string') return log;
-      try {
-        const data = JSON.parse(log.event_data) as Record<string, unknown>;
-        const adminId = data['admin_id'] || data['approved_by_admin_id'] || data['deleted_by_admin_id'];
-        if (typeof adminId === 'number') {
-          const username = adminMap.get(adminId);
-          if (username) {
-            log.event_data = JSON.stringify({ ...data, admin_username: username });
-          }
-        }
-      } catch { /* invalid JSON, skip */ }
-      return log;
-    });
-  }
-
-  // Audit logs
-  createAuditLog(
+  async createLog(
     userId: number,
     eventType: string,
     eventData?: string,
     ipAddress?: string,
-    userAgent?: string
-  ): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO audit_log (user_id, event_type, event_data, ip_address, user_agent)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.run(userId, eventType, eventData || null, ipAddress || null, userAgent || null);
+    userAgent?: string,
+  ): Promise<void> {
+    await this.db.insert(auditLog).values({
+      user_id: userId,
+      event_type: eventType,
+      event_data: eventData ?? null,
+      ip_address: ipAddress ?? null,
+      user_agent: userAgent ?? null,
+    });
   }
 
-  getAuditLogsByUserId(userId: number, limit: number = 100): AuditLog[] {
-    let query = `
-      SELECT * FROM audit_log 
-      WHERE user_id = ? 
-      ORDER BY created_at DESC
-    `;
-    const params: (number)[] = [userId];
+  async getLogsByUserId(userId: number, limit: number = 100): Promise<AuditLog[]> {
+    const logs = await this.db.select()
+      .from(auditLog)
+      .where(eq(auditLog.user_id, userId))
+      .orderBy(desc(auditLog.created_at))
+      .limit(limit > 0 ? limit : 10000);
 
-    // limit=0 means no limit (used for GDPR data export)
-    if (limit > 0) {
-      query += ` LIMIT ?`;
-      params.push(limit);
-    }
-
-    const logs = this.db.prepare(query).all(...params) as AuditLog[];
     return this.enrichLogsWithAdminUsernames(logs);
   }
 
-  getAllAuditLogs(limit: number = 100, eventType?: string, userId?: number): Array<AuditLog & { username?: string; email?: string }> {
-    let query = `
-      SELECT 
-        audit_log.*,
-        users.username,
-        users.email
-      FROM audit_log
-      LEFT JOIN users ON audit_log.user_id = users.id
-      WHERE 1=1
-    `;
-    const params: (string | number)[] = [];
+  async getAllLogs(limit: number = 100, eventType?: string, userId?: number): Promise<AuditLog[]> {
+    const conditions = [];
+    if (eventType) conditions.push(eq(auditLog.event_type, eventType));
+    if (userId) conditions.push(eq(auditLog.user_id, userId));
 
-    if (eventType) {
-      query += ' AND audit_log.event_type = ?';
-      params.push(eventType);
-    }
+    const result = await this.db.select({
+      ...getTableColumns(auditLog),
+      username: users.username,
+      email: users.email,
+    }).from(auditLog)
+      .leftJoin(users, eq(auditLog.user_id, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(auditLog.created_at))
+      .limit(limit);
 
-    if (userId) {
-      query += ' AND audit_log.user_id = ?';
-      params.push(userId);
-    }
-
-    query += ' ORDER BY audit_log.created_at DESC LIMIT ?';
-    params.push(limit);
-
-    const stmt = this.db.prepare(query);
-    const logs = stmt.all(...params) as Array<AuditLog & { username?: string; email?: string }>;
-    return this.enrichLogsWithAdminUsernames(logs);
+    return this.enrichLogsWithAdminUsernames(result);
   }
 
-  cleanupOldAuditLogs(daysToKeep: number = 90): number {
-    const stmt = this.db.prepare(`
-      DELETE FROM audit_log 
-      WHERE created_at < datetime('now', '-' || ? || ' days')
-    `);
-    const result = stmt.run(daysToKeep);
-    return result.changes;
+  async logAdminAction(
+    adminUserId: number,
+    action: string,
+    targetUserId: number | null,
+    details?: string,
+  ): Promise<void> {
+    await this.db.insert(adminActions).values({
+      admin_user_id: adminUserId,
+      action,
+      target_user_id: targetUserId,
+      details: details ?? null,
+    });
   }
 
-  // Admin actions
-  logAdminAction(adminUserId: number, action: string, targetUserId: number | null, details: string): void {
-    const stmt = this.db.prepare(`
-      INSERT INTO admin_actions (admin_user_id, action, target_user_id, details, created_at)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.run(adminUserId, action, targetUserId, details, new Date().toISOString());
+  async getAdminLogs(limit: number = 100): Promise<AdminAction[]> {
+    const adminUser = alias(users, 'admin_user');
+    const targetUser = alias(users, 'target_user');
+
+    return this.db.select({
+      ...getTableColumns(adminActions),
+      admin_username: adminUser.username,
+      target_username: targetUser.username,
+    }).from(adminActions)
+      .leftJoin(adminUser, eq(adminActions.admin_user_id, adminUser.id))
+      .leftJoin(targetUser, eq(adminActions.target_user_id, targetUser.id))
+      .orderBy(desc(adminActions.created_at))
+      .limit(limit);
   }
 
-  getAdminLogs(limit: number = 50): AdminAction[] {
-    const stmt = this.db.prepare(`
-      SELECT 
-        al.*,
-        u1.username as admin_username,
-        u2.username as target_username
-      FROM admin_actions al
-      LEFT JOIN users u1 ON al.admin_user_id = u1.id
-      LEFT JOIN users u2 ON al.target_user_id = u2.id
-      ORDER BY al.created_at DESC
-      LIMIT ?
-    `);
-    
-    return stmt.all(limit) as AdminAction[];
+  async cleanupOldLogs(daysToKeep: number = 90): Promise<number> {
+    const result = await this.db.delete(auditLog)
+      .where(lt(auditLog.created_at, sql`NOW() - ${daysToKeep} * INTERVAL '1 day'`))
+      .returning({ id: auditLog.id });
+    return result.length;
   }
 
-  getSystemStats(): {
-    total_users: number;
-    total_admins: number;
-    total_rules: number;
-    total_alerts: number;
-    total_webhooks: number;
-  } {
-    const stmt = this.db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM users WHERE is_approved = 1) as total_users,
-        (SELECT COUNT(*) FROM users WHERE is_admin = 1 AND is_approved = 1) as total_admins,
-        (SELECT COUNT(*) FROM rules) as total_rules,
-        (SELECT COUNT(*) FROM alerts) as total_alerts,
-        (SELECT COUNT(*) FROM user_webhooks) as total_webhooks
-    `);
+  async getGlobalStats(): Promise<{
+    totalUsers: number;
+    totalRules: number;
+    enabledRules: number;
+    totalAlerts: number;
+    totalWebhooks: number;
+  }> {
+    const [[usersCount], [rulesCount], [enabledRulesCount], [alertsCount], [webhooksCount]] = await Promise.all([
+      this.db.select({ value: count() }).from(users).where(eq(users.is_approved, true)),
+      this.db.select({ value: count() }).from(rules),
+      this.db.select({ value: count() }).from(rules).where(eq(rules.enabled, true)),
+      this.db.select({ value: count() }).from(alerts),
+      this.db.select({ value: count() }).from(userWebhooks),
+    ]);
 
-    return stmt.get() as {
-      total_users: number;
-      total_admins: number;
-      total_rules: number;
-      total_alerts: number;
-      total_webhooks: number;
+    return {
+      totalUsers: usersCount?.value ?? 0,
+      totalRules: rulesCount?.value ?? 0,
+      enabledRules: enabledRulesCount?.value ?? 0,
+      totalAlerts: alertsCount?.value ?? 0,
+      totalWebhooks: webhooksCount?.value ?? 0,
     };
+  }
+
+  async getUserStats(userId: number): Promise<{
+    totalRules: number;
+    enabledRules: number;
+    totalAlerts: number;
+    todayAlerts: number;
+  }> {
+    const [[totalRules], [enabledRules], [totalAlerts], [todayAlerts]] = await Promise.all([
+      this.db.select({ value: count() }).from(rules).where(eq(rules.user_id, userId)),
+      this.db.select({ value: count() }).from(rules).where(and(eq(rules.user_id, userId), eq(rules.enabled, true))),
+      this.db.select({ value: count() })
+        .from(alerts)
+        .innerJoin(rules, eq(alerts.rule_id, rules.id))
+        .where(eq(rules.user_id, userId)),
+      this.db.select({ value: count() })
+        .from(alerts)
+        .innerJoin(rules, eq(alerts.rule_id, rules.id))
+        .where(and(
+          eq(rules.user_id, userId),
+          sql`${alerts.sent_at} >= NOW() - INTERVAL '24 hours'`
+        )),
+    ]);
+
+    return {
+      totalRules: totalRules?.value ?? 0,
+      enabledRules: enabledRules?.value ?? 0,
+      totalAlerts: totalAlerts?.value ?? 0,
+      todayAlerts: todayAlerts?.value ?? 0,
+    };
+  }
+
+  private async enrichLogsWithAdminUsernames<T extends { event_data: string | null }>(logs: T[]): Promise<T[]> {
+    const adminIds = new Set<number>();
+    for (const log of logs) {
+      if (log.event_data) {
+        try {
+          const data = JSON.parse(log.event_data) as Record<string, unknown>;
+          if (typeof data['admin_id'] === 'number') adminIds.add(data['admin_id']);
+          if (typeof data['approved_by_admin_id'] === 'number') adminIds.add(data['approved_by_admin_id']);
+          if (typeof data['deleted_by_admin_id'] === 'number') adminIds.add(data['deleted_by_admin_id']);
+        } catch { /* ignore parse errors */ }
+      }
+    }
+
+    if (adminIds.size === 0) return logs;
+
+    const admins = await this.db.select({ id: users.id, username: users.username })
+      .from(users)
+      .where(inArray(users.id, Array.from(adminIds)));
+
+    const adminMap = new Map(admins.map(a => [a.id, a.username]));
+
+    return logs.map(log => {
+      if (!log.event_data) return log;
+      try {
+        const data = JSON.parse(log.event_data) as Record<string, unknown>;
+        let modified = false;
+        for (const key of ['admin_id', 'approved_by_admin_id', 'deleted_by_admin_id']) {
+          const id = data[key];
+          if (typeof id === 'number' && adminMap.has(id)) {
+            data['admin_username'] = adminMap.get(id);
+            modified = true;
+          }
+        }
+        if (modified) return { ...log, event_data: JSON.stringify(data) };
+      } catch { /* ignore parse errors */ }
+      return log;
+    });
   }
 }
