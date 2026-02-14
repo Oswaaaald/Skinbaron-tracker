@@ -102,34 +102,6 @@ export class AlertsRepository {
     return row ? rowToAlert(row) : null;
   }
 
-  findAll(limit: number = 50, offset: number = 0): Alert[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM alerts 
-      ORDER BY sent_at DESC 
-      LIMIT ? OFFSET ?
-    `);
-    const rows = stmt.all(limit, offset) as AlertRow[];
-    return rows.map(rowToAlert);
-  }
-
-  findBySaleId(saleId: string): Alert | null {
-    const stmt = this.db.prepare('SELECT * FROM alerts WHERE sale_id = ? LIMIT 1');
-    const row = stmt.get(saleId) as AlertRow | undefined;
-    return row ? rowToAlert(row) : null;
-  }
-  findBySaleIds(saleIds: string[], ruleId?: number): Alert[] {
-    if (saleIds.length === 0) return [];
-    const placeholders = saleIds.map(() => '?').join(',');
-    // Scope to a specific rule to avoid cross-rule dedup
-    if (ruleId !== undefined) {
-      const stmt = this.db.prepare(`SELECT * FROM alerts WHERE sale_id IN (${placeholders}) AND rule_id = ?`);
-      const rows = stmt.all(...saleIds, ruleId) as AlertRow[];
-      return rows.map(rowToAlert);
-    }
-    const stmt = this.db.prepare(`SELECT * FROM alerts WHERE sale_id IN (${placeholders})`);
-    const rows = stmt.all(...saleIds) as AlertRow[];
-    return rows.map(rowToAlert);
-  }
   findByUserId(
     userId: number, 
     limit: number = 50, 
@@ -201,18 +173,6 @@ export class AlertsRepository {
     return row ? rowToAlert(row) : null;
   }
 
-  findByRuleIdForUser(ruleId: number, userId: number, limit: number = 50, offset: number = 0): Alert[] {
-    const stmt = this.db.prepare(`
-      SELECT a.* FROM alerts a 
-      JOIN rules r ON a.rule_id = r.id 
-      WHERE a.rule_id = ? AND r.user_id = ? 
-      ORDER BY a.sent_at DESC 
-      LIMIT ? OFFSET ?
-    `);
-    const rows = stmt.all(ruleId, userId, limit, offset) as AlertRow[];
-    return rows.map(rowToAlert);
-  }
-
   deleteByRuleId(ruleId: number): boolean {
     const stmt = this.db.prepare('DELETE FROM alerts WHERE rule_id = ?');
     const result = stmt.run(ruleId);
@@ -249,17 +209,6 @@ export class AlertsRepository {
     `);
     const rows = stmt.all(ruleId) as AlertRow[];
     return rows.map(rowToAlert);
-  }
-
-  /**
-   * Delete alerts by sale_ids that are no longer available
-   */
-  deleteBySaleIds(saleIds: string[]): number {
-    if (saleIds.length === 0) return 0;
-    const placeholders = saleIds.map(() => '?').join(',');
-    const stmt = this.db.prepare(`DELETE FROM alerts WHERE sale_id IN (${placeholders})`);
-    const result = stmt.run(...saleIds);
-    return result.changes;
   }
 
   /**

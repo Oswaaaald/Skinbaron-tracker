@@ -149,7 +149,6 @@ export interface RuleRow {
   stattrak_filter: string;
   souvenir_filter: string;
   sticker_filter: string;
-  webhook_ids: string | null;
   enabled: number;
   created_at: string;
   updated_at: string;

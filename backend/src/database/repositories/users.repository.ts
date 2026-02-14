@@ -160,12 +160,6 @@ export class UsersRepository {
     return rows.map(row => rowToUser(row));
   }
 
-  countAll(): number {
-    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM users');
-    const result = stmt.get() as { count: number };
-    return result.count;
-  }
-
   countAdmins(): number {
     const stmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1');
     const result = stmt.get() as { count: number };

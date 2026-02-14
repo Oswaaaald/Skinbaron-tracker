@@ -105,13 +105,6 @@ export class RulesRepository {
     return this.toRuleWithWebhooks(row, this.loadWebhookIds(id));
   }
 
-  findAll(): Rule[] {
-    const stmt = this.db.prepare('SELECT * FROM rules ORDER BY created_at DESC');
-    const rows = stmt.all() as RuleRow[];
-    const webhookMap = this.loadWebhookIdsBatch(rows.map(r => r.id));
-    return rows.map(row => this.toRuleWithWebhooks(row, webhookMap.get(row.id) ?? []));
-  }
-
   findByUserId(userId: number): Rule[] {
     const stmt = this.db.prepare('SELECT * FROM rules WHERE user_id = ? ORDER BY created_at DESC');
     const rows = stmt.all(userId) as RuleRow[];
