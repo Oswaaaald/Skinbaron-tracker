@@ -91,7 +91,7 @@ export function AlertsGrid() {
   const { data: alertsResponse, isLoading, error } = useQuery({
     queryKey: [QUERY_KEYS.ALERTS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlerts({
-      limit: 500, // Get all alerts (max 500)
+      limit: 0, // 0 = no limit — fetch ALL alerts
       offset: 0,
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated,

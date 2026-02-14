@@ -6,9 +6,9 @@ import { AppError } from '../lib/errors.js';
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
-  limit: z.string().default('50').transform(val => {
+  limit: z.string().default('0').transform(val => {
     const num = parseInt(val, 10);
-    return Math.min(num, 500); // Max 500 alerts per request
+    return num > 0 ? num : 0; // 0 = no limit (return all)
   }),
   offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
@@ -32,7 +32,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'string', default: '50' },
+          limit: { type: 'string', default: '0', description: '0 = no limit (return all alerts)' },
           offset: { type: 'string', default: '0' },
           rule_id: { type: 'string' },
           item_name: { type: 'string', description: 'Filter by item name (partial match)' },
@@ -69,6 +69,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
                 limit: { type: 'number' },
                 offset: { type: 'number' },
                 count: { type: 'number' },
+                total: { type: 'number' },
               },
             },
           },
@@ -87,7 +88,10 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
 
-      // Get user's alerts with pagination and filters (all filtering in SQL)
+      // Get total count for pagination metadata
+      const total = store.alerts.countByUserId(request.user!.id);
+
+      // Get user's alerts with filters (limit=0 means return all)
       const alerts = store.getAlertsByUserId(
         request.user!.id, 
         query.limit, 
@@ -106,6 +110,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
           limit: query.limit,
           offset: query.offset,
           count: alerts.length,
+          total,
         },
       });
     } catch (error) {

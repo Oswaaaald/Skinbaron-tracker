@@ -180,8 +180,11 @@ export class AlertsRepository {
         break;
     }
 
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    // Apply pagination only when limit > 0 (0 = no limit)
+    if (limit > 0) {
+      query += ` LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+    }
 
     const stmt = this.db.prepare(query);
     const rows = stmt.all(...params) as AlertRow[];
