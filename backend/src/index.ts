@@ -7,7 +7,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { appConfig } from './lib/config.js';
 import { store } from './database/index.js';
-import { closeDatabase, checkDatabaseHealth } from './database/connection.js';
+import { closeDatabase, checkDatabaseHealth, initializeDatabase } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
 import { getNotificationService } from './lib/notifier.js';
 import { getScheduler, type AlertScheduler } from './lib/scheduler.js';
@@ -565,7 +565,8 @@ async function initializeApp() {
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');
-    // Database auto-initialized via singleton
+    await initializeDatabase();
+    fastify.log.info('✅ Database migrations applied');
     
     fastify.log.info('🔍 Initializing SkinBaron client...');
     getSkinBaronClient();
