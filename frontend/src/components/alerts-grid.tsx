@@ -32,8 +32,8 @@ function cleanItemName(name: string): string {
 }
 
 // Get wear condition from wear value
-function getWearCondition(wearValue?: number): string | null {
-  if (wearValue === undefined) return null
+function getWearCondition(wearValue?: number | null): string | null {
+  if (wearValue === undefined || wearValue === null) return null
   if (wearValue < 0.07) return 'fn'
   if (wearValue < 0.15) return 'mw'
   if (wearValue < 0.38) return 'ft'
@@ -136,7 +136,7 @@ export function AlertsGrid() {
     // Apply Wear condition filter
     if (wearFilter !== 'all') {
       if (wearFilter === 'no_wear') {
-        result = result.filter(alert => alert.wear_value === undefined)
+        result = result.filter(alert => alert.wear_value === undefined || alert.wear_value === null)
       } else {
         result = result.filter(alert => {
           const condition = getWearCondition(alert.wear_value)
@@ -160,14 +160,14 @@ export function AlertsGrid() {
         case 'price_desc':
           return b.price - a.price
         case 'wear_asc':
-          if (a.wear_value === undefined && b.wear_value === undefined) return 0
-          if (a.wear_value === undefined) return 1
-          if (b.wear_value === undefined) return -1
+          if ((a.wear_value == null) && (b.wear_value == null)) return 0
+          if (a.wear_value == null) return 1
+          if (b.wear_value == null) return -1
           return a.wear_value - b.wear_value
         case 'wear_desc':
-          if (a.wear_value === undefined && b.wear_value === undefined) return 0
-          if (a.wear_value === undefined) return 1
-          if (b.wear_value === undefined) return -1
+          if ((a.wear_value == null) && (b.wear_value == null)) return 0
+          if (a.wear_value == null) return 1
+          if (b.wear_value == null) return -1
           return b.wear_value - a.wear_value
         case 'date':
         default:
@@ -453,9 +453,13 @@ export function AlertsGrid() {
                     </div>
 
                     {/* Wear */}
-                    {alert.wear_value !== undefined && alert.wear_value !== null && (
+                    {alert.wear_value !== undefined && alert.wear_value !== null ? (
                       <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-semibold">
                         {formatWearPercentage(alert.wear_value)}
+                      </div>
+                    ) : (
+                      <div className="absolute bottom-3 right-3 bg-muted/80 backdrop-blur-sm text-muted-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-semibold">
+                        No Wear
                       </div>
                     )}
                   </div>

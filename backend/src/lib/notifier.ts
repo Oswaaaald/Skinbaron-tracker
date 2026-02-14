@@ -109,7 +109,7 @@ export class NotificationService {
     const price = `${item.price.toFixed(2).replace('.', ',')} €`;
     const wearLine = item.wearValue !== undefined
       ? `🔍 **Wear:** ${(item.wearValue * 100).toFixed(2)} %`
-      : null;
+      : '🔍 **No Wear**';
 
     // Separate badge lines
     const badgeLines: string[] = [];
@@ -124,7 +124,7 @@ export class NotificationService {
       ...badgeLines,
       '',
       `🔗 [**View on SkinBaron**](${skinUrl})`,
-    ].filter((line): line is string => line !== null);
+    ];
 
     const embed: DiscordEmbed = {
       title: item.itemName,
@@ -180,16 +180,20 @@ export class NotificationService {
           value: `**${(item.wearValue * 100).toFixed(2)} %**`,
           inline: true,
         });
-      }
-
-      // Spacer for alignment
-      if (item.wearValue !== undefined) {
+      } else {
         embed.fields.push({
-          name: '\u200B',
-          value: '\u200B',
+          name: '🔍 Wear',
+          value: '**No Wear**',
           inline: true,
         });
       }
+
+      // Spacer for alignment
+      embed.fields.push({
+        name: '\u200B',
+        value: '\u200B',
+        inline: true,
+      });
 
       // Individual badge fields on separate lines
       if (item.statTrak) {
