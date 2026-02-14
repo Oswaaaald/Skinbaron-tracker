@@ -61,32 +61,38 @@ export class RulesRepository {
   create(rule: CreateRule): Rule {
     const validated = CreateRuleSchema.parse(rule);
     
-    const stmt = this.db.prepare(`
-      INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
-                        stattrak_filter, souvenir_filter, sticker_filter, enabled)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    // Wrap in transaction to ensure atomicity (rule + webhook associations)
+    const createTransaction = this.db.transaction(() => {
+      const stmt = this.db.prepare(`
+        INSERT INTO rules (user_id, search_item, min_price, max_price, min_wear, max_wear, 
+                          stattrak_filter, souvenir_filter, sticker_filter, enabled)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
 
-    const result = stmt.run(
-      validated.user_id,
-      validated.search_item,
-      validated.min_price ?? null,
-      validated.max_price ?? null,
-      validated.min_wear ?? null,
-      validated.max_wear ?? null,
-      validated.stattrak_filter,
-      validated.souvenir_filter,
-      validated.sticker_filter,
-      validated.enabled ? 1 : 0
-    );
+      const result = stmt.run(
+        validated.user_id,
+        validated.search_item,
+        validated.min_price ?? null,
+        validated.max_price ?? null,
+        validated.min_wear ?? null,
+        validated.max_wear ?? null,
+        validated.stattrak_filter,
+        validated.souvenir_filter,
+        validated.sticker_filter,
+        validated.enabled ? 1 : 0
+      );
 
-    const ruleId = result.lastInsertRowid as number;
-    
-    // Insert webhook associations into junction table
-    if (validated.webhook_ids && validated.webhook_ids.length > 0) {
-      this.setWebhookIds(ruleId, validated.webhook_ids);
-    }
+      const ruleId = result.lastInsertRowid as number;
+      
+      // Insert webhook associations into junction table
+      if (validated.webhook_ids && validated.webhook_ids.length > 0) {
+        this.setWebhookIds(ruleId, validated.webhook_ids);
+      }
 
+      return ruleId;
+    });
+
+    const ruleId = createTransaction();
     const created = this.findById(ruleId);
     if (!created) throw new Error('Failed to create rule');
     return created;

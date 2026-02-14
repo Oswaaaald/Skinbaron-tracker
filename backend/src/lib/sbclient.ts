@@ -263,11 +263,11 @@ export class SkinBaronClient {
       return false;
     }
 
-    if (params.minWear !== undefined && params.minWear !== null && item.wearValue && item.wearValue < params.minWear) {
+    if (params.minWear !== undefined && params.minWear !== null && item.wearValue !== undefined && item.wearValue < params.minWear) {
       return false;
     }
 
-    if (params.maxWear !== undefined && params.maxWear !== null && item.wearValue && item.wearValue > params.maxWear) {
+    if (params.maxWear !== undefined && params.maxWear !== null && item.wearValue !== undefined && item.wearValue > params.maxWear) {
       return false;
     }
 

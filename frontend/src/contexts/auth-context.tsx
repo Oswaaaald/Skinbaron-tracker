@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from 'react'
 import { apiClient, ApiError } from '@/lib/api'
 import { logger } from '@/lib/logger'
 
@@ -104,6 +104,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     apiClient.setLogoutCallback(() => {
       setUser(null)
       setAccessExpiry(null)
+      try { localStorage.removeItem('has_session') } catch { /* ignore */ }
     })
 
     // Setup refresh callback to update expiry when token is auto-refreshed
@@ -113,18 +114,18 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   }, [])
 
   // Keep a lightweight profile refresh on focus when authenticated
+  const lastCheckRef = useRef(0)
+  const isCheckingRef = useRef(false)
+
   useEffect(() => {
     if (!user) return
 
-    let isChecking = false
-    let lastCheck = 0
-
     const checkUserProfile = async () => {
       const now = Date.now()
-      if (isChecking) return
-      if (now - lastCheck < 30_000) return // throttle to once every 30s
+      if (isCheckingRef.current) return
+      if (now - lastCheckRef.current < 30_000) return // throttle to once every 30s
 
-      isChecking = true
+      isCheckingRef.current = true
       try {
         const response = await apiClient.getUserProfile({ allowRefresh: true })
         if (response.success && response.data) {
@@ -139,8 +140,8 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       } catch {
         // Ignore failures; will retry on next focus
       } finally {
-        lastCheck = Date.now()
-        isChecking = false
+        lastCheckRef.current = Date.now()
+        isCheckingRef.current = false
       }
     }
 

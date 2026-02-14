@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { DISCORD_COLORS, appConfig } from './config.js';
 import type { Rule } from '../database/schemas.js';
 import type { SkinBaronItem } from './sbclient.js';
+import pino from 'pino';
 
 // Discord Webhook Schemas (internal)
 const DiscordEmbedSchema = z.object({
@@ -49,6 +50,7 @@ interface NotificationOptions {
 export class NotificationService {
   private readonly botName = appConfig.DISCORD_BOT_NAME;
   private readonly botAvatar = appConfig.DISCORD_BOT_AVATAR;
+  private readonly logger = pino({ level: appConfig.LOG_LEVEL });
 
   constructor() {
   }
@@ -89,11 +91,11 @@ export class NotificationService {
         return true;
       } else {
         const errorBody = await response.text().catch(() => 'Unable to read response body');
-        console.error(`[Notifier] Discord webhook failed: HTTP ${response.status} - ${errorBody}`);
+        this.logger.error({ status: response.status, errorBody }, '[Notifier] Discord webhook failed');
         return false;
       }
     } catch (error) {
-      console.error(`[Notifier] Discord webhook error:`, error instanceof Error ? error.message : error);
+      this.logger.error({ error: error instanceof Error ? error.message : error }, '[Notifier] Discord webhook error');
       return false;
     }
   }

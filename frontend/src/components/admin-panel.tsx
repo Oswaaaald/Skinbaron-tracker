@@ -218,11 +218,12 @@ export function AdminPanel() {
   )
 
   const isCurrentUser = (user: AdminUser) => {
-    return currentUser?.email === user.email
+    return currentUser?.id === user.id
   }
 
   const isLastAdmin = () => {
-    return statsData?.total_admins === 1
+    // Default to true (safe) when stats haven't loaded yet
+    return !statsData || statsData.total_admins <= 1
   }
 
   const handleDeleteUser = (user: AdminUser) => {

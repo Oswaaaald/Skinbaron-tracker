@@ -75,7 +75,7 @@ export function decryptData(encryptedData: string): string {
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
 
-  return Buffer.concat([decipher.update(encrypted), Buffer.from(decipher.final('utf8'))]).toString('utf8');
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
 }
 
 /**

@@ -113,26 +113,12 @@ export class AuthService {
   }
 
   /**
-   * Verify JWT token
+   * Verify JWT token — expectedType is required to prevent token type confusion
    */
-  static verifyToken(token: string, expectedType?: TokenType): TokenPayload | null {
+  static verifyToken(token: string, expectedType: TokenType): TokenPayload | null {
     try {
-      // If expectedType is given, use the matching secret directly.
-      // Otherwise try access first, then refresh (covers decode-only callers).
-      if (expectedType) {
-        const payload = jwt.verify(token, getSecret(expectedType)) as TokenPayload;
-        if (payload.type !== expectedType) return null;
-        return payload;
-      }
-
-      // No expected type — try access secret first
-      try {
-        const payload = jwt.verify(token, getSecret('access')) as TokenPayload;
-        return payload;
-      } catch {
-        // Fall through to refresh secret
-      }
-      const payload = jwt.verify(token, getSecret('refresh')) as TokenPayload;
+      const payload = jwt.verify(token, getSecret(expectedType)) as TokenPayload;
+      if (payload.type !== expectedType) return null;
       return payload;
     } catch {
       return null;

@@ -208,12 +208,12 @@ class ApiClient {
       }
 
       const response = await fetch(url, {
+        ...options,
         headers: {
           ...headers,
           ...options.headers,
         },
         credentials: 'include',
-        ...options,
       });
 
       let data: unknown = null;

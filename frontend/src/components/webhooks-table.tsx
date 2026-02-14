@@ -115,6 +115,7 @@ export function WebhooksTable() {
     {
       invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       successMessage: 'Webhooks enabled successfully',
+      onSuccess: () => setSelectedWebhooks(new Set()),
     }
   )
 
@@ -123,6 +124,7 @@ export function WebhooksTable() {
     {
       invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
       successMessage: 'Webhooks disabled successfully',
+      onSuccess: () => setSelectedWebhooks(new Set()),
     }
   )
 
@@ -224,13 +226,11 @@ export function WebhooksTable() {
   const handleBatchEnable = () => {
     const webhookIds = selectedWebhooks.size > 0 ? Array.from(selectedWebhooks) : undefined
     batchEnableMutation.mutate(webhookIds)
-    setSelectedWebhooks(new Set())
   }
 
   const handleBatchDisable = () => {
     const webhookIds = selectedWebhooks.size > 0 ? Array.from(selectedWebhooks) : undefined
     batchDisableMutation.mutate(webhookIds)
-    setSelectedWebhooks(new Set())
   }
 
   const handleBatchDelete = () => {

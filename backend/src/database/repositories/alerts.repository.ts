@@ -59,32 +59,41 @@ export class AlertsRepository {
       AlertSchema.omit({ id: true, sent_at: true }).parse(alert)
     );
 
-    const placeholders = validated.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    // Chunk inserts to stay within SQLite variable limits (max ~999 variables per statement)
+    const VARS_PER_ROW = 9;
+    const MAX_ROWS_PER_CHUNK = Math.floor(900 / VARS_PER_ROW); // ~100 rows per chunk
     
-    const stmt = this.db.prepare(`
-      INSERT OR IGNORE INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
-                                     stattrak, souvenir, has_stickers, skin_url)
-      VALUES ${placeholders}
-    `);
+    const insertChunked = this.db.transaction(() => {
+      let totalChanges = 0;
+      for (let i = 0; i < validated.length; i += MAX_ROWS_PER_CHUNK) {
+        const chunk = validated.slice(i, i + MAX_ROWS_PER_CHUNK);
+        const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
 
-    const values = validated.flatMap(alert => [
-      alert.rule_id,
-      alert.sale_id,
-      alert.item_name,
-      alert.price,
-      alert.wear_value ?? null,
-      alert.stattrak ? 1 : 0,
-      alert.souvenir ? 1 : 0,
-      alert.has_stickers ? 1 : 0,
-      alert.skin_url
-    ]);
+        const stmt = this.db.prepare(`
+          INSERT OR IGNORE INTO alerts (rule_id, sale_id, item_name, price, wear_value, 
+                                         stattrak, souvenir, has_stickers, skin_url)
+          VALUES ${placeholders}
+        `);
 
-    const insertMany = this.db.transaction(() => {
-      return stmt.run(...values);
+        const values = chunk.flatMap(alert => [
+          alert.rule_id,
+          alert.sale_id,
+          alert.item_name,
+          alert.price,
+          alert.wear_value ?? null,
+          alert.stattrak ? 1 : 0,
+          alert.souvenir ? 1 : 0,
+          alert.has_stickers ? 1 : 0,
+          alert.skin_url
+        ]);
+
+        const result = stmt.run(...values);
+        totalChanges += result.changes;
+      }
+      return totalChanges;
     });
 
-    const result = insertMany();
-    return result.changes;
+    return insertChunked();
   }
 
   findById(id: number): Alert | null {
@@ -108,9 +117,15 @@ export class AlertsRepository {
     const row = stmt.get(saleId) as AlertRow | undefined;
     return row ? rowToAlert(row) : null;
   }
-  findBySaleIds(saleIds: string[]): Alert[] {
+  findBySaleIds(saleIds: string[], ruleId?: number): Alert[] {
     if (saleIds.length === 0) return [];
     const placeholders = saleIds.map(() => '?').join(',');
+    // Scope to a specific rule to avoid cross-rule dedup
+    if (ruleId !== undefined) {
+      const stmt = this.db.prepare(`SELECT * FROM alerts WHERE sale_id IN (${placeholders}) AND rule_id = ?`);
+      const rows = stmt.all(...saleIds, ruleId) as AlertRow[];
+      return rows.map(rowToAlert);
+    }
     const stmt = this.db.prepare(`SELECT * FROM alerts WHERE sale_id IN (${placeholders})`);
     const rows = stmt.all(...saleIds) as AlertRow[];
     return rows.map(rowToAlert);

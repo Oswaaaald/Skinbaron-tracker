@@ -270,8 +270,9 @@ export class AlertScheduler {
       let priceChanges = 0;
       
       // Batch check for already processed items to avoid N+1 queries
+      // Scope by rule.id to prevent cross-rule dedup (item X matching rule A and rule B are independent)
       const saleIds = response.items.map(item => item.saleId);
-      const processedAlerts = store.alerts.findBySaleIds(saleIds);
+      const processedAlerts = store.alerts.findBySaleIds(saleIds, rule.id);
       const processedSet = new Set(processedAlerts.map(alert => alert.sale_id));
       
       // Collect all matching items first, then batch create alerts

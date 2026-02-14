@@ -147,8 +147,11 @@ export async function validateWebhookUrl(
           }
         }
       } catch {
-        // DNS resolution failed - could be temporary, allow but log
-        // In production, you might want to be stricter here
+        // DNS resolution failed — fail-closed for safety
+        return {
+          valid: false,
+          error: 'Could not resolve webhook URL hostname. Please verify the URL and try again.',
+        };
       }
     }
 

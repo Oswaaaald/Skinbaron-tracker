@@ -18,6 +18,15 @@ import { AppError } from '../lib/errors.js';
 const pending2FASecrets = new Map<number, { secret: string; expiresAt: number }>();
 const PENDING_2FA_TTL = 10 * 60 * 1000; // 10 minutes
 
+// Periodic cleanup of expired entries to prevent memory leaks
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of pending2FASecrets) {
+    if (now > entry.expiresAt) pending2FASecrets.delete(userId);
+  }
+}, CLEANUP_INTERVAL).unref(); // unref so it doesn't keep the process alive
+
 function storePending2FA(userId: number, secret: string): void {
   pending2FASecrets.set(userId, { secret, expiresAt: Date.now() + PENDING_2FA_TTL });
 }
@@ -351,6 +360,10 @@ export default function userRoutes(fastify: FastifyInstance) {
 
       // Update password
       store.updateUser(userId, { password_hash: newPasswordHash });
+
+      // Invalidate all existing sessions (revoke all refresh tokens)
+      // This forces re-login on all devices after a password change
+      store.revokeAllRefreshTokensForUser(userId);
 
       // Audit log for successful password change
       store.createAuditLog(

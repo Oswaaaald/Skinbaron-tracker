@@ -29,6 +29,19 @@ export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en
   const date = new Date(utcDate);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
+
+  // Guard against negative time (clock skew between client and server)
+  if (diffMs < 0) {
+    const absoluteDate = date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `Just now • ${absoluteDate}`;
+  }
+
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);

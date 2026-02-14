@@ -215,7 +215,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // SECURITY: Always execute bcrypt to prevent timing attacks
       // If user doesn't exist, use a fake hash to make response time consistent
       // This prevents attackers from determining if an email exists by measuring response time
-      const FAKE_HASH = '$2b$12$K4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0';
+      const FAKE_HASH = '$2b$12$K4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K';
       const hashToCompare = user?.password_hash || FAKE_HASH;
       
       // Verify password (always executed to prevent timing attacks)
