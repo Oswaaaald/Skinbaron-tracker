@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Next.js middleware to normalize double-slash paths.
- * Replaces the client-side dangerouslySetInnerHTML script in layout.tsx.
+ * Next.js proxy to normalize double-slash paths.
+ * Replaces the deprecated middleware convention (Next.js 16+).
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const normalized = path.replace(/\/+/g, '/');
 
