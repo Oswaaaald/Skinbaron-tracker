@@ -454,9 +454,7 @@ function setupHealthCheck() {
     const uptime = process.uptime();
     const status = dbHealth === 'healthy' ? 'healthy' : 'degraded';
 
-    return reply.status(200)
-      .header('Connection', 'close')
-      .send({ 
+    return reply.status(200).send({ 
       success: true, 
       status,
       database: dbHealth,
