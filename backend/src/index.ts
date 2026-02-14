@@ -283,11 +283,11 @@ async function registerPlugins() {
         appConfig.CORS_ORIGIN,          // Frontend URL
       ];
       
-      // Reject browser requests without Origin header.
-      // Non-browser clients (curl, Postman) are unaffected by CORS.
-      // CSRF protection guards mutations as a second layer.
+      // Allow requests without Origin (healthchecks, curl, Postman, server-to-server).
+      // These are non-browser requests — CORS doesn't apply to them.
+      // CSRF double-submit cookie protects all state-changing mutations.
       if (!origin) {
-        callback(new Error('Origin header required'), false);
+        callback(null, true);
         return;
       }
       
