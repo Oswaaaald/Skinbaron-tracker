@@ -548,7 +548,8 @@ export function ProfileSettings() {
           </p>
           <Button
             variant="outline"
-            onClick={async () => {
+            onClick={() => {
+              void (async () => {
               try {
                 const response = await apiClient.get('/api/user/data-export')
                 if (response.success && response.data) {
@@ -567,6 +568,7 @@ export function ProfileSettings() {
               } catch (error) {
                 toast({ variant: 'destructive', title: '❌ Export failed', description: extractErrorMessage(error, 'Failed to export data') })
               }
+            })()
             }}
           >
             <Download className="h-4 w-4 mr-2" />

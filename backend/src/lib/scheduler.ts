@@ -178,10 +178,10 @@ export class AlertScheduler {
       for (let i = 0; i < groups.length; i += API_CONCURRENCY) {
         const batch = groups.slice(i, i + API_CONCURRENCY);
         const results = await Promise.all(
-          batch.map(group => this.processRuleGroup(group).catch(error => {
+          batch.map(group => this.processRuleGroup(group).catch((error: unknown) => {
             this.stats.errorCount++;
             this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
-            this.logger.error({ error, searchItem: group[0]?.search_item }, '[Scheduler] Rule group failed');
+            this.logger.error({ error: String(error), searchItem: group[0]?.search_item }, '[Scheduler] Rule group failed');
             return 0;
           }))
         );
@@ -241,7 +241,7 @@ export class AlertScheduler {
     const souvenirFilters = new Set(rules.map(r => r.souvenir_filter));
 
     return {
-      search_item: rules[0]!.search_item,
+      search_item: rules[0].search_item,
       min: anyNoMin ? undefined : minPrice,
       max: anyNoMax ? undefined : maxPrice,
       minWear: anyNoMinWear ? undefined : minWear,

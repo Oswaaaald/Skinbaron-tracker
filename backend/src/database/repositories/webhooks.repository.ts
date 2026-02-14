@@ -48,7 +48,7 @@ export class WebhooksRepository {
       notification_style: data.notification_style ?? 'compact',
       is_active: data.is_active ?? true,
     }).returning();
-    return webhook!;
+    return webhook as UserWebhook;
   }
 
   async update(id: number, userId: number, data: Partial<WebhookInput>): Promise<UserWebhook | null> {

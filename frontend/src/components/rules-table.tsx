@@ -255,7 +255,7 @@ export function RulesTable() {
     if (selectedRules.size === rules.length) {
       setSelectedRules(new Set())
     } else {
-      setSelectedRules(new Set(rules.map(r => r.id!).filter(Boolean)))
+      setSelectedRules(new Set(rules.map(r => r.id).filter((id): id is number => id != null)))
     }
   }
 
@@ -395,8 +395,8 @@ export function RulesTable() {
                   <TableCell>
                     <input
                       type="checkbox"
-                      checked={selectedRules.has(rule.id!)}
-                      onChange={() => handleSelectRule(rule.id!)}
+                      checked={rule.id != null && selectedRules.has(rule.id)}
+                      onChange={() => rule.id != null && handleSelectRule(rule.id)}
                       className="cursor-pointer"
                       aria-label={`Select rule ${rule.search_item}`}
                     />

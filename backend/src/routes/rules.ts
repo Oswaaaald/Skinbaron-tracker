@@ -25,7 +25,7 @@ const RuleParamsSchema = z.object({
 });
 
 // Route handlers
-export default async function rulesRoutes(fastify: FastifyInstance) {
+export default function rulesRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -411,7 +411,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         const allRules = await store.getRulesByUserId(userId);
         const allIds = allRules
           .filter(r => !r.enabled && r.id !== undefined)
-          .map(r => r.id as number);
+          .map(r => r.id);
         updated = await store.enableRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules
@@ -479,7 +479,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         const allRules = await store.getRulesByUserId(userId);
         const allIds = allRules
           .filter(r => r.enabled && r.id !== undefined)
-          .map(r => r.id as number);
+          .map(r => r.id);
         updated = await store.disableRulesBatch(allIds, userId);
       } else {
         // Validate ownership of all rules

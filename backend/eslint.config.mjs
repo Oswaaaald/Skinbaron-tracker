@@ -22,7 +22,7 @@ export default [
       ...tseslint.configs['recommended-type-checked'].rules,
       // Custom overrides
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
       '@typescript-eslint/no-non-null-assertion': 'warn',
     },
   },

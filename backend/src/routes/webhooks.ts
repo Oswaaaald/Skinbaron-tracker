@@ -17,7 +17,7 @@ const WebhookQuerySchema = z.object({
 });
 
 // Route handlers
-export default async function webhooksRoutes(fastify: FastifyInstance) {
+export default function webhooksRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -75,7 +75,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       const webhook = await store.createUserWebhook(getAuthUser(request).id, webhookData);
       
       // Don't return encrypted URL in response
-      const { webhook_url_encrypted, ...safeWebhook } = webhook;
+      const { webhook_url_encrypted: _, ...safeWebhook } = webhook;
       
       return reply.status(201).send({
         success: true,
@@ -133,7 +133,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       
       // Remove encrypted field from response
       const safeWebhooks = webhooks.map(webhook => {
-        const { webhook_url_encrypted, ...safe } = webhook;
+        const { webhook_url_encrypted: _, ...safe } = webhook;
         return safe;
       });
       
@@ -229,7 +229,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       }
       
       // Remove encrypted field from response
-      const { webhook_url_encrypted, ...safeWebhook } = webhook;
+      const { webhook_url_encrypted: _, ...safeWebhook } = webhook;
       
       return reply.status(200).send({
         success: true,

@@ -39,7 +39,7 @@ export async function checkDatabaseHealth(): Promise<boolean> {
   try {
     const client = await pool.connect();
     try {
-      const result = await client.query('SELECT 1 as test');
+      const result: { rows: { test: number }[] } = await client.query('SELECT 1 as test');
       return result.rows[0]?.test === 1;
     } finally {
       client.release();

@@ -67,19 +67,20 @@ export class RulesRepository {
       if (ruleData.webhook_ids.length > 0) {
         await tx.insert(ruleWebhooks).values(
           ruleData.webhook_ids.map(webhookId => ({
-            rule_id: rule!.id,
+            rule_id: rule.id,
             webhook_id: webhookId,
           }))
         );
       }
 
-      return { ...rule!, webhook_ids: ruleData.webhook_ids };
+      return { ...rule, webhook_ids: ruleData.webhook_ids };
     });
   }
 
   async update(id: number, updates: Partial<CreateRule>): Promise<Rule | null> {
     return this.db.transaction(async (tx) => {
-      const { webhook_ids, user_id: _userId, ...ruleUpdates } = updates;
+      const { webhook_ids, user_id: _user_id, ...ruleUpdates } = updates;
+      void _user_id;
 
       const [updatedRule] = await tx.update(rules)
         .set({ ...ruleUpdates, updated_at: new Date() })

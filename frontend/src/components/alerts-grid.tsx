@@ -102,7 +102,7 @@ export function AlertsGrid() {
     notifyOnChangeProps: ['data', 'error'],
   })
 
-  const allAlerts = alertsResponse?.data || []
+  const allAlerts = useMemo(() => alertsResponse?.data ?? [], [alertsResponse?.data])
 
   // Get unique CLEANED item names from fetched alerts
   const itemNames = useMemo(

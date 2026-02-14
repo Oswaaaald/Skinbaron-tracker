@@ -18,7 +18,7 @@ const AlertsQuerySchema = z.object({
 });
 
 // Route handlers
-export default async function alertsRoutes(fastify: FastifyInstance) {
+export default function alertsRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 

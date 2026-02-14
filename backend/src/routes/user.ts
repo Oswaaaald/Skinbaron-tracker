@@ -60,7 +60,7 @@ const UpdateProfileSchema = z.object({
 /**
  * User profile routes - Authenticated users can manage their own profile
  */
-export default async function userRoutes(fastify: FastifyInstance) {
+export default function userRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 

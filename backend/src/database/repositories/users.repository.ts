@@ -104,7 +104,7 @@ export class UsersRepository {
       email: userData.email,
       password_hash: userData.password_hash,
     }).returning();
-    return user!;
+    return user as typeof users.$inferSelect;
   }
 
   async update(id: number, input: UserUpdate): Promise<typeof users.$inferSelect | null> {

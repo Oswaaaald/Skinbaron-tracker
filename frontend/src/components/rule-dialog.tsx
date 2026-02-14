@@ -265,6 +265,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     )
   }
 
+  // Numeric input handlers (must be at top level, not inside render callbacks)
+  const minPriceHandlers = useNumericInputHandlers({ min: 0, onCommit: (v) => form.setValue('min_price', v), setDisplay: setMinPriceDisplay })
+  const maxPriceHandlers = useNumericInputHandlers({ min: 0, onCommit: (v) => form.setValue('max_price', v), setDisplay: setMaxPriceDisplay })
+  const minWearHandlers = useNumericInputHandlers({ min: 0, max: 100, onCommit: (v) => form.setValue('min_wear', v), setDisplay: setMinWearDisplay })
+  const maxWearHandlers = useNumericInputHandlers({ min: 0, max: 100, onCommit: (v) => form.setValue('max_wear', v), setDisplay: setMaxWearDisplay })
+
   const getSelectedWebhookNames = () => {
     if (!webhooks || !Array.isArray(webhooks)) return ''
     return webhooks
@@ -318,9 +324,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_price"
-                render={({ field }) => {
-                  const handlers = useNumericInputHandlers({ min: 0, onCommit: field.onChange, setDisplay: setMinPriceDisplay })
-                  return (
+                render={() => (
                   <FormItem>
                     <FormLabel>Min Price (€)</FormLabel>
                     <FormControl>
@@ -328,7 +332,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 10.50"
                         value={minPriceDisplay}
-                        {...handlers}
+                        {...minPriceHandlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -337,15 +341,13 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}}
+                )}
               />
 
               <FormField
                 control={form.control}
                 name="max_price"
-                render={({ field }) => {
-                  const handlers = useNumericInputHandlers({ min: 0, onCommit: field.onChange, setDisplay: setMaxPriceDisplay })
-                  return (
+                render={() => (
                   <FormItem>
                     <FormLabel>Max Price (€)</FormLabel>
                     <FormControl>
@@ -353,7 +355,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 50"
                         value={maxPriceDisplay}
-                        {...handlers}
+                        {...maxPriceHandlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -362,7 +364,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}}
+                )}
               />
             </div>
 
@@ -371,9 +373,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
               <FormField
                 control={form.control}
                 name="min_wear"
-                render={({ field }) => {
-                  const handlers = useNumericInputHandlers({ min: 0, max: 100, onCommit: field.onChange, setDisplay: setMinWearDisplay })
-                  return (
+                render={() => (
                   <FormItem>
                     <FormLabel>Min Wear (0-100%)</FormLabel>
                     <FormControl>
@@ -381,7 +381,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 15"
                         value={minWearDisplay}
-                        {...handlers}
+                        {...minWearHandlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -390,15 +390,13 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}}
+                )}
               />
 
               <FormField
                 control={form.control}
                 name="max_wear"
-                render={({ field }) => {
-                  const handlers = useNumericInputHandlers({ min: 0, max: 100, onCommit: field.onChange, setDisplay: setMaxWearDisplay })
-                  return (
+                render={() => (
                   <FormItem>
                     <FormLabel>Max Wear (0-100%)</FormLabel>
                     <FormControl>
@@ -406,7 +404,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                         type="text"
                         placeholder="ex: 85"
                         value={maxWearDisplay}
-                        {...handlers}
+                        {...maxWearHandlers}
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -415,7 +413,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
-                )}}
+                )}
               />
             </div>
 
@@ -526,16 +524,16 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                      {webhooks.map(webhook => (
+                      {webhooks.filter(w => w.id != null).map(webhook => (
                         <div
                           key={webhook.id}
                           className="flex items-center space-x-2 p-2 rounded border hover:bg-muted cursor-pointer"
-                          onClick={() => handleWebhookToggle(webhook.id!)}
+                          onClick={() => handleWebhookToggle(webhook.id as number)}
                         >
                           <input
                             type="checkbox"
-                            checked={selectedWebhooks.includes(webhook.id!)}
-                            onChange={() => handleWebhookToggle(webhook.id!)}
+                            checked={selectedWebhooks.includes(webhook.id as number)}
+                            onChange={() => handleWebhookToggle(webhook.id as number)}
                             className="h-4 w-4"
                           />
                           <span className="flex-1 text-sm">{webhook.name}</span>

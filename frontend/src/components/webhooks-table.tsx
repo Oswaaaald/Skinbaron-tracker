@@ -189,7 +189,7 @@ export function WebhooksTable() {
       if (formData.webhook_url.trim()) {
         updates.webhook_url = formData.webhook_url
       }
-      updateWebhookMutation.mutate({ id: editingWebhook.id!, data: updates })
+      updateWebhookMutation.mutate({ id: editingWebhook.id as number, data: updates })
     } else {
       // For creation, both name and URL are required
       if (!formData.name || !formData.webhook_url) {
@@ -217,7 +217,7 @@ export function WebhooksTable() {
     if (selectedWebhooks.size === webhooks.length) {
       setSelectedWebhooks(new Set())
     } else {
-      setSelectedWebhooks(new Set(webhooks.map(w => w.id!).filter(Boolean)))
+      setSelectedWebhooks(new Set(webhooks.map(w => w.id).filter((id): id is number => id != null)))
     }
   }
 
@@ -503,8 +503,8 @@ export function WebhooksTable() {
                   <TableCell>
                     <input
                       type="checkbox"
-                      checked={selectedWebhooks.has(webhook.id!)}
-                      onChange={() => handleSelectWebhook(webhook.id!)}
+                      checked={webhook.id != null && selectedWebhooks.has(webhook.id)}
+                      onChange={() => webhook.id != null && handleSelectWebhook(webhook.id)}
                       className="cursor-pointer"
                       aria-label={`Select webhook ${webhook.name}`}
                     />
