@@ -46,6 +46,7 @@ function runMigrations(db: Database.Database) {
     createIndexes(db);
     runDataMigrations(db);
     migrateWebhookIdsToJunctionTable(db);
+    cleanupLegacySchema(db);
   } finally {
     // Re-enable foreign keys
     db.pragma('foreign_keys = ON');
@@ -66,7 +67,6 @@ function createBaseTables(db: Database.Database) {
       stattrak_filter TEXT DEFAULT 'all' CHECK (stattrak_filter IN ('all', 'only', 'exclude')),
       souvenir_filter TEXT DEFAULT 'all' CHECK (souvenir_filter IN ('all', 'only', 'exclude')),
       sticker_filter TEXT DEFAULT 'all' CHECK (sticker_filter IN ('all', 'only', 'exclude')),
-      webhook_ids TEXT,
       enabled BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -504,4 +504,82 @@ function migrateWebhookIdsToJunctionTable(db: Database.Database) {
 
   // Clear the old TEXT column (keep column for backward compat, just null it out)
   db.exec(`UPDATE rules SET webhook_ids = NULL WHERE webhook_ids IS NOT NULL`);
+}
+
+/**
+ * Cleanup: Remove legacy columns, stale indexes, and orphan tables
+ * All checks are idempotent — safe to run on every startup
+ */
+function cleanupLegacySchema(db: Database.Database) {
+  const hasColumn = (table: string, column: string): boolean => {
+    const result = db.prepare(
+      `SELECT COUNT(*) as count FROM pragma_table_info('${table}') WHERE name='${column}'`
+    ).get() as { count: number };
+    return result.count > 0;
+  };
+
+  const hasTable = (table: string): boolean => {
+    const result = db.prepare(
+      `SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name=?`
+    ).get(table) as { count: number };
+    return result.count > 0;
+  };
+
+  const hasIndex = (index: string): boolean => {
+    const result = db.prepare(
+      `SELECT COUNT(*) as count FROM sqlite_master WHERE type='index' AND name=?`
+    ).get(index) as { count: number };
+    return result.count > 0;
+  };
+
+  // --- Drop dead columns ---
+
+  // rules.webhook_ids — migrated to rule_webhooks junction table
+  if (hasColumn('rules', 'webhook_ids')) {
+    db.exec(`ALTER TABLE rules DROP COLUMN webhook_ids`);
+    migrationLogger.info('Cleanup: Dropped rules.webhook_ids (migrated to rule_webhooks)');
+  }
+
+  // rules.allow_stickers — replaced by sticker_filter
+  if (hasColumn('rules', 'allow_stickers')) {
+    db.exec(`ALTER TABLE rules DROP COLUMN allow_stickers`);
+    migrationLogger.info('Cleanup: Dropped rules.allow_stickers (replaced by sticker_filter)');
+  }
+
+  // alerts.alert_type — always "match", no longer in schema definition
+  if (hasColumn('alerts', 'alert_type')) {
+    db.exec(`ALTER TABLE alerts DROP COLUMN alert_type`);
+    migrationLogger.info('Cleanup: Dropped alerts.alert_type (unused)');
+  }
+
+  // --- Drop orphan table ---
+
+  if (hasTable('schema_version')) {
+    db.exec(`DROP TABLE schema_version`);
+    migrationLogger.info('Cleanup: Dropped orphan schema_version table');
+  }
+
+  // --- Drop stale / duplicate indexes ---
+  const staleIndexes = [
+    // Duplicate: same column as idx_token_blacklist_expiry
+    'idx_access_blacklist_expires',
+    // Covered by composite idx_rules_user_enabled(user_id, enabled)
+    'idx_rules_user_id',
+    // Covered by composite idx_webhooks_user_active(user_id, is_active)
+    'idx_webhooks_user_id',
+    // Covered by composite idx_audit_log_user_created(user_id, created_at)
+    'idx_audit_log_user_id',
+    // Covered by composite idx_refresh_tokens_user_expires(user_id, expires_at)
+    'idx_refresh_tokens_user',
+  ];
+
+  for (const idx of staleIndexes) {
+    if (hasIndex(idx)) {
+      db.exec(`DROP INDEX ${idx}`);
+      migrationLogger.info(`Cleanup: Dropped stale index ${idx}`);
+    }
+  }
+
+  // Refresh query planner statistics after schema changes
+  db.exec(`ANALYZE`);
 }
