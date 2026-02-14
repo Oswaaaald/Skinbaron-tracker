@@ -79,13 +79,20 @@ export class AuditRepository {
   }
 
   getAuditLogsByUserId(userId: number, limit: number = 100): AuditLog[] {
-    const stmt = this.db.prepare(`
+    let query = `
       SELECT * FROM audit_log 
       WHERE user_id = ? 
-      ORDER BY created_at DESC 
-      LIMIT ?
-    `);
-    const logs = stmt.all(userId, limit) as AuditLog[];
+      ORDER BY created_at DESC
+    `;
+    const params: (number)[] = [userId];
+
+    // limit=0 means no limit (used for GDPR data export)
+    if (limit > 0) {
+      query += ` LIMIT ?`;
+      params.push(limit);
+    }
+
+    const logs = this.db.prepare(query).all(...params) as AuditLog[];
     return this.enrichLogsWithAdminUsernames(logs);
   }
 

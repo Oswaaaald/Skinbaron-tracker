@@ -70,7 +70,7 @@ export default function userRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
-  // Rate limiting for sensitive operations (password change)
+  // Rate limiting for sensitive operations
   const sensitiveOperationRateLimit = {
     max: 5,
     timeWindow: '1 minute',
@@ -78,7 +78,19 @@ export default function userRoutes(fastify: FastifyInstance) {
       statusCode: 429,
       success: false,
       error: 'Too many attempts',
-      message: 'Too many password change attempts. Please try again in 1 minute.',
+      message: 'Too many attempts. Please try again in 1 minute.',
+    }),
+  };
+
+  // Stricter rate limit for expensive/destructive operations
+  const heavyOperationRateLimit = {
+    max: 3,
+    timeWindow: '5 minutes',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many requests. Please try again later.',
     }),
   };
 
@@ -188,6 +200,9 @@ export default function userRoutes(fastify: FastifyInstance) {
    * PATCH /api/user/profile - Update current user profile
    */
   fastify.patch('/profile', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'Update current user profile',
       tags: ['User'],
@@ -408,6 +423,9 @@ export default function userRoutes(fastify: FastifyInstance) {
    * GET /api/user/data-export - GDPR data export (Art. 20 data portability)
    */
   fastify.get('/data-export', {
+    config: {
+      rateLimit: heavyOperationRateLimit,
+    },
     schema: {
       description: 'Export all personal data (GDPR Art. 20)',
       tags: ['User'],
@@ -422,11 +440,11 @@ export default function userRoutes(fastify: FastifyInstance) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Collect all user data
+      // Collect all user data (no limits — full GDPR export)
       const rules = store.getRulesByUserId(userId);
       const webhooks = store.getUserWebhooksByUserId(userId, false); // Don't decrypt URLs
-      const alerts = store.getAlertsByUserId(userId, 500, 0);
-      const auditLogs = store.getAuditLogsByUserId(userId, 500);
+      const alerts = store.getAlertsByUserId(userId, 0, 0); // limit=0 → all alerts
+      const auditLogs = store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
 
       const exportData = {
         profile: {
@@ -470,6 +488,7 @@ export default function userRoutes(fastify: FastifyInstance) {
           wear_value: a.wear_value,
           stattrak: a.stattrak,
           souvenir: a.souvenir,
+          has_stickers: a.has_stickers,
           sale_id: a.sale_id,
           sent_at: a.sent_at,
         })),
@@ -498,6 +517,9 @@ export default function userRoutes(fastify: FastifyInstance) {
    * DELETE /api/user/account - Delete current user account
    */
   fastify.delete('/account', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'Delete current user account and all associated data',
       tags: ['User'],
@@ -551,6 +573,9 @@ export default function userRoutes(fastify: FastifyInstance) {
    * POST /api/user/2fa/setup - Generate 2FA setup (secret + QR code)
    */
   fastify.post('/2fa/setup', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'Generate 2FA setup credentials',
       tags: ['User'],
