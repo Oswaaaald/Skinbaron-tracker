@@ -384,7 +384,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         request.headers['user-agent']
       );
 
-        return reply.status(200).send({
+      return reply.status(200).send({
         success: true,
         data: {
           id: user.id,

@@ -1,8 +1,9 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
+import { getAuthUser } from '../lib/middleware.js';
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
@@ -17,7 +18,7 @@ const AlertsQuerySchema = z.object({
 });
 
 // Route handlers
-const alertsRoutes: FastifyPluginAsync = async (fastify) => {
+export default async function alertsRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -83,17 +84,17 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
       // Validate rule ownership if rule_id filter is provided
       if (query.rule_id !== undefined) {
         const rule = store.getRuleById(query.rule_id);
-        if (!rule || rule.user_id !== request.user!.id) {
+        if (!rule || rule.user_id !== getAuthUser(request).id) {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
       }
 
       // Get total count for pagination metadata
-      const total = store.alerts.countByUserId(request.user!.id);
+      const total = store.alerts.countByUserId(getAuthUser(request).id);
 
       // Get user's alerts with filters (limit=0 means return all)
       const alerts = store.getAlertsByUserId(
-        request.user!.id, 
+        getAuthUser(request).id, 
         query.limit, 
         query.offset,
         {
@@ -114,7 +115,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get alerts');
+      return handleRouteError(error, request, reply, 'Get alerts');
     }
   });
 
@@ -141,14 +142,14 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const itemNames = store.getUniqueAlertItemNames(request.user!.id);
+      const itemNames = store.getUniqueAlertItemNames(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
         data: itemNames,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get item names');
+      return handleRouteError(error, request, reply, 'Get item names');
     }
   });
 
@@ -181,14 +182,14 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const stats = store.getUserStats(request.user!.id);
+      const stats = store.getUserStats(getAuthUser(request).id);
       
       return reply.status(200).send({
         success: true,
         data: stats,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get alert stats');
+      return handleRouteError(error, request, reply, 'Get alert stats');
     }
   });
 
@@ -203,7 +204,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
       const deletedCount = store.deleteAllUserAlerts(userId);
       
       request.log.info(`User ${userId} cleared all ${deletedCount} alerts`);
@@ -216,9 +217,7 @@ const alertsRoutes: FastifyPluginAsync = async (fastify) => {
         },
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to clear all user alerts');
+      return handleRouteError(error, request, reply, 'Clear alerts');
     }
   });
-};
-
-export default alertsRoutes;
+}

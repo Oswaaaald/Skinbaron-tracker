@@ -1,10 +1,11 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { CreateUserWebhookSchema } from '../database/schemas.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 import { validateWebhookUrl } from '../lib/webhook-validator.js';
+import { getAuthUser } from '../lib/middleware.js';
 
 // Query parameters schemas
 const WebhookParamsSchema = z.object({
@@ -16,7 +17,7 @@ const WebhookQuerySchema = z.object({
 });
 
 // Route handlers
-const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
+export default async function webhooksRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -71,7 +72,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         throw new AppError(400, urlValidation.error || 'Invalid webhook URL', 'INVALID_WEBHOOK_URL');
       }
       
-      const webhook = store.createUserWebhook(request.user!.id, webhookData);
+      const webhook = store.createUserWebhook(getAuthUser(request).id, webhookData);
       
       // Don't return encrypted URL in response
       const { webhook_url_encrypted, ...safeWebhook } = webhook;
@@ -81,7 +82,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhook,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook creation');
+      return handleRouteError(error, request, reply, 'Create webhook');
     }
   });
 
@@ -128,7 +129,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { decrypt } = validateWithZod(WebhookQuerySchema, request.query);
-      const webhooks = store.getUserWebhooksByUserId(request.user!.id, decrypt);
+      const webhooks = store.getUserWebhooksByUserId(getAuthUser(request).id, decrypt);
       
       // Remove encrypted field from response
       const safeWebhooks = webhooks.map(webhook => {
@@ -141,7 +142,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhooks,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook retrieval');
+      return handleRouteError(error, request, reply, 'Get webhooks');
     }
   });
 
@@ -209,7 +210,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
 
-      if (existingWebhook.user_id !== request.user!.id) {
+      if (existingWebhook.user_id !== getAuthUser(request).id) {
         throw new AppError(403, 'You can only update your own webhooks', 'ACCESS_DENIED');
       }
       
@@ -221,7 +222,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
       
-      const webhook = store.updateUserWebhook(id, request.user!.id, updates);
+      const webhook = store.updateUserWebhook(id, getAuthUser(request).id, updates);
       
       if (!webhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
@@ -235,7 +236,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         data: safeWebhook,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook update');
+      return handleRouteError(error, request, reply, 'Update webhook');
     }
   });
 
@@ -280,11 +281,11 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
 
-      if (existingWebhook.user_id !== request.user!.id) {
+      if (existingWebhook.user_id !== getAuthUser(request).id) {
         throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
       }
       
-      const deleted = store.deleteUserWebhook(id, request.user!.id);
+      const deleted = store.deleteUserWebhook(id, getAuthUser(request).id);
       
       if (!deleted) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
@@ -295,7 +296,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         message: 'Webhook deleted successfully',
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook deletion');
+      return handleRouteError(error, request, reply, 'Delete webhook');
     }
   });
 
@@ -331,7 +332,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { webhook_ids } = request.body as { webhook_ids?: number[] };
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       let updated = 0;
       
@@ -361,7 +362,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         count: updated,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook batch enable');
+      return handleRouteError(error, request, reply, 'Enable webhooks');
     }
   });
 
@@ -397,7 +398,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { webhook_ids } = request.body as { webhook_ids?: number[] };
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       let updated = 0;
       
@@ -427,7 +428,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         count: updated,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook batch disable');
+      return handleRouteError(error, request, reply, 'Disable webhooks');
     }
   });
 
@@ -467,7 +468,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { webhook_ids, confirm_all } = request.body as { webhook_ids?: number[]; confirm_all?: boolean };
-      const userId = request.user!.id;
+      const userId = getAuthUser(request).id;
 
       let deleted = 0;
       
@@ -501,9 +502,7 @@ const webhooksRoutes: FastifyPluginAsync = async (fastify) => {
         count: deleted,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'webhook batch deletion');
+      return handleRouteError(error, request, reply, 'Delete webhooks');
     }
   });
-};
-
-export default webhooksRoutes;
+}

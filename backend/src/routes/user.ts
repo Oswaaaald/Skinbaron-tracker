@@ -1,7 +1,7 @@
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
-import { getClientIp, ACCESS_COOKIE } from '../lib/middleware.js';
+import { getClientIp, getAuthUser, ACCESS_COOKIE } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
 import { OTP } from 'otplib';
 import QRCode from 'qrcode';
@@ -50,12 +50,6 @@ function getPending2FA(userId: number): string | null {
   return entry.secret;
 }
 
-/** Get authenticated user or throw - use after authenticate middleware */
-function getAuthUser(request: FastifyRequest) {
-  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
-  return request.user;
-}
-
 const UpdateProfileSchema = z.object({
   username: z.string().min(3).max(20).optional(),
   email: z.string().email().optional(),
@@ -66,7 +60,7 @@ const UpdateProfileSchema = z.object({
 /**
  * User profile routes - Authenticated users can manage their own profile
  */
-export default function userRoutes(fastify: FastifyInstance) {
+export default async function userRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 

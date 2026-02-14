@@ -1,16 +1,11 @@
-import { FastifyPluginCallback, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { RuleSchema } from '../database/schemas.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
-
-/** Get authenticated user or throw - use after authenticate middleware */
-function getAuthUser(request: FastifyRequest) {
-  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
-  return request.user;
-}
+import { getAuthUser } from '../lib/middleware.js';
 
 // Request/Response schemas
 /**
@@ -30,7 +25,7 @@ const RuleParamsSchema = z.object({
 });
 
 // Route handlers
-const rulesRoutes: FastifyPluginCallback = (fastify) => {
+export default async function rulesRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
@@ -586,6 +581,4 @@ const rulesRoutes: FastifyPluginCallback = (fastify) => {
       return handleRouteError(error, request, reply, 'Delete rules');
     }
   });
-};
-
-export default rulesRoutes;
+}

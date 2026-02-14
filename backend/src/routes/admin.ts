@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { getScheduler } from '../lib/scheduler.js';
-import { getClientIp } from '../lib/middleware.js';
+import { getClientIp, getAuthUser } from '../lib/middleware.js';
 import { handleRouteError } from '../lib/validation-handler.js';
 import { Errors } from '../lib/errors.js';
 
@@ -14,6 +14,18 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', fastify.requireAdmin);
   
   const scheduler = getScheduler();
+
+  // Rate limiting for destructive admin operations
+  const adminWriteRateLimit = {
+    max: 10,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many admin operations. Please try again in 1 minute.',
+    }),
+  };
 
   /**
    * GET /api/admin/users - List all users (admin only)
@@ -74,7 +86,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: result,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to list users');
+      return handleRouteError(error, request, reply, 'List users');
     }
   });
 
@@ -82,6 +94,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * DELETE /api/admin/users/:id - Delete a user (admin only)
    */
   fastify.delete('/users/:id', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
     schema: {
       description: 'Delete a user and all their data (admin only)',
       tags: ['Admin'],
@@ -97,7 +112,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = request.params as { id: number };
-      const adminId = request.user!.id;
+      const adminId = getAuthUser(request).id;
 
       // Prevent deleting yourself
       if (id === adminId) {
@@ -162,7 +177,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: `User ${user.username} deleted successfully`,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to delete user');
+      return handleRouteError(error, request, reply, 'Delete user');
     }
   });
 
@@ -170,6 +185,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * PATCH /api/admin/users/:id/admin - Toggle admin status (admin only)
    */
   fastify.patch('/users/:id/admin', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
     schema: {
       description: 'Toggle admin status for a user (admin only)',
       tags: ['Admin'],
@@ -193,7 +211,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: number };
       const { is_admin } = request.body as { is_admin: boolean };
-      const adminId = request.user!.id;
+      const adminId = getAuthUser(request).id;
 
       // Prevent modifying your own admin status
       if (id === adminId) {
@@ -259,7 +277,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: { is_admin },
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to toggle admin status');
+      return handleRouteError(error, request, reply, 'Toggle admin status');
     }
   });
 
@@ -282,7 +300,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: stats,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get global stats');
+      return handleRouteError(error, request, reply, 'Get global stats');
     }
   });
 
@@ -324,7 +342,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: pendingUsers,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get pending users');
+      return handleRouteError(error, request, reply, 'Get pending users');
     }
   });
 
@@ -332,6 +350,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/approve-user/:id - Approve a pending user (admin only)
    */
   fastify.post('/approve-user/:id', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
     schema: {
       description: 'Approve a pending user (admin only)',
       tags: ['Admin'],
@@ -363,14 +384,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action
-      store.logAdminAction(request.user!.id, 'APPROVE_USER', id, `Approved user ID ${id}`);
+      store.logAdminAction(getAuthUser(request).id, 'APPROVE_USER', id, `Approved user ID ${id}`);
 
       // Create audit log
       store.createAuditLog(
         id,
         'user_approved',
         JSON.stringify({ 
-          approved_by_admin_id: request.user!.id 
+          approved_by_admin_id: getAuthUser(request).id 
         }),
         getClientIp(request),
         request.headers['user-agent']
@@ -381,7 +402,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'User approved successfully',
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to approve user');
+      return handleRouteError(error, request, reply, 'Approve user');
     }
   });
 
@@ -389,6 +410,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/reject-user/:id - Reject (delete) a pending user (admin only)
    */
   fastify.post('/reject-user/:id', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
     schema: {
       description: 'Reject and delete a pending user (admin only)',
       tags: ['Admin'],
@@ -414,7 +438,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: number };
       // Log admin action BEFORE deleting so the FK to target_user_id is still valid
-      store.logAdminAction(request.user!.id, 'REJECT_USER', id, `Rejected user ID ${id}`);
+      store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ID ${id}`);
 
       const success = store.rejectUser(id);
 
@@ -427,7 +451,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         message: 'User rejected and deleted successfully',
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to reject user');
+      return handleRouteError(error, request, reply, 'Reject user');
     }
   });
 
@@ -435,6 +459,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * POST /api/admin/scheduler/force-run - Force scheduler to run immediately (admin only)
    */
   fastify.post('/scheduler/force-run', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
     schema: {
       description: 'Force the scheduler to run immediately (bypasses cron schedule) - Admin only',
       tags: ['Admin'],
@@ -455,14 +482,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await scheduler.forceRun();
 
       // Log admin action
-      store.logAdminAction(request.user!.id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
+      store.logAdminAction(getAuthUser(request).id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
 
       return reply.status(200).send({
         success: true,
         message: 'Scheduler executed successfully',
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to force scheduler run');
+      return handleRouteError(error, request, reply, 'Force scheduler run');
     }
   });
 
@@ -547,7 +574,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         },
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get user audit logs');
+      return handleRouteError(error, request, reply, 'Get user audit logs');
     }
   });
 
@@ -604,7 +631,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: logs,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to get all audit logs');
+      return handleRouteError(error, request, reply, 'Get audit logs');
     }
   });
 
@@ -653,7 +680,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         data: users,
       });
     } catch (error) {
-      return handleRouteError(error, request, reply, 'Failed to search users');
+      return handleRouteError(error, request, reply, 'Search users');
     }
   });
 }

@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { getSkinBaronClient } from '../lib/sbclient.js';
 import { handleRouteError } from '../lib/validation-handler.js';
 
@@ -45,7 +45,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
         },
       },
     },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const { q, limit } = request.query as { q?: string; limit?: string };
       

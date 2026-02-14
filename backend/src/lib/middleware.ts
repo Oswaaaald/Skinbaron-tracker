@@ -164,3 +164,12 @@ export function requireSuperAdmin(request: FastifyRequest): Promise<void> {
   return Promise.resolve();
 }
 
+/**
+ * Get authenticated user from request or throw
+ * Use after authenticate middleware to safely access request.user
+ */
+export function getAuthUser(request: FastifyRequest) {
+  if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
+  return request.user;
+}
+
