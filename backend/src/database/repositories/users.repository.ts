@@ -51,9 +51,9 @@ export class UsersRepository {
   async findAllWithStats(): Promise<Array<typeof users.$inferSelect & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }>> {
     const result = await this.db.select({
       ...getTableColumns(users),
-      rules_count: sql<number>`(SELECT COUNT(*)::int FROM rules WHERE rules.user_id = ${users.id})`,
-      alerts_count: sql<number>`(SELECT COUNT(*)::int FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = ${users.id})`,
-      webhooks_count: sql<number>`(SELECT COUNT(*)::int FROM user_webhooks WHERE user_webhooks.user_id = ${users.id})`,
+      rules_count: sql<number>`(SELECT COUNT(*)::int FROM rules WHERE rules.user_id = "users"."id")`,
+      alerts_count: sql<number>`(SELECT COUNT(*)::int FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = "users"."id")`,
+      webhooks_count: sql<number>`(SELECT COUNT(*)::int FROM user_webhooks WHERE user_webhooks.user_id = "users"."id")`,
     }).from(users)
       .where(eq(users.is_approved, true))
       .orderBy(desc(users.created_at));
