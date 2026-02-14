@@ -48,5 +48,5 @@ EXPOSE 8080
 # Validate environment variables at container startup
 ENTRYPOINT ["sh", "-c", "node scripts/validate-env.js && exec node dist/index.js"]
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -T 3 -q -O /dev/null http://127.0.0.1:8080/api/health

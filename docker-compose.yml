@@ -72,9 +72,10 @@ services:
       - ALL
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      test: ["CMD-SHELL", "wget -T 3 -q -O /dev/null http://127.0.0.1:8080/api/health"]
       interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
 
     networks:
@@ -110,9 +111,10 @@ services:
       - ALL
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD-SHELL", "wget -T 3 -q -O /dev/null http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
 
     networks:
