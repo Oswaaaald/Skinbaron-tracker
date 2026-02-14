@@ -233,7 +233,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         search_item: data.search_item,
         min_price: data.min_price !== undefined ? data.min_price : 0,
         max_price: data.max_price || undefined,
-        min_wear: data.min_wear !== undefined ? percentageToWear(data.min_wear) : 0,
+        min_wear: data.min_wear !== undefined ? percentageToWear(data.min_wear) : undefined,
         max_wear: data.max_wear !== undefined ? percentageToWear(data.max_wear) : undefined,
         stattrak_filter: data.stattrak_filter,
         souvenir_filter: data.souvenir_filter,

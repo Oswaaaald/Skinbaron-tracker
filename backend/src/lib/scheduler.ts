@@ -322,10 +322,10 @@ export class AlertScheduler {
       if (rule.max_price != null && item.price > rule.max_price) return false;
 
       if (rule.min_wear != null) {
-        if (item.wearValue === undefined || item.wearValue < rule.min_wear) return false;
+        if (item.wearValue !== undefined && item.wearValue < rule.min_wear) return false;
       }
       if (rule.max_wear != null) {
-        if (item.wearValue === undefined || item.wearValue > rule.max_wear) return false;
+        if (item.wearValue !== undefined && item.wearValue > rule.max_wear) return false;
       }
 
       const isStatTrak = item.statTrak || item.itemName.includes('StatTrak\u2122');
