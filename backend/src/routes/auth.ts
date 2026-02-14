@@ -11,7 +11,7 @@ import crypto from 'crypto';
 /**
  * Authentication routes
  */
-export default function authRoutes(fastify: FastifyInstance) {
+export default async function authRoutes(fastify: FastifyInstance) {
 
   // Stricter rate limiting for auth endpoints (anti-brute force)
   const authRateLimitConfig = {

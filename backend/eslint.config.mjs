@@ -24,6 +24,8 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
       '@typescript-eslint/no-non-null-assertion': 'warn',
+      // Fastify plugins must be async even without await — disable this false positive
+      '@typescript-eslint/require-await': 'off',
     },
   },
   {

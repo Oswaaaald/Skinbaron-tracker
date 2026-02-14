@@ -17,7 +17,7 @@ const WebhookQuerySchema = z.object({
 });
 
 // Route handlers
-export default function webhooksRoutes(fastify: FastifyInstance) {
+export default async function webhooksRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 

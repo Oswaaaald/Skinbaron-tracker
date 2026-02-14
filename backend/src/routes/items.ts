@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { getSkinBaronClient } from '../lib/sbclient.js';
 import { handleRouteError } from '../lib/validation-handler.js';
 
-export default function itemsRoutes(fastify: FastifyInstance) {
+export default async function itemsRoutes(fastify: FastifyInstance) {
   
   // All routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);

@@ -25,7 +25,7 @@ const RuleParamsSchema = z.object({
 });
 
 // Route handlers
-export default function rulesRoutes(fastify: FastifyInstance) {
+export default async function rulesRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
