@@ -251,7 +251,7 @@ class ApiClient {
           !isAuthLogin &&
           !isAuthRegister &&
           !isAuthLogout &&
-          (response.status === 401 || response.status === 403) &&
+          response.status === 401 &&
           allowRefresh;
 
         if (shouldAttemptRefresh) {

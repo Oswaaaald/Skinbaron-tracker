@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { getScheduler } from '../lib/scheduler.js';
-import { getClientIp, getAuthUser } from '../lib/middleware.js';
+import { getClientIp, getAuthUser, invalidateUserCache } from '../lib/middleware.js';
 import { handleRouteError } from '../lib/validation-handler.js';
 import { Errors } from '../lib/errors.js';
 
@@ -257,6 +257,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       if (!updated) {
         throw Errors.internal('Failed to update admin status');
       }
+
+      // Invalidate cached user data so middleware picks up new admin status immediately
+      invalidateUserCache(id);
 
       // Log admin action
       const action = is_admin ? 'grant_admin' : 'revoke_admin';
