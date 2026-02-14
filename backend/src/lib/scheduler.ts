@@ -28,6 +28,7 @@ export class AlertScheduler {
   private logger: SchedulerLogger = pino({ level: appConfig.LOG_LEVEL });
   private cronJob: CronJob | null = null;
   private notificationService = getNotificationService();
+  private lastCleanupTime: number = 0; // Track last audit log cleanup by timestamp
 
   // Discord rate limiting: max 30 messages per minute per webhook
   private readonly DISCORD_DELAY_MS = 2100; // ~2 seconds between messages (allows ~28 per minute with safety margin)
@@ -123,7 +124,10 @@ export class AlertScheduler {
 
     try {
       // Clean old audit logs (GDPR compliance) - run once per day
-      if (this.stats.totalRuns % 288 === 1) { // Every 288 runs at 5min intervals = ~1 day
+      const now = Date.now();
+      const ONE_DAY_MS = 86_400_000;
+      if (now - this.lastCleanupTime >= ONE_DAY_MS) {
+        this.lastCleanupTime = now;
         try {
           const result = store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
           if (result > 0) {
@@ -209,10 +213,10 @@ export class AlertScheduler {
       // Search for items matching the rule
       const response = await client.search({
         search_item: rule.search_item,
-        min: rule.min_price || undefined,
-        max: rule.max_price || undefined,
-        minWear: rule.min_wear || undefined,
-        maxWear: rule.max_wear || undefined,
+        min: rule.min_price ?? undefined,
+        max: rule.max_price ?? undefined,
+        minWear: rule.min_wear ?? undefined,
+        maxWear: rule.max_wear ?? undefined,
         statTrak: statTrakParam,
         souvenir: souvenirParam,
         limit: 250, // SkinBaron page size — balances coverage vs response time
@@ -428,9 +432,18 @@ export class AlertScheduler {
     // Chain the new notification after the existing queue
     const newQueue = existingQueue.then(async () => {
       try {
-        await this.notificationService.sendNotification(webhookUrl, options);
-      } catch {
-        // Log but don't throw - we don't want to block other notifications
+        const success = await this.notificationService.sendNotification(webhookUrl, options);
+        if (!success) {
+          this.logger.warn({ 
+            webhookUrl: webhookUrl.substring(0, 50) + '...', 
+            item: options.item.itemName 
+          }, '[Scheduler] Webhook notification failed to send');
+        }
+      } catch (error) {
+        this.logger.error({ 
+          error: error instanceof Error ? error.message : error,
+          item: options.item.itemName 
+        }, '[Scheduler] Webhook notification threw error');
       }
       // Add delay before next message to respect Discord rate limits
       await new Promise(resolve => setTimeout(resolve, this.DISCORD_DELAY_MS));
@@ -473,10 +486,10 @@ export class AlertScheduler {
     
     const response = await client.search({
       search_item: rule.search_item,
-      min: rule.min_price || undefined,
-      max: rule.max_price || undefined,
-      minWear: rule.min_wear || undefined,
-      maxWear: rule.max_wear || undefined,
+      min: rule.min_price ?? undefined,
+      max: rule.max_price ?? undefined,
+      minWear: rule.min_wear ?? undefined,
+      maxWear: rule.max_wear ?? undefined,
       statTrak: statTrakParam,
       souvenir: souvenirParam,
       limit: 10,
@@ -502,10 +515,10 @@ export class AlertScheduler {
 
       return client.matchesFilters(item, {
         search_item: rule.search_item,
-        min: rule.min_price || undefined,
-        max: rule.max_price || undefined,
-        minWear: rule.min_wear || undefined,
-        maxWear: rule.max_wear || undefined,
+        min: rule.min_price ?? undefined,
+        max: rule.max_price ?? undefined,
+        minWear: rule.min_wear ?? undefined,
+        maxWear: rule.max_wear ?? undefined,
         statTrak: statTrakParam,
         souvenir: souvenirParam,
       });

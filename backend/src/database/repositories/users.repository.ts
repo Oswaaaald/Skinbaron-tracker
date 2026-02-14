@@ -158,6 +158,12 @@ export class UsersRepository {
     return result.count;
   }
 
+  countAdmins(): number {
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM users WHERE is_admin = 1');
+    const result = stmt.get() as { count: number };
+    return result.count;
+  }
+
   findPendingApproval(limit: number = 50, offset: number = 0): User[] {
     const stmt = this.db.prepare(`
       SELECT * FROM users 
@@ -191,11 +197,12 @@ export class UsersRepository {
   searchUsers(searchTerm: string, limit: number = 20): User[] {
     const stmt = this.db.prepare(`
       SELECT * FROM users 
-      WHERE is_approved = 1 AND (username LIKE ? OR email LIKE ?) 
+      WHERE is_approved = 1 AND (username LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\') 
       ORDER BY username ASC 
       LIMIT ?
     `);
-    const term = `%${searchTerm}%`;
+    const escaped = searchTerm.replace(/[%_\\]/g, '\\$&');
+    const term = `%${escaped}%`;
     const rows = stmt.all(term, term, limit) as UserRow[];
     return rows.map(row => rowToUser(row));
   }

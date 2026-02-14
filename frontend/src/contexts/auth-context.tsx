@@ -15,8 +15,6 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null
-  token: string | null
-  refreshToken: string | null
   isLoading: boolean
   isAuthenticated: boolean
   isReady: boolean // New flag to indicate auth state is fully initialized
@@ -38,8 +36,6 @@ type InitialAuthState = {
 
 export function AuthProvider({ children, initialAuth }: { children: ReactNode; initialAuth?: InitialAuthState | null }) {
   const [user, setUser] = useState<User | null>(initialAuth?.user ?? null)
-  const [token, setToken] = useState<string | null>(null)
-  const [refreshToken, setRefreshToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isReady, setIsReady] = useState(false)
   const [accessExpiry, setAccessExpiry] = useState<number | null>(initialAuth?.expiresAt ?? null)
@@ -107,8 +103,6 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   useEffect(() => {
     apiClient.setLogoutCallback(() => {
       setUser(null)
-      setToken(null)
-      setRefreshToken(null)
       setAccessExpiry(null)
     })
 
@@ -237,13 +231,15 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       // Best-effort logout
     }
     setUser(null)
-    setToken(null)
-    setRefreshToken(null)
     setAccessExpiry(null)
     setIsReady(true)
     // Clear session flag
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('has_session')
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('has_session')
+      }
+    } catch {
+      // localStorage unavailable
     }
   }
 
@@ -276,8 +272,6 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
 
   const contextValue: AuthContextType = {
     user,
-    token,
-    refreshToken,
     isLoading,
     isAuthenticated,
     isReady,

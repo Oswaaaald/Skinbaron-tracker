@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   // Note: Next.js 16 standalone mode includes some polyfills by default
   // This is not fully controllable without custom webpack config
   experimental: {
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    optimizePackageImports: ['lucide-react'],
   },
   
   // Image optimization for external sources

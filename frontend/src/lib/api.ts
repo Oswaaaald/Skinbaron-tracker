@@ -300,23 +300,10 @@ class ApiClient {
     // Start a new refresh and store the promise
     this.refreshPromise = (async () => {
       try {
-        const url = `${this.baseURL}/api/auth/refresh`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({}),
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          return { success: false };
-        }
-        const data = await response.json() as { success?: boolean; data?: { token_expires_at?: number } };
+        const result = await this.refresh();
         return {
-          success: Boolean(data?.success),
-          expiresAt: data?.data?.token_expires_at,
+          success: Boolean(result?.success),
+          expiresAt: result?.data?.token_expires_at,
         };
       } catch (error) {
         if (process.env['NODE_ENV'] === 'development') {
@@ -466,15 +453,6 @@ class ApiClient {
     return this.request('/api/alerts/stats');
   }
 
-  async getUserStats(): Promise<ApiResponse<{
-    totalRules: number;
-    enabledRules: number;
-    totalAlerts: number;
-    todayAlerts: number;
-  }>> {
-    return this.request('/api/alerts/stats');
-  }
-
   async clearAllAlerts(): Promise<ApiResponse<{
     deletedCount: number;
     message: string;
@@ -563,8 +541,11 @@ class ApiClient {
   }
 
   // Generic DELETE method for admin endpoints
-  async delete<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T = unknown>(endpoint: string, data?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { 
+      method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 
   // Generic PATCH method for admin endpoints

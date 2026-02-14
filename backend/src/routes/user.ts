@@ -448,6 +448,13 @@ export default function userRoutes(fastify: FastifyInstance) {
       description: 'Delete current user account and all associated data',
       tags: ['User'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          password: { type: 'string' },
+        },
+        required: ['password'],
+      },
       response: {
         200: {
           type: 'object',
@@ -461,6 +468,18 @@ export default function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
+      const { password } = request.body as { password: string };
+
+      const user = store.getUserById(userId);
+      if (!user) {
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+      }
+
+      // Verify password before allowing account deletion
+      const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
+      if (!isValidPassword) {
+        throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
+      }
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       store.deleteUser(userId);

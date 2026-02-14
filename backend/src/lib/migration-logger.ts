@@ -8,6 +8,7 @@
 export class MigrationLogger {
   private static instance: MigrationLogger;
   private logs: Array<{ level: string; message: string; timestamp: Date }> = [];
+  private readonly MAX_LOGS = 500;
 
   private constructor() {}
 
@@ -18,6 +19,14 @@ export class MigrationLogger {
     return MigrationLogger.instance;
   }
 
+  private addLog(entry: { level: string; message: string; timestamp: Date }) {
+    this.logs.push(entry);
+    // Cap buffer to prevent unbounded memory growth
+    if (this.logs.length > this.MAX_LOGS) {
+      this.logs = this.logs.slice(-this.MAX_LOGS);
+    }
+  }
+
   info(message: string, meta?: unknown) {
     const logEntry = {
       level: 'info',
@@ -26,7 +35,7 @@ export class MigrationLogger {
       ...(meta && typeof meta === 'object' ? meta : {}),
     };
     
-    this.logs.push(logEntry);
+    this.addLog(logEntry);
     
     // In production, these will be picked up by the main logger
     if (process.env['NODE_ENV'] === 'development') {
@@ -42,7 +51,7 @@ export class MigrationLogger {
       ...(meta && typeof meta === 'object' ? meta : {}),
     };
     
-    this.logs.push(logEntry);
+    this.addLog(logEntry);
     
     if (process.env['NODE_ENV'] === 'development') {
       console.warn(`⚠️  ${message}`, meta || '');
@@ -57,7 +66,7 @@ export class MigrationLogger {
       error: error instanceof Error ? error.message : error,
     };
     
-    this.logs.push(logEntry);
+    this.addLog(logEntry);
     
     // Only log to console in non-production environments
     if (process.env['NODE_ENV'] !== 'production') {

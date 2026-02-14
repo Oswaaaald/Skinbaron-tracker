@@ -35,9 +35,6 @@ export default function RootLayout({
   // Skip SSR session check - cookies are cross-subdomain and client will handle auth
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Preconnect hints removed - next/image uses its own proxy /_next/image */}
-      </head>
       <body className={inter.className}>
         <script
           dangerouslySetInnerHTML={{

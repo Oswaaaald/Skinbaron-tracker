@@ -70,20 +70,30 @@ export class NotificationService {
       // Validate payload
       const validatedPayload = DiscordWebhookPayloadSchema.parse(payload);
 
+      // AbortController for timeout (10 seconds)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(validatedPayload),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (response.ok) {
         return true;
       } else {
+        const errorBody = await response.text().catch(() => 'Unable to read response body');
+        console.error(`[Notifier] Discord webhook failed: HTTP ${response.status} - ${errorBody}`);
         return false;
       }
-    } catch {
+    } catch (error) {
+      console.error(`[Notifier] Discord webhook error:`, error instanceof Error ? error.message : error);
       return false;
     }
   }

@@ -51,6 +51,7 @@ export function ProfileSettings() {
   
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
   const [twoFactorDialog, setTwoFactorDialog] = useState(false)
   const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
   const [twoFactorPassword, setTwoFactorPassword] = useState('')
@@ -98,21 +99,12 @@ export function ProfileSettings() {
             email: userData.email,
             avatar_url: userData.avatar_url,
             is_admin: userData.is_admin,
-          })
+          })  
         }
-        toast({
-          title: "✅ Profile updated",
-          description: "Your profile has been updated successfully",
-        })
         setSuccess('profile', 'Profile updated successfully')
       },
       onError: (error: unknown) => {
         const errorMsg = extractErrorMessage(error, 'Failed to update profile')
-        toast({
-          variant: "destructive",
-          title: "❌ Update failed",
-          description: errorMsg,
-        })
         setError('profile', errorMsg)
       },
     }
@@ -125,10 +117,6 @@ export function ProfileSettings() {
       invalidateKeys: [[QUERY_KEYS.USER_AUDIT_LOGS]],
       successMessage: 'Password updated successfully',
       onSuccess: () => {
-        toast({
-          title: "✅ Password changed",
-          description: "Your password has been updated successfully",
-        })
         setSuccess('password', 'Password updated successfully')
         setCurrentPassword('')
         setNewPassword('')
@@ -136,11 +124,6 @@ export function ProfileSettings() {
       },
       onError: (error: unknown) => {
         const errorMsg = extractErrorMessage(error, 'Failed to update password')
-        toast({
-          variant: "destructive",
-          title: "❌ Password update failed",
-          description: errorMsg,
-        })
         setError('password', errorMsg)
       },
     }
@@ -148,7 +131,7 @@ export function ProfileSettings() {
 
   // Delete account mutation
   const deleteAccountMutation = useApiMutation(
-    () => apiClient.delete('/api/user/account'),
+    (password: string) => apiClient.delete('/api/user/account', { password }),
     {
       onSuccess: () => {
         toast({
@@ -182,10 +165,6 @@ export function ProfileSettings() {
       invalidateKeys: [[QUERY_KEYS.TWO_FA_STATUS]],
       successMessage: 'Two-factor authentication disabled successfully',
       onSuccess: () => {
-        toast({
-          title: "✅ 2FA disabled",
-          description: "Two-factor authentication has been disabled",
-        })
         setSuccess('general', 'Two-factor authentication disabled successfully')
         clear('twoFactor')
         setDisableTwoFactorDialog(false)
@@ -193,11 +172,6 @@ export function ProfileSettings() {
       },
       onError: (error: unknown) => {
         const errorMsg = extractErrorMessage(error, 'Failed to disable 2FA')
-        toast({
-          variant: "destructive",
-          title: "❌ Failed to disable 2FA",
-          description: errorMsg,
-        })
         setError('twoFactor', errorMsg)
       },
     }
@@ -264,8 +238,8 @@ export function ProfileSettings() {
   }
 
   const handleDeleteAccount = () => {
-    if (deleteConfirmText === user?.username) {
-      deleteAccountMutation.mutate()
+    if (deleteConfirmText === user?.username && deletePassword) {
+      deleteAccountMutation.mutate(deletePassword)
     }
   }
 
@@ -582,8 +556,11 @@ export function ProfileSettings() {
                   const a = document.createElement('a')
                   a.href = url
                   a.download = `skinbaron-tracker-export-${new Date().toISOString().split('T')[0]}.json`
+                  document.body.appendChild(a)
                   a.click()
-                  URL.revokeObjectURL(url)
+                  document.body.removeChild(a)
+                  // Delay revoke to ensure browser picks up the blob
+                  setTimeout(() => URL.revokeObjectURL(url), 1000)
                   toast({ title: '✅ Data exported', description: 'Your data has been downloaded' })
                 }
               } catch (error) {
@@ -727,6 +704,17 @@ export function ProfileSettings() {
                 placeholder={user?.username}
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Enter your password</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+            </div>
           </div>
           
           <DialogFooter>
@@ -735,6 +723,7 @@ export function ProfileSettings() {
               onClick={() => {
                 setDeleteDialog(false)
                 setDeleteConfirmText('')
+                setDeletePassword('')
               }}
             >
               Cancel
@@ -742,7 +731,7 @@ export function ProfileSettings() {
             <Button
               variant="destructive"
               onClick={handleDeleteAccount}
-              disabled={deleteConfirmText !== user?.username || deleteAccountMutation.isPending}
+              disabled={deleteConfirmText !== user?.username || !deletePassword || deleteAccountMutation.isPending}
             >
               {deleteAccountMutation.isPending ? (
                 <>

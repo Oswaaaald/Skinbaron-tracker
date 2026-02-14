@@ -165,7 +165,7 @@ function createUserTables(db: Database.Database) {
       details TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
     )
   `);
 
@@ -405,13 +405,14 @@ function runDataMigrations(db: Database.Database) {
         totp_enabled BOOLEAN DEFAULT 0,
         totp_secret_encrypted TEXT,
         recovery_codes_encrypted TEXT,
+        tos_accepted_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       
       -- Copy data from old table
-      INSERT INTO users_new (id, username, email, password_hash, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted, created_at, updated_at)
-      SELECT id, username, email, password_hash, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted, created_at, updated_at
+      INSERT INTO users_new (id, username, email, password_hash, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted, tos_accepted_at, created_at, updated_at)
+      SELECT id, username, email, password_hash, is_admin, is_super_admin, is_approved, totp_enabled, totp_secret_encrypted, recovery_codes_encrypted, tos_accepted_at, created_at, updated_at
       FROM users;
       
       -- Drop old table
@@ -421,6 +422,37 @@ function runDataMigrations(db: Database.Database) {
       ALTER TABLE users_new RENAME TO users;
     `);
     migrationLogger.info('Migration: Removed plaintext 2FA columns from users table (security fix)');
+  }
+
+  // Migration: Fix admin_actions FK to use SET NULL instead of CASCADE on target_user_id
+  // This preserves audit trail when target user is deleted
+  const adminActionsInfo = db.prepare(`
+    SELECT sql FROM sqlite_master WHERE type='table' AND name='admin_actions'
+  `).get() as { sql: string } | undefined;
+
+  if (adminActionsInfo && adminActionsInfo.sql.includes('ON DELETE CASCADE') && 
+      !adminActionsInfo.sql.includes('ON DELETE SET NULL')) {
+    db.exec(`
+      CREATE TABLE admin_actions_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_user_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        target_user_id INTEGER,
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      INSERT INTO admin_actions_new (id, admin_user_id, action, target_user_id, details, created_at)
+      SELECT id, admin_user_id, action, target_user_id, details, created_at
+      FROM admin_actions;
+
+      DROP TABLE admin_actions;
+
+      ALTER TABLE admin_actions_new RENAME TO admin_actions;
+    `);
+    migrationLogger.info('Migration: Changed admin_actions target_user_id FK from CASCADE to SET NULL');
   }
 }
 /**

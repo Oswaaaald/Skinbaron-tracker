@@ -144,8 +144,8 @@ const rulesRoutes: FastifyPluginCallback = (fastify) => {
   }, async (request, reply) => {
     try {
       // Check max rules limit
-      const userRules = store.getRulesByUserId(getAuthUser(request).id);
-      if (userRules.length >= MAX_RULES_PER_USER) {
+      const userRuleCount = store.rules.count(getAuthUser(request).id);
+      if (userRuleCount >= MAX_RULES_PER_USER) {
         throw new AppError(400, `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`, 'MAX_RULES_REACHED');
       }
       

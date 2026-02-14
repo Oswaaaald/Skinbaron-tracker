@@ -43,7 +43,8 @@
     "qrcode": "^1.5.4",
     "undici": "^7.20.0",
     "zod": "^4.3.6",
-    "zxcvbn": "^4.4.2"
+    "zxcvbn": "^4.4.2",
+    "pino": "^10.3.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -55,7 +56,6 @@
     "@typescript-eslint/parser": "^8.55.0",
     "eslint": "^9.39.2",
     "globals": "^17.3.0",
-    "pino": "^10.3.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }

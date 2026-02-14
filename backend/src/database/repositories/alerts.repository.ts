@@ -133,8 +133,9 @@ export class AlertsRepository {
 
     // Add item name filter
     if (options?.itemName) {
-      query += ` AND a.item_name LIKE ?`;
-      params.push(`%${options.itemName}%`);
+      query += ` AND a.item_name LIKE ? ESCAPE '\\'`;
+      const escaped = options.itemName.replace(/[%_\\]/g, '\\$&');
+      params.push(`%${escaped}%`);
     }
 
     // Add sorting

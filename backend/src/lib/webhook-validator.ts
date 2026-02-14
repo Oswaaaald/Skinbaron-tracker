@@ -12,7 +12,6 @@ import dns from 'dns/promises';
 const ALLOWED_DOMAINS = [
   'discord.com',
   'discordapp.com',
-  'discord.gg',
 ] as const;
 
 // Blocked hostnames (localhost, loopback, etc.)

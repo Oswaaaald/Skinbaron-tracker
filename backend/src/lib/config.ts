@@ -71,7 +71,12 @@ function loadConfig() {
     return config;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      // Errors already logged by Zod
+      console.error('❌ Configuration validation failed:');
+      for (const issue of error.issues) {
+        console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
+      }
+    } else {
+      console.error('❌ Configuration error:', error instanceof Error ? error.message : error);
     }
     process.exit(1);
   }

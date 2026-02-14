@@ -10,13 +10,22 @@ export function CookieBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (!localStorage.getItem(COOKIE_NOTICE_KEY)) {
+    try {
+      if (!localStorage.getItem(COOKIE_NOTICE_KEY)) {
+        setVisible(true)
+      }
+    } catch {
+      // localStorage unavailable (private browsing, storage full)
       setVisible(true)
     }
   }, [])
 
   const dismiss = () => {
-    localStorage.setItem(COOKIE_NOTICE_KEY, '1')
+    try {
+      localStorage.setItem(COOKIE_NOTICE_KEY, '1')
+    } catch {
+      // localStorage unavailable — dismiss is still visual
+    }
     setVisible(false)
   }
 

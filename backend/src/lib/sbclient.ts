@@ -146,7 +146,10 @@ export class SkinBaronClient {
       search_item: params.search_item,
       ...(params.min !== undefined && { min: params.min }),
       ...(params.max !== undefined && { max: params.max }),
+      ...(params.minWear !== undefined && { min_wear: params.minWear }),
+      ...(params.maxWear !== undefined && { max_wear: params.maxWear }),
       ...(params.statTrak !== undefined && { stattrak: params.statTrak }),
+      ...(params.souvenir !== undefined && { souvenir: params.souvenir }),
       ...(params.limit !== undefined && { items_per_page: params.limit }),
     };
 

@@ -122,8 +122,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           throw Errors.forbidden('Only super administrators can delete other administrators');
         }
 
-        const allUsers = store.getAllUsers();
-        const adminCount = allUsers.filter(u => u.is_admin).length;
+        const adminCount = store.users.countAdmins();
         
         if (adminCount <= 1) {
           throw Errors.badRequest('You cannot delete the last administrator account');
@@ -222,8 +221,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // If removing admin, check if this is the last admin
       if (user.is_admin && !is_admin) {
-        const allUsers = store.getAllUsers();
-        const adminCount = allUsers.filter(u => u.is_admin).length;
+        const adminCount = store.users.countAdmins();
         
         if (adminCount <= 1) {
           throw Errors.badRequest('You cannot remove administrator privileges from the last admin');
