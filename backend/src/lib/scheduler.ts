@@ -2,7 +2,7 @@ import { CronJob } from 'cron';
 import { appConfig } from './config.js';
 import { store } from '../database/index.js';
 import type { Rule, CreateAlert } from '../database/schemas.js';
-import { getSkinBaronClient, type SkinBaronItem } from './sbclient.js';
+import { getSkinBaronClient, type SkinBaronClient, type SkinBaronItem } from './sbclient.js';
 import { getNotificationService, type NotificationStyle } from './notifier.js';
 import pino from 'pino';
 
@@ -32,6 +32,7 @@ export class AlertScheduler {
 
   // Discord rate limiting: max 30 messages per minute per webhook
   private readonly DISCORD_DELAY_MS = 2100; // ~2 seconds between messages (allows ~28 per minute with safety margin)
+  private readonly API_PAGE_SIZE = 250; // SkinBaron max items per page
   private webhookQueues = new Map<string, Promise<void>>();
 
   // Concurrency guard — prevents overlapping poll executions
@@ -151,34 +152,43 @@ export class AlertScheduler {
         return;
       }
 
-      // Process rules in batches to avoid rate limiting while maintaining speed
-      const BATCH_SIZE = 10; // Process 10 rules in parallel
-      const BATCH_DELAY = 1000; // 1 second between batches
-      
+      // ── Group rules by search_item to deduplicate API calls ──
+      // e.g. 10 rules searching "AK-47" → 1 API call instead of 10
+      const ruleGroups = new Map<string, Rule[]>();
+      for (const rule of rules) {
+        const key = rule.search_item.trim().toLowerCase();
+        const group = ruleGroups.get(key) ?? [];
+        group.push(rule);
+        ruleGroups.set(key, group);
+      }
+
+      const groups = Array.from(ruleGroups.values());
+
+      this.logger.info({
+        totalRules: rules.length,
+        uniqueSearchTerms: groups.length,
+        apiCallsSaved: rules.length - groups.length,
+      }, '[Scheduler] Grouped rules — deduplicating API calls');
+
+      // Process groups with concurrency control (max N concurrent SkinBaron API calls)
+      const API_CONCURRENCY = 3;
+      const BATCH_DELAY = 500;
       let totalNewAlerts = 0;
-      
-      // Split rules into batches
-      for (let batchStart = 0; batchStart < rules.length; batchStart += BATCH_SIZE) {
-        const batch = rules.slice(batchStart, batchStart + BATCH_SIZE);
-        
-        // Process batch in parallel
-        const batchPromises = batch.map(async (rule) => {
-          if (!rule) return 0;
-          
-          try {
-            return await this.processRule(rule);
-          } catch (error) {
+
+      for (let i = 0; i < groups.length; i += API_CONCURRENCY) {
+        const batch = groups.slice(i, i + API_CONCURRENCY);
+        const results = await Promise.all(
+          batch.map(group => this.processRuleGroup(group).catch(error => {
             this.stats.errorCount++;
             this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
+            this.logger.error({ error, searchItem: group[0]?.search_item }, '[Scheduler] Rule group failed');
             return 0;
-          }
-        });
-        
-        const batchResults = await Promise.all(batchPromises);
-        totalNewAlerts += batchResults.reduce((sum, count) => sum + count, 0);
-        
-        // Add delay between batches (skip for last batch)
-        if (batchStart + BATCH_SIZE < rules.length) {
+          }))
+        );
+        totalNewAlerts += results.reduce((sum, n) => sum + n, 0);
+
+        // Delay between batches to respect SkinBaron rate limits
+        if (i + API_CONCURRENCY < groups.length) {
           await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
         }
       }
@@ -197,226 +207,226 @@ export class AlertScheduler {
   }
 
   /**
-   * Process a single rule
+   * Merge search params across rules sharing the same search_item.
+   * Produces the broadest API call that covers all rules in the group.
    */
-  private async processRule(rule: Rule): Promise<number> {
-    try {
-      const client = getSkinBaronClient();
-      
-      // Convert filter enums to boolean params for API
-      // 'only' = true, 'exclude' = false, 'all' = undefined (no filter)
-      const statTrakParam = rule.stattrak_filter === 'only' ? true : 
-                           rule.stattrak_filter === 'exclude' ? false : undefined;
-      const souvenirParam = rule.souvenir_filter === 'only' ? true : 
-                           rule.souvenir_filter === 'exclude' ? false : undefined;
-      
-      // Search for items matching the rule
-      const response = await client.search({
-        search_item: rule.search_item,
-        min: rule.min_price ?? undefined,
-        max: rule.max_price ?? undefined,
-        minWear: rule.min_wear ?? undefined,
-        maxWear: rule.max_wear ?? undefined,
-        statTrak: statTrakParam,
-        souvenir: souvenirParam,
-        limit: 250, // SkinBaron page size — balances coverage vs response time
-      });
+  private mergeSearchParams(rules: Rule[]): {
+    search_item: string; min?: number; max?: number;
+    minWear?: number; maxWear?: number;
+    statTrak?: boolean; souvenir?: boolean; limit: number;
+  } {
+    let minPrice: number | undefined;
+    let maxPrice: number | undefined;
+    let minWear: number | undefined;
+    let maxWear: number | undefined;
+    let anyNoMin = false, anyNoMax = false;
+    let anyNoMinWear = false, anyNoMaxWear = false;
 
-      // Get existing alerts for this rule to track changes
-      const existingAlerts = rule.id ? store.findAlertsByRuleId(rule.id) : [];
-      const existingAlertsMap = new Map(existingAlerts.map(alert => [alert.sale_id, alert]));
+    for (const rule of rules) {
+      if (rule.min_price == null) anyNoMin = true;
+      else minPrice = minPrice !== undefined ? Math.min(minPrice, rule.min_price) : rule.min_price;
 
-      if (!response.items || response.items.length === 0) {
-        // No items found - delete all existing alerts for this rule as offers are gone
-        if (existingAlerts.length > 0 && rule.id) {
-          const saleIdsToDelete = existingAlerts.map(a => a.sale_id);
-          const deletedCount = store.deleteBySaleIds(saleIdsToDelete);
-          if (deletedCount > 0) {
-            this.logger.info({ 
-              ruleId: rule.id, 
-              searchItem: rule.search_item, 
-              deletedCount 
-            }, '[Scheduler] Deleted alerts for sold/removed offers');
-          }
+      if (rule.max_price == null) anyNoMax = true;
+      else maxPrice = maxPrice !== undefined ? Math.max(maxPrice, rule.max_price) : rule.max_price;
+
+      if (rule.min_wear == null) anyNoMinWear = true;
+      else minWear = minWear !== undefined ? Math.min(minWear, rule.min_wear) : rule.min_wear;
+
+      if (rule.max_wear == null) anyNoMaxWear = true;
+      else maxWear = maxWear !== undefined ? Math.max(maxWear, rule.max_wear) : rule.max_wear;
+    }
+
+    // Only apply statTrak/souvenir API filter if ALL rules in the group agree
+    const statTrakFilters = new Set(rules.map(r => r.stattrak_filter));
+    const souvenirFilters = new Set(rules.map(r => r.souvenir_filter));
+
+    return {
+      search_item: rules[0]!.search_item,
+      min: anyNoMin ? undefined : minPrice,
+      max: anyNoMax ? undefined : maxPrice,
+      minWear: anyNoMinWear ? undefined : minWear,
+      maxWear: anyNoMaxWear ? undefined : maxWear,
+      statTrak: statTrakFilters.size === 1 && statTrakFilters.has('only') ? true
+             : statTrakFilters.size === 1 && statTrakFilters.has('exclude') ? false
+             : undefined,
+      souvenir: souvenirFilters.size === 1 && souvenirFilters.has('only') ? true
+             : souvenirFilters.size === 1 && souvenirFilters.has('exclude') ? false
+             : undefined,
+      limit: this.API_PAGE_SIZE,
+    };
+  }
+
+  /**
+   * Process a group of rules sharing the same search_item with a single API call.
+   */
+  private async processRuleGroup(rules: Rule[]): Promise<number> {
+    const client = getSkinBaronClient();
+    const params = this.mergeSearchParams(rules);
+
+    const response = await client.search(params);
+    const allItems = response.items ?? [];
+    const hitPageLimit = allItems.length >= this.API_PAGE_SIZE;
+
+    this.logger.info({
+      searchItem: params.search_item,
+      rulesInGroup: rules.length,
+      foundItems: allItems.length,
+    }, '[Scheduler] API response for rule group');
+
+    // No items at all — clean up stale alerts for all rules in the group
+    if (allItems.length === 0) {
+      for (const rule of rules) {
+        if (!rule.id) continue;
+        const existing = store.alerts.findSaleIdPricesByRuleId(rule.id);
+        if (existing.length > 0) {
+          store.alerts.deleteBySaleIdsForRule(existing.map(p => p.sale_id), rule.id);
+          this.logger.info({ ruleId: rule.id, deletedCount: existing.length }, '[Scheduler] Cleaned stale alerts — no items found');
         }
-        return 0;
+      }
+      return 0;
+    }
+
+    // Pre-compute the set of all sale_ids from the API (shared across rules in the group)
+    const allApiSaleIds = new Set(allItems.map(item => item.saleId));
+
+    let totalNewAlerts = 0;
+    for (const rule of rules) {
+      try {
+        totalNewAlerts += this.processRuleWithItems(rule, allItems, allApiSaleIds, client, hitPageLimit);
+      } catch (error) {
+        this.stats.errorCount++;
+        this.stats.lastError = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error({ error, ruleId: rule.id }, '[Scheduler] Rule processing failed');
+      }
+    }
+    return totalNewAlerts;
+  }
+
+  /**
+   * Process a single rule against pre-fetched items from a shared API call.
+   * Applies per-rule filters, detects new items & price changes, creates alerts.
+   */
+  private processRuleWithItems(
+    rule: Rule,
+    allItems: SkinBaronItem[],
+    allApiSaleIds: Set<string>,
+    client: SkinBaronClient,
+    hitPageLimit: boolean
+  ): number {
+    if (!rule.id) return 0;
+    const ruleId = rule.id;
+
+    // ── Per-rule local filtering on the shared item set ──
+    const items = allItems.filter(item => {
+      if (rule.min_price != null && item.price < rule.min_price) return false;
+      if (rule.max_price != null && item.price > rule.max_price) return false;
+
+      if (rule.min_wear != null) {
+        if (item.wearValue === undefined || item.wearValue < rule.min_wear) return false;
+      }
+      if (rule.max_wear != null) {
+        if (item.wearValue === undefined || item.wearValue > rule.max_wear) return false;
       }
 
-      this.logger.info({ 
-        ruleId: rule.id, 
-        searchItem: rule.search_item, 
-        foundItems: response.items.length 
-      }, '[Scheduler] Items found from API');
+      const isStatTrak = item.statTrak || item.itemName.includes('StatTrak\u2122');
+      if (rule.stattrak_filter === 'only' && !isStatTrak) return false;
+      if (rule.stattrak_filter === 'exclude' && isStatTrak) return false;
 
-      // Track current sale_ids from API to detect removed offers
-      const currentSaleIds = new Set(response.items.map(item => item.saleId));
-      
-      // Delete alerts for offers that no longer exist
-      const obsoleteSaleIds = existingAlerts
-        .map(alert => alert.sale_id)
-        .filter(saleId => !currentSaleIds.has(saleId));
-      
+      const isSouvenir = item.souvenir || item.itemName.includes('Souvenir');
+      if (rule.souvenir_filter === 'only' && !isSouvenir) return false;
+      if (rule.souvenir_filter === 'exclude' && isSouvenir) return false;
+
+      if (rule.sticker_filter === 'only' && !item.hasStickers) return false;
+      if (rule.sticker_filter === 'exclude' && item.hasStickers) return false;
+
+      return true;
+    });
+
+    // ── Lightweight existing alerts lookup (sale_id + price only, not full rows) ──
+    const existingPairs = store.alerts.findSaleIdPricesByRuleId(ruleId);
+    const existingMap = new Map(existingPairs.map(p => [p.sale_id, p.price]));
+
+    // ── Delete stale alerts — items no longer available on SkinBaron ──
+    // Only when API returned the full result set (no pagination cutoff risk)
+    let obsoleteRemoved = 0;
+    if (!hitPageLimit && existingPairs.length > 0) {
+      const obsoleteSaleIds = existingPairs
+        .filter(p => !allApiSaleIds.has(p.sale_id))
+        .map(p => p.sale_id);
       if (obsoleteSaleIds.length > 0) {
-        const deletedCount = store.deleteBySaleIds(obsoleteSaleIds);
-        this.logger.info({ 
-          ruleId: rule.id, 
-          obsoleteCount: deletedCount 
-        }, '[Scheduler] Deleted alerts for sold/removed offers');
+        obsoleteRemoved = store.alerts.deleteBySaleIdsForRule(obsoleteSaleIds, ruleId);
+      }
+    }
+
+    // ── Process matched items — detect new items and price changes ──
+    let newAlerts = 0;
+    let skippedExisting = 0;
+    let priceChanges = 0;
+    const matchingItems: SkinBaronItem[] = [];
+
+    for (const item of items) {
+      const existingPrice = existingMap.get(item.saleId);
+
+      if (existingPrice !== undefined) {
+        if (existingPrice === item.price) {
+          skippedExisting++;
+          continue;
+        }
+        // Price changed — remove old alert so it gets recreated below
+        store.deleteBySaleIdAndRuleId(item.saleId, ruleId);
+        priceChanges++;
       }
 
-      let newAlerts = 0;
-      let skippedAlreadyProcessed = 0;
-      let skippedByFilters = 0;
-      let priceChanges = 0;
-      
-      // Batch check for already processed items to avoid N+1 queries
-      // Scope by rule.id to prevent cross-rule dedup (item X matching rule A and rule B are independent)
-      const saleIds = response.items.map(item => item.saleId);
-      const processedAlerts = store.alerts.findBySaleIds(saleIds, rule.id);
-      const processedSet = new Set(processedAlerts.map(alert => alert.sale_id));
-      
-      // Collect all matching items first, then batch create alerts
-      const matchingItems: typeof response.items = [];
-      
-      for (const item of response.items) {
-        // Check if already processed for this rule (using batched data)
-        if (processedSet.has(item.saleId)) {
-          skippedAlreadyProcessed++;
-          continue;
-        }
+      matchingItems.push(item);
+    }
 
-        // Apply additional filters that the API might not handle perfectly
-        // Filter StatTrak based on rule
-        const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
-        if (rule.stattrak_filter === 'only' && !itemIsStatTrak) {
-          skippedByFilters++;
-          continue;
-        }
-        if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) {
-          skippedByFilters++;
-          continue;
-        }
+    // ── Batch insert new alerts + queue notifications ──
+    if (matchingItems.length > 0) {
+      const webhooks = store.getRuleWebhooksForNotification(ruleId);
 
-        // Filter Souvenir based on rule
-        const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-        if (rule.souvenir_filter === 'only' && !itemIsSouvenir) {
-          skippedByFilters++;
-          continue;
-        }
-        if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) {
-          skippedByFilters++;
-          continue;
-        }
+      const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
+        rule_id: ruleId,
+        sale_id: item.saleId,
+        item_name: item.itemName,
+        price: item.price,
+        wear_value: item.wearValue,
+        stattrak: item.statTrak ?? false,
+        souvenir: item.souvenir ?? false,
+        has_stickers: item.hasStickers ?? false,
+        skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
+      }));
 
-        // Filter stickers
-        if (rule.sticker_filter === 'only' && !item.hasStickers) {
-          skippedByFilters++;
-          continue;
-        }
-        if (rule.sticker_filter === 'exclude' && item.hasStickers) {
-          skippedByFilters++;
-          continue;
-        }
+      const insertedCount = store.createAlertsBatch(alertsToCreate);
+      newAlerts = insertedCount;
 
-        // Double-check basic filters (API might not be perfect)
-        if (!client.matchesFilters(item, {
-          search_item: rule.search_item,
-          min: rule.min_price,
-          max: rule.max_price,
-          minWear: rule.min_wear,
-          maxWear: rule.max_wear,
-          statTrak: statTrakParam,
-          souvenir: souvenirParam,
-        })) {
-          skippedByFilters++;
-          continue;
-        }
-
-        // Check if this item already has an alert with different price
-        const existingAlert = existingAlertsMap.get(item.saleId);
-        if (existingAlert && existingAlert.price !== item.price) {
-          // Price changed - delete old alert and recreate with new price
-          if (rule.id) {
-            store.deleteBySaleIdAndRuleId(item.saleId, rule.id);
-            priceChanges++;
-            this.logger.debug({ 
-              saleId: item.saleId, 
-              oldPrice: existingAlert.price, 
-              newPrice: item.price 
-            }, '[Scheduler] Price changed, recreating alert');
-          }
-          // Remove from map so it will be recreated
-          existingAlertsMap.delete(item.saleId);
-        }
-
-        // Item passed all filters, add to matching items (skip if already alerted with same price)
-        if (!existingAlert || existingAlert.price !== item.price) {
-          matchingItems.push(item);
-        }
-      }
-
-      // Batch create alerts and send notifications
-      if (matchingItems.length > 0 && rule.id !== undefined) {
-        // Get webhooks once for the rule
-        const webhooks = store.getRuleWebhooksForNotification(rule.id);
-        
-        // Prepare all alerts for batch insert
-        const ruleId = rule.id;
-        const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
-          rule_id: ruleId,
-          sale_id: item.saleId,
-          item_name: item.itemName,
-          price: item.price,
-          wear_value: item.wearValue,
-          stattrak: item.statTrak ?? false,
-          souvenir: item.souvenir ?? false,
-          has_stickers: item.hasStickers ?? false,
-          skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
-        }));
-
-        // Batch insert all alerts at once (much faster!)
-        const insertedCount = store.createAlertsBatch(alertsToCreate);
-        newAlerts += insertedCount;
-
-        // Send notifications if webhooks exist (async, don't block)
-        if (webhooks.length > 0) {
-          for (const item of matchingItems) {
-            const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
-            
-            for (const webhook of webhooks) {
-              if (webhook.webhook_url) {
-                this.queueWebhookNotification(
-                  webhook.webhook_url,
-                  {
-                    item,
-                    rule,
-                    skinUrl: offerUrl,
-                    style: (webhook.notification_style as NotificationStyle) || 'compact',
-                  }
-                );
-              }
+      // Send Discord notifications if webhooks are configured
+      if (webhooks.length > 0) {
+        for (const item of matchingItems) {
+          const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
+          for (const webhook of webhooks) {
+            if (webhook.webhook_url) {
+              this.queueWebhookNotification(webhook.webhook_url, {
+                item, rule, skinUrl: offerUrl,
+                style: (webhook.notification_style as NotificationStyle) || 'compact',
+              });
             }
           }
         }
       }
-
-      // Log filtering summary
-      this.logger.info({
-        ruleId: rule.id,
-        searchItem: rule.search_item,
-        totalFound: response.items.length,
-        skippedAlreadyProcessed,
-        skippedByFilters,
-        newAlerts,
-        priceChanges,
-        obsoleteRemoved: obsoleteSaleIds.length
-      }, '[Scheduler] Rule processing completed');
-
-      return newAlerts;
-
-    } catch (error) {
-      throw error;
     }
+
+    this.logger.info({
+      ruleId,
+      searchItem: rule.search_item,
+      apiItems: allItems.length,
+      filteredItems: items.length,
+      skippedExisting,
+      newAlerts,
+      priceChanges,
+      obsoleteRemoved,
+    }, '[Scheduler] Rule processing completed');
+
+    return newAlerts;
   }
 
   /**

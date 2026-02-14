@@ -267,4 +267,24 @@ export class AlertsRepository {
     const result = stmt.run(saleId, ruleId);
     return result.changes > 0;
   }
+
+  /**
+   * Lightweight: returns only sale_id + price for the scheduler
+   * Avoids loading full Alert objects with all columns
+   */
+  findSaleIdPricesByRuleId(ruleId: number): Array<{ sale_id: string; price: number }> {
+    const stmt = this.db.prepare('SELECT sale_id, price FROM alerts WHERE rule_id = ?');
+    return stmt.all(ruleId) as Array<{ sale_id: string; price: number }>;
+  }
+
+  /**
+   * Batch delete alerts by sale_ids scoped to a specific rule (avoids cross-rule deletion)
+   */
+  deleteBySaleIdsForRule(saleIds: string[], ruleId: number): number {
+    if (saleIds.length === 0) return 0;
+    const placeholders = saleIds.map(() => '?').join(',');
+    const stmt = this.db.prepare(`DELETE FROM alerts WHERE sale_id IN (${placeholders}) AND rule_id = ?`);
+    const result = stmt.run(...saleIds, ruleId);
+    return result.changes;
+  }
 }
