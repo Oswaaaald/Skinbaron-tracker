@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { store } from '../database/index.js';
-import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/middleware.js';
+import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '../lib/middleware.js';
 import { appConfig } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
@@ -38,17 +38,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
   const setAuthCookies = (reply: FastifyReply, accessToken: { token: string; expiresAt: number }, refreshToken: { token: string; expiresAt: number }) => {
     reply.setCookie(ACCESS_COOKIE, accessToken.token, cookieOptions(accessToken.expiresAt));
     reply.setCookie(REFRESH_COOKIE, refreshToken.token, cookieOptions(refreshToken.expiresAt));
-  };
-
-  const clearAuthCookies = (reply: FastifyReply) => {
-    // Clear with configured domain (if any)
-    const opts = { ...cookieOptions(), expires: new Date(0), maxAge: 0 };
-    reply.setCookie(ACCESS_COOKIE, '', opts);
-    reply.setCookie(REFRESH_COOKIE, '', opts);
-
-    // Also clear host-only variants in case cookies were set without domain
-    reply.setCookie(ACCESS_COOKIE, '', { ...opts, domain: undefined });
-    reply.setCookie(REFRESH_COOKIE, '', { ...opts, domain: undefined });
   };
 
   /**

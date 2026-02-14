@@ -442,8 +442,18 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = request.params as { id: number };
+
+      // Verify user exists and is actually pending approval
+      const user = store.getUserById(id);
+      if (!user) {
+        throw Errors.notFound('User');
+      }
+      if (user.is_approved) {
+        throw Errors.forbidden('Only pending users can be rejected. Use the delete endpoint for approved users.');
+      }
+
       // Log admin action BEFORE deleting so the FK to target_user_id is still valid
-      store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ID ${id}`);
+      store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ${user.username} (${user.email})`);
 
       const success = store.rejectUser(id);
 

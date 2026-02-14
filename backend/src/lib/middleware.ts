@@ -1,10 +1,11 @@
-import { FastifyRequest } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import '@fastify/cookie';
 import { LRUCache } from 'lru-cache';
 import { AuthService } from './auth.js';
 import { store } from '../database/index.js';
 import type { User } from '../database/schemas.js';
 import { AppError } from './errors.js';
+import { appConfig } from './config.js';
 
 /**
  * Modern LRU cache for user data (2026 best practices)
@@ -173,3 +174,26 @@ export function getAuthUser(request: FastifyRequest) {
   return request.user;
 }
 
+/**
+ * Clear authentication cookies from the response.
+ * Clears both domain-scoped and host-only cookie variants
+ * to ensure full cleanup regardless of how cookies were originally set.
+ */
+export function clearAuthCookies(reply: FastifyReply): void {
+  const opts = {
+    httpOnly: true,
+    sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+    path: '/',
+    secure: appConfig.NODE_ENV === 'production',
+    domain: appConfig.COOKIE_DOMAIN || undefined,
+    expires: new Date(0),
+    maxAge: 0,
+  };
+
+  reply.setCookie(ACCESS_COOKIE, '', opts);
+  reply.setCookie(REFRESH_COOKIE, '', opts);
+
+  // Also clear host-only variants in case cookies were set without domain
+  reply.setCookie(ACCESS_COOKIE, '', { ...opts, domain: undefined });
+  reply.setCookie(REFRESH_COOKIE, '', { ...opts, domain: undefined });
+}

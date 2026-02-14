@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
-import { getClientIp, getAuthUser, ACCESS_COOKIE } from '../lib/middleware.js';
+import { getClientIp, getAuthUser, ACCESS_COOKIE, clearAuthCookies } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
 import { OTP } from 'otplib';
 import QRCode from 'qrcode';
@@ -553,6 +553,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       store.deleteUser(userId);
+
+      // Clear auth cookies so the browser doesn't retain stale tokens
+      clearAuthCookies(reply);
 
       return reply.status(200).send({
         success: true,
