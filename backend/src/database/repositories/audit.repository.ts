@@ -88,14 +88,16 @@ export class AuditRepository {
   }
 
   async getGlobalStats(): Promise<{
-    totalUsers: number;
-    totalRules: number;
-    enabledRules: number;
-    totalAlerts: number;
-    totalWebhooks: number;
+    total_users: number;
+    total_admins: number;
+    total_rules: number;
+    enabled_rules: number;
+    total_alerts: number;
+    total_webhooks: number;
   }> {
-    const [[usersCount], [rulesCount], [enabledRulesCount], [alertsCount], [webhooksCount]] = await Promise.all([
+    const [[usersCount], [adminsCount], [rulesCount], [enabledRulesCount], [alertsCount], [webhooksCount]] = await Promise.all([
       this.db.select({ value: count() }).from(users).where(eq(users.is_approved, true)),
+      this.db.select({ value: count() }).from(users).where(and(eq(users.is_admin, true), eq(users.is_approved, true))),
       this.db.select({ value: count() }).from(rules),
       this.db.select({ value: count() }).from(rules).where(eq(rules.enabled, true)),
       this.db.select({ value: count() }).from(alerts),
@@ -103,11 +105,12 @@ export class AuditRepository {
     ]);
 
     return {
-      totalUsers: usersCount?.value ?? 0,
-      totalRules: rulesCount?.value ?? 0,
-      enabledRules: enabledRulesCount?.value ?? 0,
-      totalAlerts: alertsCount?.value ?? 0,
-      totalWebhooks: webhooksCount?.value ?? 0,
+      total_users: usersCount?.value ?? 0,
+      total_admins: adminsCount?.value ?? 0,
+      total_rules: rulesCount?.value ?? 0,
+      enabled_rules: enabledRulesCount?.value ?? 0,
+      total_alerts: alertsCount?.value ?? 0,
+      total_webhooks: webhooksCount?.value ?? 0,
     };
   }
 
