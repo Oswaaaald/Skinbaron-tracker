@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/utils'
-import { QUERY_KEYS } from '@/lib/constants'
+import { QUERY_KEYS, SLOW_POLL_INTERVAL } from '@/lib/constants'
 import { validateUsername, validateEmail, validatePasswordChange } from '@/lib/validation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -72,8 +72,8 @@ export function ProfileSettings() {
       return response.data as UserStats
     },
     enabled: isReady && isAuthenticated,
-    staleTime: 30_000,
-    refetchInterval: isVisible ? 30_000 : false,
+    staleTime: SLOW_POLL_INTERVAL,
+    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
   })
 
@@ -156,6 +156,7 @@ export function ProfileSettings() {
       const response = apiClient.ensureSuccess(await apiClient.get('/api/user/2fa/status'), 'Failed to load 2FA status')
       return response.data as { enabled: boolean }
     },
+    enabled: isReady && isAuthenticated,
   })
 
   // Disable 2FA mutation

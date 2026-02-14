@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { QUERY_KEYS, AUDIT_EVENT_CONFIG } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL, AUDIT_EVENT_CONFIG } from "@/lib/constants"
 import { formatRelativeDate, formatEventData } from "@/lib/formatters"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,15 +17,18 @@ import {
 import { apiClient, type AuditLog } from "@/lib/api"
 import { LoadingState } from "@/components/ui/loading-state"
 import { usePageVisible } from "@/hooks/use-page-visible"
+import { useAuth } from "@/contexts/auth-context"
 
 export function SecurityHistory() {
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
   const isVisible = usePageVisible();
+  const { isReady, isAuthenticated } = useAuth();
 
   const { data, isLoading, error } = useQuery({
     queryKey: [QUERY_KEYS.USER_AUDIT_LOGS],
     queryFn: async () => apiClient.ensureSuccess(await apiClient.getUserAuditLogs(50), 'Failed to load audit logs'),
-    refetchInterval: isVisible ? 60000 : false, // Refresh every minute when visible
+    enabled: isReady && isAuthenticated,
+    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   });
 
   const toggleExpanded = (logId: number) => {

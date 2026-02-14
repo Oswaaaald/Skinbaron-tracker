@@ -5,8 +5,11 @@
 
 // ==================== QUERY CONFIGURATION ====================
 
-/** Default polling interval for real-time data */
+/** Default polling interval for real-time data (alerts, alert stats) */
 export const POLL_INTERVAL = 10_000; // 10 seconds
+
+/** Polling interval for slower-changing data (system status, user stats, admin data, logs) */
+export const SLOW_POLL_INTERVAL = 30_000; // 30 seconds
 
 // ==================== PAGINATION ====================
 
@@ -106,6 +109,4 @@ export const QUERY_KEYS = {
   ADMIN_AUDIT_LOGS: 'admin-audit-logs',
   SEARCH_USERS: 'search-users',
   
-  // Legacy (for sync)
-  SYNC_STATS: 'sync-stats',
 } as const;

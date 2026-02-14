@@ -18,6 +18,7 @@ import { Edit, Trash2 } from 'lucide-react'
 import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { useSyncStats } from '@/hooks/use-sync-stats'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { QUERY_KEYS } from '@/lib/constants'
 
@@ -46,6 +47,7 @@ export function WebhooksTable() {
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
 
   const { isReady, isAuthenticated } = useAuth()
+  const { syncStats } = useSyncStats()
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
@@ -65,11 +67,12 @@ export function WebhooksTable() {
       return result.data
     }),
     {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhook created successfully',
       onSuccess: () => {
         setIsDialogOpen(false)
         resetForm()
+        void syncStats()
       },
       onError: (error: Error) => {
         setError(error.message)
@@ -85,11 +88,12 @@ export function WebhooksTable() {
         return result.data
       }),
     {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhook updated successfully',
       onSuccess: () => {
         setIsDialogOpen(false)
         resetForm()
+        void syncStats()
       },
       onError: (error: Error) => {
         setError(error.message)
@@ -104,27 +108,30 @@ export function WebhooksTable() {
       return result.data
     }),
     {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS]],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhook deleted successfully',
       errorMessage: 'Failed to delete webhook',
+      onSuccess: () => {
+        void syncStats()
+      },
     }
   )
 
   const batchEnableMutation = useApiMutation(
     (webhookIds?: number[]) => apiClient.batchEnableWebhooks(webhookIds),
     {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhooks enabled successfully',
-      onSuccess: () => setSelectedWebhooks(new Set()),
+      onSuccess: () => { setSelectedWebhooks(new Set()); void syncStats() },
     }
   )
 
   const batchDisableMutation = useApiMutation(
     (webhookIds?: number[]) => apiClient.batchDisableWebhooks(webhookIds),
     {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhooks disabled successfully',
-      onSuccess: () => setSelectedWebhooks(new Set()),
+      onSuccess: () => { setSelectedWebhooks(new Set()); void syncStats() },
     }
   )
 
@@ -132,9 +139,10 @@ export function WebhooksTable() {
     ({ webhookIds, confirmAll }: { webhookIds?: number[]; confirmAll: boolean }) => 
       apiClient.batchDeleteWebhooks(webhookIds, confirmAll),
     {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS]],
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       onSuccess: () => {
         setBatchAction(null)
+        void syncStats()
       },
       successMessage: 'Webhooks deleted successfully',
     }

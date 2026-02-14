@@ -27,7 +27,7 @@ import {
 import { apiClient, type AuditLog } from "@/lib/api"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { LoadingState } from "@/components/ui/loading-state"
-import { QUERY_KEYS, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
 import { formatRelativeDate, formatEventData } from "@/lib/formatters"
 
 export function AdminAuditLogs() {
@@ -69,13 +69,13 @@ export function AdminAuditLogs() {
       }), 'Failed to load audit logs');
       return result;
     },
-    refetchInterval: isVisible ? 30000 : false, // Refresh every 30 seconds when visible
+    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
     notifyOnChangeProps: ['data', 'error'],
-    refetchOnMount: 'always', // Force refresh to get new backend data
-    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
-    staleTime: 0, // Always consider data stale
-    gcTime: 0, // Don't cache (was cacheTime in v4)
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const handleClearFilters = () => {

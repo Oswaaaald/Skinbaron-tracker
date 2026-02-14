@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
-import { getClientIp } from '../lib/middleware.js';
+import { getClientIp, ACCESS_COOKIE } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
 import { OTP } from 'otplib';
 import QRCode from 'qrcode';
@@ -376,6 +376,16 @@ export default function userRoutes(fastify: FastifyInstance) {
       // This forces re-login on all devices after a password change
       store.revokeAllRefreshTokensForUser(userId);
 
+      // Blacklist the current access token so it cannot be reused
+      const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
+      if (accessToken) {
+        const tokenPayload = AuthService.verifyToken(accessToken, 'access');
+        if (tokenPayload?.jti) {
+          const exp = tokenPayload.exp ? tokenPayload.exp * 1000 : Date.now();
+          store.blacklistAccessToken(tokenPayload.jti, userId, exp, 'password_change');
+        }
+      }
+
       // Audit log for successful password change
       store.createAuditLog(
         userId,
@@ -568,6 +578,11 @@ export default function userRoutes(fastify: FastifyInstance) {
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+      }
+
+      // Block setup if 2FA is already enabled — require disable first
+      if (user.totp_enabled) {
+        throw new AppError(400, 'Two-factor authentication is already enabled. Disable it first to re-setup.', '2FA_ALREADY_ENABLED');
       }
 
       // Generate secret (otplib v13 requires minimum 16 characters)

@@ -15,8 +15,10 @@ import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { extractErrorMessage } from '@/lib/utils'
-import { QUERY_KEYS } from '@/lib/constants'
+import { QUERY_KEYS, SLOW_POLL_INTERVAL } from '@/lib/constants'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
+import { usePageVisible } from '@/hooks/use-page-visible'
+import { useSyncStats } from '@/hooks/use-sync-stats'
 
 interface UserStats {
   rules_count: number
@@ -60,6 +62,8 @@ export function AdminPanel() {
     action: 'approve',
   })
   const [schedulerConfirmOpen, setSchedulerConfirmOpen] = useState(false)
+  const isVisible = usePageVisible()
+  const { syncStats } = useSyncStats()
 
   // Fetch users
   const { data: usersData, isLoading: usersLoading } = useQuery({
@@ -71,6 +75,7 @@ export function AdminPanel() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   })
 
   // Fetch pending users
@@ -83,6 +88,7 @@ export function AdminPanel() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   })
 
   // Fetch global stats
@@ -95,6 +101,7 @@ export function AdminPanel() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   })
 
   // Delete user mutation
@@ -200,12 +207,13 @@ export function AdminPanel() {
       return response
     },
     {
-      invalidateKeys: [[QUERY_KEYS.ADMIN_STATS]],
+      invalidateKeys: [[QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ALERTS], [QUERY_KEYS.ALERT_STATS], [QUERY_KEYS.SYSTEM_STATUS]],
       onSuccess: () => {
         toast({
           title: "✅ Scheduler executed",
           description: "Check completed. New alerts will appear shortly.",
         })
+        void syncStats()
       },
       onError: (error) => {
         toast({
