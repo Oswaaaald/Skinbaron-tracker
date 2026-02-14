@@ -39,6 +39,17 @@ function consumePending2FA(userId: number): string | null {
   return entry.secret;
 }
 
+/** Peek at the pending secret without consuming it (for verification attempts) */
+function getPending2FA(userId: number): string | null {
+  const entry = pending2FASecrets.get(userId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    pending2FASecrets.delete(userId);
+    return null;
+  }
+  return entry.secret;
+}
+
 /** Get authenticated user or throw - use after authenticate middleware */
 function getAuthUser(request: FastifyRequest) {
   if (!request.user) throw new AppError(401, 'Not authenticated', 'UNAUTHENTICATED');
@@ -629,8 +640,8 @@ export default function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { code } = request.body as { code: string };
 
-      // Retrieve the secret stored server-side during /2fa/setup
-      const secret = consumePending2FA(userId);
+      // Retrieve the secret stored server-side during /2fa/setup (peek, don't consume yet)
+      const secret = getPending2FA(userId);
       if (!secret) {
         throw new AppError(400, 'No pending 2FA setup found. Please start setup again.', 'NO_PENDING_2FA');
       }
@@ -647,6 +658,9 @@ export default function userRoutes(fastify: FastifyInstance) {
       if (!isValid) {
         throw new AppError(400, 'Invalid verification code', 'INVALID_CODE');
       }
+
+      // Code is valid — now consume (delete) the pending secret
+      consumePending2FA(userId);
 
       // Generate 10 recovery codes
       const recoveryCodes = Array.from({ length: 10 }, () => 
