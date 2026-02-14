@@ -27,8 +27,8 @@ A full-stack TypeScript application for tracking CS2 (Counter-Strike 2) skin pri
 
 ```
 ┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
-│   Next.js 16    │◄────►│  Fastify API     │◄────►│  SQLite (WAL)   │
-│   (Frontend)    │      │  (Backend)       │      │  (Database)     │
+│   Next.js 16    │◄────►│  Fastify API     │◄────►│  PostgreSQL 17  │
+│   (Frontend)    │      │  (Backend)       │      │  (Drizzle ORM)  │
 └─────────────────┘      └──────────────────┘      └─────────────────┘
                                  │
                                  ▼
@@ -55,7 +55,7 @@ A full-stack TypeScript application for tracking CS2 (Counter-Strike 2) skin pri
 **Backend:**
 - Fastify 5.7 (Node.js framework)
 - TypeScript 5.3 (strict mode)
-- SQLite with WAL mode (better-sqlite3)
+- PostgreSQL 17 with Drizzle ORM
 - JWT authentication with rotation
 - CSRF protection (double-submit cookie)
 - AES-256-GCM encryption for sensitive data
@@ -155,7 +155,7 @@ The first registered user automatically becomes **super admin**.
 - ✅ **Rate Limiting:** Configurable per-IP + per-user
 - ✅ **Helmet:** Security headers (CSP, HSTS, etc.)
 - ✅ **Audit Logs:** GDPR-compliant with configurable retention
-- ✅ **SQL Injection:** Parameterized queries + foreign key constraints
+- ✅ **SQL Injection:** Drizzle ORM parameterized queries + foreign key constraints
 - ✅ **XSS Protection:** Input validation (Zod) + output encoding
 
 ## 📊 Features
@@ -289,9 +289,9 @@ npm run lint         # ESLint + Next.js lint
 ## 📈 Performance
 
 - **LRU Cache:** 500 users cached (30s TTL)
-- **Database Indexes:** 18 indexes covering all queries
+- **Database Indexes:** 18+ indexes covering all queries
 - **Batch Operations:** Alert creation in transactions
-- **WAL Mode:** SQLite concurrent reads
+- **PostgreSQL:** Native async connection pool (max 20 connections)
 - **Next.js:** Automatic code splitting + tree shaking
 - **React Query:** Request deduplication + background refetch
 
@@ -307,9 +307,9 @@ npm run lint         # ESLint + Next.js lint
 → First user is auto-approved. Others need admin approval via admin panel.
 
 ### Docker volume permission issues
-→ Ensure `skinbaron_backend_data` volume exists:
+→ Ensure `skinbaron_postgres_data` volume exists:
 ```bash
-docker volume create skinbaron_backend_data
+docker volume create skinbaron_postgres_data
 ```
 
 ## 📝 License

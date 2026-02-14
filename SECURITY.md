@@ -48,7 +48,8 @@ If you discover a security vulnerability in this project, please report it priva
    - Use valid TLS certificates (Let's Encrypt)
 
 3. **Restrict database access:**
-   - Never expose SQLite file publicly
+   - Never expose PostgreSQL port publicly (keep it on the internal Docker network)
+   - Use strong `POSTGRES_PASSWORD` for the database
    - Use Docker volumes with proper permissions
    - Enable backups with encryption
 
@@ -75,7 +76,7 @@ If you discover a security vulnerability in this project, please report it priva
 - ✅ TOTP 2FA
 - ✅ Helmet security headers
 - ✅ CORS strict origin validation
-- ✅ SQL injection prevention (parameterized queries)
+- ✅ SQL injection prevention (Drizzle ORM parameterized queries)
 - ✅ XSS protection (Zod validation + React escaping)
 - ✅ Docker security hardening
 
