@@ -143,6 +143,14 @@ class Store {
     return this.alerts.getUniqueItemNames(userId);
   }
 
+  async findUnnotifiedAlertsByRuleId(ruleId: number): Promise<Alert[]> {
+    return this.alerts.findUnnotifiedByRuleId(ruleId);
+  }
+
+  async markAlertsNotified(alertIds: number[]): Promise<void> {
+    return this.alerts.markNotified(alertIds);
+  }
+
   async getUserStats(userId: number) {
     return this.audit.getUserStats(userId);
   }

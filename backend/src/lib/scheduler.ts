@@ -2,6 +2,7 @@ import { CronJob } from 'cron';
 import { appConfig } from './config.js';
 import { store } from '../database/index.js';
 import type { Rule, CreateAlert } from '../database/schemas.js';
+import type { Alert, UserWebhook } from '../database/schema.js';
 import { getSkinBaronClient, type SkinBaronClient, type SkinBaronItem } from './sbclient.js';
 import { getNotificationService, type NotificationStyle } from './notifier.js';
 import pino from 'pino';
@@ -33,7 +34,6 @@ export class AlertScheduler {
   // Discord rate limiting: max 30 messages per minute per webhook
   private readonly DISCORD_DELAY_MS = 2100; // ~2 seconds between messages (allows ~28 per minute with safety margin)
   private readonly API_PAGE_SIZE = 250; // SkinBaron max items per page
-  private webhookQueues = new Map<string, Promise<void>>();
 
   // Concurrency guard — prevents overlapping poll executions
   private polling = false;
@@ -380,10 +380,8 @@ export class AlertScheduler {
       matchingItems.push(item);
     }
 
-    // ── Batch insert new alerts + queue notifications ──
+    // ── Batch insert new alerts (notified_at defaults to NULL) ──
     if (matchingItems.length > 0) {
-      const webhooks = await store.getRuleWebhooksForNotification(ruleId);
-
       const alertsToCreate: CreateAlert[] = matchingItems.map(item => ({
         rule_id: ruleId,
         sale_id: item.saleId,
@@ -398,20 +396,14 @@ export class AlertScheduler {
 
       const insertedCount = await store.createAlertsBatch(alertsToCreate);
       newAlerts = insertedCount;
+    }
 
-      // Send Discord notifications if webhooks are configured
-      if (webhooks.length > 0) {
-        for (const item of matchingItems) {
-          const offerUrl = item.skinUrl || client.getSkinUrl(item.saleId);
-          for (const webhook of webhooks) {
-            if (webhook.webhook_url) {
-              this.queueWebhookNotification(webhook.webhook_url, {
-                item, rule, skinUrl: offerUrl,
-                style: (webhook.notification_style as NotificationStyle) || 'compact',
-              });
-            }
-          }
-        }
+    // ── Send notifications for ALL un-notified alerts (catches new + missed from previous runs/restarts) ──
+    const webhooks = await store.getRuleWebhooksForNotification(ruleId);
+    if (webhooks.length > 0) {
+      const unnotifiedAlerts = await store.findUnnotifiedAlertsByRuleId(ruleId);
+      if (unnotifiedAlerts.length > 0) {
+        await this.sendAndMarkNotifications(unnotifiedAlerts, webhooks, rule, client);
       }
     }
 
@@ -430,47 +422,67 @@ export class AlertScheduler {
   }
 
   /**
-   * Queue webhook notification with rate limiting per webhook URL
-   * Discord allows max 30 messages per minute per webhook
+   * Send Discord notifications for a batch of un-notified alerts, then mark them as notified.
+   * Respects Discord rate limits with sequential sending per webhook.
    */
-  private queueWebhookNotification(
-    webhookUrl: string,
-    options: { item: SkinBaronItem, rule?: Rule, skinUrl: string, style?: NotificationStyle }
-  ): void {
-    // Get or create queue for this webhook URL
-    const existingQueue = this.webhookQueues.get(webhookUrl) || Promise.resolve();
-    
-    // Chain the new notification after the existing queue
-    const newQueue = existingQueue.then(async () => {
-      try {
-        const success = await this.notificationService.sendNotification(webhookUrl, options);
-        if (!success) {
-          this.logger.warn({ 
-            webhookUrl: webhookUrl.substring(0, 50) + '...', 
-            item: options.item.itemName 
-          }, '[Scheduler] Webhook notification failed to send');
+  private async sendAndMarkNotifications(
+    unnotifiedAlerts: Alert[],
+    webhooks: UserWebhook[],
+    rule: Rule,
+    client: SkinBaronClient,
+  ): Promise<void> {
+    const notifiedIds: number[] = [];
+
+    for (const alert of unnotifiedAlerts) {
+      const offerUrl = alert.skin_url || client.getSkinUrl(alert.sale_id);
+      const item: SkinBaronItem = {
+        saleId: alert.sale_id,
+        itemName: alert.item_name,
+        price: alert.price,
+        wearValue: alert.wear_value ?? undefined,
+        statTrak: alert.stattrak,
+        souvenir: alert.souvenir,
+        hasStickers: alert.has_stickers,
+        imageUrl: alert.skin_url,
+        skinUrl: offerUrl,
+      };
+
+      let anySent = false;
+      for (const webhook of webhooks) {
+        if (!webhook.webhook_url) continue;
+        try {
+          const success = await this.notificationService.sendNotification(webhook.webhook_url, {
+            item, rule, skinUrl: offerUrl,
+            style: (webhook.notification_style as NotificationStyle) || 'compact',
+          });
+          if (success) anySent = true;
+          else {
+            this.logger.warn({
+              webhookUrl: webhook.webhook_url.substring(0, 50) + '...',
+              item: alert.item_name,
+            }, '[Scheduler] Webhook notification failed to send');
+          }
+        } catch (error) {
+          this.logger.error({
+            error: error instanceof Error ? error.message : error,
+            item: alert.item_name,
+          }, '[Scheduler] Webhook notification threw error');
         }
-      } catch (error) {
-        this.logger.error({ 
-          error: error instanceof Error ? error.message : error,
-          item: options.item.itemName 
-        }, '[Scheduler] Webhook notification threw error');
+        // Delay between messages per webhook to respect Discord rate limits
+        await new Promise(resolve => setTimeout(resolve, this.DISCORD_DELAY_MS));
       }
-      // Add delay before next message to respect Discord rate limits
-      await new Promise(resolve => setTimeout(resolve, this.DISCORD_DELAY_MS));
-    });
-    
-    // Update the queue
-    this.webhookQueues.set(webhookUrl, newQueue);
-    
-    // Clean up the queue after it's done (with extra time buffer)
-    void newQueue.then(() => {
-      setTimeout(() => {
-        if (this.webhookQueues.get(webhookUrl) === newQueue) {
-          this.webhookQueues.delete(webhookUrl);
-        }
-      }, this.DISCORD_DELAY_MS * 2);
-    });
+
+      // Mark as notified if at least one webhook succeeded (avoid infinite retry on permanently broken webhooks)
+      if (anySent) {
+        notifiedIds.push(alert.id);
+      }
+    }
+
+    // Batch-update notified_at for all successfully sent alerts
+    if (notifiedIds.length > 0) {
+      await store.markAlertsNotified(notifiedIds);
+      this.logger.info({ ruleId: rule.id, notified: notifiedIds.length, total: unnotifiedAlerts.length }, '[Scheduler] Marked alerts as notified');
+    }
   }
 
   /**

@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, count, sql, ilike, inArray, getTableColumns } from 'drizzle-orm';
+import { eq, and, desc, asc, count, sql, ilike, inArray, isNull, getTableColumns } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { alerts, rules } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
@@ -115,5 +115,25 @@ export class AlertsRepository {
       .where(eq(rules.user_id, userId))
       .orderBy(alerts.item_name);
     return result.map(r => r.item_name);
+  }
+
+  /**
+   * Find alerts for a rule that have not yet been notified (notified_at IS NULL).
+   */
+  async findUnnotifiedByRuleId(ruleId: number): Promise<Alert[]> {
+    const alertCols = getTableColumns(alerts);
+    return this.db.select(alertCols)
+      .from(alerts)
+      .where(and(eq(alerts.rule_id, ruleId), isNull(alerts.notified_at)));
+  }
+
+  /**
+   * Mark alerts as notified by setting notified_at to now.
+   */
+  async markNotified(alertIds: number[]): Promise<void> {
+    if (alertIds.length === 0) return;
+    await this.db.update(alerts)
+      .set({ notified_at: new Date() })
+      .where(inArray(alerts.id, alertIds));
   }
 }

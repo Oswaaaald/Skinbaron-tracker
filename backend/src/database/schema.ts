@@ -72,6 +72,7 @@ export const alerts = pgTable('alerts', {
   souvenir: boolean('souvenir').default(false).notNull(),
   has_stickers: boolean('has_stickers').default(false).notNull(),
   skin_url: text('skin_url').notNull(),
+  notified_at: timestamp('notified_at', { withTimezone: true }),
   sent_at: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique('alerts_rule_sale_unique').on(table.rule_id, table.sale_id),
@@ -79,6 +80,7 @@ export const alerts = pgTable('alerts', {
   index('idx_alerts_rule_id').on(table.rule_id),
   index('idx_alerts_sent_at').on(table.sent_at),
   index('idx_alerts_rule_sent').on(table.rule_id, table.sent_at),
+  index('idx_alerts_notified').on(table.rule_id, table.notified_at),
 ]);
 
 export const ruleWebhooks = pgTable('rule_webhooks', {
@@ -192,7 +194,7 @@ export type InsertAlert = typeof alerts.$inferInsert;
 export type InsertWebhook = typeof userWebhooks.$inferInsert;
 
 /** Alert creation type (omits auto-generated fields) */
-export type CreateAlert = Omit<typeof alerts.$inferInsert, 'id' | 'sent_at'>;
+export type CreateAlert = Omit<typeof alerts.$inferInsert, 'id' | 'sent_at' | 'notified_at'>;
 
 /** Rule creation type with webhook_ids for junction table */
 export type CreateRule = Omit<typeof rules.$inferInsert, 'id' | 'created_at' | 'updated_at'> & {
