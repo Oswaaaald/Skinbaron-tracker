@@ -339,6 +339,17 @@ class ApiClient {
       }, false);
   }
 
+  async verifyOAuth2FA(totpCode: string): Promise<ApiResponse<UserProfile>> {
+    this.hasCalledLogout = false;
+    return this.request(`/api/auth/verify-oauth-2fa`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ totp_code: totpCode }),
+    }, false);
+  }
+
   async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number; token?: string } & Partial<UserProfile>>> {
     this.hasCalledLogout = false; // Reset logout flag on new register
     return this.request(`/api/auth/register`, {

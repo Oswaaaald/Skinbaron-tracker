@@ -26,6 +26,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [requires2FA, setRequires2FA] = useState(false)
+  const [oauthPending2FA, setOauthPending2FA] = useState(false)
   const [totpCode, setTotpCode] = useState('')
   const [oauthProviders, setOAuthProviders] = useState<string[]>([])
   
@@ -52,9 +53,22 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   }, [])
 
   // Show error from URL params (e.g. ?error=oauth_denied after failed OAuth)
+  // Also detect ?oauth_2fa=pending for 2FA challenge after OAuth login
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
+
+    // Check for OAuth 2FA pending
+    const oauth2fa = params.get('oauth_2fa')
+    if (oauth2fa === 'pending') {
+      setOauthPending2FA(true)
+      // Clean the URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('oauth_2fa')
+      window.history.replaceState({}, '', url.pathname + url.search)
+      return
+    }
+
     const oauthError = params.get('error')
     if (oauthError) {
       const messages: Record<string, string> = {
@@ -121,6 +135,41 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // OAuth 2FA verification
+    if (oauthPending2FA) {
+      if (!totpCode || (totpCode.length !== 6 && totpCode.length !== 8)) {
+        setError('Please enter a valid 6-digit code or 8-character recovery code')
+        return
+      }
+
+      setIsLoading(true)
+      setError('')
+
+      try {
+        const result = await apiClient.verifyOAuth2FA(totpCode)
+
+        if (result.success) {
+          // Set session flag and redirect
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('has_session', 'true')
+          }
+          toast({
+            title: '✅ Welcome back!',
+            description: 'You have been logged in successfully',
+          })
+          window.location.href = '/'
+        } else {
+          setError(result.message || 'Invalid 2FA code')
+          setTotpCode('')
+        }
+      } catch {
+        setError('An unexpected error occurred')
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+
     // For 2FA step, only validate the code
     if (requires2FA) {
       if (!totpCode || (totpCode.length !== 6 && totpCode.length !== 8)) {
@@ -233,7 +282,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       
       // Check if button should be disabled
       if (isLoading) return
-      if (requires2FA && (totpCode.length === 7 || totpCode.length < 6)) return
+      if ((requires2FA || oauthPending2FA) && (totpCode.length === 7 || totpCode.length < 6)) return
       
       void handleSubmit(e as unknown as React.FormEvent)
     }
@@ -246,10 +295,10 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold">
-            {requires2FA ? 'Two-Factor Authentication' : (isLogin ? 'Welcome Back' : 'Create Account')}
+            {(requires2FA || oauthPending2FA) ? 'Two-Factor Authentication' : (isLogin ? 'Welcome Back' : 'Create Account')}
           </CardTitle>
           <CardDescription>
-            {requires2FA 
+            {(requires2FA || oauthPending2FA) 
               ? 'Enter the code from your authenticator app' 
               : (isLogin 
                 ? 'Sign in to your SkinBaron Tracker account' 
@@ -261,7 +310,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         
         <CardContent>
           <form onSubmit={(e) => { void handleSubmit(e) }} onKeyDown={handleKeyDownSubmit} className="space-y-4">
-            {requires2FA ? (
+            {(requires2FA || oauthPending2FA) ? (
               // 2FA Code Input
               <div className="space-y-4">
                 <Alert>
@@ -411,7 +460,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
               </Alert>
             )}
 
-            {!requires2FA && (
+            {!requires2FA && !oauthPending2FA && (
               <>
                 <Button 
                   type="submit" 
@@ -498,7 +547,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
               </>
             )}
             
-            {requires2FA && (
+            {(requires2FA || oauthPending2FA) && (
               <>
                 <Button 
                   type="submit" 
@@ -518,19 +567,21 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                   )}
                 </Button>
                 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setRequires2FA(false)
-                    setTotpCode('')
-                    setError('')
-                  }}
-                  disabled={isLoading}
-                >
-                  Back to Login
-                </Button>
+                {requires2FA && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setRequires2FA(false)
+                      setTotpCode('')
+                      setError('')
+                    }}
+                    disabled={isLoading}
+                  >
+                    Back to Login
+                  </Button>
+                )}
               </>
             )}
           </form>

@@ -11,6 +11,7 @@ import {
   getEnabledProviders, isProviderEnabled,
   createAuthorizationUrl, exchangeCodeForUser,
   encryptOAuthState, decryptOAuthState, OAUTH_STATE_COOKIE,
+  encryptOAuth2FAPending, decryptOAuth2FAPending, OAUTH_2FA_COOKIE,
 } from '../lib/oauth.js';
 
 /**
@@ -827,6 +828,32 @@ export default async function authRoutes(fastify: FastifyInstance) {
           }
         }
 
+        // --- Check if 2FA is required before issuing tokens ---
+        const oauthUser = await store.getUserById(userId);
+        if (oauthUser?.totp_enabled) {
+          // Set a short-lived encrypted pending-2FA cookie
+          reply.setCookie(OAUTH_2FA_COOKIE, encryptOAuth2FAPending(userId, provider), {
+            httpOnly: true,
+            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+            path: '/',
+            secure: appConfig.NODE_ENV === 'production',
+            domain: appConfig.COOKIE_DOMAIN || undefined,
+            maxAge: 5 * 60, // 5 minutes
+          });
+
+          // Clean state cookie
+          reply.clearCookie(OAUTH_STATE_COOKIE, {
+            httpOnly: true,
+            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+            path: '/',
+            secure: appConfig.NODE_ENV === 'production',
+            domain: appConfig.COOKIE_DOMAIN || undefined,
+          });
+
+          // Redirect to login page with 2FA challenge
+          return reply.redirect(`${appConfig.CORS_ORIGIN}/login?oauth_2fa=pending`);
+        }
+
         // --- Issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(userId);
         const refreshToken = AuthService.generateRefreshToken(userId);
@@ -855,6 +882,197 @@ export default async function authRoutes(fastify: FastifyInstance) {
       } catch (err) {
         request.log.error({ err, provider }, 'OAuth callback processing failed');
         return fail('oauth_server_error');
+      }
+    },
+  );
+
+  // ==================== Verify OAuth 2FA ====================
+
+  /**
+   * Verify 2FA code after an OAuth login for users with TOTP enabled.
+   * Reads the encrypted pending-2FA cookie, verifies the TOTP code,
+   * and issues JWT tokens on success.
+   */
+  fastify.post<{ Body: { totp_code: string } }>(
+    '/verify-oauth-2fa',
+    {
+      config: { rateLimit: authRateLimitConfig },
+      schema: {
+        body: {
+          type: 'object',
+          required: ['totp_code'],
+          properties: {
+            totp_code: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { totp_code } = request.body;
+        const pendingCookie = request.cookies[OAUTH_2FA_COOKIE];
+
+        if (!pendingCookie) {
+          throw new AppError(401, 'No pending 2FA challenge. Please try logging in again.', 'OAUTH_2FA_EXPIRED');
+        }
+
+        let pending: { userId: number; provider: string };
+        try {
+          pending = decryptOAuth2FAPending(pendingCookie);
+        } catch {
+          // Clear invalid cookie
+          reply.clearCookie(OAUTH_2FA_COOKIE, {
+            httpOnly: true,
+            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+            path: '/',
+            secure: appConfig.NODE_ENV === 'production',
+            domain: appConfig.COOKIE_DOMAIN || undefined,
+          });
+          throw new AppError(401, '2FA challenge has expired. Please try logging in again.', 'OAUTH_2FA_EXPIRED');
+        }
+
+        // Fetch user with decrypted 2FA secrets
+        const user = await store.getUserByEmail(
+          (await store.getUserById(pending.userId))?.email ?? '',
+          true, // decrypt 2FA secrets
+        );
+        if (!user || !user.totp_enabled) {
+          throw new AppError(401, 'User not found or 2FA no longer active.', 'OAUTH_2FA_INVALID');
+        }
+
+        // Verify TOTP code (same logic as password login 2FA)
+        const otp = new OTP({ strategy: 'totp' });
+
+        if (!user.totp_secret || user.totp_secret.length < 16) {
+          const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
+          request.log.warn({ userId: user.id, reason }, 'Disabling 2FA during OAuth 2FA verification');
+          await store.updateUser(user.id, {
+            totp_enabled: false,
+            totp_secret_encrypted: null,
+            recovery_codes_encrypted: null,
+          });
+          throw new AppError(
+            400,
+            'Your 2FA configuration is outdated and has been reset. Please set up 2FA again.',
+            'TOTP_SECRET_OUTDATED',
+          );
+        }
+
+        let isValidTotp = false;
+        try {
+          const result = await otp.verify({
+            token: totp_code,
+            secret: user.totp_secret,
+            epochTolerance: 1,
+          });
+          isValidTotp = result.valid;
+        } catch (error: unknown) {
+          if (error instanceof Error && error.name === 'SecretTooShortError') {
+            request.log.warn({ userId: user.id }, '2FA secret validation failed during OAuth 2FA, disabling 2FA');
+            await store.updateUser(user.id, {
+              totp_enabled: false,
+              totp_secret_encrypted: null,
+              recovery_codes_encrypted: null,
+            });
+            throw new AppError(
+              400,
+              'Your 2FA configuration is outdated and has been reset. Please set up 2FA again.',
+              'TOTP_SECRET_OUTDATED',
+            );
+          }
+          request.log.warn({ error, userId: user.id }, 'TOTP verification error during OAuth 2FA');
+          isValidTotp = false;
+        }
+
+        // Check recovery codes if TOTP failed
+        if (!isValidTotp) {
+          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) as string[] : [];
+
+          let codeIndex = -1;
+          for (let i = 0; i < recoveryCodes.length; i++) {
+            const code = recoveryCodes[i];
+            if (code && code.length === totp_code.length) {
+              try {
+                const a = Buffer.from(code, 'utf8');
+                const b = Buffer.from(totp_code, 'utf8');
+                if (crypto.timingSafeEqual(a, b)) {
+                  codeIndex = i;
+                  break;
+                }
+              } catch {
+                // Continue if lengths don't match
+              }
+            }
+          }
+
+          if (codeIndex === -1) {
+            // Failed 2FA
+            const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
+            await store.createAuditLog(
+              user.id,
+              'login_failed',
+              JSON.stringify({ reason, method: `oauth_${pending.provider}` }),
+              getClientIp(request),
+              request.headers['user-agent'],
+            );
+
+            throw new AppError(
+              401,
+              totp_code.length === 8 ? 'Backup code is incorrect' : '2FA code is incorrect',
+              'INVALID_2FA_CODE',
+            );
+          }
+
+          // Remove used recovery code
+          recoveryCodes.splice(codeIndex, 1);
+          await store.updateUser(user.id, {
+            recovery_codes: JSON.stringify(recoveryCodes),
+          });
+
+          await store.createAuditLog(
+            user.id,
+            '2fa_recovery_code_used',
+            JSON.stringify({ remaining_codes: recoveryCodes.length, method: `oauth_${pending.provider}` }),
+            getClientIp(request),
+            request.headers['user-agent'],
+          );
+        }
+
+        // --- 2FA verified, issue JWT tokens ---
+        const accessToken = AuthService.generateAccessToken(user.id);
+        const refreshToken = AuthService.generateRefreshToken(user.id);
+        await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        setAuthCookies(reply, accessToken, refreshToken);
+
+        // Clear the pending 2FA cookie
+        reply.clearCookie(OAUTH_2FA_COOKIE, {
+          httpOnly: true,
+          sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+          path: '/',
+          secure: appConfig.NODE_ENV === 'production',
+          domain: appConfig.COOKIE_DOMAIN || undefined,
+        });
+
+        await store.createAuditLog(
+          user.id,
+          'login_success',
+          JSON.stringify({ method: `oauth_${pending.provider}`, '2fa': true }),
+          getClientIp(request),
+          request.headers['user-agent'],
+        );
+
+        return reply.status(200).send({
+          success: true,
+          data: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            is_admin: user.is_admin,
+            is_super_admin: user.is_super_admin,
+          },
+        });
+      } catch (error) {
+        handleRouteError(error, request, reply, 'verify-oauth-2fa');
       }
     },
   );

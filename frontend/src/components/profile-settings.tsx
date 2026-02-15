@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck, Download } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
@@ -886,6 +887,7 @@ const LINK_ERROR_MESSAGES: Record<string, string> = {
 function LinkedAccounts() {
   const { toast } = useToast()
   const [unlinking, setUnlinking] = useState<string | null>(null)
+  const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
 
   // Handle ?linked= and ?link_error= query params from OAuth redirect
   useEffect(() => {
@@ -988,7 +990,7 @@ function LinkedAccounts() {
                   variant="outline"
                   size="sm"
                   disabled={unlinking === provider}
-                  onClick={() => { void handleUnlink(provider) }}
+                  onClick={() => setConfirmUnlink(provider)}
                 >
                   {unlinking === provider ? <LoadingSpinner size="sm" inline /> : 'Unlink'}
                 </Button>
@@ -1001,6 +1003,16 @@ function LinkedAccounts() {
           )
         })}
       </CardContent>
+
+      <ConfirmDialog
+        open={!!confirmUnlink}
+        onOpenChange={(open) => { if (!open) setConfirmUnlink(null) }}
+        title="Unlink account?"
+        description={`Are you sure you want to unlink your ${PROVIDER_META[confirmUnlink ?? '']?.label ?? confirmUnlink} account? You can always re-link it later.`}
+        confirmText="Unlink"
+        variant="destructive"
+        onConfirm={() => { if (confirmUnlink) void handleUnlink(confirmUnlink) }}
+      />
     </Card>
   )
 }
