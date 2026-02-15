@@ -396,7 +396,8 @@ export function AlertsGrid() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
-            {alerts.map((alert) => {
+            {alerts.map((alert, index) => {
+              const isLCP = index === 0
               return (
                 <Card
                   key={alert.id}
@@ -409,8 +410,11 @@ export function AlertsGrid() {
                         src={alert.skin_url}
                         alt={alert.item_name}
                         fill
-                        unoptimized
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                         className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+                        priority={isLCP}
+                        fetchPriority={isLCP ? "high" : "low"}
+                        loading={isLCP ? "eager" : "lazy"}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
