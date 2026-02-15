@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from './errors.js';
-import { appConfig } from './config.js';
 
 const CSRF_COOKIE = 'sb_csrf';
 const CSRF_HEADER = 'x-csrf-token';
@@ -22,7 +21,6 @@ export function setCsrfCookie(reply: FastifyReply, token: string, isProduction: 
     sameSite: isProduction ? 'none' : 'lax',
     secure: isProduction,
     path: '/',
-    domain: appConfig.COOKIE_DOMAIN || undefined,
     maxAge: 60 * 60 * 24, // 24 hours
   });
 }
