@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useState, useCallback, useMemo } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -96,6 +96,7 @@ export function AlertsGrid() {
     }), 'Failed to load alerts'),
     enabled: isReady && isAuthenticated,
     staleTime: 0,
+    placeholderData: keepPreviousData,
     refetchInterval: isVisible ? POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
@@ -395,9 +396,7 @@ export function AlertsGrid() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
-            {alerts.map((alert, index) => {
-              const isFirstImage = index === 0
-              
+            {alerts.map((alert) => {
               return (
                 <Card
                   key={alert.id}
@@ -410,10 +409,9 @@ export function AlertsGrid() {
                         src={alert.skin_url}
                         alt={alert.item_name}
                         fill
+                        loading="eager"
                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                         className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
-                        priority={isFirstImage}
-                        fetchPriority={isFirstImage ? "high" : undefined}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
