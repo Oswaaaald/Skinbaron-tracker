@@ -757,7 +757,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             const existingHasOAuthProof = existingOAuthAccounts.some(a => a.provider_email === userInfo.email);
 
             if (existingHasOAuthProof) {
-              // Both have OAuth proof — can't auto-merge, user must log in manually
+              // Existing user already has OAuth proof of this email — auto-link new provider to their account
               if (!existingUser.is_approved) return fail('pending_approval');
 
               // Auto-link this new provider to the existing account

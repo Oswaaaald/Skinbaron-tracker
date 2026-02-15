@@ -1,0 +1,2 @@
+CREATE INDEX "idx_oauth_provider_email" ON "oauth_accounts" USING btree ("provider_email");--> statement-breakpoint
+ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_user_provider_unique" UNIQUE("user_id","provider");

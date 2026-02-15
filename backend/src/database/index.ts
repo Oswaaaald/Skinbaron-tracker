@@ -275,8 +275,8 @@ class Store {
     return this.oauth.findByUserId(userId);
   }
 
-  async findOAuthAccountByEmail(email: string): Promise<OAuthAccount | null> {
-    return this.oauth.findByProviderEmail(email);
+  async findOAuthAccountByEmail(email: string, excludeUserId?: number): Promise<OAuthAccount | null> {
+    return this.oauth.findByProviderEmail(email, excludeUserId);
   }
 
   async linkOAuthAccount(userId: number, provider: string, providerAccountId: string, providerEmail?: string): Promise<OAuthAccount> {

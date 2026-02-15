@@ -294,8 +294,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
 
         // Also check if email is used as an OAuth provider email by another user
-        const oauthWithEmail = await store.findOAuthAccountByEmail(updates.email);
-        if (oauthWithEmail && oauthWithEmail.user_id !== userId) {
+        const oauthWithEmail = await store.findOAuthAccountByEmail(updates.email, userId);
+        if (oauthWithEmail) {
           throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
       }

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { oauthAccounts } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
 import type { OAuthAccount } from '../schema.js';
@@ -32,12 +32,16 @@ export class OAuthRepository {
   }
 
   /**
-   * Check if an email is used as a provider_email by any user
+   * Check if an email is used as a provider_email by any OTHER user
    */
-  async findByProviderEmail(email: string): Promise<OAuthAccount | null> {
+  async findByProviderEmail(email: string, excludeUserId?: number): Promise<OAuthAccount | null> {
+    const conditions = [eq(oauthAccounts.provider_email, email)];
+    if (excludeUserId !== undefined) {
+      conditions.push(sql`${oauthAccounts.user_id} != ${excludeUserId}`);
+    }
     const [account] = await this.db.select()
       .from(oauthAccounts)
-      .where(eq(oauthAccounts.provider_email, email))
+      .where(and(...conditions))
       .limit(1);
     return account ?? null;
   }

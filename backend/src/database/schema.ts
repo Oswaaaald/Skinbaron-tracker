@@ -158,8 +158,10 @@ export const oauthAccounts = pgTable('oauth_accounts', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique('oauth_provider_account_unique').on(table.provider, table.provider_account_id),
+  unique('oauth_user_provider_unique').on(table.user_id, table.provider),
   index('idx_oauth_user_id').on(table.user_id),
   index('idx_oauth_provider_account').on(table.provider, table.provider_account_id),
+  index('idx_oauth_provider_email').on(table.provider_email),
 ]);
 
 // ==================== INFERRED TYPES ====================
