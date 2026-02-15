@@ -66,6 +66,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         oauth_state_mismatch: 'OAuth state mismatch. Please try again.',
         oauth_exchange_failed: 'Failed to complete OAuth sign-in. Please try again.',
         oauth_email_not_verified: 'Your email is not verified with this provider. Please verify it first.',
+        oauth_email_taken: 'An account with this email already exists. Please log in with your password, then link this provider from Settings.',
         oauth_user_not_found: 'Associated account not found.',
         oauth_already_linked_other: 'This social account is already linked to another user.',
         pending_approval: 'Your account is awaiting admin approval.',

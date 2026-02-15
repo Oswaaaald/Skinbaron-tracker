@@ -747,7 +747,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           if (existingUser) {
             if (!existingUser.is_approved) return fail('pending_approval');
-            // Auto-link provider to existing account
+
+            // SECURITY: Only auto-link if the account has no password (OAuth-only).
+            // If the account has a password, the user must log in with their
+            // password first and link the provider from settings.
+            // This prevents an attacker from registering with someone else's email
+            // and having the real owner's OAuth unknowingly linked to the attacker's account.
+            if (existingUser.password_hash) {
+              return fail('oauth_email_taken');
+            }
+
+            // Auto-link provider to existing OAuth-only account
             await store.linkOAuthAccount(
               existingUser.id,
               provider,
