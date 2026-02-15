@@ -4,7 +4,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL } from '@/lib/constants'
-import { validateUsername, validateEmail, validatePasswordChange } from '@/lib/validation'
+import { validateUsername, validateEmail, validatePasswordChange, validateSetPassword } from '@/lib/validation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -129,9 +129,29 @@ export function ProfileSettings() {
     }
   )
 
+  // Set password mutation (for OAuth-only users)
+  const setPasswordMutation = useApiMutation(
+    (data: { new_password: string }) => apiClient.post('/api/user/set-password', data),
+    {
+      invalidateKeys: [[QUERY_KEYS.USER_AUDIT_LOGS], [QUERY_KEYS.USER_PROFILE]],
+      successMessage: 'Password set successfully',
+      onSuccess: () => {
+        setSuccess('password', 'Password set successfully! You can now use it to log in.')
+        setNewPassword('')
+        setConfirmPassword('')
+        // Update local user to reflect has_password
+        if (user) updateUser({ ...user, has_password: true })
+      },
+      onError: (error: unknown) => {
+        const errorMsg = extractErrorMessage(error, 'Failed to set password')
+        setError('password', errorMsg)
+      },
+    }
+  )
+
   // Delete account mutation
   const deleteAccountMutation = useApiMutation(
-    (password: string) => apiClient.delete('/api/user/account', { password }),
+    (data: { password?: string }) => apiClient.delete('/api/user/account', data),
     {
       onSuccess: () => {
         toast({
@@ -161,7 +181,7 @@ export function ProfileSettings() {
 
   // Disable 2FA mutation
   const disableTwoFactorMutation = useApiMutation(
-    (password: string) => apiClient.post('/api/user/2fa/disable', { password }),
+    (password?: string) => apiClient.post('/api/user/2fa/disable', password ? { password } : {}),
     {
       invalidateKeys: [[QUERY_KEYS.TWO_FA_STATUS]],
       successMessage: 'Two-factor authentication disabled successfully',
@@ -220,34 +240,57 @@ export function ProfileSettings() {
     // Clear previous messages
     clear('password')
     
-    // Validate password change
-    const result = validatePasswordChange({
-      currentPassword,
-      newPassword,
-      confirmPassword,
-    })
-    
-    if (!result.valid) {
-      setError('password', result.error || 'Validation failed')
-      return
+    if (!user?.has_password) {
+      // Set password flow for OAuth-only users
+      const result = validateSetPassword({
+        newPassword,
+        confirmPassword,
+      })
+      
+      if (!result.valid) {
+        setError('password', result.error || 'Validation failed')
+        return
+      }
+      
+      setPasswordMutation.mutate({
+        new_password: newPassword,
+      })
+    } else {
+      // Change password flow for users with existing password
+      const result = validatePasswordChange({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      })
+      
+      if (!result.valid) {
+        setError('password', result.error || 'Validation failed')
+        return
+      }
+      
+      updatePasswordMutation.mutate({
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
     }
-    
-    updatePasswordMutation.mutate({
-      current_password: currentPassword,
-      new_password: newPassword,
-    })
   }
 
   const handleDeleteAccount = () => {
-    if (deleteConfirmText === user?.username && deletePassword) {
-      deleteAccountMutation.mutate(deletePassword)
+    if (deleteConfirmText === user?.username) {
+      if (user?.has_password) {
+        if (deletePassword) deleteAccountMutation.mutate({ password: deletePassword })
+      } else {
+        deleteAccountMutation.mutate({})
+      }
     }
   }
 
   const handleDisable2FA = (e: React.FormEvent) => {
     e.preventDefault()
-    if (twoFactorPassword) {
-      disableTwoFactorMutation.mutate(twoFactorPassword)
+    if (user?.has_password) {
+      if (twoFactorPassword) disableTwoFactorMutation.mutate(twoFactorPassword)
+    } else {
+      disableTwoFactorMutation.mutate(undefined)
     }
   }
 
@@ -402,14 +445,18 @@ export function ProfileSettings() {
         </CardContent>
       </Card>
 
-      {/* Change Password */}
+      {/* Change Password / Set Password */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            Change Password
+            {user?.has_password ? 'Change Password' : 'Set Password'}
           </CardTitle>
-          <CardDescription>Update your password to keep your account secure</CardDescription>
+          <CardDescription>
+            {user?.has_password
+              ? 'Update your password to keep your account secure'
+              : 'Set a password to enable email/password login alongside your social accounts'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Password change messages */}
@@ -428,19 +475,21 @@ export function ProfileSettings() {
           )}
           
           <form onSubmit={handleUpdatePassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-              />
-            </div>
+            {user?.has_password && (
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                />
+              </div>
+            )}
             
             <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password">{user?.has_password ? 'New Password' : 'Password'}</Label>
               <Input
                 id="new-password"
                 type="password"
@@ -451,27 +500,27 @@ export function ProfileSettings() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Label htmlFor="confirm-password">Confirm Password</Label>
               <Input
                 id="confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder="Confirm password"
               />
             </div>
             
             <Button 
               type="submit" 
-              disabled={updatePasswordMutation.isPending}
+              disabled={updatePasswordMutation.isPending || setPasswordMutation.isPending}
             >
-              {updatePasswordMutation.isPending ? (
+              {(updatePasswordMutation.isPending || setPasswordMutation.isPending) ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" inline />
-                  Updating...
+                  {user?.has_password ? 'Updating...' : 'Setting...'}
                 </>
               ) : (
-                'Change Password'
+                user?.has_password ? 'Change Password' : 'Set Password'
               )}
             </Button>
           </form>
@@ -616,7 +665,9 @@ export function ProfileSettings() {
           <DialogHeader>
             <DialogTitle>Disable Two-Factor Authentication?</DialogTitle>
             <DialogDescription>
-              Enter your password to confirm disabling 2FA
+              {user?.has_password
+                ? 'Enter your password to confirm disabling 2FA'
+                : 'Confirm disabling 2FA on your account'}
             </DialogDescription>
           </DialogHeader>
           
@@ -636,16 +687,18 @@ export function ProfileSettings() {
                 </AlertDescription>
               </Alert>
               
-              <div className="space-y-2">
-                <Label htmlFor="2fa-password">Password</Label>
-                <Input
-                  id="2fa-password"
-                  type="password"
-                  value={twoFactorPassword}
-                  onChange={(e) => setTwoFactorPassword(e.target.value)}
-                  placeholder="Enter your password"
-                />
-              </div>
+              {user?.has_password && (
+                <div className="space-y-2">
+                  <Label htmlFor="2fa-password">Password</Label>
+                  <Input
+                    id="2fa-password"
+                    type="password"
+                    value={twoFactorPassword}
+                    onChange={(e) => setTwoFactorPassword(e.target.value)}
+                    placeholder="Enter your password"
+                  />
+                </div>
+              )}
             </div>
             
             <DialogFooter className="mt-4">
@@ -663,7 +716,7 @@ export function ProfileSettings() {
               <Button
                 type="submit"
                 variant="destructive"
-                disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}
+                disabled={(user?.has_password && !twoFactorPassword) || disableTwoFactorMutation.isPending}
               >
                 {disableTwoFactorMutation.isPending ? (
                   <>
@@ -711,16 +764,18 @@ export function ProfileSettings() {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="delete-password">Enter your password</Label>
-              <Input
-                id="delete-password"
-                type="password"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                placeholder="Enter your password"
-              />
-            </div>
+            {user?.has_password && (
+              <div className="space-y-2">
+                <Label htmlFor="delete-password">Enter your password</Label>
+                <Input
+                  id="delete-password"
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
+              </div>
+            )}
           </div>
           
           <DialogFooter>
@@ -737,7 +792,7 @@ export function ProfileSettings() {
             <Button
               variant="destructive"
               onClick={handleDeleteAccount}
-              disabled={deleteConfirmText !== user?.username || !deletePassword || deleteAccountMutation.isPending}
+              disabled={deleteConfirmText !== user?.username || (user?.has_password && !deletePassword) || deleteAccountMutation.isPending}
             >
               {deleteAccountMutation.isPending ? (
                 <>

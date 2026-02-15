@@ -29,6 +29,9 @@ import {
   ShieldOff,
   AlertCircle,
   Download,
+  Link2,
+  Unlink,
+  UserPlus,
   type LucideIcon
 } from "lucide-react"
 
@@ -53,6 +56,9 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   user_demoted: { icon: ShieldOff, label: "Admin Privileges Revoked", variant: "secondary" },
   user_deleted: { icon: ShieldAlert, label: "Account Deleted", variant: "destructive" },
   data_export: { icon: Download, label: "Data Export", variant: "outline" },
+  oauth_register: { icon: UserPlus, label: "OAuth Registration", variant: "default" },
+  oauth_linked: { icon: Link2, label: "Account Linked", variant: "default" },
+  oauth_unlinked: { icon: Unlink, label: "Account Unlinked", variant: "secondary" },
 } as const;
 
 /** Event type options for filter dropdowns */
@@ -73,6 +79,9 @@ export const AUDIT_EVENT_TYPES = [
   { value: "user_demoted", label: "User Demoted" },
   { value: "user_deleted", label: "User Deleted" },
   { value: "data_export", label: "Data Export" },
+  { value: "oauth_register", label: "OAuth Registration" },
+  { value: "oauth_linked", label: "Account Linked" },
+  { value: "oauth_unlinked", label: "Account Unlinked" },
 ] as const;
 
 // ==================== QUERY KEYS ====================

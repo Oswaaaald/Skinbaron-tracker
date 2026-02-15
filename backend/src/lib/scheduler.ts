@@ -437,7 +437,8 @@ export class AlertScheduler {
     const notifiedIds: number[] = [];
 
     for (const alert of unnotifiedAlerts) {
-      const offerUrl = alert.skin_url || client.getSkinUrl(alert.sale_id);
+      // Always compute offer URL from saleId — skin_url stores the Steam CDN image
+      const offerUrl = client.getSkinUrl(alert.sale_id, alert.item_name);
       const item: SkinBaronItem = {
         saleId: alert.sale_id,
         itemName: alert.item_name,
@@ -446,8 +447,8 @@ export class AlertScheduler {
         statTrak: alert.stattrak,
         souvenir: alert.souvenir,
         hasStickers: alert.has_stickers,
-        imageUrl: alert.skin_url,
-        skinUrl: offerUrl,
+        imageUrl: alert.skin_url, // Steam CDN image for embed thumbnail
+        skinUrl: offerUrl,        // SkinBaron offer URL for links
       };
 
       let anySent = false;

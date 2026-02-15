@@ -544,6 +544,7 @@ class ApiClient {
     avatar_url: string;
     is_admin: boolean;
     is_super_admin: boolean;
+    has_password: boolean;
   }>> {
     return this.request('/api/user/profile', { method: 'GET' }, options?.allowRefresh ?? true);
   }

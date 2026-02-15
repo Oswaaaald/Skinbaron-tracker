@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
-import { AuthService, PasswordChangeSchema } from '../lib/auth.js';
+import { AuthService, PasswordChangeSchema, SetPasswordSchema } from '../lib/auth.js';
 import { getClientIp, getAuthUser, ACCESS_COOKIE, clearAuthCookies } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
 import { OTP } from 'otplib';
@@ -110,6 +110,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 avatar_url: { type: 'string' },
                 is_admin: { type: 'boolean' },
                 is_super_admin: { type: 'boolean' },
+                has_password: { type: 'boolean' },
               },
             },
           },
@@ -134,6 +135,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           avatar_url: AuthService.getGravatarUrl(user.email),
           is_admin: user.is_admin,
           is_super_admin: user.is_super_admin,
+          has_password: !!user.password_hash,
         },
       });
     } catch (error) {
@@ -417,6 +419,71 @@ export default async function userRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * POST /api/user/set-password - Set password for OAuth-only users who have no password
+   */
+  fastify.post('/set-password', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
+    schema: {
+      description: 'Set password for OAuth-only users',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          new_password: { type: 'string', minLength: 8 },
+        },
+        required: ['new_password'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const passwordData = validateWithZod(SetPasswordSchema, request.body);
+
+      const user = await store.getUserById(userId);
+      if (!user) {
+        throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+      }
+
+      // Only allow if user has no password (OAuth-only account)
+      if (user.password_hash) {
+        throw new AppError(400, 'You already have a password set. Use the change password form instead.', 'PASSWORD_ALREADY_SET');
+      }
+
+      // Hash and set the new password
+      const newPasswordHash = await AuthService.hashPassword(passwordData.new_password);
+      await store.updateUser(userId, { password_hash: newPasswordHash });
+
+      // Audit log
+      await store.createAuditLog(
+        userId,
+        'password_changed',
+        JSON.stringify({ method: 'set_initial_password' }),
+        getClientIp(request),
+        request.headers['user-agent']
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Password set successfully',
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Set password');
+    }
+  });
+
+  /**
    * GET /api/user/data-export - GDPR data export (Art. 20 data portability)
    */
   fastify.get('/data-export', {
@@ -526,7 +593,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
         properties: {
           password: { type: 'string' },
         },
-        required: ['password'],
       },
       response: {
         200: {
@@ -541,21 +607,24 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { password } = request.body as { password: string };
+      const { password } = request.body as { password?: string };
 
       const user = await store.getUserById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Verify password before allowing account deletion
-      if (!user.password_hash) {
-        throw new AppError(400, 'Your account uses social login and has no password set. Please contact an administrator to delete your account.', 'NO_PASSWORD');
+      // Verify password before allowing account deletion (skip for OAuth-only users)
+      if (user.password_hash) {
+        if (!password) {
+          throw new AppError(400, 'Password is required', 'PASSWORD_REQUIRED');
+        }
+        const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
+        if (!isValidPassword) {
+          throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
+        }
       }
-      const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
-      if (!isValidPassword) {
-        throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
-      }
+      // OAuth-only users can delete without password (username confirmation is done on frontend)
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       await store.deleteUser(userId);
@@ -754,7 +823,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
         properties: {
           password: { type: 'string' },
         },
-        required: ['password'],
       },
       response: {
         200: {
@@ -769,20 +837,22 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { password } = request.body as { password: string };
+      const { password } = request.body as { password?: string };
 
       const user = await store.getUserById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Verify password
-      if (!user.password_hash) {
-        throw new AppError(400, 'Your account uses social login and has no password set.', 'NO_PASSWORD');
-      }
-      const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
-      if (!isValidPassword) {
-        throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
+      // Verify password (skip for OAuth-only users)
+      if (user.password_hash) {
+        if (!password) {
+          throw new AppError(400, 'Password is required', 'PASSWORD_REQUIRED');
+        }
+        const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
+        if (!isValidPassword) {
+          throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
+        }
       }
 
       // Disable 2FA

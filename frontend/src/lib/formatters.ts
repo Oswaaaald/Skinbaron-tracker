@@ -185,8 +185,16 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
     const data = JSON.parse(eventDataJson) as Record<string, unknown>;
 
     switch (eventType) {
-      case "login_success":
-        return data['method'] === "2fa" ? "Login with 2FA" : "Login with password";
+      case "login_success": {
+        const method = String(data['method'] || '');
+        if (method === '2fa') return 'Login with 2FA';
+        if (method.startsWith('oauth_')) {
+          const provider = method.replace('oauth_', '');
+          const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+          return `Login with ${providerName}`;
+        }
+        return 'Login with password';
+      }
       
       case "login_failed":
         if (data['reason'] === "unknown_email") return "Failed: unknown email";
@@ -211,12 +219,30 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return `New username: ${String(data['new_username'])}`;
       
       case "password_changed":
-        return "Password successfully changed";
+        return data['method'] === 'set_initial_password' ? 'Initial password set' : 'Password successfully changed';
       
       case "password_change_failed":
         if (data['reason'] === "invalid_current_password") return "Failed: invalid current password";
         if (data['reason'] === "same_password") return "Failed: same password";
         return `Failed: ${String(data['reason'])}`;
+      
+      case "oauth_register": {
+        const provider = String(data['provider'] || 'unknown');
+        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        return `Registered via ${providerName}`;
+      }
+      
+      case "oauth_linked": {
+        const provider = String(data['provider'] || 'unknown');
+        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        return `${providerName} account linked`;
+      }
+      
+      case "oauth_unlinked": {
+        const provider = String(data['provider'] || 'unknown');
+        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        return `${providerName} account unlinked`;
+      }
       
       case "user_approved":
         return `Approved by ${String(data['admin_username']) || `admin #${String(data['approved_by_admin_id'])}`}`;

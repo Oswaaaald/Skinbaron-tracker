@@ -11,6 +11,7 @@ export interface User {
   avatar_url?: string
   is_admin?: boolean
   is_super_admin?: boolean
+  has_password?: boolean
 }
 
 export interface AuthContextType {

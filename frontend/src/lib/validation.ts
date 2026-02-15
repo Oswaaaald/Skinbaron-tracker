@@ -146,3 +146,21 @@ export function validatePasswordChange(data: {
 
   return { valid: true }
 }
+
+/**
+ * Validate set password (for OAuth-only users without an existing password)
+ */
+export function validateSetPassword(data: {
+  newPassword: string
+  confirmPassword: string
+}): ValidationResult {
+  // Validate new password
+  const passwordResult = validatePassword(data.newPassword)
+  if (!passwordResult.valid) return passwordResult
+
+  // Validate password match
+  const matchResult2 = validatePasswordMatch(data.newPassword, data.confirmPassword)
+  if (!matchResult2.valid) return matchResult2
+
+  return { valid: true }
+}

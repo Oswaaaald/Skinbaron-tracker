@@ -43,6 +43,16 @@ export const PasswordChangeSchema = z.object({
     }),
 });
 
+/** Schema for OAuth users setting a password for the first time */
+export const SetPasswordSchema = z.object({
+  new_password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
+    .refine(strongPasswordValidator, {
+      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
+    }),
+});
+
 import { appConfig } from './config.js';
 
 // Separate JWT secrets for access and refresh tokens (falls back to JWT_SECRET)
