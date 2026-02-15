@@ -63,6 +63,19 @@ export class OAuthRepository {
   }
 
   /**
+   * Update the stored provider_email for an existing OAuth account.
+   * Called when a returning user's email on the provider has changed.
+   */
+  async updateProviderEmail(provider: OAuthProvider, providerAccountId: string, newEmail: string): Promise<void> {
+    await this.db.update(oauthAccounts)
+      .set({ provider_email: newEmail })
+      .where(and(
+        eq(oauthAccounts.provider, provider),
+        eq(oauthAccounts.provider_account_id, providerAccountId),
+      ));
+  }
+
+  /**
    * Unlink an OAuth account from a user
    */
   async unlink(userId: number, provider: OAuthProvider): Promise<boolean> {

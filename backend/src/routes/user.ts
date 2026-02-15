@@ -1035,6 +1035,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Get linked OAuth accounts',
       tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
         200: {
           type: 'object',
@@ -1075,10 +1076,20 @@ export default async function userRoutes(fastify: FastifyInstance) {
     schema: {
       description: 'Unlink an OAuth provider',
       tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       params: {
         type: 'object',
         required: ['provider'],
         properties: { provider: { type: 'string' } },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
       },
     },
   }, async (request, reply) => {

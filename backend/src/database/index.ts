@@ -283,6 +283,10 @@ class Store {
     return this.oauth.link(userId, provider as 'google' | 'github' | 'discord', providerAccountId, providerEmail);
   }
 
+  async updateOAuthProviderEmail(provider: string, providerAccountId: string, newEmail: string): Promise<void> {
+    return this.oauth.updateProviderEmail(provider as 'google' | 'github' | 'discord', providerAccountId, newEmail);
+  }
+
   async unlinkOAuthAccount(userId: number, provider: string): Promise<boolean> {
     return this.oauth.unlink(userId, provider as 'google' | 'github' | 'discord');
   }

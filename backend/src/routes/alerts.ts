@@ -201,6 +201,21 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
       description: 'Delete all user alerts',
       tags: ['Alerts'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                deletedCount: { type: 'number' },
+                message: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
     },
   }, async (request, reply) => {
     try {

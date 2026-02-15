@@ -108,6 +108,15 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           id: { type: 'number' },
         },
       },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
     },
   }, async (request, reply) => {
     try {
@@ -204,6 +213,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         required: ['is_admin'],
         properties: {
           is_admin: { type: 'boolean' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'number' },
+                username: { type: 'string' },
+                is_admin: { type: 'boolean' },
+              },
+            },
+          },
         },
       },
     },

@@ -516,6 +516,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
         },
       },
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
     },
   }, async (request, reply) => {
     try {
@@ -566,7 +575,26 @@ export default async function authRoutes(fastify: FastifyInstance) {
   /**
    * Get list of enabled OAuth providers
    */
-  fastify.get('/oauth/providers', async (_request, reply) => {
+  fastify.get('/oauth/providers', {
+    schema: {
+      description: 'Get list of enabled OAuth providers',
+      tags: ['Authentication'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                providers: { type: 'array', items: { type: 'string' } },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (_request, reply) => {
     return reply.send({
       success: true,
       data: { providers: getEnabledProviders() },
@@ -578,6 +606,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
    */
   fastify.get<{ Params: { provider: string }; Querystring: { mode?: string } }>('/oauth/:provider', {
     schema: {
+      description: 'Initiate OAuth flow — redirects to provider authorization page',
+      tags: ['Authentication'],
       params: {
         type: 'object',
         required: ['provider'],
@@ -628,6 +658,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
     '/oauth/:provider/callback',
     {
       schema: {
+        description: 'OAuth callback — exchange authorization code for tokens and log the user in',
+        tags: ['Authentication'],
         params: {
           type: 'object',
           required: ['provider'],
@@ -759,6 +791,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
           if (!user) return fail('oauth_user_not_found');
           if (!user.is_approved) return fail('pending_approval');
           userId = user.id;
+
+          // Keep provider_email in sync if user changed their email on the provider
+          if (existingOAuth.provider_email !== userInfo.email) {
+            await store.updateOAuthProviderEmail(provider, userInfo.id, userInfo.email);
+            request.log.info(
+              { userId, provider, oldEmail: existingOAuth.provider_email, newEmail: userInfo.email },
+              'Updated OAuth provider_email after provider-side change',
+            );
+          }
         } else {
           // 2. Check if a user with the same verified email exists
           const existingUser = await store.getUserByEmail(userInfo.email);
@@ -921,11 +962,32 @@ export default async function authRoutes(fastify: FastifyInstance) {
     {
       config: { rateLimit: authRateLimitConfig },
       schema: {
+        description: 'Verify 2FA code after OAuth login for users with TOTP enabled',
+        tags: ['Authentication'],
         body: {
           type: 'object',
           required: ['totp_code'],
           properties: {
             totp_code: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                  avatar_url: { type: 'string' },
+                  is_admin: { type: 'boolean' },
+                  is_super_admin: { type: 'boolean' },
+                },
+              },
+            },
           },
         },
       },

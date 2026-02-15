@@ -40,7 +40,16 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            data: { type: 'array' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  classId: { type: 'string' },
+                },
+              },
+            },
           },
         },
       },
