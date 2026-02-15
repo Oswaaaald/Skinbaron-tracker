@@ -261,16 +261,24 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Check if email is already taken by another user (primary email)
       if (updates.email) {
+        // For non-admins, the email was already validated as one of their OAuth provider emails (above).
+        // OAuth-verified email is the strongest proof of ownership, so the current user can reclaim it
+        // unless the other user also has OAuth proof of the same email.
+        const isOAuthVerified = !currentUser.is_admin; // non-admins can only pick from OAuth emails
+
         const existingUser = await store.getUserByEmail(updates.email);
         if (existingUser && existingUser.id !== userId) {
-          // Current user has OAuth-verified ownership of this email (already checked above for non-admins).
-          // Check if the conflicting user also has OAuth proof of this email.
-          const otherOAuthAccounts = await store.getOAuthAccountsByUserId(existingUser.id);
-          const otherHasOAuthProof = otherOAuthAccounts.some(a => a.provider_email === updates.email);
+          if (isOAuthVerified) {
+            // Check if the conflicting user also has OAuth proof of this email
+            const otherOAuthAccounts = await store.getOAuthAccountsByUserId(existingUser.id);
+            const otherHasOAuthProof = otherOAuthAccounts.some(a => a.provider_email === updates.email);
 
-          if (!otherHasOAuthProof && !existingUser.is_approved) {
-            // Unapproved squatter with no OAuth proof → displace their email so the real owner can claim it
-            const displacedEmail = `displaced_${existingUser.id}@placeholder.local`;
+            if (otherHasOAuthProof) {
+              throw new AppError(400, 'Email already in use by another verified account', 'EMAIL_IN_USE');
+            }
+
+            // Current user has OAuth proof, other doesn't → displace their email
+            const displacedEmail = `displaced_${existingUser.id}_${Date.now()}@placeholder.local`;
             await store.updateUser(existingUser.id, { email: displacedEmail });
             await store.createAuditLog(
               existingUser.id,
@@ -280,9 +288,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
               request.headers['user-agent'],
             );
           } else {
+            // Admin free-text input — standard uniqueness check
             throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
           }
         }
+
         // Also check if email is used as an OAuth provider email by another user
         const oauthWithEmail = await store.findOAuthAccountByEmail(updates.email);
         if (oauthWithEmail && oauthWithEmail.user_id !== userId) {
