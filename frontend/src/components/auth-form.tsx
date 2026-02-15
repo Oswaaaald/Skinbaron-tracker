@@ -67,8 +67,9 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         oauth_exchange_failed: 'Failed to complete OAuth sign-in. Please try again.',
         oauth_email_not_verified: 'Your email is not verified with this provider. Please verify it first.',
         oauth_user_not_found: 'Associated account not found.',
+        oauth_already_linked_other: 'This social account is already linked to another user.',
         pending_approval: 'Your account is awaiting admin approval.',
-        oauth_server_error: 'An unexpected error occurred. Please try again.',
+        oauth_server_error: 'An unexpected error occurred. Please try again.'
       }
       setError(messages[oauthError] || 'OAuth sign-in failed. Please try again.')
       // Clean the URL

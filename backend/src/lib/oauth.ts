@@ -272,11 +272,11 @@ const OAUTH_STATE_COOKIE = 'sb_oauth_state';
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
- * Encrypt OAuth state (state + codeVerifier) into a cookie value.
+ * Encrypt OAuth state (state + codeVerifier + optional linkUserId) into a cookie value.
  * Uses AES-256-GCM with the encryption key.
  */
-export function encryptOAuthState(state: string, codeVerifier: string): string {
-  const payload = JSON.stringify({ state, codeVerifier, exp: Date.now() + STATE_TTL_MS });
+export function encryptOAuthState(state: string, codeVerifier: string, linkUserId?: number): string {
+  const payload = JSON.stringify({ state, codeVerifier, exp: Date.now() + STATE_TTL_MS, ...(linkUserId != null && { linkUserId }) });
   const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -289,7 +289,7 @@ export function encryptOAuthState(state: string, codeVerifier: string): string {
  * Decrypt and validate OAuth state cookie value.
  * Throws if expired, tampered, or invalid.
  */
-export function decryptOAuthState(cookieValue: string): { state: string; codeVerifier: string } {
+export function decryptOAuthState(cookieValue: string): { state: string; codeVerifier: string; linkUserId?: number } {
   const buf = Buffer.from(cookieValue, 'base64url');
   const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
   const iv = buf.subarray(0, 12);
@@ -298,13 +298,13 @@ export function decryptOAuthState(cookieValue: string): { state: string; codeVer
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
-  const payload = JSON.parse(decrypted) as { state: string; codeVerifier: string; exp: number };
+  const payload = JSON.parse(decrypted) as { state: string; codeVerifier: string; exp: number; linkUserId?: number };
 
   if (Date.now() > payload.exp) {
     throw new Error('OAuth state has expired');
   }
 
-  return { state: payload.state, codeVerifier: payload.codeVerifier };
+  return { state: payload.state, codeVerifier: payload.codeVerifier, linkUserId: payload.linkUserId };
 }
 
 export { OAUTH_STATE_COOKIE };

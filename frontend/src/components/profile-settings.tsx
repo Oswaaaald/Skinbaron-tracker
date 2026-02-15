@@ -830,9 +830,39 @@ const PROVIDER_META: Record<string, { label: string; icon: ReactNode }> = {
   },
 }
 
+const LINK_ERROR_MESSAGES: Record<string, string> = {
+  already_linked_other: 'This social account is already linked to another user.',
+  account_not_found: 'Your account was not found. Please log in again.',
+  server_error: 'An unexpected error occurred. Please try again.',
+}
+
 function LinkedAccounts() {
   const { toast } = useToast()
   const [unlinking, setUnlinking] = useState<string | null>(null)
+
+  // Handle ?linked= and ?link_error= query params from OAuth redirect
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const linked = params.get('linked')
+    const linkError = params.get('link_error')
+
+    if (linked) {
+      const label = PROVIDER_META[linked]?.label ?? linked
+      toast({ title: '✅ Account linked', description: `${label} account has been linked successfully.` })
+    }
+    if (linkError) {
+      toast({ variant: 'destructive', title: '❌ Link failed', description: LINK_ERROR_MESSAGES[linkError] || 'Could not link account. Please try again.' })
+    }
+
+    // Clean the URL
+    if (linked || linkError) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('linked')
+      url.searchParams.delete('link_error')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [toast])
 
   // Fetch enabled providers
   const { data: enabledProviders } = useQuery({

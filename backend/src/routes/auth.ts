@@ -578,10 +578,20 @@ export default async function authRoutes(fastify: FastifyInstance) {
       throw new AppError(400, `OAuth provider "${provider}" is not available`, 'INVALID_PROVIDER');
     }
 
+    // Detect if user is already logged in (linking flow vs login flow)
+    let linkUserId: number | undefined;
+    try {
+      const token = request.cookies?.[ACCESS_COOKIE] || AuthService.extractTokenFromHeader(request.headers.authorization ?? '');
+      if (token) {
+        const payload = AuthService.verifyToken(token, 'access');
+        if (payload?.userId) linkUserId = payload.userId;
+      }
+    } catch { /* not logged in — normal login flow */ }
+
     const { url, state, codeVerifier } = createAuthorizationUrl(provider);
 
-    // Store state + codeVerifier in encrypted HttpOnly cookie
-    reply.setCookie(OAUTH_STATE_COOKIE, encryptOAuthState(state, codeVerifier), {
+    // Store state + codeVerifier (+ linkUserId if linking) in encrypted HttpOnly cookie
+    reply.setCookie(OAUTH_STATE_COOKIE, encryptOAuthState(state, codeVerifier, linkUserId), {
       httpOnly: true,
       sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       path: '/',
@@ -641,7 +651,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const stateCookie = request.cookies[OAUTH_STATE_COOKIE];
       if (!stateCookie) return fail('oauth_state_missing');
 
-      let storedState: { state: string; codeVerifier: string };
+      let storedState: { state: string; codeVerifier: string; linkUserId?: number };
       try {
         storedState = decryptOAuthState(stateCookie);
       } catch {
@@ -661,7 +671,65 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       if (!userInfo.emailVerified) return fail('oauth_email_not_verified');
 
-      // --- Find or create user ---
+      // --- Link flow (user was logged in when they initiated OAuth) ---
+      if (storedState.linkUserId) {
+        // For link flow, errors redirect to settings page (not login)
+        const settingsUrl = `${appConfig.CORS_ORIGIN}/settings`;
+        const failLink = (reason: string) => {
+          reply.clearCookie(OAUTH_STATE_COOKIE, {
+            httpOnly: true,
+            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+            path: '/',
+            secure: appConfig.NODE_ENV === 'production',
+            domain: appConfig.COOKIE_DOMAIN || undefined,
+          });
+          return reply.redirect(`${settingsUrl}?link_error=${reason}`);
+        };
+
+        try {
+          const linkUser = await store.getUserById(storedState.linkUserId);
+          if (!linkUser) return failLink('account_not_found');
+
+          // Check if this provider account is already linked to a DIFFERENT user
+          const existingOAuth = await store.findOAuthAccount(provider, userInfo.id);
+          if (existingOAuth && existingOAuth.user_id !== linkUser.id) {
+            return failLink('already_linked_other');
+          }
+
+          if (!existingOAuth) {
+            await store.linkOAuthAccount(
+              linkUser.id,
+              provider,
+              userInfo.id,
+              userInfo.email,
+            );
+
+            await store.createAuditLog(
+              linkUser.id,
+              'oauth_linked',
+              JSON.stringify({ provider, provider_email: userInfo.email }),
+              getClientIp(request),
+              request.headers['user-agent'],
+            );
+          }
+
+          // Clean state cookie and redirect to settings
+          reply.clearCookie(OAUTH_STATE_COOKIE, {
+            httpOnly: true,
+            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+            path: '/',
+            secure: appConfig.NODE_ENV === 'production',
+            domain: appConfig.COOKIE_DOMAIN || undefined,
+          });
+
+          return reply.redirect(`${appConfig.CORS_ORIGIN}/settings?linked=${provider}`);
+        } catch (err) {
+          request.log.error({ err, provider }, 'OAuth link flow failed');
+          return failLink('server_error');
+        }
+      }
+
+      // --- Login / Register flow (user was NOT logged in) ---
       try {
         // 1. Check if this OAuth account is already linked
         const existingOAuth = await store.findOAuthAccount(provider, userInfo.id);
