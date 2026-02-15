@@ -51,7 +51,11 @@ function getPending2FA(userId: number): string | null {
 }
 
 const UpdateProfileSchema = z.object({
-  username: z.string().min(3).max(20).optional(),
+  username: z.string()
+    .min(3)
+    .max(20)
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores')
+    .optional(),
   email: z.string().email().optional(),
 }).refine(data => data.username || data.email, {
   message: 'At least one field must be provided',
