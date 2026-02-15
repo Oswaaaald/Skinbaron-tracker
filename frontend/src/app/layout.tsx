@@ -52,7 +52,7 @@ export default function RootLayout({
                 <main className="flex-1">
                   {children}
                 </main>
-                <footer className="border-t border-border/50 bg-muted/30 py-5 sm:py-4">
+                <footer className="border-t border-border/50 bg-muted/30 h-[88px] sm:h-[56px] flex items-center shrink-0">
                   <div className="container mx-auto px-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span>© 2026 SkinBaron Tracker. Personal non-commercial project.</span>
                     <div className="flex gap-4">
