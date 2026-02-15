@@ -36,8 +36,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="48x48" />
-        <link rel="icon" href="/icon.png" type="image/png" sizes="96x96" />
         <link rel="dns-prefetch" href="https://steamcommunity-a.akamaihd.net" />
         <link rel="preconnect" href="https://steamcommunity-a.akamaihd.net" crossOrigin="anonymous" />
       </head>
