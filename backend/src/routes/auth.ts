@@ -746,33 +746,55 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const existingUser = await store.getUserByEmail(userInfo.email);
 
           if (existingUser) {
-            if (!existingUser.is_approved) return fail('pending_approval');
-
-            // SECURITY: Only auto-link if the account has no password (OAuth-only).
-            // If the account has a password, the user must log in with their
-            // password first and link the provider from settings.
-            // This prevents an attacker from registering with someone else's email
-            // and having the real owner's OAuth unknowingly linked to the attacker's account.
+            // SECURITY: Handle password-based accounts with the same email
             if (existingUser.password_hash) {
-              return fail('oauth_email_taken');
+              if (!existingUser.is_approved) {
+                // Account is unapproved (pending admin review) → OAuth user with verified email
+                // takes priority over potential email squatter. Convert to OAuth account.
+                await store.updateUser(existingUser.id, {
+                  password_hash: null,
+                  is_approved: true,
+                });
+                await store.linkOAuthAccount(
+                  existingUser.id,
+                  provider,
+                  userInfo.id,
+                  userInfo.email,
+                );
+                userId = existingUser.id;
+
+                await store.createAuditLog(
+                  existingUser.id,
+                  'oauth_register',
+                  JSON.stringify({ provider, provider_email: userInfo.email, took_over_unapproved: true }),
+                  getClientIp(request),
+                  request.headers['user-agent'],
+                );
+              } else {
+                // Account is approved → legitimate user. They must log in with
+                // their password first and link the provider from settings.
+                return fail('oauth_email_taken');
+              }
+            } else {
+              if (!existingUser.is_approved) return fail('pending_approval');
+
+              // Auto-link provider to existing OAuth-only account
+              await store.linkOAuthAccount(
+                existingUser.id,
+                provider,
+                userInfo.id,
+                userInfo.email,
+              );
+              userId = existingUser.id;
+
+              await store.createAuditLog(
+                existingUser.id,
+                'oauth_linked',
+                JSON.stringify({ provider, provider_email: userInfo.email }),
+                getClientIp(request),
+                request.headers['user-agent'],
+              );
             }
-
-            // Auto-link provider to existing OAuth-only account
-            await store.linkOAuthAccount(
-              existingUser.id,
-              provider,
-              userInfo.id,
-              userInfo.email,
-            );
-            userId = existingUser.id;
-
-            await store.createAuditLog(
-              existingUser.id,
-              'oauth_linked',
-              JSON.stringify({ provider, provider_email: userInfo.email }),
-              getClientIp(request),
-              request.headers['user-agent'],
-            );
           } else {
             // 3. Create a new user (auto-approved, no password)
             const username = await generateUniqueUsername(userInfo.name ?? provider);
