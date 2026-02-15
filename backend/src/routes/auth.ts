@@ -750,9 +750,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
             if (existingUser.password_hash) {
               if (!existingUser.is_approved) {
                 // Account is unapproved (pending admin review) → OAuth user with verified email
-                // takes priority over potential email squatter. Convert to OAuth account.
+                // takes priority. Auto-approve and link OAuth. Keep the password
+                // so the user can still log in with either method.
                 await store.updateUser(existingUser.id, {
-                  password_hash: null,
                   is_approved: true,
                 });
                 await store.linkOAuthAccount(
