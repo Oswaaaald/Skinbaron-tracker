@@ -546,6 +546,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const webhooks = await store.getUserWebhooksByUserId(userId, false); // Don't decrypt URLs
       const alerts = await store.getAlertsByUserId(userId, 0, 0); // limit=0 → all alerts
       const auditLogs = await store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
+      const oauthAccounts = await store.getOAuthAccountsByUserId(userId);
 
       const exportData = {
         profile: {
@@ -553,10 +554,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           is_admin: user.is_admin,
+          is_approved: user.is_approved,
           two_factor_enabled: user.totp_enabled,
+          tos_accepted_at: user.tos_accepted_at,
           created_at: user.created_at,
           updated_at: user.updated_at,
         },
+        oauth_accounts: oauthAccounts.map(a => ({
+          provider: a.provider,
+          provider_email: a.provider_email,
+          created_at: a.created_at,
+        })),
         rules: rules.map(r => ({
           id: r.id,
           search_item: r.search_item,
@@ -575,6 +583,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         webhooks: webhooks.map(w => ({
           id: w.id,
           name: w.name,
+          webhook_type: w.webhook_type,
           notification_style: w.notification_style,
           is_active: w.is_active,
           created_at: w.created_at,
@@ -590,13 +599,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
           stattrak: a.stattrak,
           souvenir: a.souvenir,
           has_stickers: a.has_stickers,
+          skin_url: a.skin_url,
           sale_id: a.sale_id,
+          notified_at: a.notified_at,
           sent_at: a.sent_at,
         })),
         audit_logs: auditLogs.map(l => ({
           id: l.id,
           event_type: l.event_type,
+          event_data: l.event_data,
           ip_address: l.ip_address,
+          user_agent: l.user_agent,
           created_at: l.created_at,
         })),
         exported_at: new Date().toISOString(),

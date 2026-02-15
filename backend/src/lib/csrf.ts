@@ -41,7 +41,7 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
   // and for public endpoints
   // Note: logout is also skipped - while logout CSRF is theoretically possible,
   // the impact is minimal (forcing logout) vs UX friction of CSRF token issues
-  const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout'];
+  const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout', '/api/auth/verify-oauth-2fa'];
   const urlPath = request.url.split('?')[0] ?? ''; // Strip query string for exact match
   if (skipPaths.includes(urlPath)) {
     return;

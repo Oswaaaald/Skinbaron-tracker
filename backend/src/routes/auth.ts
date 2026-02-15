@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { store } from '../database/index.js';
 import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '../lib/middleware.js';
@@ -13,6 +13,119 @@ import {
   encryptOAuthState, decryptOAuthState, OAUTH_STATE_COOKIE,
   encryptOAuth2FAPending, decryptOAuth2FAPending, OAUTH_2FA_COOKIE,
 } from '../lib/oauth.js';
+import type { User } from '../database/schema.js';
+
+/**
+ * Shared 2FA verification logic used by both password login and OAuth 2FA.
+ * Verifies TOTP code or recovery code, handles outdated secrets, and manages
+ * recovery code consumption + audit logging.
+ *
+ * @returns void on success, throws AppError on failure
+ */
+async function verifyTotpOrRecoveryCode(
+  user: User & { totp_secret?: string | null; recovery_codes?: string | null },
+  totpCode: string,
+  request: FastifyRequest,
+  method: string, // e.g. 'password', 'oauth_google'
+): Promise<void> {
+  const otp = new OTP({ strategy: 'totp' });
+
+  // Check if secret is missing or too short (migration from otplib v12 to v13)
+  if (!user.totp_secret || user.totp_secret.length < 16) {
+    const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
+    request.log.warn({ userId: user.id, reason }, 'Disabling 2FA');
+    await store.updateUser(user.id, {
+      totp_enabled: false,
+      totp_secret_encrypted: null,
+      recovery_codes_encrypted: null,
+    });
+    throw new AppError(
+      400,
+      'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
+      'TOTP_SECRET_OUTDATED',
+    );
+  }
+
+  let isValidTotp = false;
+  try {
+    const result = await otp.verify({
+      token: totpCode,
+      secret: user.totp_secret,
+      epochTolerance: 1, // ±30s tolerance for clock drift
+    });
+    isValidTotp = result.valid;
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'SecretTooShortError') {
+      request.log.warn({ userId: user.id }, '2FA secret validation failed, disabling 2FA');
+      await store.updateUser(user.id, {
+        totp_enabled: false,
+        totp_secret_encrypted: null,
+        recovery_codes_encrypted: null,
+      });
+      throw new AppError(
+        400,
+        'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
+        'TOTP_SECRET_OUTDATED',
+      );
+    }
+    request.log.warn({ error, userId: user.id }, 'TOTP verification error, treating as invalid code');
+    isValidTotp = false;
+  }
+
+  // If invalid, try recovery codes
+  if (!isValidTotp) {
+    const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) as string[] : [];
+
+    // Use constant-time comparison to prevent timing attacks
+    let codeIndex = -1;
+    for (let i = 0; i < recoveryCodes.length; i++) {
+      const code = recoveryCodes[i];
+      if (code && code.length === totpCode.length) {
+        try {
+          const a = Buffer.from(code, 'utf8');
+          const b = Buffer.from(totpCode, 'utf8');
+          if (crypto.timingSafeEqual(a, b)) {
+            codeIndex = i;
+            break;
+          }
+        } catch {
+          // Continue if lengths don't match exactly
+        }
+      }
+    }
+
+    if (codeIndex === -1) {
+      // Audit log for failed 2FA
+      const reason = totpCode.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
+      await store.createAuditLog(
+        user.id,
+        'login_failed',
+        JSON.stringify({ reason, method }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+      throw new AppError(
+        401,
+        totpCode.length === 8 ? 'Backup code is incorrect' : '2FA code is incorrect',
+        'INVALID_2FA_CODE',
+      );
+    }
+
+    // Remove used recovery code
+    recoveryCodes.splice(codeIndex, 1);
+    await store.updateUser(user.id, {
+      recovery_codes: JSON.stringify(recoveryCodes),
+    });
+
+    await store.createAuditLog(
+      user.id,
+      '2fa_recovery_code_used',
+      JSON.stringify({ remaining_codes: recoveryCodes.length, method }),
+      getClientIp(request),
+      request.headers['user-agent'],
+    );
+  }
+}
 
 /**
  * Authentication routes
@@ -274,115 +387,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
           });
         }
 
-        // Verify TOTP code
-        const otp = new OTP({ strategy: 'totp' });
-        
-        // Check if secret is missing (decryption failed) or too short (migration from otplib v12 to v13)
-        if (!user.totp_secret || user.totp_secret.length < 16) {
-          const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
-          request.log.warn({ email: user.email, reason }, 'Disabling 2FA');
-          // Disable 2FA for this user
-          await store.updateUser(user.id, {
-            totp_enabled: false,
-            totp_secret_encrypted: null,
-            recovery_codes_encrypted: null,
-          });
-          
-          throw new AppError(
-            400,
-            'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
-            'TOTP_SECRET_OUTDATED'
-          );
-        }
-        
-        let isValidTotp = false;
-        try {
-          const result = await otp.verify({
-            token: totp_code,
-            secret: user.totp_secret,
-            epochTolerance: 1, // ±30s tolerance for clock drift
-          });
-          isValidTotp = result.valid;
-        } catch (error: unknown) {
-          // Handle SecretTooShortError from otplib v13 (legacy secrets)
-          if (error instanceof Error && error.name === 'SecretTooShortError') {
-            request.log.warn({ email: user.email }, '2FA secret validation failed, disabling 2FA');
-            await store.updateUser(user.id, {
-              totp_enabled: false,
-              totp_secret_encrypted: null,
-              recovery_codes_encrypted: null,
-            });
-            
-            throw new AppError(
-              400,
-              'Your 2FA configuration is outdated and has been reset. Please set up 2FA again in your profile settings.',
-              'TOTP_SECRET_OUTDATED'
-            );
-          }
-          // Log the error and treat as invalid code (prevent 500 errors)
-          request.log.warn({ error, email: user.email }, 'TOTP verification error, treating as invalid code');
-          isValidTotp = false;
-        }
-
-        // If invalid, try recovery codes
-        if (!isValidTotp) {
-          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) as string[] : [];
-          
-          // Use constant-time comparison to prevent timing attacks
-          let codeIndex = -1;
-          for (let i = 0; i < recoveryCodes.length; i++) {
-            const code = recoveryCodes[i];
-            if (code && code.length === totp_code.length) {
-              try {
-                const a = Buffer.from(code, 'utf8');
-                const b = Buffer.from(totp_code, 'utf8');
-                if (crypto.timingSafeEqual(a, b)) {
-                  codeIndex = i;
-                  break;
-                }
-              } catch {
-                // Continue if lengths don't match exactly
-              }
-            }
-          }
-
-          if (codeIndex === -1) {
-            // Audit log for failed 2FA
-            const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
-            await store.createAuditLog(
-              user.id,
-              'login_failed',
-              JSON.stringify({ reason }),
-              getClientIp(request),
-              request.headers['user-agent']
-            );
-            
-            const errorMessage = totp_code.length === 8 
-              ? 'Backup code is incorrect' 
-              : '2FA code is incorrect';
-            
-            throw new AppError(
-              401,
-              errorMessage,
-              'INVALID_2FA_CODE'
-            );
-          }
-
-          // Remove used recovery code
-          recoveryCodes.splice(codeIndex, 1);
-          await store.updateUser(user.id, {
-            recovery_codes: JSON.stringify(recoveryCodes),
-          });
-
-          // Audit log
-          await store.createAuditLog(
-            user.id,
-            '2fa_recovery_code_used',
-            JSON.stringify({ remaining_codes: recoveryCodes.length }),
-            getClientIp(request),
-            request.headers['user-agent']
-          );
-        }
+        // Verify TOTP code or recovery code (shared logic)
+        await verifyTotpOrRecoveryCode(user, totp_code, request, 'password');
       }
 
       // Generate tokens
@@ -931,112 +937,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
           throw new AppError(401, '2FA challenge has expired. Please try logging in again.', 'OAUTH_2FA_EXPIRED');
         }
 
-        // Fetch user with decrypted 2FA secrets
-        const user = await store.getUserByEmail(
-          (await store.getUserById(pending.userId))?.email ?? '',
-          true, // decrypt 2FA secrets
-        );
+        // Fetch user with decrypted 2FA secrets (single query)
+        const user = await store.getUserById(pending.userId, true);
         if (!user || !user.totp_enabled) {
           throw new AppError(401, 'User not found or 2FA no longer active.', 'OAUTH_2FA_INVALID');
         }
 
-        // Verify TOTP code (same logic as password login 2FA)
-        const otp = new OTP({ strategy: 'totp' });
-
-        if (!user.totp_secret || user.totp_secret.length < 16) {
-          const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
-          request.log.warn({ userId: user.id, reason }, 'Disabling 2FA during OAuth 2FA verification');
-          await store.updateUser(user.id, {
-            totp_enabled: false,
-            totp_secret_encrypted: null,
-            recovery_codes_encrypted: null,
-          });
-          throw new AppError(
-            400,
-            'Your 2FA configuration is outdated and has been reset. Please set up 2FA again.',
-            'TOTP_SECRET_OUTDATED',
-          );
-        }
-
-        let isValidTotp = false;
-        try {
-          const result = await otp.verify({
-            token: totp_code,
-            secret: user.totp_secret,
-            epochTolerance: 1,
-          });
-          isValidTotp = result.valid;
-        } catch (error: unknown) {
-          if (error instanceof Error && error.name === 'SecretTooShortError') {
-            request.log.warn({ userId: user.id }, '2FA secret validation failed during OAuth 2FA, disabling 2FA');
-            await store.updateUser(user.id, {
-              totp_enabled: false,
-              totp_secret_encrypted: null,
-              recovery_codes_encrypted: null,
-            });
-            throw new AppError(
-              400,
-              'Your 2FA configuration is outdated and has been reset. Please set up 2FA again.',
-              'TOTP_SECRET_OUTDATED',
-            );
-          }
-          request.log.warn({ error, userId: user.id }, 'TOTP verification error during OAuth 2FA');
-          isValidTotp = false;
-        }
-
-        // Check recovery codes if TOTP failed
-        if (!isValidTotp) {
-          const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) as string[] : [];
-
-          let codeIndex = -1;
-          for (let i = 0; i < recoveryCodes.length; i++) {
-            const code = recoveryCodes[i];
-            if (code && code.length === totp_code.length) {
-              try {
-                const a = Buffer.from(code, 'utf8');
-                const b = Buffer.from(totp_code, 'utf8');
-                if (crypto.timingSafeEqual(a, b)) {
-                  codeIndex = i;
-                  break;
-                }
-              } catch {
-                // Continue if lengths don't match
-              }
-            }
-          }
-
-          if (codeIndex === -1) {
-            // Failed 2FA
-            const reason = totp_code.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
-            await store.createAuditLog(
-              user.id,
-              'login_failed',
-              JSON.stringify({ reason, method: `oauth_${pending.provider}` }),
-              getClientIp(request),
-              request.headers['user-agent'],
-            );
-
-            throw new AppError(
-              401,
-              totp_code.length === 8 ? 'Backup code is incorrect' : '2FA code is incorrect',
-              'INVALID_2FA_CODE',
-            );
-          }
-
-          // Remove used recovery code
-          recoveryCodes.splice(codeIndex, 1);
-          await store.updateUser(user.id, {
-            recovery_codes: JSON.stringify(recoveryCodes),
-          });
-
-          await store.createAuditLog(
-            user.id,
-            '2fa_recovery_code_used',
-            JSON.stringify({ remaining_codes: recoveryCodes.length, method: `oauth_${pending.provider}` }),
-            getClientIp(request),
-            request.headers['user-agent'],
-          );
-        }
+        // Verify TOTP code or recovery code (shared logic)
+        await verifyTotpOrRecoveryCode(user, totp_code, request, `oauth_${pending.provider}`);
 
         // --- 2FA verified, issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(user.id);
@@ -1067,12 +975,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
             id: user.id,
             username: user.username,
             email: user.email,
+            avatar_url: AuthService.getGravatarUrl(user.email),
             is_admin: user.is_admin,
             is_super_admin: user.is_super_admin,
           },
         });
       } catch (error) {
-        handleRouteError(error, request, reply, 'verify-oauth-2fa');
+        return handleRouteError(error, request, reply, 'verify-oauth-2fa');
       }
     },
   );
