@@ -96,7 +96,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         type: 'object',
         required: ['search_item'],
         properties: {
-          search_item: { type: 'string', minLength: 1 },
+          search_item: { type: 'string', minLength: 1, maxLength: 200 },
           min_price: { type: 'number', minimum: 0 },
           max_price: { type: 'number', minimum: 0 },
           min_wear: { type: 'number', minimum: 0, maximum: 1 },
@@ -196,7 +196,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          search_item: { type: 'string', minLength: 1 },
+          search_item: { type: 'string', minLength: 1, maxLength: 200 },
           min_price: { type: 'number', minimum: 0, nullable: true },
           max_price: { type: 'number', minimum: 0, nullable: true },
           min_wear: { type: 'number', minimum: 0, maximum: 1, nullable: true },

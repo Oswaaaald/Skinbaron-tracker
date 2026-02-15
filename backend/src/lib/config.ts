@@ -108,3 +108,4 @@ export const DISCORD_COLORS = {
 
 // User limits
 export const MAX_RULES_PER_USER = 50;
+export const MAX_WEBHOOKS_PER_USER = 20;

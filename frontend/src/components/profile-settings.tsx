@@ -175,7 +175,7 @@ export function ProfileSettings() {
 
   // Delete account mutation
   const deleteAccountMutation = useApiMutation(
-    (data: { password?: string }) => apiClient.delete('/api/user/account', data),
+    (data: { password?: string; totp_code?: string }) => apiClient.delete('/api/user/account', data),
     {
       onSuccess: () => {
         toast({
@@ -205,7 +205,7 @@ export function ProfileSettings() {
 
   // Disable 2FA mutation
   const disableTwoFactorMutation = useApiMutation(
-    (password?: string) => apiClient.post('/api/user/2fa/disable', password ? { password } : {}),
+    (data?: { password?: string; totp_code?: string }) => apiClient.post('/api/user/2fa/disable', data ?? {}),
     {
       invalidateKeys: [[QUERY_KEYS.TWO_FA_STATUS]],
       successMessage: 'Two-factor authentication disabled successfully',
@@ -303,6 +303,9 @@ export function ProfileSettings() {
     if (deleteConfirmText === user?.username) {
       if (user?.has_password) {
         if (deletePassword) deleteAccountMutation.mutate({ password: deletePassword })
+      } else if (twoFactorStatus?.enabled) {
+        // OAuth-only users with 2FA enabled: require TOTP code
+        if (deletePassword) deleteAccountMutation.mutate({ totp_code: deletePassword })
       } else {
         deleteAccountMutation.mutate({})
       }
@@ -312,9 +315,10 @@ export function ProfileSettings() {
   const handleDisable2FA = (e: React.FormEvent) => {
     e.preventDefault()
     if (user?.has_password) {
-      if (twoFactorPassword) disableTwoFactorMutation.mutate(twoFactorPassword)
+      if (twoFactorPassword) disableTwoFactorMutation.mutate({ password: twoFactorPassword })
     } else {
-      disableTwoFactorMutation.mutate(undefined)
+      // OAuth-only users need to provide a TOTP code
+      if (twoFactorPassword) disableTwoFactorMutation.mutate({ totp_code: twoFactorPassword })
     }
   }
 
@@ -715,7 +719,7 @@ export function ProfileSettings() {
             <DialogDescription>
               {user?.has_password
                 ? 'Enter your password to confirm disabling 2FA'
-                : 'Confirm disabling 2FA on your account'}
+                : 'Enter a 2FA code from your authenticator app to confirm'}
             </DialogDescription>
           </DialogHeader>
           
@@ -735,18 +739,20 @@ export function ProfileSettings() {
                 </AlertDescription>
               </Alert>
               
-              {user?.has_password && (
-                <div className="space-y-2">
-                  <Label htmlFor="2fa-password">Password</Label>
-                  <Input
-                    id="2fa-password"
-                    type="password"
-                    value={twoFactorPassword}
-                    onChange={(e) => setTwoFactorPassword(e.target.value)}
-                    placeholder="Enter your password"
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="2fa-password">
+                  {user?.has_password ? 'Password' : '2FA Code'}
+                </Label>
+                <Input
+                  id="2fa-password"
+                  type={user?.has_password ? 'password' : 'text'}
+                  inputMode={user?.has_password ? undefined : 'numeric'}
+                  maxLength={user?.has_password ? undefined : 8}
+                  value={twoFactorPassword}
+                  onChange={(e) => setTwoFactorPassword(e.target.value)}
+                  placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'}
+                />
+              </div>
             </div>
             
             <DialogFooter className="mt-4">
@@ -764,7 +770,7 @@ export function ProfileSettings() {
               <Button
                 type="submit"
                 variant="destructive"
-                disabled={(user?.has_password && !twoFactorPassword) || disableTwoFactorMutation.isPending}
+                disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}
               >
                 {disableTwoFactorMutation.isPending ? (
                   <>
@@ -812,15 +818,19 @@ export function ProfileSettings() {
               />
             </div>
             
-            {user?.has_password && (
+            {(user?.has_password || twoFactorStatus?.enabled) && (
               <div className="space-y-2">
-                <Label htmlFor="delete-password">Enter your password</Label>
+                <Label htmlFor="delete-password">
+                  {user?.has_password ? 'Enter your password' : 'Enter your 2FA code'}
+                </Label>
                 <Input
                   id="delete-password"
-                  type="password"
+                  type={user?.has_password ? 'password' : 'text'}
+                  inputMode={user?.has_password ? undefined : 'numeric'}
+                  maxLength={user?.has_password ? undefined : 8}
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'}
                 />
               </div>
             )}
@@ -840,7 +850,7 @@ export function ProfileSettings() {
             <Button
               variant="destructive"
               onClick={handleDeleteAccount}
-              disabled={deleteConfirmText !== user?.username || (user?.has_password && !deletePassword) || deleteAccountMutation.isPending}
+              disabled={deleteConfirmText !== user?.username || ((user?.has_password || twoFactorStatus?.enabled) && !deletePassword) || deleteAccountMutation.isPending}
             >
               {deleteAccountMutation.isPending ? (
                 <>

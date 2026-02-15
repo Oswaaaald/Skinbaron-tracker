@@ -206,7 +206,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          username: { type: 'string', minLength: 3, maxLength: 50 },
+          username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
         },
       },
@@ -642,6 +642,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           password: { type: 'string' },
+          totp_code: { type: 'string', description: 'Required for OAuth-only users with 2FA enabled' },
         },
       },
       response: {
@@ -657,14 +658,22 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { password } = request.body as { password?: string };
+      const { password, totp_code } = request.body as { password?: string; totp_code?: string };
 
       const user = await store.getUserById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Verify password before allowing account deletion (skip for OAuth-only users)
+      // SECURITY: Prevent admins from deleting themselves (could leave system without admins)
+      if (user.is_admin) {
+        const adminCount = await store.users.countAdmins();
+        if (adminCount <= 1) {
+          throw new AppError(403, 'Cannot delete your account: you are the last administrator. Transfer admin privileges first.', 'LAST_ADMIN');
+        }
+      }
+
+      // Verify identity before allowing account deletion
       if (user.password_hash) {
         if (!password) {
           throw new AppError(400, 'Password is required', 'PASSWORD_REQUIRED');
@@ -673,8 +682,34 @@ export default async function userRoutes(fastify: FastifyInstance) {
         if (!isValidPassword) {
           throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
         }
+      } else if (user.totp_enabled) {
+        // OAuth-only users with 2FA must provide TOTP code
+        if (!totp_code) {
+          throw new AppError(400, '2FA code is required to delete your account', 'TOTP_REQUIRED');
+        }
+        const userWith2FA = await store.getUserById(userId, true);
+        if (userWith2FA) {
+          const otp = new OTP({ strategy: 'totp' });
+          let isValid = false;
+          try {
+            const result = await otp.verify({ token: totp_code, secret: userWith2FA.totp_secret!, epochTolerance: 1 });
+            isValid = result.valid;
+          } catch { /* invalid */ }
+          if (!isValid) {
+            throw new AppError(401, 'Invalid 2FA code', 'INVALID_2FA_CODE');
+          }
+        }
       }
-      // OAuth-only users can delete without password (username confirmation is done on frontend)
+      // OAuth-only users without 2FA can delete without extra verification (confirmed on frontend)
+
+      // Audit log BEFORE deletion (FK constraint requires user to exist)
+      await store.createAuditLog(
+        userId,
+        'account_self_deleted',
+        JSON.stringify({ username: user.username, email: user.email, was_admin: user.is_admin }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       await store.deleteUser(userId);
@@ -872,6 +907,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           password: { type: 'string' },
+          totp_code: { type: 'string', description: 'Required for OAuth-only users (no password)' },
         },
       },
       response: {
@@ -887,21 +923,38 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { password } = request.body as { password?: string };
+      const { password, totp_code } = request.body as { password?: string; totp_code?: string };
 
-      const user = await store.getUserById(userId);
+      const user = await store.getUserById(userId, true);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Verify password (skip for OAuth-only users)
+      // Verify identity before disabling 2FA
       if (user.password_hash) {
+        // Password users: verify password
         if (!password) {
           throw new AppError(400, 'Password is required', 'PASSWORD_REQUIRED');
         }
         const isValidPassword = await AuthService.verifyPassword(password, user.password_hash);
         if (!isValidPassword) {
           throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
+        }
+      } else {
+        // OAuth-only users: require TOTP code as proof of identity
+        if (!totp_code) {
+          throw new AppError(400, '2FA code is required to disable two-factor authentication', 'TOTP_REQUIRED');
+        }
+        const otp = new OTP({ strategy: 'totp' });
+        let isValid = false;
+        try {
+          if (user.totp_secret) {
+            const result = await otp.verify({ token: totp_code, secret: user.totp_secret, epochTolerance: 1 });
+            isValid = result.valid;
+          }
+        } catch { /* invalid */ }
+        if (!isValid) {
+          throw new AppError(401, 'Invalid 2FA code', 'INVALID_2FA_CODE');
         }
       }
 

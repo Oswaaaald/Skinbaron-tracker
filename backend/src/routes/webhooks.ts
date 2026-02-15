@@ -6,6 +6,7 @@ import { validateWithZod, handleRouteError } from '../lib/validation-handler.js'
 import { AppError } from '../lib/errors.js';
 import { validateWebhookUrl } from '../lib/webhook-validator.js';
 import { getAuthUser } from '../lib/middleware.js';
+import { MAX_WEBHOOKS_PER_USER } from '../lib/config.js';
 
 // Query parameters schemas
 const WebhookParamsSchema = z.object({
@@ -66,6 +67,12 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
     try {
       const webhookData = validateWithZod(CreateUserWebhookSchema, request.body);
       
+      // Check max webhooks limit
+      const webhookCount = await store.webhooks.count(getAuthUser(request).id);
+      if (webhookCount >= MAX_WEBHOOKS_PER_USER) {
+        throw new AppError(400, `You have reached the maximum limit of ${MAX_WEBHOOKS_PER_USER} webhooks. Please delete some webhooks before creating new ones.`, 'MAX_WEBHOOKS_REACHED');
+      }
+
       // SECURITY: Validate webhook URL against SSRF attacks
       const urlValidation = await validateWebhookUrl(webhookData.webhook_url);
       if (!urlValidation.valid) {

@@ -31,7 +31,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          q: { type: 'string', description: 'Search query' },
+          q: { type: 'string', maxLength: 200, description: 'Search query' },
           limit: { type: 'string', description: 'Max results (default: 20, max: 50)' },
         },
       },

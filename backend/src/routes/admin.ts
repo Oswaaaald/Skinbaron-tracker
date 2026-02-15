@@ -322,7 +322,26 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       description: 'Get global statistics (admin only)',
       tags: ['Admin'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
-      // Note: No response schema to allow dynamic nested object structure
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                users: { type: 'number' },
+                admins: { type: 'number' },
+                rules: { type: 'number' },
+                enabled_rules: { type: 'number' },
+                alerts: { type: 'number' },
+                webhooks: { type: 'number' },
+              },
+              additionalProperties: true,
+            },
+          },
+        },
+      },
     },
   }, async (request, reply) => {
     try {
@@ -417,7 +436,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action
-      await store.logAdminAction(getAuthUser(request).id, 'APPROVE_USER', id, `Approved user ID ${id}`);
+      await store.logAdminAction(getAuthUser(request).id, 'approve_user', id, `Approved user ID ${id}`);
 
       // Create audit log
       await store.createAuditLog(
@@ -481,7 +500,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action BEFORE deleting so the FK to target_user_id is still valid
-      await store.logAdminAction(getAuthUser(request).id, 'REJECT_USER', id, `Rejected user ${user.username} (${user.email})`);
+      await store.logAdminAction(getAuthUser(request).id, 'reject_user', id, `Rejected user ${user.username} (${user.email})`);
 
       const success = await store.rejectUser(id);
 
@@ -525,7 +544,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await scheduler.forceRun();
 
       // Log admin action
-      await store.logAdminAction(getAuthUser(request).id, 'FORCE_SCHEDULER', null, 'Manually triggered scheduler run');
+      await store.logAdminAction(getAuthUser(request).id, 'force_scheduler', null, 'Manually triggered scheduler run');
 
       return reply.status(200).send({
         success: true,
@@ -689,7 +708,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          q: { type: 'string', minLength: 1 },
+          q: { type: 'string', minLength: 1, maxLength: 100 },
         },
         required: ['q'],
       },

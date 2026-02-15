@@ -207,15 +207,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Validate with Zod (regex patterns not checked by Fastify)
       const userData = validateWithZod(UserRegistrationSchema, request.body);
       
-      // Check if user already exists
+      // Check if user already exists (return generic error to prevent account enumeration)
       const existingUser = await store.getUserByEmail(userData.email);
       if (existingUser) {
-        // Check if account is pending approval
-        if (!existingUser.is_approved) {
-          throw new AppError(409, 'An account with this email is awaiting admin approval. Please wait for approval before attempting to register again.', 'PENDING_APPROVAL');
-        }
-        
-        throw new AppError(409, 'An account with this email already exists', 'USER_EXISTS');
+        throw new AppError(409, 'Unable to create account with these credentials', 'REGISTRATION_FAILED');
       }
 
       // Check if email is already used as an OAuth provider email by another user
@@ -328,9 +323,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const user = await store.getUserByEmail(loginData.email, true);
       
       // SECURITY: Always execute bcrypt to prevent timing attacks
-      // If user doesn't exist, use a fake hash to make response time consistent
+      // If user doesn't exist, use a pre-computed hash to make response time consistent
       // This prevents attackers from determining if an email exists by measuring response time
-      const FAKE_HASH = '$2b$12$K4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K';
+      const FAKE_HASH = '$2b$12$Xx8WdVd0fm4kDWJVIYfQc.6ELKfyntZj5F97ILy/yzfDyoZAb8Reu';
 
       // Check for OAuth-only accounts (no password set)
       if (user && !user.password_hash) {

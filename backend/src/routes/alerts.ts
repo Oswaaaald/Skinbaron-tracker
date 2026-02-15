@@ -7,9 +7,10 @@ import { getAuthUser } from '../lib/middleware.js';
 
 // Query parameters schemas
 const AlertsQuerySchema = z.object({
-  limit: z.string().default('0').transform(val => {
+  limit: z.string().default('50').transform(val => {
     const num = parseInt(val, 10);
-    return num > 0 ? num : 0; // 0 = no limit (return all)
+    if (num <= 0) return 1000; // 0 = "all" capped at 1000 to prevent DoS
+    return Math.min(num, 1000);
   }),
   offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
@@ -33,7 +34,7 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'string', default: '0', description: '0 = no limit (return all alerts)' },
+          limit: { type: 'string', default: '50', description: 'Max results per page (max: 1000, default: 50)' },
           offset: { type: 'string', default: '0' },
           rule_id: { type: 'string' },
           item_name: { type: 'string', description: 'Filter by item name (partial match)' },
@@ -197,6 +198,18 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
    * POST /alerts/clear-all - Delete all user alerts
    */
   fastify.post('/clear-all', {
+    config: {
+      rateLimit: {
+        max: 3,
+        timeWindow: '5 minutes',
+        errorResponseBuilder: () => ({
+          statusCode: 429,
+          success: false,
+          error: 'Too many attempts',
+          message: 'Too many clear requests. Please try again later.',
+        }),
+      },
+    },
     schema: {
       description: 'Delete all user alerts',
       tags: ['Alerts'],
