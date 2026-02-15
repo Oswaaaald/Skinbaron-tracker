@@ -790,6 +790,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 await store.updateUser(existingUser.id, { is_approved: true });
               }
 
+              // Record ToS acceptance if not already done
+              if (!existingUser.tos_accepted_at) {
+                await store.acceptTos(existingUser.id);
+              }
+
               await store.linkOAuthAccount(
                 existingUser.id,
                 provider,
@@ -815,6 +820,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
             if (!newUser.is_approved) {
               await store.updateUser(newUser.id, { is_approved: true });
             }
+
+            // Record ToS acceptance (OAuth registration implies acceptance)
+            await store.acceptTos(newUser.id);
 
             await store.linkOAuthAccount(
               newUser.id,
