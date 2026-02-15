@@ -189,28 +189,48 @@ async function fetchGitHubUser(accessToken: string): Promise<OAuthUserInfo> {
     email?: string;
   };
 
-  // Fetch emails (the primary one on the profile may be null)
-  const emailsResponse = await fetch('https://api.github.com/user/emails', { headers });
-  if (!emailsResponse.ok) throw new Error('Failed to fetch GitHub user emails');
+  // Try to get email from /user/emails (requires "Email addresses" permission for GitHub Apps)
+  let email: string | undefined;
+  let emailVerified = false;
 
-  const emails = await emailsResponse.json() as Array<{
-    email: string;
-    primary: boolean;
-    verified: boolean;
-  }>;
+  try {
+    const emailsResponse = await fetch('https://api.github.com/user/emails', { headers });
+    if (emailsResponse.ok) {
+      const emails = await emailsResponse.json() as Array<{
+        email: string;
+        primary: boolean;
+        verified: boolean;
+      }>;
 
-  // Find the primary verified email
-  const primaryEmail = emails.find(e => e.primary && e.verified);
-  const verifiedEmail = primaryEmail ?? emails.find(e => e.verified);
+      const primaryEmail = emails.find(e => e.primary && e.verified);
+      const verifiedEmail = primaryEmail ?? emails.find(e => e.verified);
 
-  if (!verifiedEmail) {
-    throw new Error('No verified email found on your GitHub account. Please verify your email on GitHub first.');
+      if (verifiedEmail) {
+        email = verifiedEmail.email;
+        emailVerified = verifiedEmail.verified;
+      }
+    }
+  } catch {
+    // /user/emails endpoint not available (GitHub App missing "Email addresses" permission)
+  }
+
+  // Fallback: use email from user profile (may be null if user set it to private)
+  if (!email && userData.email) {
+    email = userData.email;
+    emailVerified = true; // GitHub only shows verified emails on profiles
+  }
+
+  if (!email) {
+    throw new Error(
+      'No email found on your GitHub account. Make sure your GitHub email is public, ' +
+      'or ask the administrator to enable "Email addresses" permission on the GitHub App.',
+    );
   }
 
   return {
     id: String(userData.id),
-    email: verifiedEmail.email,
-    emailVerified: verifiedEmail.verified,
+    email,
+    emailVerified,
     name: userData.name ?? userData.login,
     avatar: userData.avatar_url,
   };
