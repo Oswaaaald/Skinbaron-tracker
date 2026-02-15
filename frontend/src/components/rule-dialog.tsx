@@ -307,7 +307,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                     <ItemCombobox
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder="Type to search items (e.g., AK-47, AWP, Avalanche...)"
+                      placeholder="Type to search items"
                       disabled={isSubmitting}
                     />
                   </FormControl>
