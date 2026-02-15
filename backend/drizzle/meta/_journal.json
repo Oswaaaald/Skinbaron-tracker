@@ -15,6 +15,13 @@
       "when": 1771101748787,
       "tag": "0001_wandering_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771189342373,
+      "tag": "0002_dizzy_roulette",
+      "breakpoints": true
     }
   ]
 }
