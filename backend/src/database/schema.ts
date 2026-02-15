@@ -5,6 +5,7 @@ import { pgTable, pgEnum, serial, text, boolean, real, timestamp, integer, uniqu
 export const filterEnum = pgEnum('filter_enum', ['all', 'only', 'exclude']);
 export const webhookTypeEnum = pgEnum('webhook_type_enum', ['discord']);
 export const notificationStyleEnum = pgEnum('notification_style_enum', ['compact', 'detailed']);
+export const oauthProviderEnum = pgEnum('oauth_provider_enum', ['google', 'github', 'discord']);
 
 // ==================== TABLES ====================
 
@@ -12,7 +13,7 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   email: text('email').notNull().unique(),
-  password_hash: text('password_hash').notNull(),
+  password_hash: text('password_hash'),
   is_admin: boolean('is_admin').default(false).notNull(),
   is_super_admin: boolean('is_super_admin').default(false).notNull(),
   is_approved: boolean('is_approved').default(false).notNull(),
@@ -148,6 +149,19 @@ export const accessTokenBlacklist = pgTable('access_token_blacklist', {
   index('idx_token_blacklist_user').on(table.user_id),
 ]);
 
+export const oauthAccounts = pgTable('oauth_accounts', {
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  provider: oauthProviderEnum('provider').notNull(),
+  provider_account_id: text('provider_account_id').notNull(),
+  provider_email: text('provider_email'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique('oauth_provider_account_unique').on(table.provider, table.provider_account_id),
+  index('idx_oauth_user_id').on(table.user_id),
+  index('idx_oauth_provider_account').on(table.provider, table.provider_account_id),
+]);
+
 // ==================== INFERRED TYPES ====================
 
 /** User row from database */
@@ -174,6 +188,9 @@ export type UserWebhook = typeof userWebhooks.$inferSelect & {
 
 /** Refresh token record */
 export type RefreshTokenRecord = typeof refreshTokens.$inferSelect;
+
+/** OAuth account linked to a user */
+export type OAuthAccount = typeof oauthAccounts.$inferSelect;
 
 /** Audit log with optional joined user info */
 export type AuditLog = typeof auditLog.$inferSelect & {

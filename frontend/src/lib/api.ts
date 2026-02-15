@@ -137,6 +137,13 @@ export interface AuditLog {
   created_at: string;
 }
 
+export interface OAuthAccount {
+  id: number;
+  provider: string;
+  provider_email: string | null;
+  created_at: string;
+}
+
 class ApiClient {
   private baseURL: string;
   private onLogout: (() => void) | null = null;
@@ -611,6 +618,28 @@ class ApiClient {
     if (params?.event_type) query.append('event_type', params.event_type);
     if (params?.user_id) query.append('user_id', params.user_id.toString());
     return this.get(`/api/admin/audit-logs?${query.toString()}`);
+  }
+
+  // ==================== OAuth ====================
+
+  /** Get enabled OAuth providers */
+  async getOAuthProviders(): Promise<ApiResponse<{ providers: string[] }>> {
+    return this.get('/api/auth/oauth/providers');
+  }
+
+  /** Build full URL to initiate OAuth flow (browser redirect) */
+  getOAuthLoginUrl(provider: string): string {
+    return `${this.baseURL}/api/auth/oauth/${provider}`;
+  }
+
+  /** Get linked OAuth accounts for current user */
+  async getOAuthAccounts(): Promise<ApiResponse<OAuthAccount[]>> {
+    return this.get('/api/user/oauth-accounts');
+  }
+
+  /** Unlink an OAuth provider */
+  async unlinkOAuthAccount(provider: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request(`/api/user/oauth-accounts/${provider}`, { method: 'DELETE' });
   }
 }
 

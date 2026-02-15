@@ -7,6 +7,11 @@ import { validateWithZod, handleRouteError } from '../lib/validation-handler.js'
 import { AppError } from '../lib/errors.js';
 import { OTP } from 'otplib';
 import crypto from 'crypto';
+import {
+  getEnabledProviders, isProviderEnabled,
+  createAuthorizationUrl, exchangeCodeForUser,
+  encryptOAuthState, decryptOAuthState, OAUTH_STATE_COOKIE,
+} from '../lib/oauth.js';
 
 /**
  * Authentication routes
@@ -205,6 +210,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // If user doesn't exist, use a fake hash to make response time consistent
       // This prevents attackers from determining if an email exists by measuring response time
       const FAKE_HASH = '$2b$12$K4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K0p3vQ8mK1p3vQeK4DmKg8K';
+
+      // Check for OAuth-only accounts (no password set)
+      if (user && !user.password_hash) {
+        // Still run bcrypt to prevent timing attacks
+        await AuthService.verifyPassword(loginData.password, FAKE_HASH);
+
+        const oauthAccounts = await store.getOAuthAccountsByUserId(user.id);
+        const providerNames = oauthAccounts.map(a => a.provider);
+        throw new AppError(
+          401,
+          `This account uses social login. Please sign in with ${providerNames.join(' or ')}.`,
+          'OAUTH_ONLY_ACCOUNT',
+        );
+      }
+
       const hashToCompare = user?.password_hash || FAKE_HASH;
       
       // Verify password (always executed to prevent timing attacks)
@@ -527,4 +547,237 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return handleRouteError(error, request, reply, 'User logout');
     }
   });
+
+  // ==================== OAuth routes ====================
+
+  /**
+   * Get list of enabled OAuth providers
+   */
+  fastify.get('/oauth/providers', async (_request, reply) => {
+    return reply.send({
+      success: true,
+      data: { providers: getEnabledProviders() },
+    });
+  });
+
+  /**
+   * Initiate OAuth flow — redirect to provider authorization page
+   */
+  fastify.get<{ Params: { provider: string } }>('/oauth/:provider', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['provider'],
+        properties: { provider: { type: 'string' } },
+      },
+    },
+  }, async (request, reply) => {
+    const { provider } = request.params;
+
+    if (!isProviderEnabled(provider)) {
+      throw new AppError(400, `OAuth provider "${provider}" is not available`, 'INVALID_PROVIDER');
+    }
+
+    const { url, state, codeVerifier } = createAuthorizationUrl(provider);
+
+    // Store state + codeVerifier in encrypted HttpOnly cookie
+    reply.setCookie(OAUTH_STATE_COOKIE, encryptOAuthState(state, codeVerifier), {
+      httpOnly: true,
+      sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+      path: '/',
+      secure: appConfig.NODE_ENV === 'production',
+      domain: appConfig.COOKIE_DOMAIN || undefined,
+      maxAge: 600, // 10 minutes
+    });
+
+    return reply.redirect(url.toString());
+  });
+
+  /**
+   * OAuth callback — exchange authorization code for tokens and log the user in
+   */
+  fastify.get<{ Params: { provider: string }; Querystring: { code?: string; state?: string; error?: string } }>(
+    '/oauth/:provider/callback',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          required: ['provider'],
+          properties: { provider: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            code: { type: 'string' },
+            state: { type: 'string' },
+            error: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { provider } = request.params;
+      const { code, state, error: oauthError } = request.query;
+      const loginUrl = `${appConfig.CORS_ORIGIN}/login`;
+
+      // Helper to redirect with error and clean the state cookie
+      const fail = (reason: string) => {
+        reply.clearCookie(OAUTH_STATE_COOKIE, {
+          httpOnly: true,
+          sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+          path: '/',
+          secure: appConfig.NODE_ENV === 'production',
+          domain: appConfig.COOKIE_DOMAIN || undefined,
+        });
+        return reply.redirect(`${loginUrl}?error=${reason}`);
+      };
+
+      // --- Pre-flight checks ---
+      if (oauthError) return fail('oauth_denied');
+      if (!code || !state) return fail('oauth_missing_params');
+      if (!isProviderEnabled(provider)) return fail('invalid_provider');
+
+      // Read and validate encrypted state cookie
+      const stateCookie = request.cookies[OAUTH_STATE_COOKIE];
+      if (!stateCookie) return fail('oauth_state_missing');
+
+      let storedState: { state: string; codeVerifier: string };
+      try {
+        storedState = decryptOAuthState(stateCookie);
+      } catch {
+        return fail('oauth_state_invalid');
+      }
+
+      if (storedState.state !== state) return fail('oauth_state_mismatch');
+
+      // --- Exchange code for user info ---
+      let userInfo;
+      try {
+        userInfo = await exchangeCodeForUser(provider, code, storedState.codeVerifier);
+      } catch (err) {
+        request.log.error({ err, provider }, 'OAuth code exchange failed');
+        return fail('oauth_exchange_failed');
+      }
+
+      if (!userInfo.emailVerified) return fail('oauth_email_not_verified');
+
+      // --- Find or create user ---
+      try {
+        // 1. Check if this OAuth account is already linked
+        const existingOAuth = await store.findOAuthAccount(provider, userInfo.id);
+        let userId: number;
+
+        if (existingOAuth) {
+          // Already linked → verify user
+          const user = await store.getUserById(existingOAuth.user_id);
+          if (!user) return fail('oauth_user_not_found');
+          if (!user.is_approved) return fail('pending_approval');
+          userId = user.id;
+        } else {
+          // 2. Check if a user with the same verified email exists
+          const existingUser = await store.getUserByEmail(userInfo.email);
+
+          if (existingUser) {
+            if (!existingUser.is_approved) return fail('pending_approval');
+            // Auto-link provider to existing account
+            await store.linkOAuthAccount(
+              existingUser.id,
+              provider,
+              userInfo.id,
+              userInfo.email,
+            );
+            userId = existingUser.id;
+
+            await store.createAuditLog(
+              existingUser.id,
+              'oauth_linked',
+              JSON.stringify({ provider, provider_email: userInfo.email }),
+              getClientIp(request),
+              request.headers['user-agent'],
+            );
+          } else {
+            // 3. Create a new user (auto-approved, no password)
+            const username = await generateUniqueUsername(userInfo.name ?? provider);
+            const newUser = await store.createUser({ username, email: userInfo.email });
+
+            // Auto-approve OAuth users
+            if (!newUser.is_approved) {
+              await store.updateUser(newUser.id, { is_approved: true });
+            }
+
+            await store.linkOAuthAccount(
+              newUser.id,
+              provider,
+              userInfo.id,
+              userInfo.email,
+            );
+            userId = newUser.id;
+
+            await store.createAuditLog(
+              newUser.id,
+              'oauth_register',
+              JSON.stringify({ provider, provider_email: userInfo.email }),
+              getClientIp(request),
+              request.headers['user-agent'],
+            );
+          }
+        }
+
+        // --- Issue JWT tokens ---
+        const accessToken = AuthService.generateAccessToken(userId);
+        const refreshToken = AuthService.generateRefreshToken(userId);
+        await store.addRefreshToken(userId, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        setAuthCookies(reply, accessToken, refreshToken);
+
+        // Clean state cookie
+        reply.clearCookie(OAUTH_STATE_COOKIE, {
+          httpOnly: true,
+          sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+          path: '/',
+          secure: appConfig.NODE_ENV === 'production',
+          domain: appConfig.COOKIE_DOMAIN || undefined,
+        });
+
+        await store.createAuditLog(
+          userId,
+          'login_success',
+          JSON.stringify({ method: `oauth_${provider}` }),
+          getClientIp(request),
+          request.headers['user-agent'],
+        );
+
+        // Redirect to frontend dashboard
+        return reply.redirect(`${appConfig.CORS_ORIGIN}/?oauth=success`);
+      } catch (err) {
+        request.log.error({ err, provider }, 'OAuth callback processing failed');
+        return fail('oauth_server_error');
+      }
+    },
+  );
+}
+
+/**
+ * Generate a unique username from an OAuth display name.
+ * Sanitizes to [a-zA-Z0-9_], truncates to 17 chars, and appends
+ * a random suffix if the name is already taken.
+ */
+async function generateUniqueUsername(displayName: string): Promise<string> {
+  // Sanitize: keep only allowed characters
+  let base = displayName.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 17);
+  if (base.length < 3) base = 'user';
+
+  // Try the base name first
+  const existing = await store.getUserByUsername(base);
+  if (!existing) return base;
+
+  // Append random suffix
+  for (let i = 0; i < 10; i++) {
+    const suffix = crypto.randomInt(100, 999).toString();
+    const candidate = `${base.slice(0, 17)}_${suffix}`;
+    const taken = await store.getUserByUsername(candidate);
+    if (!taken) return candidate;
+  }
+
+  // Fallback: fully random
+  return `user_${crypto.randomBytes(4).toString('hex')}`;
 }

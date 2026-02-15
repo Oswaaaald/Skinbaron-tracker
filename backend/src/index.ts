@@ -13,6 +13,7 @@ import { getNotificationService } from './lib/notifier.js';
 import { getScheduler, type AlertScheduler } from './lib/scheduler.js';
 import { handleRouteError } from './lib/validation-handler.js';
 import { generateCsrfToken, setCsrfCookie, csrfProtection } from './lib/csrf.js';
+import { initOAuthProviders } from './lib/oauth.js';
 import rulesRoutes from './routes/rules.js';
 import alertsRoutes from './routes/alerts.js';
 
@@ -576,6 +577,13 @@ async function initializeApp() {
     
     fastify.log.info('⏰ Initializing scheduler...');
     const scheduler = getScheduler();
+
+    // Initialize OAuth providers (from env vars)
+    initOAuthProviders();
+    const oauthProviders = (await import('./lib/oauth.js')).getEnabledProviders();
+    if (oauthProviders.length > 0) {
+      fastify.log.info(`🔑 OAuth providers enabled: ${oauthProviders.join(', ')}`);
+    }
 
     // Register plugins and routes
     await registerPlugins();

@@ -6,7 +6,8 @@ import { AlertsRepository } from './repositories/alerts.repository.js';
 import { WebhooksRepository } from './repositories/webhooks.repository.js';
 import { AuthRepository } from './repositories/auth.repository.js';
 import { AuditRepository } from './repositories/audit.repository.js';
-import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog } from './schema.js';
+import { OAuthRepository } from './repositories/oauth.repository.js';
+import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog, OAuthAccount } from './schema.js';
 
 class Store {
   public users: UsersRepository;
@@ -15,6 +16,7 @@ class Store {
   public webhooks: WebhooksRepository;
   public auth: AuthRepository;
   public audit: AuditRepository;
+  public oauth: OAuthRepository;
 
   constructor(database: AppDatabase) {
     this.users = new UsersRepository(database);
@@ -23,6 +25,7 @@ class Store {
     this.webhooks = new WebhooksRepository(database);
     this.auth = new AuthRepository(database);
     this.audit = new AuditRepository(database);
+    this.oauth = new OAuthRepository(database);
   }
 
   // ==================== User operations ====================
@@ -39,7 +42,7 @@ class Store {
     return this.users.findByUsername(username);
   }
 
-  async createUser(data: { username: string; email: string; password_hash: string }): Promise<User> {
+  async createUser(data: { username: string; email: string; password_hash?: string }): Promise<User> {
     return this.users.create(data);
   }
 
@@ -260,6 +263,24 @@ class Store {
   /** Lightweight check used by health endpoint */
   async getStats() {
     return this.audit.getGlobalStats();
+  }
+
+  // ==================== OAuth operations ====================
+
+  async findOAuthAccount(provider: string, providerAccountId: string): Promise<OAuthAccount | null> {
+    return this.oauth.findByProviderAccount(provider as 'google' | 'github' | 'discord', providerAccountId);
+  }
+
+  async getOAuthAccountsByUserId(userId: number): Promise<OAuthAccount[]> {
+    return this.oauth.findByUserId(userId);
+  }
+
+  async linkOAuthAccount(userId: number, provider: string, providerAccountId: string, providerEmail?: string): Promise<OAuthAccount> {
+    return this.oauth.link(userId, provider as 'google' | 'github' | 'discord', providerAccountId, providerEmail);
+  }
+
+  async unlinkOAuthAccount(userId: number, provider: string): Promise<boolean> {
+    return this.oauth.unlink(userId, provider as 'google' | 'github' | 'discord');
   }
 }
 

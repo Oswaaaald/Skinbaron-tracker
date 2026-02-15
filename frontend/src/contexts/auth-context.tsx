@@ -62,8 +62,20 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         // Detect if we believe a session exists (set after a previous successful auth)
         const hasSessionFlag = typeof window !== 'undefined' && localStorage.getItem('has_session') === 'true'
 
+        // Detect OAuth callback success (redirected back from backend with JWT cookies)
+        const isOAuthCallback = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('oauth') === 'success'
+
+        if (isOAuthCallback) {
+          // Clean the query param from the URL
+          const url = new URL(window.location.href)
+          url.searchParams.delete('oauth')
+          window.history.replaceState({}, '', url.pathname + url.search)
+          // Force session flag so we fetch the profile
+          localStorage.setItem('has_session', 'true')
+        }
+
         // If we have no signal of an existing session, avoid the extra 401 noise
-        if (!hasSessionFlag) {
+        if (!hasSessionFlag && !isOAuthCallback) {
           setUser(null)
           setIsLoading(false)
           setIsReady(true)
@@ -71,7 +83,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         }
 
         // Fetch profile; only attempt refresh if we believe a session exists
-        const me = await apiClient.getUserProfile({ allowRefresh: hasSessionFlag })
+        const me = await apiClient.getUserProfile({ allowRefresh: hasSessionFlag || isOAuthCallback })
         if (me.success && me.data) {
           setUser(me.data)
           // Set session flag on success

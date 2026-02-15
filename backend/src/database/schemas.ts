@@ -7,6 +7,7 @@ export type {
   Alert,
   UserWebhook,
   RefreshTokenRecord,
+  OAuthAccount,
   AuditLog,
   AdminAction,
   CreateAlert,

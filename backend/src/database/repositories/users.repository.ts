@@ -98,11 +98,11 @@ export class UsersRepository {
       .limit(20);
   }
 
-  async create(userData: { username: string; email: string; password_hash: string }): Promise<typeof users.$inferSelect> {
+  async create(userData: { username: string; email: string; password_hash?: string }): Promise<typeof users.$inferSelect> {
     const [user] = await this.db.insert(users).values({
       username: userData.username,
       email: userData.email,
-      password_hash: userData.password_hash,
+      password_hash: userData.password_hash ?? null,
     }).returning();
     return user as typeof users.$inferSelect;
   }
