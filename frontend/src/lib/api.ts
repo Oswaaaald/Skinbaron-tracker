@@ -644,6 +644,21 @@ class ApiClient {
     return `${this.baseURL}/api/auth/oauth/${provider}?mode=${mode}`;
   }
 
+  /** Get pending OAuth registration info (email, suggested username, provider) */
+  async getOAuthPendingRegistration(): Promise<ApiResponse<{ email: string; suggested_username: string; provider: string }>> {
+    return this.get('/api/auth/oauth-pending-registration');
+  }
+
+  /** Finalize OAuth registration with TOS acceptance and chosen username */
+  async finalizeOAuthRegistration(username: string, tosAccepted: boolean): Promise<ApiResponse<UserProfile>> {
+    this.hasCalledLogout = false;
+    return this.request('/api/auth/finalize-oauth-registration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, tos_accepted: tosAccepted }),
+    }, false);
+  }
+
   /** Get linked OAuth accounts for current user */
   async getOAuthAccounts(): Promise<ApiResponse<OAuthAccount[]>> {
     return this.get('/api/user/oauth-accounts');

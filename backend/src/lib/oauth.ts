@@ -270,8 +270,10 @@ async function fetchDiscordUser(accessToken: string): Promise<OAuthUserInfo> {
 
 const OAUTH_STATE_COOKIE = 'sb_oauth_state';
 const OAUTH_2FA_COOKIE = 'sb_oauth_2fa';
+const OAUTH_PENDING_REG_COOKIE = 'sb_oauth_pending_reg';
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const PENDING_2FA_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const PENDING_REG_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Encrypt OAuth state (state + codeVerifier + optional linkUserId) into a cookie value.
@@ -345,4 +347,61 @@ export function decryptOAuth2FAPending(cookieValue: string): { userId: number; p
   return { userId: payload.userId, provider: payload.provider };
 }
 
-export { OAUTH_STATE_COOKIE, OAUTH_2FA_COOKIE };
+/**
+ * Encrypt pending OAuth registration data.
+ * Short-lived (10 min) — used when a new user needs to accept TOS before account creation.
+ */
+export function encryptOAuthPendingRegistration(data: {
+  provider: string;
+  providerAccountId: string;
+  email: string;
+  suggestedUsername: string;
+}): string {
+  const payload = JSON.stringify({ ...data, exp: Date.now() + PENDING_REG_TTL_MS });
+  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString('base64url');
+}
+
+/**
+ * Decrypt and validate pending OAuth registration cookie.
+ * Throws if expired, tampered, or invalid.
+ */
+export function decryptOAuthPendingRegistration(cookieValue: string): {
+  provider: string;
+  providerAccountId: string;
+  email: string;
+  suggestedUsername: string;
+} {
+  const buf = Buffer.from(cookieValue, 'base64url');
+  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
+  const iv = buf.subarray(0, 12);
+  const tag = buf.subarray(12, 28);
+  const encrypted = buf.subarray(28);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  const payload = JSON.parse(decrypted) as {
+    provider: string;
+    providerAccountId: string;
+    email: string;
+    suggestedUsername: string;
+    exp: number;
+  };
+
+  if (Date.now() > payload.exp) {
+    throw new Error('OAuth registration session has expired');
+  }
+
+  return {
+    provider: payload.provider,
+    providerAccountId: payload.providerAccountId,
+    email: payload.email,
+    suggestedUsername: payload.suggestedUsername,
+  };
+}
+
+export { OAUTH_STATE_COOKIE, OAUTH_2FA_COOKIE, OAUTH_PENDING_REG_COOKIE };

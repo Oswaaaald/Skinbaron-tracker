@@ -12,6 +12,7 @@ import {
   createAuthorizationUrl, exchangeCodeForUser,
   encryptOAuthState, decryptOAuthState, OAUTH_STATE_COOKIE,
   encryptOAuth2FAPending, decryptOAuth2FAPending, OAUTH_2FA_COOKIE,
+  encryptOAuthPendingRegistration, decryptOAuthPendingRegistration, OAUTH_PENDING_REG_COOKIE,
 } from '../lib/oauth.js';
 import type { User } from '../database/schema.js';
 
@@ -863,32 +864,34 @@ export default async function authRoutes(fastify: FastifyInstance) {
               return fail('oauth_no_account');
             }
 
-            const username = await generateUniqueUsername(userInfo.name ?? provider);
-            const newUser = await store.createUser({ username, email: userInfo.email });
+            // Defer account creation: store OAuth info in encrypted cookie
+            // and redirect to finalization page where user accepts TOS + picks username
+            const suggestedUsername = await generateUniqueUsername(userInfo.name ?? provider);
 
-            // Auto-approve OAuth users
-            if (!newUser.is_approved) {
-              await store.updateUser(newUser.id, { is_approved: true });
-            }
-
-            // Record ToS acceptance (OAuth registration implies acceptance)
-            await store.acceptTos(newUser.id);
-
-            await store.linkOAuthAccount(
-              newUser.id,
+            reply.setCookie(OAUTH_PENDING_REG_COOKIE, encryptOAuthPendingRegistration({
               provider,
-              userInfo.id,
-              userInfo.email,
-            );
-            userId = newUser.id;
+              providerAccountId: userInfo.id,
+              email: userInfo.email,
+              suggestedUsername,
+            }), {
+              httpOnly: true,
+              sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+              path: '/',
+              secure: appConfig.NODE_ENV === 'production',
+              domain: appConfig.COOKIE_DOMAIN || undefined,
+              maxAge: 600, // 10 minutes
+            });
 
-            await store.createAuditLog(
-              newUser.id,
-              'oauth_register',
-              JSON.stringify({ provider, provider_email: userInfo.email }),
-              getClientIp(request),
-              request.headers['user-agent'],
-            );
+            // Clean state cookie
+            reply.clearCookie(OAUTH_STATE_COOKIE, {
+              httpOnly: true,
+              sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+              path: '/',
+              secure: appConfig.NODE_ENV === 'production',
+              domain: appConfig.COOKIE_DOMAIN || undefined,
+            });
+
+            return reply.redirect(`${appConfig.CORS_ORIGIN}/register?oauth_finalize=pending`);
           }
         }
 
@@ -946,6 +949,211 @@ export default async function authRoutes(fastify: FastifyInstance) {
       } catch (err) {
         request.log.error({ err, provider }, 'OAuth callback processing failed');
         return fail('oauth_server_error');
+      }
+    },
+  );
+
+  // ==================== Finalize OAuth Registration ====================
+
+  const pendingRegCookieOptions = {
+    httpOnly: true,
+    sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+    path: '/',
+    secure: appConfig.NODE_ENV === 'production',
+    domain: appConfig.COOKIE_DOMAIN || undefined,
+  };
+
+  /**
+   * Get pending OAuth registration info (email, suggested username, provider).
+   * Reads the encrypted pending-reg cookie set during OAuth callback.
+   */
+  fastify.get('/oauth-pending-registration', {
+    schema: {
+      description: 'Get pending OAuth registration data (email, suggested username)',
+      tags: ['Authentication'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                email: { type: 'string' },
+                suggested_username: { type: 'string' },
+                provider: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const cookie = request.cookies[OAUTH_PENDING_REG_COOKIE];
+      if (!cookie) {
+        throw new AppError(401, 'No pending OAuth registration. Please start the sign-up process again.', 'OAUTH_PENDING_REG_MISSING');
+      }
+
+      let pending;
+      try {
+        pending = decryptOAuthPendingRegistration(cookie);
+      } catch {
+        reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
+        throw new AppError(401, 'OAuth registration session has expired. Please try again.', 'OAUTH_PENDING_REG_EXPIRED');
+      }
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          email: pending.email,
+          suggested_username: pending.suggestedUsername,
+          provider: pending.provider,
+        },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'oauth-pending-registration');
+    }
+  });
+
+  /**
+   * Finalize OAuth registration — create the account after user accepts TOS and picks username.
+   * Reads the encrypted pending-reg cookie, creates user + links OAuth + accepts TOS.
+   */
+  fastify.post<{ Body: { username: string; tos_accepted: boolean } }>(
+    '/finalize-oauth-registration',
+    {
+      config: { rateLimit: authRateLimitConfig },
+      schema: {
+        description: 'Finalize OAuth registration with TOS acceptance and username',
+        tags: ['Authentication'],
+        body: {
+          type: 'object',
+          required: ['username', 'tos_accepted'],
+          properties: {
+            username: { type: 'string', minLength: 3, maxLength: 20 },
+            tos_accepted: { type: 'boolean' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                  avatar_url: { type: 'string' },
+                  is_admin: { type: 'boolean' },
+                  is_super_admin: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { username, tos_accepted } = request.body;
+
+        // Validate TOS acceptance
+        if (!tos_accepted) {
+          throw new AppError(400, 'You must accept the Terms of Service to create an account', 'TOS_NOT_ACCEPTED');
+        }
+
+        // Validate username format (same regex as UserRegistrationSchema)
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+          throw new AppError(400, 'Username can only contain letters, numbers and underscores', 'INVALID_USERNAME');
+        }
+
+        // Read pending registration cookie
+        const cookie = request.cookies[OAUTH_PENDING_REG_COOKIE];
+        if (!cookie) {
+          throw new AppError(401, 'No pending OAuth registration. Please start the sign-up process again.', 'OAUTH_PENDING_REG_MISSING');
+        }
+
+        let pending;
+        try {
+          pending = decryptOAuthPendingRegistration(cookie);
+        } catch {
+          reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
+          throw new AppError(401, 'OAuth registration session has expired. Please try again.', 'OAUTH_PENDING_REG_EXPIRED');
+        }
+
+        // Check username availability
+        const existingUsername = await store.getUserByUsername(username);
+        if (existingUsername) {
+          throw new AppError(409, 'This username is already taken', 'USERNAME_TAKEN');
+        }
+
+        // Double-check email not taken since cookie was issued
+        const existingEmail = await store.getUserByEmail(pending.email);
+        if (existingEmail) {
+          reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
+          throw new AppError(409, 'An account with this email was created while you were registering. Please try logging in.', 'EMAIL_TAKEN');
+        }
+
+        // Double-check OAuth account not taken
+        const existingOAuth = await store.findOAuthAccount(pending.provider, pending.providerAccountId);
+        if (existingOAuth) {
+          reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
+          throw new AppError(409, 'This social account is already linked. Please try logging in.', 'OAUTH_ALREADY_LINKED');
+        }
+
+        // --- Create the account ---
+        const newUser = await store.createUser({ username, email: pending.email });
+
+        // Auto-approve OAuth users
+        if (!newUser.is_approved) {
+          await store.updateUser(newUser.id, { is_approved: true });
+        }
+
+        // Record TOS acceptance
+        await store.acceptTos(newUser.id);
+
+        // Link OAuth account
+        await store.linkOAuthAccount(
+          newUser.id,
+          pending.provider,
+          pending.providerAccountId,
+          pending.email,
+        );
+
+        // Audit log
+        await store.createAuditLog(
+          newUser.id,
+          'oauth_register',
+          JSON.stringify({ provider: pending.provider, provider_email: pending.email }),
+          getClientIp(request),
+          request.headers['user-agent'],
+        );
+
+        // Issue JWT tokens
+        const accessToken = AuthService.generateAccessToken(newUser.id);
+        const refreshToken = AuthService.generateRefreshToken(newUser.id);
+        await store.addRefreshToken(newUser.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        setAuthCookies(reply, accessToken, refreshToken);
+
+        // Clean pending-reg cookie
+        reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
+
+        return reply.status(201).send({
+          success: true,
+          data: {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            avatar_url: AuthService.getGravatarUrl(newUser.email),
+            is_admin: newUser.is_admin,
+            is_super_admin: newUser.is_super_admin,
+          },
+        });
+      } catch (error) {
+        return handleRouteError(error, request, reply, 'finalize-oauth-registration');
       }
     },
   );
