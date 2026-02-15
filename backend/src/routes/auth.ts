@@ -752,39 +752,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const existingUser = await store.getUserByEmail(userInfo.email);
 
           if (existingUser) {
-            // SECURITY: Handle password-based accounts with the same email
-            if (existingUser.password_hash) {
-              if (!existingUser.is_approved) {
-                // Account is unapproved (pending admin review) → OAuth user with verified email
-                // takes priority. Auto-approve and link OAuth. Keep the password
-                // so the user can still log in with either method.
-                await store.updateUser(existingUser.id, {
-                  is_approved: true,
-                });
-                await store.linkOAuthAccount(
-                  existingUser.id,
-                  provider,
-                  userInfo.id,
-                  userInfo.email,
-                );
-                userId = existingUser.id;
+            // Check if the existing user also has OAuth proof of this email
+            const existingOAuthAccounts = await store.getOAuthAccountsByUserId(existingUser.id);
+            const existingHasOAuthProof = existingOAuthAccounts.some(a => a.provider_email === userInfo.email);
 
-                await store.createAuditLog(
-                  existingUser.id,
-                  'oauth_register',
-                  JSON.stringify({ provider, provider_email: userInfo.email, took_over_unapproved: true }),
-                  getClientIp(request),
-                  request.headers['user-agent'],
-                );
-              } else {
-                // Account is approved → legitimate user. They must log in with
-                // their password first and link the provider from settings.
-                return fail('oauth_email_taken');
-              }
-            } else {
+            if (existingHasOAuthProof) {
+              // Both have OAuth proof — can't auto-merge, user must log in manually
               if (!existingUser.is_approved) return fail('pending_approval');
 
-              // Auto-link provider to existing OAuth-only account
+              // Auto-link this new provider to the existing account
               await store.linkOAuthAccount(
                 existingUser.id,
                 provider,
@@ -797,6 +773,28 @@ export default async function authRoutes(fastify: FastifyInstance) {
                 existingUser.id,
                 'oauth_linked',
                 JSON.stringify({ provider, provider_email: userInfo.email }),
+                getClientIp(request),
+                request.headers['user-agent'],
+              );
+            } else {
+              // Current OAuth user has verified ownership, existing user does not.
+              // Take over the account: link OAuth, auto-approve, keep password if any.
+              if (!existingUser.is_approved) {
+                await store.updateUser(existingUser.id, { is_approved: true });
+              }
+
+              await store.linkOAuthAccount(
+                existingUser.id,
+                provider,
+                userInfo.id,
+                userInfo.email,
+              );
+              userId = existingUser.id;
+
+              await store.createAuditLog(
+                existingUser.id,
+                'oauth_register',
+                JSON.stringify({ provider, provider_email: userInfo.email, took_over: true }),
                 getClientIp(request),
                 request.headers['user-agent'],
               );
