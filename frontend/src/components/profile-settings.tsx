@@ -30,6 +30,7 @@ import { SecurityHistory } from '@/components/security-history'
 import { useFormState } from '@/hooks/use-form-state'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface UserStats {
   rules_count: number
@@ -76,6 +77,28 @@ export function ProfileSettings() {
     refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
     refetchOnWindowFocus: true,
   })
+
+  // Fetch linked OAuth accounts (for email picker)
+  const { data: oauthAccounts } = useQuery({
+    queryKey: ['oauth-accounts'],
+    queryFn: async () => {
+      const res = await apiClient.getOAuthAccounts()
+      return res.success ? (res.data ?? []) : []
+    },
+    enabled: isReady && isAuthenticated,
+    staleTime: 30_000,
+  })
+
+  // Build list of available emails for non-admin users
+  const availableEmails = (() => {
+    if (user?.is_admin) return [] // admins use free-text input
+    const emails = new Set<string>()
+    if (user?.email) emails.add(user.email)
+    for (const a of oauthAccounts ?? []) {
+      if (a.provider_email) emails.add(a.provider_email)
+    }
+    return [...emails]
+  })()
 
   // Update profile mutation
   const updateProfileMutation = useApiMutation(
@@ -396,18 +419,42 @@ export function ProfileSettings() {
             
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter email"
-                disabled={!user?.is_admin}
-              />
-              {!user?.is_admin && (
-                <p className="text-sm text-muted-foreground">
-                  Only administrators can change their email address
-                </p>
+              {user?.is_admin ? (
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter email"
+                />
+              ) : availableEmails.length > 1 ? (
+                <>
+                  <Select value={email} onValueChange={setEmail}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select email" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableEmails.map(e => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    You can choose from your linked OAuth provider emails
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    disabled
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Link an OAuth account with a different email to change it
+                  </p>
+                </>
               )}
             </div>
 

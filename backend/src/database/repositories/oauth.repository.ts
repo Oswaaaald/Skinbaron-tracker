@@ -32,6 +32,17 @@ export class OAuthRepository {
   }
 
   /**
+   * Check if an email is used as a provider_email by any user
+   */
+  async findByProviderEmail(email: string): Promise<OAuthAccount | null> {
+    const [account] = await this.db.select()
+      .from(oauthAccounts)
+      .where(eq(oauthAccounts.provider_email, email))
+      .limit(1);
+    return account ?? null;
+  }
+
+  /**
    * Link an OAuth account to a user
    */
   async link(userId: number, provider: OAuthProvider, providerAccountId: string, providerEmail?: string): Promise<OAuthAccount> {

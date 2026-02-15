@@ -250,15 +250,24 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Non-admin users cannot change their email
+      // Non-admin users can only change their email to one of their linked OAuth provider emails
       if (updates.email && !currentUser.is_admin) {
-        throw new AppError(403, 'Only administrators can change their email address', 'PERMISSION_DENIED');
+        const oauthAccounts = await store.getOAuthAccountsByUserId(userId);
+        const oauthEmails = oauthAccounts.map(a => a.provider_email).filter(Boolean);
+        if (!oauthEmails.includes(updates.email)) {
+          throw new AppError(403, 'You can only change your email to one of your linked OAuth provider emails', 'PERMISSION_DENIED');
+        }
       }
 
-      // Check if email is already taken by another user
+      // Check if email is already taken by another user (primary email)
       if (updates.email) {
         const existingUser = await store.getUserByEmail(updates.email);
         if (existingUser && existingUser.id !== userId) {
+          throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
+        }
+        // Also check if email is used as an OAuth provider email by another user
+        const oauthWithEmail = await store.findOAuthAccountByEmail(updates.email);
+        if (oauthWithEmail && oauthWithEmail.user_id !== userId) {
           throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
       }

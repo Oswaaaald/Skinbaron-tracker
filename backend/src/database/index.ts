@@ -275,6 +275,10 @@ class Store {
     return this.oauth.findByUserId(userId);
   }
 
+  async findOAuthAccountByEmail(email: string): Promise<OAuthAccount | null> {
+    return this.oauth.findByProviderEmail(email);
+  }
+
   async linkOAuthAccount(userId: number, provider: string, providerAccountId: string, providerEmail?: string): Promise<OAuthAccount> {
     return this.oauth.link(userId, provider as 'google' | 'github' | 'discord', providerAccountId, providerEmail);
   }

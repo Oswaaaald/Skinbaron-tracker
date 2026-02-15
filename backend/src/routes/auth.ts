@@ -103,6 +103,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(409, 'An account with this email already exists', 'USER_EXISTS');
       }
 
+      // Check if email is already used as an OAuth provider email by another user
+      const oauthWithEmail = await store.findOAuthAccountByEmail(userData.email);
+      if (oauthWithEmail) {
+        throw new AppError(409, 'An account with this email already exists', 'USER_EXISTS');
+      }
+
       // Check if username is taken
       const existingUsername = await store.getUserByUsername(userData.username);
       if (existingUsername) {
