@@ -576,16 +576,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
   /**
    * Initiate OAuth flow — redirect to provider authorization page
    */
-  fastify.get<{ Params: { provider: string } }>('/oauth/:provider', {
+  fastify.get<{ Params: { provider: string }; Querystring: { mode?: string } }>('/oauth/:provider', {
     schema: {
       params: {
         type: 'object',
         required: ['provider'],
         properties: { provider: { type: 'string' } },
       },
+      querystring: {
+        type: 'object',
+        properties: { mode: { type: 'string', enum: ['login', 'register'] } },
+      },
     },
   }, async (request, reply) => {
     const { provider } = request.params;
+    const mode = request.query.mode;
 
     if (!isProviderEnabled(provider)) {
       throw new AppError(400, `OAuth provider "${provider}" is not available`, 'INVALID_PROVIDER');
@@ -603,8 +608,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const { url, state, codeVerifier } = createAuthorizationUrl(provider);
 
-    // Store state + codeVerifier (+ linkUserId if linking) in encrypted HttpOnly cookie
-    reply.setCookie(OAUTH_STATE_COOKIE, encryptOAuthState(state, codeVerifier, linkUserId), {
+    // Store state + codeVerifier (+ linkUserId if linking, + mode) in encrypted HttpOnly cookie
+    reply.setCookie(OAUTH_STATE_COOKIE, encryptOAuthState(state, codeVerifier, linkUserId, mode), {
       httpOnly: true,
       sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
       path: '/',
@@ -664,7 +669,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const stateCookie = request.cookies[OAUTH_STATE_COOKIE];
       if (!stateCookie) return fail('oauth_state_missing');
 
-      let storedState: { state: string; codeVerifier: string; linkUserId?: number };
+      let storedState: { state: string; codeVerifier: string; linkUserId?: number; mode?: string };
       try {
         storedState = decryptOAuthState(stateCookie);
       } catch {
@@ -812,7 +817,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
               );
             }
           } else {
-            // 3. Create a new user (auto-approved, no password)
+            // 3. No existing user — only allow registration if not in login-only mode
+            if (storedState.mode === 'login') {
+              return fail('oauth_no_account');
+            }
+
             const username = await generateUniqueUsername(userInfo.name ?? provider);
             const newUser = await store.createUser({ username, email: userInfo.email });
 

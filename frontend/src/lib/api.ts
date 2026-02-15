@@ -640,8 +640,8 @@ class ApiClient {
   }
 
   /** Build full URL to initiate OAuth flow (browser redirect) */
-  getOAuthLoginUrl(provider: string): string {
-    return `${this.baseURL}/api/auth/oauth/${provider}`;
+  getOAuthLoginUrl(provider: string, mode: 'login' | 'register' = 'login'): string {
+    return `${this.baseURL}/api/auth/oauth/${provider}?mode=${mode}`;
   }
 
   /** Get linked OAuth accounts for current user */
