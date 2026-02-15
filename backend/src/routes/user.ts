@@ -259,38 +259,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Check if email is already taken by another user (primary email)
+      // Check if email is already taken by another user
       if (updates.email) {
-        // For non-admins, the email was already validated as one of their OAuth provider emails (above).
-        // OAuth-verified email is the strongest proof of ownership, so the current user can reclaim it
-        // unless the other user also has OAuth proof of the same email.
-        const isOAuthVerified = !currentUser.is_admin; // non-admins can only pick from OAuth emails
-
         const existingUser = await store.getUserByEmail(updates.email);
         if (existingUser && existingUser.id !== userId) {
-          if (isOAuthVerified) {
-            // Check if the conflicting user also has OAuth proof of this email
-            const otherOAuthAccounts = await store.getOAuthAccountsByUserId(existingUser.id);
-            const otherHasOAuthProof = otherOAuthAccounts.some(a => a.provider_email === updates.email);
-
-            if (otherHasOAuthProof) {
-              throw new AppError(400, 'Email already in use by another verified account', 'EMAIL_IN_USE');
-            }
-
-            // Current user has OAuth proof, other doesn't → displace their email
-            const displacedEmail = `displaced_${existingUser.id}_${Date.now()}@placeholder.local`;
-            await store.updateUser(existingUser.id, { email: displacedEmail });
-            await store.createAuditLog(
-              existingUser.id,
-              'email_changed',
-              JSON.stringify({ new_email: displacedEmail, reason: 'displaced_by_oauth_owner', displaced_by: userId }),
-              getClientIp(request),
-              request.headers['user-agent'],
-            );
-          } else {
-            // Admin free-text input — standard uniqueness check
-            throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
-          }
+          throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
 
         // Also check if email is used as an OAuth provider email by another user

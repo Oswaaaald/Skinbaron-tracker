@@ -797,62 +797,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
             );
           }
         } else {
-          // 2. Check if a user with the same verified email exists
+          // 2. Check if a user with the same email already exists
           const existingUser = await store.getUserByEmail(userInfo.email);
 
           if (existingUser) {
-            // Check if the existing user also has OAuth proof of this email
-            const existingOAuthAccounts = await store.getOAuthAccountsByUserId(existingUser.id);
-            const existingHasOAuthProof = existingOAuthAccounts.some(a => a.provider_email === userInfo.email);
-
-            if (existingHasOAuthProof) {
-              // Existing user already has OAuth proof of this email — auto-link new provider to their account
-              if (!existingUser.is_approved) return fail('pending_approval');
-
-              // Auto-link this new provider to the existing account
-              await store.linkOAuthAccount(
-                existingUser.id,
-                provider,
-                userInfo.id,
-                userInfo.email,
-              );
-              userId = existingUser.id;
-
-              await store.createAuditLog(
-                existingUser.id,
-                'oauth_linked',
-                JSON.stringify({ provider, provider_email: userInfo.email }),
-                getClientIp(request),
-                request.headers['user-agent'],
-              );
-            } else {
-              // Current OAuth user has verified ownership, existing user does not.
-              // Take over the account: link OAuth, auto-approve, keep password if any.
-              if (!existingUser.is_approved) {
-                await store.updateUser(existingUser.id, { is_approved: true });
-              }
-
-              // Record ToS acceptance if not already done
-              if (!existingUser.tos_accepted_at) {
-                await store.acceptTos(existingUser.id);
-              }
-
-              await store.linkOAuthAccount(
-                existingUser.id,
-                provider,
-                userInfo.id,
-                userInfo.email,
-              );
-              userId = existingUser.id;
-
-              await store.createAuditLog(
-                existingUser.id,
-                'oauth_register',
-                JSON.stringify({ provider, provider_email: userInfo.email, took_over: true }),
-                getClientIp(request),
-                request.headers['user-agent'],
-              );
-            }
+            // Account exists but OAuth is not linked → user must log in and link manually
+            // This is the industry-standard approach (GitHub, GitLab, Stripe, etc.)
+            // to prevent account takeover via email matching.
+            return fail('oauth_email_taken');
           } else {
             // 3. No existing user — only allow registration if not in login-only mode
             if (storedState.mode === 'login') {
