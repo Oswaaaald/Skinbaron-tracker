@@ -409,8 +409,7 @@ export function AlertsGrid() {
                         src={alert.skin_url}
                         alt={alert.item_name}
                         fill
-                        loading="eager"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                        unoptimized
                         className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                     ) : (
