@@ -120,6 +120,11 @@ export function createAuthorizationUrl(provider: OAuthProviderName): {
   const scopes = providerScopes.get(provider) ?? [];
   const url = instance.createAuthorizationURL(state, codeVerifier, scopes);
 
+  // Discord: skip re-authorization screen for users who already granted access
+  if (provider === 'discord') {
+    url.searchParams.set('prompt', 'none');
+  }
+
   return { url, state, codeVerifier };
 }
 
