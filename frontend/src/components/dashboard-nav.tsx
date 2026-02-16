@@ -10,7 +10,6 @@ import {
   Webhook,
   Settings,
   Shield,
-  Activity,
   Menu
 } from "lucide-react"
 import { useState } from "react"
@@ -26,7 +25,6 @@ const navItems = [
 
 const adminNavItems = [
   { href: "/admin", label: "Admin", icon: Shield },
-  { href: "/admin/system", label: "System", icon: Activity },
 ]
 
 export function DashboardNav() {

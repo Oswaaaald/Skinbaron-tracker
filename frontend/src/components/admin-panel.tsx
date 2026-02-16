@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Trash2, Users, Wrench } from 'lucide-react'
+import { Activity, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Trash2, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -21,6 +21,7 @@ import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
+import { SystemStats } from '@/components/system-stats'
 import { usePageVisible } from '@/hooks/use-page-visible'
 import { useSyncStats } from '@/hooks/use-sync-stats'
 import { useDebounce } from '@/hooks/use-debounce'
@@ -410,6 +411,7 @@ export function AdminPanel() {
         <TabsList className="w-full flex">
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Users</span></TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-1.5"><Activity className="h-4 w-4" /><span className="hidden sm:inline">System</span></TabsTrigger>
           {currentUser?.is_super_admin && (
             <TabsTrigger value="tools" className="flex items-center gap-1.5"><Wrench className="h-4 w-4" /><span className="hidden sm:inline">Tools</span></TabsTrigger>
           )}
@@ -682,6 +684,11 @@ export function AdminPanel() {
         {/* Logs Tab */}
         <TabsContent value="logs" className="space-y-4 mt-4">
           {currentUser?.is_admin && <AdminAuditLogs />}
+        </TabsContent>
+
+        {/* System Tab */}
+        <TabsContent value="system" className="space-y-4 mt-4">
+          <SystemStats enabled={true} />
         </TabsContent>
 
         {/* Tools Tab (Super Admin only) */}
