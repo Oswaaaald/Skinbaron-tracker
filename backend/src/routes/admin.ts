@@ -129,6 +129,88 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * GET /api/admin/users/:id - View detailed user profile (admin only)
+   * GDPR: Logged as admin data access. No secrets exposed (password, TOTP, recovery codes).
+   */
+  fastify.get('/users/:id', {
+    schema: {
+      description: 'View detailed user profile (admin only, GDPR-audited)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const adminId = getAuthUser(request).id;
+
+      const user = await store.getUserById(id);
+      if (!user) {
+        throw Errors.notFound('User');
+      }
+
+      // Fetch related data in parallel
+      const [oauthAccounts, passkeysData, rules, webhooks] = await Promise.all([
+        store.oauth.findByUserId(id),
+        store.passkeys.findByUserId(id),
+        store.rules.findByUserId(id),
+        store.webhooks.findByUserId(id, false), // don't decrypt webhook URLs
+      ]);
+
+      // GDPR audit: log admin data access
+      await store.logAdminAction(adminId, 'view_user_detail', id, `Viewed detailed profile of ${user.username} (${user.email})`);
+
+      // Sanitize: never expose secrets
+      return reply.status(200).send({
+        success: true,
+        data: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          is_admin: user.is_admin || false,
+          is_super_admin: user.is_super_admin || false,
+          is_approved: user.is_approved || false,
+          totp_enabled: user.totp_enabled || false,
+          tos_accepted_at: user.tos_accepted_at,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          // Linked accounts (no tokens/secrets)
+          oauth_accounts: oauthAccounts.map(a => ({
+            id: a.id,
+            provider: a.provider,
+            provider_email: a.provider_email,
+            created_at: a.created_at,
+          })),
+          // Passkeys (no public_key/credential_id)
+          passkeys: passkeysData.map(p => ({
+            id: p.id,
+            name: p.name,
+            device_type: p.device_type,
+            backed_up: p.backed_up,
+            created_at: p.created_at,
+            last_used_at: p.last_used_at,
+          })),
+          // Stats
+          stats: {
+            rules_count: rules.length,
+            active_rules_count: rules.filter(r => r.enabled).length,
+            webhooks_count: webhooks.length,
+            active_webhooks_count: webhooks.filter(w => w.is_active).length,
+          },
+        },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'View user detail');
+    }
+  });
+
+  /**
    * DELETE /api/admin/users/:id - Delete a user (admin only)
    */
   fastify.delete('/users/:id', {

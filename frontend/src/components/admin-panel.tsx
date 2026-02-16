@@ -21,6 +21,7 @@ import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
+import { AdminUserDetailDialog } from '@/components/admin-user-detail'
 import { SystemStats } from '@/components/system-stats'
 import { usePageVisible } from '@/hooks/use-page-visible'
 import { useSyncStats } from '@/hooks/use-sync-stats'
@@ -68,6 +69,7 @@ export function AdminPanel() {
     action: 'approve',
   })
   const [schedulerConfirmOpen, setSchedulerConfirmOpen] = useState(false)
+  const [detailUserId, setDetailUserId] = useState<number | null>(null)
   const isVisible = usePageVisible()
   const { syncStats } = useSyncStats()
 
@@ -526,7 +528,15 @@ export function AdminPanel() {
                 ) : null}
                 {usersData?.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
+                  <TableCell className="font-medium">
+                    <button
+                      type="button"
+                      className="hover:underline text-left cursor-pointer text-primary"
+                      onClick={() => setDetailUserId(user.id)}
+                    >
+                      {user.username}
+                    </button>
+                  </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     {user.is_super_admin ? (
@@ -771,6 +781,13 @@ export function AdminPanel() {
         confirmText="Run Now"
         variant="default"
         onConfirm={confirmScheduler}
+      />
+
+      {/* User Detail Dialog (GDPR-audited) */}
+      <AdminUserDetailDialog
+        userId={detailUserId}
+        open={detailUserId !== null}
+        onOpenChange={(open) => { if (!open) setDetailUserId(null) }}
       />
     </div>
   )

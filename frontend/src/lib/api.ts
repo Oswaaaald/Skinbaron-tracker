@@ -154,6 +154,39 @@ export interface PasskeyInfo {
   last_used_at: string | null;
 }
 
+export interface AdminUserDetail {
+  id: number;
+  username: string;
+  email: string;
+  is_admin: boolean;
+  is_super_admin: boolean;
+  is_approved: boolean;
+  totp_enabled: boolean;
+  tos_accepted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  oauth_accounts: {
+    id: number;
+    provider: string;
+    provider_email: string | null;
+    created_at: string;
+  }[];
+  passkeys: {
+    id: number;
+    name: string;
+    device_type: string;
+    backed_up: boolean;
+    created_at: string;
+    last_used_at: string | null;
+  }[];
+  stats: {
+    rules_count: number;
+    active_rules_count: number;
+    webhooks_count: number;
+    active_webhooks_count: number;
+  };
+}
+
 class ApiClient {
   private baseURL: string;
   private onLogout: (() => void) | null = null;
@@ -740,6 +773,10 @@ class ApiClient {
     if (params?.role && params.role !== 'all') query.append('role', params.role);
     const qs = query.toString();
     return this.get(`/api/admin/users${qs ? `?${qs}` : ''}`) as Promise<PaginatedResponse<unknown>>;
+  }
+
+  async getAdminUserDetail(userId: number): Promise<ApiResponse<AdminUserDetail>> {
+    return this.get(`/api/admin/users/${userId}`) as Promise<ApiResponse<AdminUserDetail>>;
   }
 }
 
