@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, Search, Shield, ShieldOff, Trash2, Users } from 'lucide-react'
+import { AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Trash2, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
 import { usePageVisible } from '@/hooks/use-page-visible'
 import { useSyncStats } from '@/hooks/use-sync-stats'
@@ -404,33 +405,19 @@ export function AdminPanel() {
         </Card>
       </div>
 
-      {/* Super Admin Actions */}
-      {currentUser?.is_super_admin && (
-        <Card className="border-purple-500 border-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-purple-500" />
-              Super Admin Actions
-            </CardTitle>
-            <CardDescription>Advanced system controls</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={() => handleForceScheduler()}
-              disabled={forceSchedulerMutation.isPending}
-              variant="outline"
-            >
-              {forceSchedulerMutation.isPending ? 'Running...' : 'Force Scheduler Run'}
-            </Button>
-            <p className="text-sm text-muted-foreground mt-2">
-              Bypass the cron schedule and run the scheduler immediately
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Tabbed Navigation */}
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="w-full flex">
+          <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Users</span></TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
+          {currentUser?.is_super_admin && (
+            <TabsTrigger value="tools" className="flex items-center gap-1.5"><Wrench className="h-4 w-4" /><span className="hidden sm:inline">Tools</span></TabsTrigger>
+          )}
+        </TabsList>
 
-      {/* Users Table */}
-      <Card>
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-4 mt-4">
+          <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
           <CardDescription>Manage users and their permissions</CardDescription>
@@ -688,8 +675,42 @@ export function AdminPanel() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Logs Tab */}
+        <TabsContent value="logs" className="space-y-4 mt-4">
+          {currentUser?.is_admin && <AdminAuditLogs />}
+        </TabsContent>
+
+        {/* Tools Tab (Super Admin only) */}
+        {currentUser?.is_super_admin && (
+          <TabsContent value="tools" className="space-y-4 mt-4">
+            <Card className="border-purple-500 border-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-purple-500" />
+                  Super Admin Actions
+                </CardTitle>
+                <CardDescription>Advanced system controls</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => handleForceScheduler()}
+                  disabled={forceSchedulerMutation.isPending}
+                  variant="outline"
+                >
+                  {forceSchedulerMutation.isPending ? 'Running...' : 'Force Scheduler Run'}
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Bypass the cron schedule and run the scheduler immediately
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -744,9 +765,6 @@ export function AdminPanel() {
         variant="default"
         onConfirm={confirmScheduler}
       />
-
-      {/* Super Admin Audit Logs Section */}
-      {currentUser?.is_admin && <AdminAuditLogs />}
     </div>
   )
 }
