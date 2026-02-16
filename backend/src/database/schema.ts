@@ -20,6 +20,8 @@ export const users = pgTable('users', {
   totp_enabled: boolean('totp_enabled').default(false).notNull(),
   totp_secret_encrypted: text('totp_secret_encrypted'),
   recovery_codes_encrypted: text('recovery_codes_encrypted'),
+  avatar_filename: text('avatar_filename'),
+  use_gravatar: boolean('use_gravatar').default(true).notNull(),
   tos_accepted_at: timestamp('tos_accepted_at', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

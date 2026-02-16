@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL } from '@/lib/constants'
 import { validateUsername, validateEmail, validatePasswordChange, validateSetPassword } from '@/lib/validation'
@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck, Download, Fingerprint, Link2, History } from 'lucide-react'
+import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck, Download, Fingerprint, Link2, History, Upload, Camera, X } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { usePageVisible } from '@/hooks/use-page-visible'
@@ -34,6 +34,8 @@ import { useFormState } from '@/hooks/use-form-state'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import Image from 'next/image'
 
 interface UserStats {
   rules_count: number
@@ -46,6 +48,7 @@ export function ProfileSettings() {
   const isVisible = usePageVisible()
   const { state: formState, setError, setSuccess, clear } = useFormState()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   
   const [username, setUsername] = useState(user?.username || '')
   const [email, setEmail] = useState(user?.email || '')
@@ -59,6 +62,12 @@ export function ProfileSettings() {
   const [twoFactorDialog, setTwoFactorDialog] = useState(false)
   const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
   const [twoFactorPassword, setTwoFactorPassword] = useState('')
+
+  // Avatar state
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarDeleting, setAvatarDeleting] = useState(false)
+  const [gravatarToggling, setGravatarToggling] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -106,8 +115,8 @@ export function ProfileSettings() {
       successMessage: 'Profile updated successfully',
       onSuccess: (response) => {
         if (response?.data) {
-          const userData = response.data as { id: number; username: string; email: string; avatar_url?: string; is_admin?: boolean }
-          updateUser({ id: userData.id, username: userData.username, email: userData.email, avatar_url: userData.avatar_url, is_admin: userData.is_admin })
+          const userData = response.data as { id: number; username: string; email: string; avatar_url?: string; use_gravatar?: boolean; is_admin?: boolean }
+          updateUser({ id: userData.id, username: userData.username, email: userData.email, avatar_url: userData.avatar_url, use_gravatar: userData.use_gravatar, is_admin: userData.is_admin })
         }
         setSuccess('profile', 'Profile updated successfully')
       },
@@ -161,6 +170,78 @@ export function ProfileSettings() {
       onError: (error: unknown) => setError('twoFactor', extractErrorMessage(error, 'Failed to disable 2FA')),
     }
   )
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Reset input so the same file can be re-selected
+    e.target.value = ''
+
+    // Client-side validation
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: 'Invalid file type', description: 'Please upload a PNG, JPEG, WebP, or GIF image', variant: 'destructive' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum file size is 2 MB', variant: 'destructive' })
+      return
+    }
+
+    setAvatarUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await apiClient.uploadFile<{ avatar_url: string }>('/api/user/avatar', formData)
+      if (response.success && response.data) {
+        updateUser({ avatar_url: response.data.avatar_url })
+        toast({ title: 'Avatar updated', description: 'Your avatar has been uploaded successfully' })
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
+      } else {
+        toast({ title: 'Upload failed', description: response.message || 'Failed to upload avatar', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: 'Upload failed', description: extractErrorMessage(error, 'Failed to upload avatar'), variant: 'destructive' })
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  const handleAvatarDelete = async () => {
+    setAvatarDeleting(true)
+    try {
+      const response = await apiClient.delete<{ avatar_url: string | null }>('/api/user/avatar')
+      if (response.success) {
+        updateUser({ avatar_url: response.data?.avatar_url ?? undefined })
+        toast({ title: 'Avatar removed', description: 'Your custom avatar has been removed' })
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
+      } else {
+        toast({ title: 'Failed', description: response.message || 'Failed to remove avatar', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: 'Failed', description: extractErrorMessage(error, 'Failed to remove avatar'), variant: 'destructive' })
+    } finally {
+      setAvatarDeleting(false)
+    }
+  }
+
+  const handleGravatarToggle = async (checked: boolean) => {
+    setGravatarToggling(true)
+    try {
+      const response = await apiClient.patch<{ use_gravatar: boolean; avatar_url: string | null }>('/api/user/avatar-settings', { use_gravatar: checked })
+      if (response.success && response.data) {
+        updateUser({ use_gravatar: response.data.use_gravatar, avatar_url: response.data.avatar_url ?? undefined })
+        toast({ title: checked ? 'Gravatar enabled' : 'Gravatar disabled', description: checked ? 'Your Gravatar will be used as fallback' : 'Gravatar fallback has been disabled' })
+        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
+      } else {
+        toast({ title: 'Failed', description: response.message || 'Failed to update setting', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: 'Failed', description: extractErrorMessage(error, 'Failed to update avatar settings'), variant: 'destructive' })
+    } finally {
+      setGravatarToggling(false)
+    }
+  }
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault(); clear('profile')
@@ -252,6 +333,65 @@ export function ProfileSettings() {
 
         {/* ===================== Profile Tab ===================== */}
         <TabsContent value="profile" className="space-y-4 mt-4">
+          {/* Avatar */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Camera className="h-5 w-5" /> Avatar</CardTitle>
+              <CardDescription>Upload a custom avatar or use your Gravatar</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-6">
+                {/* Preview */}
+                <div className="relative group shrink-0">
+                  <div className="h-20 w-20 rounded-full overflow-hidden ring-2 ring-border bg-muted flex items-center justify-center">
+                    {user?.avatar_url ? (
+                      <Image src={user.avatar_url} alt={user.username} width={80} height={80} className="h-full w-full object-cover" unoptimized />
+                    ) : (
+                      <span className="text-2xl font-semibold text-muted-foreground">
+                        {(user?.username || '?').slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    aria-label="Upload avatar"
+                  >
+                    <Upload className="h-5 w-5 text-white" />
+                  </button>
+                </div>
+                <div className="space-y-2 flex-1">
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>
+                      {avatarUploading ? <><LoadingSpinner size="sm" className="mr-2" inline /> Uploading...</> : <><Upload className="h-4 w-4 mr-2" /> Upload</>}
+                    </Button>
+                    {user?.avatar_url && user.avatar_url.includes('/api/avatars/') && (
+                      <Button variant="outline" size="sm" onClick={() => void handleAvatarDelete()} disabled={avatarDeleting}>
+                        {avatarDeleting ? <LoadingSpinner size="sm" inline /> : <><X className="h-4 w-4 mr-2" /> Remove</>}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF. Max 2 MB. Will be resized to 256×256.</p>
+                </div>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => void handleAvatarUpload(e)} />
+              {/* Gravatar toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="gravatar-toggle" className="text-sm font-medium">Use Gravatar</Label>
+                  <p className="text-xs text-muted-foreground">Use your Gravatar as fallback when no custom avatar is set</p>
+                </div>
+                <Switch
+                  id="gravatar-toggle"
+                  checked={user?.use_gravatar !== false}
+                  onCheckedChange={(checked) => void handleGravatarToggle(checked)}
+                  disabled={gravatarToggling}
+                />
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Profile Information</CardTitle>

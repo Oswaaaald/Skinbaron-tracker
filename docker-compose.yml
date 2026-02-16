@@ -73,6 +73,9 @@ services:
     tmpfs:
       - /tmp
 
+    volumes:
+      - skinbaron_avatar_data:/data/avatars
+
     security_opt:
       - no-new-privileges:true
 
@@ -131,6 +134,8 @@ services:
 volumes:
   skinbaron_postgres_data:
     external: true
+  skinbaron_avatar_data:
+  skinbaron_avatar_data:
 
 networks:
   skinbaron_network:

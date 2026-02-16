@@ -252,7 +252,7 @@ class ApiClient {
 
       // Build headers
       const headers: Record<string, string> = {};
-      if (options.body) headers['Content-Type'] = 'application/json';
+      if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
       
       // Add CSRF token for mutating requests
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method || 'GET') && this.csrfToken) {
@@ -597,6 +597,7 @@ class ApiClient {
     username: string;
     email: string;
     avatar_url: string;
+    use_gravatar: boolean;
     is_admin: boolean;
     is_super_admin: boolean;
     has_password: boolean;
@@ -625,6 +626,14 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  // Upload file via multipart/form-data (browser sets Content-Type boundary automatically)
+  async uploadFile<T = unknown>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: formData,
     });
   }
 

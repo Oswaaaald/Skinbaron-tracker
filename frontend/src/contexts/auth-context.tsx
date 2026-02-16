@@ -9,6 +9,7 @@ export interface User {
   username: string
   email: string
   avatar_url?: string
+  use_gravatar?: boolean
   is_admin?: boolean
   is_super_admin?: boolean
   has_password?: boolean

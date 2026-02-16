@@ -14,6 +14,8 @@ interface UserUpdate {
   totp_enabled?: boolean;
   totp_secret_encrypted?: string | null;
   recovery_codes_encrypted?: string | null;
+  avatar_filename?: string | null;
+  use_gravatar?: boolean;
   tos_accepted_at?: Date | null;
   // Virtual fields (encrypted before storage):
   recovery_codes?: string | null;
@@ -70,6 +72,8 @@ export class UsersRepository {
       totp_secret_encrypted: row.totp_secret_encrypted,
       recovery_codes_encrypted: row.recovery_codes_encrypted,
       tos_accepted_at: row.tos_accepted_at,
+      avatar_filename: row.avatar_filename,
+      use_gravatar: row.use_gravatar,
       created_at: row.created_at,
       updated_at: row.updated_at,
       stats: {
@@ -150,6 +154,8 @@ export class UsersRepository {
         totp_secret_encrypted: row.totp_secret_encrypted,
         recovery_codes_encrypted: row.recovery_codes_encrypted,
         tos_accepted_at: row.tos_accepted_at,
+        avatar_filename: row.avatar_filename,
+        use_gravatar: row.use_gravatar,
         created_at: row.created_at,
         updated_at: row.updated_at,
         stats: {

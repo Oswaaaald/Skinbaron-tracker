@@ -163,4 +163,21 @@ export class AuthService {
     const hash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
     return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon`;
   }
+
+  /**
+   * Resolve the avatar URL for a user.
+   * Priority: custom upload > gravatar (if enabled) > null
+   */
+  static getAvatarUrl(
+    user: { email: string; avatar_filename?: string | null; use_gravatar?: boolean },
+    apiBaseUrl: string,
+  ): string | null {
+    if (user.avatar_filename) {
+      return `${apiBaseUrl}/api/avatars/${user.avatar_filename}`;
+    }
+    if (user.use_gravatar !== false) {
+      return AuthService.getGravatarUrl(user.email);
+    }
+    return null;
+  }
 }

@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { appConfig } from './lib/config.js';
@@ -254,6 +255,15 @@ async function registerPlugins() {
 
   await fastify.register(cookie, {
     hook: 'onRequest',
+  });
+
+  // Multipart for avatar uploads (2 MB limit)
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 2 * 1024 * 1024,
+      files: 1,
+      fields: 0,
+    },
   });
 
   // Security middleware
@@ -532,6 +542,34 @@ function setupCsrfEndpoint() {
 
 // Register API routes
 async function registerRoutes() {
+  // Public avatar serving route (no auth required, aggressive caching)
+  const { readAvatarFile } = await import('./lib/avatar.js');
+  fastify.get('/api/avatars/:filename', {
+    schema: {
+      description: 'Serve user avatar images',
+      tags: ['System'],
+      params: {
+        type: 'object',
+        required: ['filename'],
+        properties: {
+          filename: { type: 'string', pattern: '^[a-f0-9]{32}\\.webp$' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { filename } = request.params as { filename: string };
+    const data = await readAvatarFile(filename);
+    if (!data) {
+      return reply.status(404).send({ success: false, error: 'Not found' });
+    }
+    return reply
+      .header('Content-Type', 'image/webp')
+      .header('Cache-Control', 'public, max-age=86400, immutable')
+      .header('X-Content-Type-Options', 'nosniff')
+      .header('Content-Security-Policy', "default-src 'none'; img-src 'self'")
+      .send(data);
+  });
+
   // Import auth routes
   const { default: authRoutes } = await import('./routes/auth.js');
   const { default: webhooksRoutes } = await import('./routes/webhooks.js');
@@ -568,6 +606,11 @@ async function initializeApp() {
     fastify.log.info('📊 Initializing database...');
     await initializeDatabase();
     fastify.log.info('✅ Database migrations applied');
+
+    // Ensure avatar upload directory exists
+    const { ensureUploadDir } = await import('./lib/avatar.js');
+    await ensureUploadDir();
+    fastify.log.info('✅ Avatar upload directory ready');
     
     fastify.log.info('🔍 Initializing SkinBaron client...');
     getSkinBaronClient();

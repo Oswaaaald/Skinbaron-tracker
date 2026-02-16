@@ -36,6 +36,13 @@
       "when": 1771267822680,
       "tag": "0004_fixed_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771365600000,
+      "tag": "0005_avatar_support",
+      "breakpoints": true
     }
   ]
 }

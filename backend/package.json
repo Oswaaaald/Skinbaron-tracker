@@ -28,6 +28,7 @@
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",
+    "@fastify/multipart": "^9.4.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
@@ -45,6 +46,7 @@
     "pg": "^8.18.0",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
     "undici": "^7.20.0",
     "zod": "^4.3.6",
     "zxcvbn": "^4.4.2"
@@ -56,6 +58,7 @@
     "@types/node": "^25.2.3",
     "@types/pg": "^8.16.0",
     "@types/qrcode": "^1.5.6",
+    "@types/sharp": "^0.31.1",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "drizzle-kit": "^0.31.9",

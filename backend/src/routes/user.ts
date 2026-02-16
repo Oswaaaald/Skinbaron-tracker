@@ -3,6 +3,7 @@ import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema, SetPasswordSchema } from '../lib/auth.js';
 import { getClientIp, getAuthUser, ACCESS_COOKIE, clearAuthCookies } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
+import { processAndSaveAvatar, deleteAvatarFile } from '../lib/avatar.js';
 import { OTP } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
@@ -153,7 +154,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
           id: user.id,
           username: user.username,
           email: user.email,
-          avatar_url: AuthService.getGravatarUrl(user.email),
+          avatar_url: AuthService.getAvatarUrl(user, appConfig.NEXT_PUBLIC_API_URL),
+          use_gravatar: user.use_gravatar,
           is_admin: user.is_admin,
           is_super_admin: user.is_super_admin,
           has_password: !!user.password_hash,
@@ -331,7 +333,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
           id: updatedUser.id,
           username: updatedUser.username,
           email: updatedUser.email,
-          avatar_url: AuthService.getGravatarUrl(updatedUser.email),
+          avatar_url: AuthService.getAvatarUrl(updatedUser, appConfig.NEXT_PUBLIC_API_URL),
+          use_gravatar: updatedUser.use_gravatar,
           is_admin: updatedUser.is_admin,
           is_super_admin: updatedUser.is_super_admin,
         },
@@ -514,6 +517,179 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // ==================== Avatar Management ====================
+
+  /**
+   * POST /api/user/avatar - Upload a custom avatar image
+   * Security: magic-byte validation, sharp re-encoding (strips EXIF/metadata),
+   * random filename, size limit, rate limited
+   */
+  fastify.post('/avatar', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Upload a custom avatar image (max 2 MB, PNG/JPEG/WebP/GIF)',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      consumes: ['multipart/form-data'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                avatar_url: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const user = await store.getUserById(userId);
+      if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+
+      const file = await request.file();
+      if (!file) {
+        throw new AppError(400, 'No file uploaded', 'NO_FILE');
+      }
+
+      // Process image (validates magic bytes, resizes, strips metadata, converts to WebP)
+      let filename: string;
+      try {
+        filename = await processAndSaveAvatar(file);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to process image';
+        throw new AppError(400, msg, 'INVALID_IMAGE');
+      }
+
+      // Delete old avatar file if it exists
+      if (user.avatar_filename) {
+        await deleteAvatarFile(user.avatar_filename);
+      }
+
+      // Update database
+      await store.updateUser(userId, { avatar_filename: filename });
+
+      // Audit log
+      await store.createAuditLog(userId, 'avatar_uploaded', undefined, getClientIp(request), request.headers['user-agent']);
+
+      const avatarUrl = AuthService.getAvatarUrl({ ...user, avatar_filename: filename }, appConfig.NEXT_PUBLIC_API_URL);
+
+      return reply.status(200).send({
+        success: true,
+        data: { avatar_url: avatarUrl },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Avatar upload');
+    }
+  });
+
+  /**
+   * DELETE /api/user/avatar - Remove custom avatar (revert to gravatar or initials)
+   */
+  fastify.delete('/avatar', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Remove custom avatar',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                avatar_url: { type: 'string', nullable: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const user = await store.getUserById(userId);
+      if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+
+      if (user.avatar_filename) {
+        await deleteAvatarFile(user.avatar_filename);
+      }
+
+      await store.updateUser(userId, { avatar_filename: null });
+
+      await store.createAuditLog(userId, 'avatar_removed', undefined, getClientIp(request), request.headers['user-agent']);
+
+      const avatarUrl = AuthService.getAvatarUrl({ ...user, avatar_filename: null }, appConfig.NEXT_PUBLIC_API_URL);
+
+      return reply.status(200).send({
+        success: true,
+        data: { avatar_url: avatarUrl },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Avatar delete');
+    }
+  });
+
+  /**
+   * PATCH /api/user/avatar-settings - Toggle Gravatar fallback
+   */
+  fastify.patch('/avatar-settings', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Toggle Gravatar fallback for avatar',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['use_gravatar'],
+        properties: {
+          use_gravatar: { type: 'boolean' },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                use_gravatar: { type: 'boolean' },
+                avatar_url: { type: 'string', nullable: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const { use_gravatar } = request.body as { use_gravatar: boolean };
+
+      const user = await store.getUserById(userId);
+      if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+
+      await store.updateUser(userId, { use_gravatar });
+
+      const avatarUrl = AuthService.getAvatarUrl({ ...user, use_gravatar }, appConfig.NEXT_PUBLIC_API_URL);
+
+      return reply.status(200).send({
+        success: true,
+        data: { use_gravatar, avatar_url: avatarUrl },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Avatar settings');
+    }
+  });
+
   /**
    * GET /api/user/data-export - GDPR data export (Art. 20 data portability)
    */
@@ -551,6 +727,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
           is_admin: user.is_admin,
           is_approved: user.is_approved,
           two_factor_enabled: user.totp_enabled,
+          has_custom_avatar: !!user.avatar_filename,
+          use_gravatar: user.use_gravatar,
           tos_accepted_at: user.tos_accepted_at,
           created_at: user.created_at,
           updated_at: user.updated_at,

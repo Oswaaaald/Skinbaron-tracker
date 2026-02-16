@@ -32,6 +32,19 @@ const nextConfig: NextConfig = {
         hostname: 'steamcommunity-a.akamaihd.net',
         pathname: '/economy/image/**',
       },
+      // Allow avatar images from the API backend (dynamic hostname from env)
+      ...(process.env['NEXT_PUBLIC_API_URL']
+        ? (() => {
+            try {
+              const url = new URL(process.env['NEXT_PUBLIC_API_URL']);
+              return [{
+                protocol: url.protocol.replace(':', '') as 'http' | 'https',
+                hostname: url.hostname,
+                pathname: '/api/avatars/**',
+              }];
+            } catch { return []; }
+          })()
+        : []),
     ],
     formats: ['image/avif', 'image/webp'],
   },
