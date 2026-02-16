@@ -94,6 +94,7 @@ export function SecurityHistory() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Separator className="mb-4" />
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No security events recorded
