@@ -1328,6 +1328,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             counter: passkey.counter,
             transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[]) : undefined,
           },
+          requireUserVerification: false,
         });
       } catch (verifyErr) {
         request.log.error({ err: verifyErr }, 'verifyAuthenticationResponse failed');
