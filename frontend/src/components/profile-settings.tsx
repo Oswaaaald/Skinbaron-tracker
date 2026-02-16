@@ -138,7 +138,7 @@ export function ProfileSettings() {
   const deleteAccountMutation = useApiMutation(
     (data: { password?: string; totp_code?: string }) => apiClient.delete('/api/user/account', data),
     {
-      onSuccess: () => { toast({ title: "Account deleted", description: "Your account has been permanently deleted" }); void logout() },
+      onSuccess: () => { toast({ title: '✅ Account deleted', description: 'Your account has been permanently deleted' }); void logout() },
       onError: (error: unknown) => { setError('general', extractErrorMessage(error, 'Failed to delete account')); setDeleteDialog(false); setDeleteConfirmText('') },
     }
   )
@@ -392,10 +392,10 @@ export function ProfileSettings() {
                       a.click()
                       document.body.removeChild(a)
                       setTimeout(() => URL.revokeObjectURL(url), 1000)
-                      toast({ title: 'Data exported', description: 'Your data has been downloaded' })
+                      toast({ title: '✅ Data exported', description: 'Your data has been downloaded' })
                     }
                   } catch (error) {
-                    toast({ variant: 'destructive', title: 'Export failed', description: extractErrorMessage(error, 'Failed to export data') })
+                    toast({ variant: 'destructive', title: '❌ Export failed', description: extractErrorMessage(error, 'Failed to export data') })
                   }
                 })()
               }}>
@@ -511,10 +511,10 @@ function LinkedAccounts() {
     const linkError = params.get('link_error')
     if (linked) {
       const label = PROVIDER_META[linked]?.label ?? linked
-      toast({ title: 'Account linked', description: `${label} account has been linked successfully.` })
+      toast({ title: '✅ Account linked', description: `${label} account has been linked successfully.` })
     }
     if (linkError) {
-      toast({ variant: 'destructive', title: 'Link failed', description: LINK_ERROR_MESSAGES[linkError] || 'Could not link account.' })
+      toast({ variant: 'destructive', title: '❌ Link failed', description: LINK_ERROR_MESSAGES[linkError] || 'Could not link account.' })
     }
     if (linked || linkError) {
       const url = new URL(window.location.href)
@@ -540,9 +540,9 @@ function LinkedAccounts() {
     setUnlinking(provider)
     try {
       const res = await apiClient.unlinkOAuthAccount(provider)
-      if (res.success) { toast({ title: 'Account unlinked', description: `${PROVIDER_META[provider]?.label ?? provider} account has been unlinked.` }); void refetch() }
-      else { toast({ variant: 'destructive', title: 'Failed', description: res.message || 'Could not unlink account.' }) }
-    } catch (err) { toast({ variant: 'destructive', title: 'Error', description: extractErrorMessage(err, 'Could not unlink account.') }) }
+      if (res.success) { toast({ title: '✅ Account unlinked', description: `${PROVIDER_META[provider]?.label ?? provider} account has been unlinked.` }); void refetch() }
+      else { toast({ variant: 'destructive', title: '❌ Unlink failed', description: res.message || 'Could not unlink account.' }) }
+    } catch (err) { toast({ variant: 'destructive', title: '❌ Unlink failed', description: extractErrorMessage(err, 'Could not unlink account.') }) }
     finally { setUnlinking(null) }
   }
 

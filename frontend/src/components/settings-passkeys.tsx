@@ -91,7 +91,7 @@ export function PasskeyManager() {
       }
 
       setSuccess('Passkey registered successfully!')
-      toast({ title: 'Passkey registered', description: `"${verifyRes.data?.name ?? 'Passkey'}" has been added to your account.` })
+      toast({ title: '✅ Passkey registered', description: `"${verifyRes.data?.name ?? 'Passkey'}" has been added to your account.` })
       invalidate()
     } catch (err: unknown) {
       // User cancelled the ceremony
@@ -111,16 +111,16 @@ export function PasskeyManager() {
     try {
       const res = await apiClient.renamePasskey(renameTarget.id, renameName.trim())
       if (res.success) {
-        toast({ title: 'Passkey renamed', description: `Passkey renamed to "${renameName.trim()}"` })
+        toast({ title: '✅ Passkey renamed', description: `Passkey renamed to "${renameName.trim()}"` })
         invalidate()
         setRenameDialog(false)
         setRenameTarget(null)
         setRenameName('')
       } else {
-        toast({ variant: 'destructive', title: 'Failed', description: res.message || 'Could not rename passkey' })
+        toast({ variant: 'destructive', title: '❌ Rename failed', description: res.message || 'Could not rename passkey' })
       }
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Error', description: extractErrorMessage(err, 'Could not rename passkey') })
+      toast({ variant: 'destructive', title: '❌ Rename failed', description: extractErrorMessage(err, 'Could not rename passkey') })
     } finally {
       setRenaming(false)
     }
@@ -131,14 +131,14 @@ export function PasskeyManager() {
     try {
       const res = await apiClient.deletePasskey(deleteTarget.id)
       if (res.success) {
-        toast({ title: 'Passkey deleted', description: `"${deleteTarget.name}" has been removed.` })
+        toast({ title: '✅ Passkey deleted', description: `"${deleteTarget.name}" has been removed.` })
         invalidate()
         setDeleteTarget(null)
       } else {
-        toast({ variant: 'destructive', title: 'Failed', description: res.message || 'Could not delete passkey' })
+        toast({ variant: 'destructive', title: '❌ Delete failed', description: res.message || 'Could not delete passkey' })
       }
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Error', description: extractErrorMessage(err, 'Could not delete passkey') })
+      toast({ variant: 'destructive', title: '❌ Delete failed', description: extractErrorMessage(err, 'Could not delete passkey') })
     }
   }
 
