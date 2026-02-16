@@ -71,7 +71,7 @@ export const AAGUID_NAMES: Record<string, string> = {
  */
 export function resolvePasskeyName(
   aaguid: string,
-  deviceType?: string,
+  _deviceType?: string,
   transports?: string[],
 ): string {
   // Try exact AAGUID match
@@ -90,7 +90,7 @@ export function resolvePasskeyName(
 
   // Heuristic based on device type
   if (transports?.includes('internal') && transports?.includes('hybrid')) {
-    return deviceType === 'multiDevice' ? 'Synced Passkey' : 'Device Passkey';
+    return 'Passkey';
   }
   if (transports?.includes('internal')) {
     return 'Device Passkey';

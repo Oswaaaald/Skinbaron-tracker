@@ -566,7 +566,9 @@ function LinkedAccounts() {
           return (
             <div key={provider} className="flex items-center justify-between rounded-lg border p-3">
               <div className="flex items-center gap-3">
-                {meta.icon}
+                <div className="flex items-center justify-center h-9 w-9 rounded-md bg-muted/50 shrink-0">
+                  {meta.icon}
+                </div>
                 <div>
                   <p className="text-sm font-medium">{meta.label}</p>
                   {isLinked && account?.provider_email && (<p className="text-xs text-muted-foreground">{account.provider_email}</p>)}

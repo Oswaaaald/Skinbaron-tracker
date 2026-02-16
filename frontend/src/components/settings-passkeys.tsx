@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { AlertCircle, CheckCircle, Fingerprint, Key, Pencil, Plus, Trash2, Usb } from 'lucide-react'
+import { AlertCircle, CheckCircle, Cloud, Key, Monitor, Pencil, Plus, Trash2, Usb } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
 
@@ -31,9 +31,20 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function DeviceIcon({ deviceType }: { deviceType: string }) {
-  if (deviceType === 'singleDevice') return <Usb className="h-4 w-4 text-muted-foreground" />
-  return <Fingerprint className="h-4 w-4 text-muted-foreground" />
+function DeviceIcon({ deviceType, backedUp }: { deviceType: string; backedUp: boolean }) {
+  if (deviceType === 'singleDevice') return <Usb className="h-5 w-5 text-amber-500" />
+  if (backedUp) return <Cloud className="h-5 w-5 text-blue-500" />
+  return <Monitor className="h-5 w-5 text-muted-foreground" />
+}
+
+function DeviceBadge({ deviceType, backedUp }: { deviceType: string; backedUp: boolean }) {
+  if (deviceType === 'singleDevice') {
+    return <Badge variant="outline" className="text-xs shrink-0 border-amber-500/30 text-amber-600 dark:text-amber-400">Hardware key</Badge>
+  }
+  if (backedUp) {
+    return <Badge variant="secondary" className="text-xs shrink-0">Synced</Badge>
+  }
+  return <Badge variant="outline" className="text-xs shrink-0">Device-bound</Badge>
 }
 
 export function PasskeyManager() {
@@ -167,11 +178,13 @@ export function PasskeyManager() {
           {passkeys.map((pk) => (
             <div key={pk.id} className="flex items-center justify-between rounded-lg border p-3">
               <div className="flex items-center gap-3 min-w-0">
-                <DeviceIcon deviceType={pk.device_type} />
+                <div className="flex items-center justify-center h-9 w-9 rounded-md bg-muted/50 shrink-0">
+                  <DeviceIcon deviceType={pk.device_type} backedUp={pk.backed_up} />
+                </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium truncate">{pk.name}</p>
-                    {pk.backed_up && <Badge variant="secondary" className="text-xs shrink-0">Synced</Badge>}
+                    <DeviceBadge deviceType={pk.device_type} backedUp={pk.backed_up} />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Added {formatDate(pk.created_at)}
