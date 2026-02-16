@@ -376,7 +376,7 @@ export function ProfileSettings() {
               <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" /> Your Data</CardTitle>
               <CardDescription>Download or delete all your personal data (GDPR)</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.</p>
               <Button variant="outline" onClick={() => {
                 void (async () => {
@@ -409,8 +409,8 @@ export function ProfileSettings() {
               <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Delete Account</CardTitle>
               <CardDescription>Permanently delete your account and all associated data</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.</AlertDescription></Alert>
+            <CardContent className="space-y-4">
+              <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.</AlertDescription></Alert>
               <Button variant="destructive" onClick={() => setDeleteDialog(true)}><Trash2 className="h-4 w-4 mr-2" /> Delete Account</Button>
             </CardContent>
           </Card>
@@ -558,7 +558,7 @@ function LinkedAccounts() {
         <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Linked Accounts</CardTitle>
         <CardDescription>Manage your social login connections</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         {enabledProviders.map(provider => {
           const meta = PROVIDER_META[provider] ?? { label: provider, icon: null }
           const isLinked = linkedProviders.has(provider)
