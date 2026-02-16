@@ -55,7 +55,8 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
   const referer = request.headers['referer'] || '';
   const originStr = Array.isArray(origin) ? origin[0] ?? '' : origin;
   const refererStr = Array.isArray(referer) ? referer[0] ?? '' : referer;
-  if (originStr === appConfig.NEXT_PUBLIC_API_URL || refererStr.includes('/docs')) {
+  const apiBase = appConfig.NEXT_PUBLIC_API_URL;
+  if (originStr === apiBase || (refererStr.startsWith(apiBase) && refererStr.includes('/docs'))) {
     return;
   }
 

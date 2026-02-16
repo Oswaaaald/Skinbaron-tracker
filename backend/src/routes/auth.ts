@@ -294,7 +294,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         required: ['email', 'password'],
         properties: {
           email: { type: 'string', format: 'email' },
-          password: { type: 'string', maxLength: 128 },
+          password: { type: 'string', minLength: 1, maxLength: 128 },
           totp_code: { type: 'string', minLength: 6, maxLength: 8 },
         },
       },
@@ -434,7 +434,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['Authentication'],
       body: {
         type: 'object',
-        properties: {},
+        properties: {
+          refresh_token: { type: 'string' },
+        },
         additionalProperties: false,
       },
       response: {
@@ -1290,7 +1292,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          credential: { type: 'object' },
+          credential: { type: 'object', maxProperties: 20 },
           challengeKey: { type: 'string' },
         },
         required: ['credential', 'challengeKey'],

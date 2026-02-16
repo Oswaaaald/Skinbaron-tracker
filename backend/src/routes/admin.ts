@@ -38,11 +38,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'number', default: 20, minimum: 1, maximum: 100 },
-          offset: { type: 'number', default: 0, minimum: 0 },
+          limit: { type: 'integer', default: 20, minimum: 1, maximum: 100 },
+          offset: { type: 'integer', default: 0, minimum: 0 },
           sort_by: { type: 'string', enum: ['username', 'email', 'role', 'created_at', 'rules', 'alerts', 'webhooks'], default: 'created_at' },
           sort_dir: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
-          search: { type: 'string' },
+          search: { type: 'string', maxLength: 200 },
           role: { type: 'string', enum: ['admin', 'user', 'all'], default: 'all' },
         },
       },
@@ -141,7 +141,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         required: ['id'],
         properties: {
-          id: { type: 'number' },
+          id: { type: 'integer', minimum: 1 },
         },
       },
     },
@@ -227,7 +227,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         required: ['id'],
         properties: {
-          id: { type: 'number' },
+          id: { type: 'integer', minimum: 1 },
         },
       },
       response: {
@@ -333,7 +333,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         required: ['id'],
         properties: {
-          id: { type: 'number' },
+          id: { type: 'integer', minimum: 1 },
         },
       },
       body: {
@@ -541,7 +541,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         required: ['id'],
         properties: {
-          id: { type: 'number' },
+          id: { type: 'integer', minimum: 1 },
         },
       },
       response: {
@@ -601,7 +601,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         required: ['id'],
         properties: {
-          id: { type: 'number' },
+          id: { type: 'integer', minimum: 1 },
         },
       },
       response: {
@@ -694,14 +694,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       params: {
         type: 'object',
         properties: {
-          userId: { type: 'number' },
+          userId: { type: 'integer', minimum: 1 },
         },
         required: ['userId'],
       },
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'number', default: 100, maximum: 500 },
+          limit: { type: 'integer', minimum: 1, default: 100, maximum: 500 },
         },
       },
       response: {
@@ -779,9 +779,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'number', default: 100, maximum: 1000 },
-          event_type: { type: 'string' },
-          user_id: { type: 'number' },
+          limit: { type: 'integer', minimum: 1, default: 100, maximum: 1000 },
+          event_type: { type: 'string', maxLength: 50 },
+          user_id: { type: 'integer', minimum: 1 },
         },
       },
       response: {

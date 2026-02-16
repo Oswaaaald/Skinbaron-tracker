@@ -104,7 +104,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           stattrak_filter: { type: 'string', enum: ['all', 'only', 'exclude'] },
           souvenir_filter: { type: 'string', enum: ['all', 'only', 'exclude'] },
           sticker_filter: { type: 'string', enum: ['all', 'only', 'exclude'] },
-          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 0, maxItems: 10 },
+          webhook_ids: { type: 'array', items: { type: 'integer', minimum: 1 }, minItems: 0, maxItems: 10 },
           enabled: { type: 'boolean', default: true },
         },
       },
@@ -204,7 +204,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           stattrak_filter: { type: 'string', enum: ['all', 'only', 'exclude'] },
           souvenir_filter: { type: 'string', enum: ['all', 'only', 'exclude'] },
           sticker_filter: { type: 'string', enum: ['all', 'only', 'exclude'] },
-          webhook_ids: { type: 'array', items: { type: 'number' }, minItems: 0, maxItems: 10 },
+          webhook_ids: { type: 'array', items: { type: 'integer', minimum: 1 }, minItems: 0, maxItems: 10 },
           enabled: { type: 'boolean', default: true },
         },
       },
@@ -383,7 +383,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         properties: {
           rule_ids: { 
             type: 'array', 
-            items: { type: 'number' },
+            items: { type: 'integer', minimum: 1 },
             maxItems: 50,
             description: 'Array of rule IDs to enable. If empty or not provided, enables all rules'
           },
@@ -452,7 +452,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         properties: {
           rule_ids: { 
             type: 'array', 
-            items: { type: 'number' },
+            items: { type: 'integer', minimum: 1 },
             maxItems: 50,
             description: 'Array of rule IDs to disable. If empty or not provided, disables all rules'
           },
@@ -521,7 +521,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         properties: {
           rule_ids: { 
             type: 'array', 
-            items: { type: 'number' },
+            items: { type: 'integer', minimum: 1 },
             maxItems: 50,
             description: 'Array of rule IDs to delete. If empty or not provided, deletes all rules'
           },

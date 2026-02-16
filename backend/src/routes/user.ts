@@ -1120,7 +1120,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          credential: { type: 'object' },
+          credential: { type: 'object', maxProperties: 20 },
           name: { type: 'string', maxLength: 64 },
         },
         required: ['credential'],
@@ -1286,7 +1286,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
-          limit: { type: 'number', default: 100, maximum: 500 },
+          limit: { type: 'integer', minimum: 1, default: 100, maximum: 500 },
         },
       },
       response: {

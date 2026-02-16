@@ -320,7 +320,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         properties: {
           webhook_ids: { 
             type: 'array', 
-            items: { type: 'number' },
+            items: { type: 'integer', minimum: 1 },
             maxItems: 20,
             description: 'Array of webhook IDs to enable. If empty or not provided, enables all webhooks'
           },
@@ -387,7 +387,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         properties: {
           webhook_ids: { 
             type: 'array', 
-            items: { type: 'number' },
+            items: { type: 'integer', minimum: 1 },
             maxItems: 20,
             description: 'Array of webhook IDs to disable. If empty or not provided, disables all webhooks'
           },
@@ -454,7 +454,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         properties: {
           webhook_ids: { 
             type: 'array', 
-            items: { type: 'number' },
+            items: { type: 'integer', minimum: 1 },
             maxItems: 20,
             description: 'Array of webhook IDs to delete. If empty, deletes all webhooks (requires confirm_all)'
           },
