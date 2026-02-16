@@ -188,6 +188,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       case "login_success": {
         const method = String(data['method'] || '');
         if (method === '2fa') return 'Login with 2FA';
+        if (method === 'passkey') return 'Login with passkey';
         if (method.startsWith('oauth_')) {
           const provider = method.replace('oauth_', '');
           const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
@@ -252,6 +253,15 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       
       case "user_demoted":
         return `Demoted by ${String(data['admin_username']) || `admin #${String(data['admin_id'])}`}`;
+      
+      case "passkey_registered": {
+        const pkName = String(data['name'] || 'Passkey');
+        const pkType = data['device_type'] === 'singleDevice' ? ' (hardware key)' : data['device_type'] === 'multiDevice' ? ' (synced)' : '';
+        return `Passkey "${pkName}" registered${pkType}`;
+      }
+      
+      case "passkey_deleted":
+        return `Passkey removed`;
       
       case "user_deleted":
         return "";

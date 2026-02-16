@@ -5,13 +5,14 @@ import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
 import { validateRegistration, validateLogin } from '@/lib/validation'
 import { apiClient } from '@/lib/api'
+import { startAuthentication } from '@simplewebauthn/browser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Eye, EyeOff, Mail, Lock, User, Shield } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Shield, Fingerprint } from 'lucide-react'
 import Link from 'next/link'
 
 interface AuthFormProps {
@@ -368,6 +369,51 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     }
   }
 
+  const handlePasskeyLogin = async () => {
+    setError('')
+    setIsLoading(true)
+    try {
+      const optionsRes = await apiClient.getPasskeyAuthOptions()
+      if (!optionsRes.success || !optionsRes.data) {
+        setError(optionsRes.message || 'Failed to start passkey authentication')
+        return
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+      const opts = optionsRes.data as any
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const challengeKey = String(opts.challengeKey || '')
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const publicKeyOptions = opts.options
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const assertion = await startAuthentication({ optionsJSON: publicKeyOptions })
+
+      const verifyRes = await apiClient.verifyPasskeyAuth(assertion, challengeKey)
+      if (verifyRes.success && verifyRes.data) {
+        // The auth context doesn't expose setUser directly, so we use localStorage + reload
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('has_session', 'true')
+        }
+        toast({
+          title: '✅ Welcome back!',
+          description: 'Signed in with passkey',
+        })
+        window.location.href = '/'
+      } else {
+        setError(verifyRes.message || 'Passkey authentication failed')
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+        // User cancelled — silently ignore
+        return
+      }
+      setError(err instanceof Error ? err.message : 'Passkey authentication failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const isLogin = mode === 'login'
 
   return (
@@ -662,6 +708,31 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                     isLogin ? 'Sign In' : 'Create Account'
                   )}
                 </Button>
+
+                {/* Passkey sign-in (login only) */}
+                {isLogin && (
+                  <>
+                    <div className="relative my-2">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={isLoading}
+                      onClick={() => void handlePasskeyLogin()}
+                    >
+                      <Fingerprint className="mr-2 h-4 w-4" />
+                      Sign in with a passkey
+                    </Button>
+                  </>
+                )}
 
                 {/* OAuth providers */}
                 {oauthProviders.length > 0 && (
