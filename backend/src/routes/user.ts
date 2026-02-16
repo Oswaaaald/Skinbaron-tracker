@@ -1073,6 +1073,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       const existingKeys = await store.passkeys.findByUserId(userId);
 
+      // Limit max passkeys per user
+      if (existingKeys.length >= 10) {
+        throw new AppError(400, 'Maximum of 10 passkeys allowed per account', 'MAX_PASSKEYS_REACHED');
+      }
+
       const options = await generateRegistrationOptions({
         rpName,
         rpID,
@@ -1123,13 +1128,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { credential, name } = request.body as { credential: unknown; name?: string };
+      const { credential, name: rawName } = request.body as { credential: unknown; name?: string };
+
+      // Sanitize passkey name
+      const name = rawName ? rawName.trim().replace(/[<>]/g, '').slice(0, 64) : undefined;
 
       const challengeEntry = pendingWebAuthnChallenges.get(`registration:${userId}`);
       if (!challengeEntry || Date.now() > challengeEntry.expiresAt) {
         pendingWebAuthnChallenges.delete(`registration:${userId}`);
         throw new AppError(400, 'Registration challenge expired. Please try again.', 'CHALLENGE_EXPIRED');
       }
+
+      // Consume challenge immediately (single-use, prevents replay)
+      pendingWebAuthnChallenges.delete(`registration:${userId}`);
 
       const verification = await verifyRegistrationResponse({
         response: credential as Parameters<typeof verifyRegistrationResponse>[0]['response'],
@@ -1142,8 +1153,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
       if (!verification.verified || !verification.registrationInfo) {
         throw new AppError(400, 'Passkey verification failed', 'VERIFICATION_FAILED');
       }
-
-      pendingWebAuthnChallenges.delete(`registration:${userId}`);
 
       const { credential: cred, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
 

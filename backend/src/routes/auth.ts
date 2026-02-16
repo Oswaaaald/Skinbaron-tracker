@@ -1312,7 +1312,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const passkey = await store.passkeys.findByCredentialId(cred.id);
       if (!passkey) {
-        throw new AppError(401, 'Passkey not recognized', 'PASSKEY_NOT_FOUND');
+        // Don't reveal whether the credential exists — use generic message
+        throw new AppError(401, 'Authentication failed', 'AUTH_FAILED');
       }
 
       let verification;
@@ -1332,22 +1333,23 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       } catch (verifyErr) {
         request.log.error({ err: verifyErr }, 'verifyAuthenticationResponse failed');
-        const msg = verifyErr instanceof Error ? verifyErr.message : 'Passkey verification failed';
-        throw new AppError(401, msg, 'VERIFICATION_FAILED');
+        pendingPasskeyAuthnChallenges.delete(challengeKey);
+        throw new AppError(401, 'Authentication failed', 'VERIFICATION_FAILED');
       }
+
+      // Consume challenge immediately after successful verification (single-use)
+      pendingPasskeyAuthnChallenges.delete(challengeKey);
 
       if (!verification.verified) {
-        throw new AppError(401, 'Passkey verification failed', 'VERIFICATION_FAILED');
+        throw new AppError(401, 'Authentication failed', 'VERIFICATION_FAILED');
       }
-
-      pendingPasskeyAuthnChallenges.delete(challengeKey);
 
       // Update counter
       await store.passkeys.updateCounter(passkey.credential_id, verification.authenticationInfo.newCounter);
 
       // Look up the user
       const user = await store.getUserById(passkey.user_id);
-      if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+      if (!user) throw new AppError(401, 'Authentication failed', 'AUTH_FAILED');
       if (!user.is_approved) throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
 
       // Generate tokens and set cookies
