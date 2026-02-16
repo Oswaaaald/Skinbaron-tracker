@@ -601,6 +601,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
    * Initiate OAuth flow — redirect to provider authorization page
    */
   fastify.get<{ Params: { provider: string }; Querystring: { mode?: string } }>('/oauth/:provider', {
+    config: { rateLimit: authRateLimitConfig },
     schema: {
       description: 'Initiate OAuth flow — redirects to provider authorization page',
       tags: ['Authentication'],
@@ -653,6 +654,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { provider: string }; Querystring: { code?: string; state?: string; error?: string } }>(
     '/oauth/:provider/callback',
     {
+      config: { rateLimit: authRateLimitConfig },
       schema: {
         description: 'OAuth callback — exchange authorization code for tokens and log the user in',
         tags: ['Authentication'],
@@ -792,7 +794,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           if (existingOAuth.provider_email !== userInfo.email) {
             await store.updateOAuthProviderEmail(provider, userInfo.id, userInfo.email);
             request.log.info(
-              { userId, provider, oldEmail: existingOAuth.provider_email, newEmail: userInfo.email },
+              { userId, provider, emailChanged: true },
               'Updated OAuth provider_email after provider-side change',
             );
           }
@@ -915,6 +917,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
    * Reads the encrypted pending-reg cookie set during OAuth callback.
    */
   fastify.get('/oauth-pending-registration', {
+    config: { rateLimit: authRateLimitConfig },
     schema: {
       description: 'Get pending OAuth registration data (email, suggested username)',
       tags: ['Authentication'],
