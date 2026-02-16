@@ -174,6 +174,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         request.headers['user-agent']
       );
 
+      // Revoke all refresh tokens so the user cannot obtain new access tokens
+      await store.revokeAllRefreshTokensForUser(id);
+
+      // Invalidate user cache so the auth middleware immediately rejects requests
+      invalidateUserCache(id);
+
       // Delete user (CASCADE will handle rules, alerts, webhooks)
       const deleted = await store.deleteUser(id);
 
