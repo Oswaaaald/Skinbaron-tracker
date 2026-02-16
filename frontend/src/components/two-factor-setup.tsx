@@ -155,7 +155,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
               <LoadingState variant="inline" />
             ) : setupData ? (
               <>
-                <div className="flex justify-center p-4 bg-white rounded-lg">
+                <div className="flex justify-center p-4 bg-card border rounded-lg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img 
                     src={setupData.qrCode} 
@@ -177,7 +177,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
                       onClick={copySecret}
                     >
                       {copiedSecret ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-primary" />
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
@@ -271,7 +271,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
                 >
                   {copiedCodes ? (
                     <>
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                      <CheckCircle className="h-4 w-4 mr-2 text-primary" />
                       Copied!
                     </>
                   ) : (
@@ -291,9 +291,9 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
               </div>
             </div>
 
-            <Alert>
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-600 dark:text-green-400">
+            <Alert className="border-primary/50 bg-primary/10">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">
                 Two-factor authentication has been enabled successfully!
               </AlertDescription>
             </Alert>

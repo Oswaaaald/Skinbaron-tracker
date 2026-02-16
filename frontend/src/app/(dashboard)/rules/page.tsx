@@ -16,15 +16,15 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Alert Rules</h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Manage your custom skin monitoring rules
           </p>
         </div>
-        <Button onClick={() => setIsRuleDialogOpen(true)}>
+        <Button onClick={() => setIsRuleDialogOpen(true)} className="w-full sm:w-auto">
           Create Rule
         </Button>
       </div>

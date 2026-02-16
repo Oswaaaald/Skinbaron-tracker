@@ -43,18 +43,19 @@ export function DashboardNav() {
     <>
       {navItems.map((item) => {
         const Icon = item.icon
+        const active = isActive(item.href)
         return (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-              isActive(item.href)
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150",
+              active
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5" />
             {item.label}
           </Link>
         )
@@ -62,21 +63,22 @@ export function DashboardNav() {
       
       {user?.is_admin && (
         <>
-          <div className="w-px h-6 bg-border mx-2" />
+          <div className="w-px h-5 bg-border mx-1" />
           {adminNavItems.map((item) => {
             const Icon = item.icon
+            const active = isActive(item.href)
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  isActive(item.href)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {item.label}
               </Link>
             )
@@ -89,7 +91,7 @@ export function DashboardNav() {
   return (
     <>
       {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center gap-1">
+      <nav className="hidden md:flex items-center gap-0.5">
         <NavLinks />
       </nav>
     </>
@@ -111,16 +113,17 @@ export function MobileNavTrigger() {
     <>
       {navItems.map((item) => {
         const Icon = item.icon
+        const active = isActive(item.href)
         return (
           <Link
             key={item.href}
             href={item.href}
             onClick={() => mobile && setOpen(false)}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-              isActive(item.href)
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              "flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150",
+              active
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent",
               mobile && "w-full"
             )}
           >
@@ -132,19 +135,20 @@ export function MobileNavTrigger() {
       
       {user?.is_admin && (
         <>
-          <div className={cn("bg-border", mobile ? "h-px w-full my-2" : "w-px h-6 mx-2")} />
+          <div className={cn("bg-border", mobile ? "h-px w-full my-2" : "w-px h-5 mx-1")} />
           {adminNavItems.map((item) => {
             const Icon = item.icon
+            const active = isActive(item.href)
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => mobile && setOpen(false)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                  isActive(item.href)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  "flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
                   mobile && "w-full"
                 )}
               >

@@ -52,19 +52,19 @@ export default function RootLayout({
                 <main className="flex-1">
                   {children}
                 </main>
-                <footer className="border-t border-border/50 bg-muted/30 h-[88px] sm:h-[56px] flex items-center shrink-0">
-                  <div className="container mx-auto px-4 text-sm text-muted-foreground flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <span>© 2026 SkinBaron Tracker. Personal non-commercial project.</span>
-                    <div className="flex gap-4">
-                      <Link className="hover:text-foreground transition-colors" href="/tos">Terms &amp; Legal</Link>
-                      <Link className="hover:text-foreground transition-colors" href="/privacy">Privacy Policy</Link>
+                <footer className="border-t border-border/40 bg-muted/20">
+                  <div className="container mx-auto px-4 py-4 text-[13px] text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span>&copy; 2026 SkinBaron Tracker</span>
+                    <div className="flex items-center gap-5">
+                      <Link className="hover:text-foreground transition-colors" href="/tos">Terms</Link>
+                      <Link className="hover:text-foreground transition-colors" href="/privacy">Privacy</Link>
                       <a 
                         href="https://github.com/Oswaaaald" 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="hover:text-foreground transition-colors flex items-center gap-1"
+                        className="hover:text-foreground transition-colors flex items-center gap-1.5"
                       >
-                        <Github className="h-4 w-4" />
+                        <Github className="h-3.5 w-3.5" />
                         GitHub
                       </a>
                     </div>

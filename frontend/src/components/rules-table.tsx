@@ -298,7 +298,7 @@ export function RulesTable() {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-center text-red-600" role="alert">
+          <div className="text-center text-destructive text-sm" role="alert">
             Error loading rules: {extractErrorMessage(error)}
           </div>
         </CardContent>
@@ -310,9 +310,9 @@ export function RulesTable() {
 
   if (rules.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No Rules Found</CardTitle>
+      <Card className="border-dashed">
+        <CardHeader className="items-center text-center py-10">
+          <CardTitle className="text-base">No Rules Found</CardTitle>
           <CardDescription>
             Create your first rule to start monitoring SkinBaron for CS2 skins.
           </CardDescription>
@@ -367,7 +367,7 @@ export function RulesTable() {
             </div>
           </CardHeader>
         )}
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -498,7 +498,7 @@ export function RulesTable() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={() => handleDelete(rule)}
-                          className="text-red-600"
+                          className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete

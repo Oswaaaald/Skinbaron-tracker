@@ -35,19 +35,17 @@ export function CookieBanner() {
     <div
       role="status"
       aria-label="Cookie notice"
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 p-4 md:p-6"
+      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-50 rounded-lg border border-border/60 bg-background/95 backdrop-blur-lg shadow-lg p-4"
     >
-      <div className="container mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 max-w-4xl">
-        <p className="text-sm text-muted-foreground">
-          This site uses only essential cookies for authentication and security. No tracking or analytics cookies are used.{' '}
-          <Link href="/privacy" className="underline hover:text-foreground">
-            Privacy Policy
-          </Link>
-        </p>
-        <Button size="sm" onClick={dismiss}>
-          Got it
-        </Button>
-      </div>
+      <p className="text-xs leading-relaxed text-muted-foreground mb-3">
+        This site uses essential cookies only for authentication and security. No tracking or analytics.{' '}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground transition-colors">
+          Learn more
+        </Link>
+      </p>
+      <Button size="sm" className="w-full" onClick={dismiss}>
+        Got it
+      </Button>
     </div>
   )
 }

@@ -371,10 +371,11 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const isLogin = mode === 'login'
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4" style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}>
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative" style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}>
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.65_0.19_280/0.1),transparent)]" />
+      <Card className="w-full max-w-md border-border/50 shadow-lg">
+        <CardHeader className="space-y-1.5 text-center pb-2">
+          <CardTitle className="text-2xl font-bold tracking-tight">
             {oauthPendingRegistration
               ? 'Finalize Registration'
               : (requires2FA || oauthPending2FA)
@@ -382,7 +383,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 : (isLogin ? 'Welcome Back' : 'Create Account')
             }
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             {oauthPendingRegistration
               ? 'Choose your username and accept the terms to create your account'
               : (requires2FA || oauthPending2FA) 

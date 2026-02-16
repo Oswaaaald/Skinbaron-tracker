@@ -12,10 +12,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Profile & Settings</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl font-bold tracking-tight">Profile &amp; Settings</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Manage your account and preferences
         </p>
       </div>

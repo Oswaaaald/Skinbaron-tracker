@@ -330,9 +330,9 @@ export function ProfileSettings() {
     <div className="space-y-6">
       {/* Success/Error Messages */}
       {formState.general.success && (
-        <Alert className="border-green-500/50 bg-green-500/10">
-          <CheckCircle className="h-4 w-4 text-green-500" />
-          <AlertDescription className="text-green-500">{formState.general.success}</AlertDescription>
+        <Alert className="border-primary/50 bg-primary/10">
+          <CheckCircle className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-primary">{formState.general.success}</AlertDescription>
         </Alert>
       )}
       
@@ -398,9 +398,9 @@ export function ProfileSettings() {
         <CardContent>
           {/* Profile update messages */}
           {formState.profile.success && (
-            <Alert className="border-green-500/50 bg-green-500/10 mb-4">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-500">{formState.profile.success}</AlertDescription>
+            <Alert className="border-primary/50 bg-primary/10 mb-4">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">{formState.profile.success}</AlertDescription>
             </Alert>
           )}
           
@@ -513,9 +513,9 @@ export function ProfileSettings() {
         <CardContent>
           {/* Password change messages */}
           {formState.password.success && (
-            <Alert className="border-green-500/50 bg-green-500/10 mb-4">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertDescription className="text-green-500">{formState.password.success}</AlertDescription>
+            <Alert className="border-primary/50 bg-primary/10 mb-4">
+              <CheckCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-primary">{formState.password.success}</AlertDescription>
             </Alert>
           )}
           

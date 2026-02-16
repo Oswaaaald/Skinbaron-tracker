@@ -446,9 +446,9 @@ export function WebhooksTable() {
               Add Webhook
             </Button>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>No Webhooks Found</CardTitle>
+          <Card className="border-dashed">
+            <CardHeader className="items-center text-center py-10">
+              <CardTitle className="text-base">No Webhooks Found</CardTitle>
               <CardDescription>
                 Create your first webhook to receive Discord notifications when alerts are triggered.
               </CardDescription>
@@ -516,6 +516,7 @@ export function WebhooksTable() {
             </div>
           </div>
         </CardHeader>
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -591,7 +592,7 @@ export function WebhooksTable() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(webhook)}
-                          className="text-red-600"
+                          className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
@@ -603,6 +604,7 @@ export function WebhooksTable() {
               ))}
             </TableBody>
           </Table>
+        </div>
       </Card>
       {renderDialogs()}
     </div>

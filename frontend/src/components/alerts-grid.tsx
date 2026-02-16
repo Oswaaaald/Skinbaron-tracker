@@ -228,196 +228,201 @@ export function AlertsGrid() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex gap-4 items-end flex-wrap">
-        <div>
-          <label htmlFor="item-filter" className="text-sm font-medium mb-2 block">
-            Item
-          </label>
-          <Select
-            value={itemNameFilter || 'all'}
-            onValueChange={(value) => {
-              setItemNameFilter(value === 'all' ? '' : value)
-              setPage(0)
+      <Card className="border-border/40">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label htmlFor="item-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Item
+              </label>
+              <Select
+                value={itemNameFilter || 'all'}
+                onValueChange={(value) => {
+                  setItemNameFilter(value === 'all' ? '' : value)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Filter alerts by item">
+                  <SelectValue placeholder="All items" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectItem value="all">All Items</SelectItem>
+                  {itemNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name.length > 35 ? name.substring(0, 35) + '...' : name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="wear-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Wear
+              </label>
+              <Select
+                value={wearFilter}
+                onValueChange={(value) => {
+                  setWearFilter(value)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Filter by wear condition">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Conditions</SelectItem>
+                  <SelectItem value="fn">Factory New</SelectItem>
+                  <SelectItem value="mw">Minimal Wear</SelectItem>
+                  <SelectItem value="ft">Field-Tested</SelectItem>
+                  <SelectItem value="ww">Well-Worn</SelectItem>
+                  <SelectItem value="bs">Battle-Scarred</SelectItem>
+                  <SelectItem value="no_wear">No Wear</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="sticker-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Stickers
+              </label>
+              <Select
+                value={stickerFilter}
+                onValueChange={(value) => {
+                  setStickerFilter(value)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Filter Sticker items">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="only">With Stickers</SelectItem>
+                  <SelectItem value="exclude">No Stickers</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="stattrak-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                StatTrak™
+              </label>
+              <Select
+                value={statTrakFilter}
+                onValueChange={(value) => {
+                  setStatTrakFilter(value)
+                  setPage(0)
             }}
           >
-            <SelectTrigger className="w-[220px]" aria-label="Filter alerts by item">
-              <SelectValue placeholder="All items" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              <SelectItem value="all">All Items</SelectItem>
-              {itemNames.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name.length > 35 ? name.substring(0, 35) + '...' : name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label htmlFor="wear-filter" className="text-sm font-medium mb-2 block">
-            Wear
-          </label>
-          <Select
-            value={wearFilter}
-            onValueChange={(value) => {
-              setWearFilter(value)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[160px]" aria-label="Filter by wear condition">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Conditions</SelectItem>
-              <SelectItem value="fn">Factory New</SelectItem>
-              <SelectItem value="mw">Minimal Wear</SelectItem>
-              <SelectItem value="ft">Field-Tested</SelectItem>
-              <SelectItem value="ww">Well-Worn</SelectItem>
-              <SelectItem value="bs">Battle-Scarred</SelectItem>
-              <SelectItem value="no_wear">No Wear</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label htmlFor="sticker-filter" className="text-sm font-medium mb-2 block">
-            Stickers
-          </label>
-          <Select
-            value={stickerFilter}
-            onValueChange={(value) => {
-              setStickerFilter(value)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[140px]" aria-label="Filter Sticker items">
+            <SelectTrigger className="w-full" aria-label="Filter StatTrak items">
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="only">Only Stickers</SelectItem>
-              <SelectItem value="exclude">No Stickers</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label htmlFor="stattrak-filter" className="text-sm font-medium mb-2 block">
-            StatTrak™
-          </label>
-          <Select
-            value={statTrakFilter}
-            onValueChange={(value) => {
-              setStatTrakFilter(value)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[140px]" aria-label="Filter StatTrak items">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="only">Only StatTrak™</SelectItem>
+              <SelectItem value="only">StatTrak™ Only</SelectItem>
               <SelectItem value="exclude">No StatTrak™</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div>
-          <label htmlFor="souvenir-filter" className="text-sm font-medium mb-2 block">
-            Souvenir
-          </label>
-          <Select
-            value={souvenirFilter}
-            onValueChange={(value) => {
-              setSouvenirFilter(value)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[140px]" aria-label="Filter Souvenir items">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="only">Only Souvenir</SelectItem>
-              <SelectItem value="exclude">No Souvenir</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label htmlFor="sort-by" className="text-sm font-medium mb-2 block">
-            Sort By
-          </label>
-          <Select
-            value={sortBy}
-            onValueChange={(value) => {
-              setSortBy(value as typeof sortBy)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[180px]" aria-label="Sort alerts">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">Date (Newest)</SelectItem>
-              <SelectItem value="price_asc">Price (Low to High)</SelectItem>
-              <SelectItem value="price_desc">Price (High to Low)</SelectItem>
-              <SelectItem value="wear_asc">Wear (Low to High)</SelectItem>
-              <SelectItem value="wear_desc">Wear (High to Low)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label className="text-sm font-medium mb-2 block">
-            Actions
-          </label>
-          <Button
-            variant="outline"
-            onClick={handleClearAllAlerts}
-            disabled={isClearingAll}
-            className="w-[180px]"
-          >
-            {isClearingAll ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" inline />
-                Clearing...
-              </>
-            ) : (
-              'Clear All Alerts'
-            )}
-          </Button>
-        </div>
-      </div>
+            </div>
+            <div>
+              <label htmlFor="souvenir-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Souvenir
+              </label>
+              <Select
+                value={souvenirFilter}
+                onValueChange={(value) => {
+                  setSouvenirFilter(value)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Filter Souvenir items">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="only">Souvenir Only</SelectItem>
+                  <SelectItem value="exclude">No Souvenir</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="sort-by" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Sort By
+              </label>
+              <Select
+                value={sortBy}
+                onValueChange={(value) => {
+                  setSortBy(value as typeof sortBy)
+                  setPage(0)
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Sort alerts">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Date (Newest)</SelectItem>
+                  <SelectItem value="price_asc">Price (Low to High)</SelectItem>
+                  <SelectItem value="price_desc">Price (High to Low)</SelectItem>
+                  <SelectItem value="wear_asc">Wear (Low to High)</SelectItem>
+                  <SelectItem value="wear_desc">Wear (High to Low)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+            <p className="text-xs text-muted-foreground">
+              {filteredAlerts.length} result{filteredAlerts.length !== 1 ? 's' : ''}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAllAlerts}
+              disabled={isClearingAll}
+              className="text-destructive hover:text-destructive h-8 text-xs"
+            >
+              {isClearingAll ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-1.5" inline />
+                  Clearing...
+                </>
+              ) : (
+                'Clear All Alerts'
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Grid */}
       {alerts.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center text-muted-foreground" role="status" aria-live="polite">
-            No alerts found matching your criteria.
+        <Card className="border-dashed border-border/50">
+          <CardContent className="p-16 text-center" role="status" aria-live="polite">
+            <p className="text-muted-foreground text-sm">No alerts found matching your criteria.</p>
           </CardContent>
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {alerts.map((alert, index) => {
               const isLCP = index === 0
               return (
                 <Card
                   key={alert.id}
-                  className="group relative overflow-hidden border border-border/70 bg-muted/60 shadow-sm hover:border-primary/50 transition-colors flex flex-col p-0 will-change-[border-color]"
+                  className="group relative overflow-hidden border-border/50 bg-card shadow-sm hover:shadow-md hover:border-border transition-all duration-200 flex flex-col p-0"
                 >
                   {/* Image Header */}
-                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95">
                     {alert.skin_url ? (
                       <Image
                         src={alert.skin_url}
                         alt={alert.item_name}
                         fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                         className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
                         priority={isLCP}
                         fetchPriority={isLCP ? "high" : "low"}
                         loading={isLCP ? "eager" : "lazy"}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                      <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
                         No Image
                       </div>
                     )}
@@ -426,17 +431,17 @@ export function AlertsGrid() {
                     {(alert.stattrak || alert.souvenir || alert.has_stickers) && (
                       <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
                         {alert.stattrak && (
-                          <Badge variant="outline" className="text-[11px] font-semibold bg-background/80 backdrop-blur-sm shadow-sm">
+                          <Badge className="text-[10px] font-medium bg-orange-500/90 text-white border-0 backdrop-blur-sm shadow-sm">
                             StatTrak™
                           </Badge>
                         )}
                         {alert.souvenir && (
-                          <Badge variant="outline" className="text-[11px] font-semibold bg-background/80 backdrop-blur-sm shadow-sm">
+                          <Badge className="text-[10px] font-medium bg-yellow-500/90 text-white border-0 backdrop-blur-sm shadow-sm">
                             Souvenir
                           </Badge>
                         )}
                         {alert.has_stickers && (
-                          <Badge variant="outline" className="text-[11px] font-semibold bg-background/80 backdrop-blur-sm shadow-sm">
+                          <Badge className="text-[10px] font-medium bg-sky-500/90 text-white border-0 backdrop-blur-sm shadow-sm">
                             Stickers
                           </Badge>
                         )}
@@ -444,29 +449,29 @@ export function AlertsGrid() {
                     )}
 
                     {/* Date */}
-                    <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-[11px] font-semibold">
+                    <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white/90 px-1.5 py-0.5 rounded text-[10px] font-medium">
                       {formatShortDate(alert.sent_at)}
                     </div>
 
                     {/* Price pill */}
-                    <div className="absolute bottom-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full shadow-lg text-sm font-semibold">
+                    <div className="absolute bottom-2.5 left-2.5 bg-primary text-primary-foreground px-2.5 py-1 rounded-full shadow-lg text-[13px] font-bold">
                       {formatPrice(alert.price)}
                     </div>
 
                     {/* Wear */}
                     {alert.wear_value !== undefined && alert.wear_value !== null ? (
-                      <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-semibold">
+                      <div className="absolute bottom-2.5 right-2.5 bg-black/50 backdrop-blur-sm text-white/90 px-1.5 py-0.5 rounded text-[11px] font-medium">
                         {formatWearPercentage(alert.wear_value)}
                       </div>
                     ) : (
-                      <div className="absolute bottom-3 right-3 bg-muted/80 backdrop-blur-sm text-muted-foreground px-2 py-0.5 rounded-md shadow-sm text-xs font-semibold">
+                      <div className="absolute bottom-2.5 right-2.5 bg-black/30 backdrop-blur-sm text-white/60 px-1.5 py-0.5 rounded text-[11px] font-medium">
                         No Wear
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 flex flex-col justify-between px-3 pb-2.5 pt-2 gap-1.5">
-                    <CardTitle className="text-sm leading-snug line-clamp-2">
+                  <div className="flex-1 flex flex-col justify-between px-3 pb-3 pt-2.5 gap-2">
+                    <CardTitle className="text-[13px] leading-snug line-clamp-2 font-medium">
                       {alert.item_name}
                     </CardTitle>
 
@@ -488,18 +493,18 @@ export function AlertsGrid() {
           </div>
 
           {/* Pagination */}
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
-              Showing {page * ALERTS_PAGE_SIZE + 1} - {page * ALERTS_PAGE_SIZE + alerts.length} alerts
-            </div>
-            <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+            <p className="text-xs text-muted-foreground order-2 sm:order-1" aria-live="polite" aria-atomic="true">
+              Showing {page * ALERTS_PAGE_SIZE + 1}–{page * ALERTS_PAGE_SIZE + alerts.length} alerts
+            </p>
+            <div className="flex gap-2 order-1 sm:order-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" />
                 Previous
               </Button>
               <Button
@@ -509,7 +514,7 @@ export function AlertsGrid() {
                 disabled={!hasMorePages}
               >
                 Next
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
               </Button>
             </div>
           </div>

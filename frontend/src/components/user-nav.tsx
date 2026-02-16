@@ -19,13 +19,13 @@ export function UserNav() {
     .slice(0, 2)
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3">
       <span className="hidden sm:inline text-sm text-muted-foreground">
-        Welcome, {user.username}
+        {user.username}
       </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 w-8 rounded-full p-0 overflow-hidden">
+          <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 overflow-hidden ring-1 ring-border hover:ring-primary/50 transition-all">
             {user.avatar_url ? (
               <Image 
                 src={user.avatar_url} 
@@ -50,7 +50,7 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => { void logout() }} className="text-red-600 focus:text-red-600">
+          <DropdownMenuItem onClick={() => { void logout() }} className="text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>

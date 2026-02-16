@@ -37,21 +37,28 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="container mx-auto p-3 sm:p-4">
-      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2 sm:gap-4">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">SkinBaron Tracker</h1>
-        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
-          <ThemeToggle />
-          <UserNav />
-          <MobileNavTrigger />
+    <div className="min-h-[calc(100vh-56px)]">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex h-14 items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">SkinBaron Tracker</h1>
+              <DashboardNav />
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <ThemeToggle />
+              <UserNav />
+              <MobileNavTrigger />
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
       
-      <div className="mb-4 sm:mb-6">
-        <DashboardNav />
+      {/* Page content */}
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {children}
       </div>
-      
-      {children}
     </div>
   )
 }
