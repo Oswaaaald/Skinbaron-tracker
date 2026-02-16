@@ -531,9 +531,10 @@ export function AdminPanel() {
                   <TableCell className="font-medium">
                     <button
                       type="button"
-                      className="hover:underline text-left cursor-pointer text-primary"
+                      className="hover:underline text-left cursor-pointer text-primary flex items-center gap-1.5"
                       onClick={() => setDetailUserId(user.id)}
                     >
+                      <Eye className="h-3.5 w-3.5 shrink-0" />
                       {user.username}
                     </button>
                   </TableCell>
@@ -563,14 +564,6 @@ export function AdminPanel() {
                   })}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDetailUserId(user.id)}
-                        title="View user details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
                       {user.is_super_admin ? (
                         // Super Admin - show locked state
                         <>

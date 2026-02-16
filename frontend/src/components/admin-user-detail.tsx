@@ -219,7 +219,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-3 gap-3 text-sm">
                   <div className="bg-muted/50 rounded-md px-3 py-2">
                     <span className="text-muted-foreground text-xs">Rules</span>
                     <p className="font-bold">{detail.stats.active_rules_count} / {detail.stats.rules_count}</p>
@@ -229,6 +229,11 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                     <span className="text-muted-foreground text-xs">Webhooks</span>
                     <p className="font-bold">{detail.stats.active_webhooks_count} / {detail.stats.webhooks_count}</p>
                     <span className="text-[10px] text-muted-foreground">active / total</span>
+                  </div>
+                  <div className="bg-muted/50 rounded-md px-3 py-2">
+                    <span className="text-muted-foreground text-xs">Alerts</span>
+                    <p className="font-bold">{detail.stats.alerts_count}</p>
+                    <span className="text-[10px] text-muted-foreground">total received</span>
                   </div>
                 </div>
               </CardContent>

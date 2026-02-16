@@ -184,6 +184,7 @@ export interface AdminUserDetail {
     active_rules_count: number;
     webhooks_count: number;
     active_webhooks_count: number;
+    alerts_count: number;
   };
 }
 

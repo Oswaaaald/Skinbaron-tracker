@@ -156,11 +156,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Fetch related data in parallel
-      const [oauthAccounts, passkeysData, rules, webhooks] = await Promise.all([
+      const [oauthAccounts, passkeysData, rules, webhooks, userStats] = await Promise.all([
         store.oauth.findByUserId(id),
         store.passkeys.findByUserId(id),
         store.rules.findByUserId(id),
         store.webhooks.findByUserId(id, false), // don't decrypt webhook URLs
+        store.audit.getUserStats(id),
       ]);
 
       // GDPR audit: log admin data access
@@ -202,6 +203,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
             active_rules_count: rules.filter(r => r.enabled).length,
             webhooks_count: webhooks.length,
             active_webhooks_count: webhooks.filter(w => w.is_active).length,
+            alerts_count: userStats.totalAlerts,
           },
         },
       });
