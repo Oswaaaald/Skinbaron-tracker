@@ -48,7 +48,7 @@ export function AlertsGrid() {
   const [souvenirFilter, setSouvenirFilter] = useState<string>('all')
   const [wearFilter, setWearFilter] = useState<string>('all')
   const [stickerFilter, setStickerFilter] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc'>('date')
+  const [sortBy, setSortBy] = useState<'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc'>('price_asc')
   const [isClearingAll, setIsClearingAll] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
   const { toast } = useToast()
