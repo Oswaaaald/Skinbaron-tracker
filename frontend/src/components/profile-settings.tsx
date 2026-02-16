@@ -329,21 +329,18 @@ export function ProfileSettings() {
               <CardDescription>Use an authenticator app like Google Authenticator or Authy</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Status:</span>
-                    {twoFactorStatus?.enabled ? (<Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> Enabled</Badge>) : (<Badge variant="outline">Disabled</Badge>)}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{twoFactorStatus?.enabled ? 'Your account is protected with 2FA' : 'Use an authenticator app for extra security'}</p>
-                </div>
-                {twoFactorStatus?.enabled
-                  ? <Button variant="destructive" onClick={() => setDisableTwoFactorDialog(true)}>Disable 2FA</Button>
-                  : <Button onClick={() => setTwoFactorDialog(true)}>Enable 2FA</Button>}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Status:</span>
+                {twoFactorStatus?.enabled ? (<Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> Enabled</Badge>) : (<Badge variant="outline">Disabled</Badge>)}
               </div>
-              {twoFactorStatus?.enabled && (
+              {twoFactorStatus?.enabled ? (
                 <Alert><Shield className="h-4 w-4" /><AlertDescription>You&apos;ll be asked for a verification code when logging in. Keep your authenticator app accessible.</AlertDescription></Alert>
+              ) : (
+                <p className="text-sm text-muted-foreground">Add an extra layer of security by requiring a verification code when you log in.</p>
               )}
+              {twoFactorStatus?.enabled
+                ? <Button variant="destructive" onClick={() => setDisableTwoFactorDialog(true)}>Disable 2FA</Button>
+                : <Button onClick={() => setTwoFactorDialog(true)}>Enable 2FA</Button>}
             </CardContent>
           </Card>
 
@@ -351,9 +348,9 @@ export function ProfileSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Fingerprint className="h-5 w-5" /> Passkeys &amp; Hardware Keys</CardTitle>
-              <CardDescription>Sign in with biometrics, security keys (YubiKey), or device passkeys</CardDescription>
+              <CardDescription>Sign in with biometrics, security keys, or device passkeys</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
               <PasskeyManager />
             </CardContent>
           </Card>
