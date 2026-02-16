@@ -411,10 +411,10 @@ export function AdminPanel() {
         <TabsList className="w-full flex">
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Users</span></TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
-          <TabsTrigger value="system" className="flex items-center gap-1.5"><Activity className="h-4 w-4" /><span className="hidden sm:inline">System</span></TabsTrigger>
           {currentUser?.is_super_admin && (
             <TabsTrigger value="tools" className="flex items-center gap-1.5"><Wrench className="h-4 w-4" /><span className="hidden sm:inline">Tools</span></TabsTrigger>
           )}
+          <TabsTrigger value="system" className="flex items-center gap-1.5"><Activity className="h-4 w-4" /><span className="hidden sm:inline">System</span></TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
