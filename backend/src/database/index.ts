@@ -7,6 +7,7 @@ import { WebhooksRepository } from './repositories/webhooks.repository.js';
 import { AuthRepository } from './repositories/auth.repository.js';
 import { AuditRepository } from './repositories/audit.repository.js';
 import { OAuthRepository } from './repositories/oauth.repository.js';
+import { PasskeysRepository } from './repositories/passkeys.repository.js';
 import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog, OAuthAccount } from './schema.js';
 
 class Store {
@@ -17,6 +18,7 @@ class Store {
   public auth: AuthRepository;
   public audit: AuditRepository;
   public oauth: OAuthRepository;
+  public passkeys: PasskeysRepository;
 
   constructor(database: AppDatabase) {
     this.users = new UsersRepository(database);
@@ -26,6 +28,7 @@ class Store {
     this.auth = new AuthRepository(database);
     this.audit = new AuditRepository(database);
     this.oauth = new OAuthRepository(database);
+    this.passkeys = new PasskeysRepository(database);
   }
 
   // ==================== User operations ====================

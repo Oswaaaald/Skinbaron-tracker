@@ -5,20 +5,24 @@ import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, Shield, ShieldOff, Trash2, Users } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, Search, Shield, ShieldOff, Trash2, Users } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { extractErrorMessage } from '@/lib/utils'
-import { QUERY_KEYS, SLOW_POLL_INTERVAL } from '@/lib/constants'
+import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
 import { usePageVisible } from '@/hooks/use-page-visible'
 import { useSyncStats } from '@/hooks/use-sync-stats'
+import { useDebounce } from '@/hooks/use-debounce'
 
 interface UserStats {
   rules_count: number
@@ -65,17 +69,34 @@ export function AdminPanel() {
   const isVisible = usePageVisible()
   const { syncStats } = useSyncStats()
 
-  // Fetch users
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: [QUERY_KEYS.ADMIN_USERS],
+  // Pagination/sort/filter state
+  const [page, setPage] = useState(0)
+  const [sortBy, setSortBy] = useState<string>('created_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [searchInput, setSearchInput] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const debouncedSearch = useDebounce(searchInput, 400)
+
+  // Fetch users (paginated)
+  const { data: usersResponse, isLoading: usersLoading, isFetching: usersFetching } = useQuery({
+    queryKey: [QUERY_KEYS.ADMIN_USERS, page, sortBy, sortDir, debouncedSearch, roleFilter],
     queryFn: async () => {
-      const response = apiClient.ensureSuccess(await apiClient.get('/api/admin/users'), 'Failed to load users')
-      return response.data as AdminUser[]
+      const res = await apiClient.getAdminUsers({
+        limit: ADMIN_USERS_PAGE_SIZE,
+        offset: page * ADMIN_USERS_PAGE_SIZE,
+        sort_by: sortBy,
+        sort_dir: sortDir,
+        search: debouncedSearch || undefined,
+        role: roleFilter,
+      })
+      if (!res.success) throw new Error(res.message || 'Failed to load users')
+      return { users: (res.data ?? []) as AdminUser[], pagination: res.pagination }
     },
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
+    placeholderData: (prev) => prev,
   })
 
   // Fetch pending users
@@ -233,6 +254,20 @@ export function AdminPanel() {
     // Default to true (safe) when stats haven't loaded yet
     return !statsData || statsData.total_admins <= 1
   }
+
+  const toggleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortDir(column === 'created_at' ? 'desc' : 'asc')
+    }
+    setPage(0)
+  }
+
+  const usersData = usersResponse?.users
+  const totalUsers = usersResponse?.pagination?.total ?? 0
+  const totalPages = Math.ceil(totalUsers / ADMIN_USERS_PAGE_SIZE)
 
   const handleDeleteUser = (user: AdminUser) => {
     setDeleteDialog({ open: true, user })
@@ -401,6 +436,29 @@ export function AdminPanel() {
           <CardDescription>Manage users and their permissions</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Search + filters */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by username or email..."
+                value={searchInput}
+                onChange={(e) => { setSearchInput(e.target.value); setPage(0) }}
+                className="pl-8"
+              />
+            </div>
+            <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(0) }}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="All roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="admin">Admins</SelectItem>
+                <SelectItem value="user">Users</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {deleteUserMutation.error
             ? (() => {
                 const raw = deleteUserMutation.error;
@@ -436,21 +494,48 @@ export function AdminPanel() {
               })()
             : null}
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Rules</TableHead>
-                <TableHead>Alerts</TableHead>
-                <TableHead>Webhooks</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {usersData?.map((user) => (
+          <div className="relative">
+            {usersFetching && !usersLoading && (
+              <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center rounded-md">
+                <LoadingSpinner size="sm" />
+              </div>
+            )}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('username')}>
+                    <span className="flex items-center gap-1">Username <ArrowUpDown className="h-3 w-3" />{sortBy === 'username' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('email')}>
+                    <span className="flex items-center gap-1">Email <ArrowUpDown className="h-3 w-3" />{sortBy === 'email' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('role')}>
+                    <span className="flex items-center gap-1">Role <ArrowUpDown className="h-3 w-3" />{sortBy === 'role' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('rules')}>
+                    <span className="flex items-center gap-1">Rules <ArrowUpDown className="h-3 w-3" />{sortBy === 'rules' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('alerts')}>
+                    <span className="flex items-center gap-1">Alerts <ArrowUpDown className="h-3 w-3" />{sortBy === 'alerts' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('webhooks')}>
+                    <span className="flex items-center gap-1">Webhooks <ArrowUpDown className="h-3 w-3" />{sortBy === 'webhooks' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('created_at')}>
+                    <span className="flex items-center gap-1">Joined <ArrowUpDown className="h-3 w-3" />{sortBy === 'created_at' && <span className="text-xs">({sortDir})</span>}</span>
+                  </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(!usersData || usersData.length === 0) && !usersLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      {debouncedSearch || roleFilter !== 'all' ? 'No users match your filters' : 'No users found'}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {usersData?.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -582,6 +667,27 @@ export function AdminPanel() {
               ))}
             </TableBody>
           </Table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Showing {page * ADMIN_USERS_PAGE_SIZE + 1}–{Math.min((page + 1) * ADMIN_USERS_PAGE_SIZE, totalUsers)} of {totalUsers} users
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <span className="text-sm font-medium px-2">
+                  {page + 1} / {totalPages}
+                </span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -16,6 +16,9 @@ export const SLOW_POLL_INTERVAL = 30_000; // 30 seconds
 /** Number of alerts per page in the alerts grid */
 export const ALERTS_PAGE_SIZE = 12;
 
+/** Number of users per page in admin panel */
+export const ADMIN_USERS_PAGE_SIZE = 20;
+
 // ==================== AUDIT LOG CONFIGURATION ====================
 
 import { 
@@ -32,6 +35,7 @@ import {
   Link2,
   Unlink,
   UserPlus,
+  Fingerprint,
   type LucideIcon
 } from "lucide-react"
 
@@ -60,6 +64,8 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   oauth_register: { icon: UserPlus, label: "OAuth Registration", variant: "default" },
   oauth_linked: { icon: Link2, label: "Account Linked", variant: "default" },
   oauth_unlinked: { icon: Unlink, label: "Account Unlinked", variant: "secondary" },
+  passkey_registered: { icon: Fingerprint, label: "Passkey Registered", variant: "default" },
+  passkey_deleted: { icon: Fingerprint, label: "Passkey Deleted", variant: "secondary" },
 } as const;
 
 /** Event type options for filter dropdowns */
@@ -84,6 +90,8 @@ export const AUDIT_EVENT_TYPES = [
   { value: "oauth_register", label: "OAuth Registration" },
   { value: "oauth_linked", label: "Account Linked" },
   { value: "oauth_unlinked", label: "Account Unlinked" },
+  { value: "passkey_registered", label: "Passkey Registered" },
+  { value: "passkey_deleted", label: "Passkey Deleted" },
 ] as const;
 
 // ==================== QUERY KEYS ====================
@@ -107,6 +115,7 @@ export const QUERY_KEYS = {
   // 2FA
   TWO_FA_STATUS: '2fa-status',
   TWO_FA_SETUP: '2fa-setup',
+  PASSKEYS: 'passkeys',
   
   // System
   SYSTEM_STATUS: 'system-status',

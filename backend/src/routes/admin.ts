@@ -28,13 +28,24 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   };
 
   /**
-   * GET /api/admin/users - List all users (admin only)
+   * GET /api/admin/users - List all users (admin only) with pagination & sorting
    */
   fastify.get('/users', {
     schema: {
-      description: 'List all users (admin only)',
+      description: 'List all users with pagination (admin only)',
       tags: ['Admin'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', default: 20, minimum: 1, maximum: 100 },
+          offset: { type: 'number', default: 0, minimum: 0 },
+          sort_by: { type: 'string', enum: ['username', 'email', 'role', 'created_at', 'rules', 'alerts', 'webhooks'], default: 'created_at' },
+          sort_dir: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+          search: { type: 'string' },
+          role: { type: 'string', enum: ['admin', 'user', 'all'], default: 'all' },
+        },
+      },
       response: {
         200: {
           type: 'object',
@@ -62,14 +73,40 @@ export default async function adminRoutes(fastify: FastifyInstance) {
                 },
               },
             },
+            pagination: {
+              type: 'object',
+              properties: {
+                limit: { type: 'number' },
+                offset: { type: 'number' },
+                total: { type: 'number' },
+              },
+            },
           },
         },
       },
     },
   }, async (request, reply) => {
     try {
-      // Use optimized single query with stats instead of N+1 pattern
-      const usersWithStats = await store.getAllUsersWithStats();
+      const query = request.query as {
+        limit?: number;
+        offset?: number;
+        sort_by?: 'username' | 'email' | 'role' | 'created_at' | 'rules' | 'alerts' | 'webhooks';
+        sort_dir?: 'asc' | 'desc';
+        search?: string;
+        role?: 'admin' | 'user' | 'all';
+      };
+
+      const limit = query.limit ?? 20;
+      const offset = query.offset ?? 0;
+
+      const { data: usersWithStats, total } = await store.users.findAllWithStatsPaginated({
+        limit,
+        offset,
+        sortBy: query.sort_by,
+        sortDir: query.sort_dir,
+        search: query.search,
+        role: query.role,
+      });
 
       const result = usersWithStats.map(user => ({
         id: user.id,
@@ -84,6 +121,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       return reply.status(200).send({
         success: true,
         data: result,
+        pagination: { limit, offset, total },
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'List users');

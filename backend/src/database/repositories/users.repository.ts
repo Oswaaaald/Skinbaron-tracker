@@ -1,4 +1,4 @@
-import { eq, and, or, ilike, desc, count, sql, getTableColumns } from 'drizzle-orm';
+import { eq, and, or, ilike, desc, asc, count, sql, getTableColumns } from 'drizzle-orm';
 import { users } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
 import type { User } from '../schema.js';
@@ -78,6 +78,88 @@ export class UsersRepository {
         webhooks_count: row.webhooks_count,
       },
     }));
+  }
+
+  async findAllWithStatsPaginated(options: {
+    limit: number;
+    offset: number;
+    sortBy?: 'username' | 'email' | 'role' | 'created_at' | 'rules' | 'alerts' | 'webhooks';
+    sortDir?: 'asc' | 'desc';
+    search?: string;
+    role?: 'admin' | 'user' | 'all';
+  }): Promise<{ data: Array<typeof users.$inferSelect & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }>; total: number }> {
+    const { limit, offset, sortBy = 'created_at', sortDir = 'desc', search, role = 'all' } = options;
+
+    // Build conditions
+    const conditions = [eq(users.is_approved, true)];
+    if (role === 'admin') conditions.push(eq(users.is_admin, true));
+    else if (role === 'user') conditions.push(eq(users.is_admin, false));
+
+    if (search) {
+      const escaped = search.replace(/[%_\\]/g, '\\$&');
+      const pattern = `%${escaped}%`;
+      conditions.push(or(ilike(users.username, pattern), ilike(users.email, pattern))!);
+    }
+
+    const whereClause = conditions.length === 1 ? conditions[0]! : and(...conditions)!;
+
+    // Count total
+    const [countResult] = await this.db.select({ value: count() })
+      .from(users)
+      .where(whereClause);
+    const total = countResult?.value ?? 0;
+
+    // Build sort
+    const rulesCountSql = sql<number>`(SELECT COUNT(*)::int FROM rules WHERE rules.user_id = "users"."id")`;
+    const alertsCountSql = sql<number>`(SELECT COUNT(*)::int FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = "users"."id")`;
+    const webhooksCountSql = sql<number>`(SELECT COUNT(*)::int FROM user_webhooks WHERE user_webhooks.user_id = "users"."id")`;
+
+    const orderFn = sortDir === 'asc' ? asc : desc;
+    let orderBy;
+    switch (sortBy) {
+      case 'username': orderBy = orderFn(users.username); break;
+      case 'email': orderBy = orderFn(users.email); break;
+      case 'role': orderBy = orderFn(users.is_admin); break;
+      case 'rules': orderBy = orderFn(rulesCountSql); break;
+      case 'alerts': orderBy = orderFn(alertsCountSql); break;
+      case 'webhooks': orderBy = orderFn(webhooksCountSql); break;
+      default: orderBy = orderFn(users.created_at); break;
+    }
+
+    const result = await this.db.select({
+      ...getTableColumns(users),
+      rules_count: rulesCountSql,
+      alerts_count: alertsCountSql,
+      webhooks_count: webhooksCountSql,
+    }).from(users)
+      .where(whereClause)
+      .orderBy(orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      data: result.map(row => ({
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        password_hash: row.password_hash,
+        is_admin: row.is_admin,
+        is_super_admin: row.is_super_admin,
+        is_approved: row.is_approved,
+        totp_enabled: row.totp_enabled,
+        totp_secret_encrypted: row.totp_secret_encrypted,
+        recovery_codes_encrypted: row.recovery_codes_encrypted,
+        tos_accepted_at: row.tos_accepted_at,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        stats: {
+          rules_count: row.rules_count,
+          alerts_count: row.alerts_count,
+          webhooks_count: row.webhooks_count,
+        },
+      })),
+      total,
+    };
   }
 
   async findPendingUsers(): Promise<Array<typeof users.$inferSelect>> {

@@ -15,6 +15,11 @@ import {
   encryptOAuthPendingRegistration, decryptOAuthPendingRegistration, OAUTH_PENDING_REG_COOKIE,
 } from '../lib/oauth.js';
 import type { User } from '../database/schema.js';
+import {
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} from '@simplewebauthn/server';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
 
 /**
  * Shared 2FA verification logic used by both password login and OAuth 2FA.
@@ -1222,6 +1227,152 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
     },
   );
+
+  // ==================== Passkey Authentication ====================
+
+  const pendingPasskeyAuthnChallenges = new Map<string, { challenge: string; expiresAt: number }>();
+  const PASSKEY_CHALLENGE_TTL = 5 * 60 * 1000;
+
+  // Cleanup interval
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of pendingPasskeyAuthnChallenges) {
+      if (now > entry.expiresAt) pendingPasskeyAuthnChallenges.delete(key);
+    }
+  }, 5 * 60 * 1000).unref();
+
+  const rpID = appConfig.WEBAUTHN_RP_ID;
+  const rpOrigin = appConfig.WEBAUTHN_RP_ORIGIN;
+
+  /**
+   * POST /api/auth/passkey/authenticate-options - Generate authentication options (no auth required)
+   */
+  fastify.post('/passkey/authenticate-options', {
+    config: { rateLimit: authRateLimitConfig },
+    schema: {
+      description: 'Generate WebAuthn authentication options',
+      tags: ['Authentication'],
+    },
+  }, async (request, reply) => {
+    try {
+      const options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: 'preferred',
+      });
+
+      // Use a random key since the user is not yet identified
+      const challengeKey = crypto.randomBytes(16).toString('hex');
+      pendingPasskeyAuthnChallenges.set(challengeKey, {
+        challenge: options.challenge,
+        expiresAt: Date.now() + PASSKEY_CHALLENGE_TTL,
+      });
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          ...options,
+          challengeKey,
+        },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Passkey authenticate options');
+    }
+  });
+
+  /**
+   * POST /api/auth/passkey/authenticate-verify - Verify authentication response (no auth required)
+   */
+  fastify.post('/passkey/authenticate-verify', {
+    config: { rateLimit: authRateLimitConfig },
+    schema: {
+      description: 'Verify WebAuthn authentication',
+      tags: ['Authentication'],
+      body: {
+        type: 'object',
+        properties: {
+          credential: { type: 'object' },
+          challengeKey: { type: 'string' },
+        },
+        required: ['credential', 'challengeKey'],
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { credential, challengeKey } = request.body as { credential: unknown; challengeKey: string };
+
+      const challengeEntry = pendingPasskeyAuthnChallenges.get(challengeKey);
+      if (!challengeEntry || Date.now() > challengeEntry.expiresAt) {
+        pendingPasskeyAuthnChallenges.delete(challengeKey);
+        throw new AppError(400, 'Authentication challenge expired. Please try again.', 'CHALLENGE_EXPIRED');
+      }
+
+      // Extract credential ID from the response to find the passkey
+      const cred = credential as { id?: string; rawId?: string; response?: unknown };
+      if (!cred.id) throw new AppError(400, 'Missing credential ID', 'INVALID_CREDENTIAL');
+
+      const passkey = await store.passkeys.findByCredentialId(cred.id);
+      if (!passkey) {
+        throw new AppError(401, 'Passkey not recognized', 'PASSKEY_NOT_FOUND');
+      }
+
+      const verification = await verifyAuthenticationResponse({
+        response: credential as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
+        expectedChallenge: challengeEntry.challenge,
+        expectedOrigin: rpOrigin,
+        expectedRPID: rpID,
+        credential: {
+          id: passkey.credential_id,
+          publicKey: Buffer.from(passkey.public_key, 'base64url'),
+          counter: passkey.counter,
+          transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[]) : undefined,
+        },
+      });
+
+      if (!verification.verified) {
+        throw new AppError(401, 'Passkey verification failed', 'VERIFICATION_FAILED');
+      }
+
+      pendingPasskeyAuthnChallenges.delete(challengeKey);
+
+      // Update counter
+      await store.passkeys.updateCounter(passkey.credential_id, verification.authenticationInfo.newCounter);
+
+      // Look up the user
+      const user = await store.getUserById(passkey.user_id);
+      if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+      if (!user.is_approved) throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
+
+      // Generate tokens and set cookies
+      const accessToken = AuthService.generateAccessToken(user.id);
+      const refreshToken = AuthService.generateRefreshToken(user.id);
+      await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      setAuthCookies(reply, accessToken, refreshToken);
+
+      // Audit log
+      await store.createAuditLog(
+        user.id,
+        'login_success',
+        JSON.stringify({ method: 'passkey', passkey_id: passkey.id }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          avatar_url: AuthService.getGravatarUrl(user.email),
+          is_admin: user.is_admin,
+          is_super_admin: user.is_super_admin,
+          token_expires_at: accessToken.expiresAt,
+        },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Passkey authenticate verify');
+    }
+  });
 }
 
 /**

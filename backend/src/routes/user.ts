@@ -9,6 +9,12 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
+import { appConfig } from '../lib/config.js';
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+} from '@simplewebauthn/server';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
 
 /**
  * Server-side store for pending 2FA secrets.
@@ -18,12 +24,22 @@ import { AppError } from '../lib/errors.js';
 const pending2FASecrets = new Map<number, { secret: string; expiresAt: number }>();
 const PENDING_2FA_TTL = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * Server-side store for pending WebAuthn challenges.
+ * Keyed by `registration:${userId}` or `authentication:${userId}`.
+ */
+const pendingWebAuthnChallenges = new Map<string, { challenge: string; expiresAt: number }>();
+const WEBAUTHN_CHALLENGE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Periodic cleanup of expired entries to prevent memory leaks
 const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [userId, entry] of pending2FASecrets) {
     if (now > entry.expiresAt) pending2FASecrets.delete(userId);
+  }
+  for (const [key, entry] of pendingWebAuthnChallenges) {
+    if (now > entry.expiresAt) pendingWebAuthnChallenges.delete(key);
   }
 }, CLEANUP_INTERVAL).unref(); // unref so it doesn't keep the process alive
 
@@ -1000,6 +1016,247 @@ export default async function userRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Get 2FA status');
+    }
+  });
+
+  // ==================== Passkeys / WebAuthn ====================
+
+  const rpID = appConfig.WEBAUTHN_RP_ID;
+  const rpName = appConfig.WEBAUTHN_RP_NAME;
+  const rpOrigin = appConfig.WEBAUTHN_RP_ORIGIN;
+
+  /**
+   * GET /api/user/passkeys - List user's passkeys
+   */
+  fastify.get('/passkeys', {
+    schema: {
+      description: 'List registered passkeys',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const keys = await store.passkeys.findByUserId(userId);
+      return reply.status(200).send({
+        success: true,
+        data: keys.map(k => ({
+          id: k.id,
+          name: k.name,
+          device_type: k.device_type,
+          backed_up: k.backed_up,
+          transports: k.transports ? JSON.parse(k.transports) : [],
+          created_at: k.created_at,
+          last_used_at: k.last_used_at,
+        })),
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'List passkeys');
+    }
+  });
+
+  /**
+   * POST /api/user/passkeys/register-options - Generate registration options
+   */
+  fastify.post('/passkeys/register-options', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Generate WebAuthn registration options',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const user = await store.getUserById(userId);
+      if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
+
+      const existingKeys = await store.passkeys.findByUserId(userId);
+
+      const options = await generateRegistrationOptions({
+        rpName,
+        rpID,
+        userName: user.username,
+        userDisplayName: user.username,
+        attestationType: 'none',
+        excludeCredentials: existingKeys.map(k => ({
+          id: k.credential_id,
+          transports: k.transports ? (JSON.parse(k.transports) as AuthenticatorTransportFuture[]) : undefined,
+        })),
+        authenticatorSelection: {
+          residentKey: 'preferred',
+          userVerification: 'preferred',
+        },
+      });
+
+      // Store challenge server-side
+      pendingWebAuthnChallenges.set(`registration:${userId}`, {
+        challenge: options.challenge,
+        expiresAt: Date.now() + WEBAUTHN_CHALLENGE_TTL,
+      });
+
+      return reply.status(200).send({ success: true, data: options });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Passkey register options');
+    }
+  });
+
+  /**
+   * POST /api/user/passkeys/register-verify - Verify registration response
+   */
+  fastify.post('/passkeys/register-verify', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Verify WebAuthn registration response',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          credential: { type: 'object' },
+          name: { type: 'string', maxLength: 64 },
+        },
+        required: ['credential'],
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const { credential, name } = request.body as { credential: unknown; name?: string };
+
+      const challengeEntry = pendingWebAuthnChallenges.get(`registration:${userId}`);
+      if (!challengeEntry || Date.now() > challengeEntry.expiresAt) {
+        pendingWebAuthnChallenges.delete(`registration:${userId}`);
+        throw new AppError(400, 'Registration challenge expired. Please try again.', 'CHALLENGE_EXPIRED');
+      }
+
+      const verification = await verifyRegistrationResponse({
+        response: credential as Parameters<typeof verifyRegistrationResponse>[0]['response'],
+        expectedChallenge: challengeEntry.challenge,
+        expectedOrigin: rpOrigin,
+        expectedRPID: rpID,
+        requireUserVerification: false,
+      });
+
+      if (!verification.verified || !verification.registrationInfo) {
+        throw new AppError(400, 'Passkey verification failed', 'VERIFICATION_FAILED');
+      }
+
+      pendingWebAuthnChallenges.delete(`registration:${userId}`);
+
+      const { credential: cred, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+
+      // Encode binary fields to base64url for storage
+      const credentialIdB64 = Buffer.from(cred.id).toString('base64url');
+      const publicKeyB64 = Buffer.from(cred.publicKey).toString('base64url');
+
+      const passkey = await store.passkeys.create({
+        user_id: userId,
+        credential_id: credentialIdB64,
+        public_key: publicKeyB64,
+        counter: cred.counter,
+        device_type: credentialDeviceType,
+        backed_up: credentialBackedUp,
+        transports: cred.transports ? JSON.stringify(cred.transports) : undefined,
+        name: name || 'My Passkey',
+      });
+
+      await store.createAuditLog(
+        userId,
+        'passkey_registered',
+        JSON.stringify({ passkey_id: passkey.id, name: passkey.name, device_type: credentialDeviceType }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          id: passkey.id,
+          name: passkey.name,
+          device_type: passkey.device_type,
+          backed_up: passkey.backed_up,
+          created_at: passkey.created_at,
+        },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Passkey register verify');
+    }
+  });
+
+  /**
+   * PATCH /api/user/passkeys/:id - Rename a passkey
+   */
+  fastify.patch<{ Params: { id: string } }>('/passkeys/:id', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Rename a passkey',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+      body: {
+        type: 'object',
+        properties: { name: { type: 'string', minLength: 1, maxLength: 64 } },
+        required: ['name'],
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const passkeyId = parseInt(request.params.id, 10);
+      const { name } = request.body as { name: string };
+
+      if (isNaN(passkeyId)) throw new AppError(400, 'Invalid passkey ID', 'INVALID_ID');
+
+      const updated = await store.passkeys.rename(passkeyId, userId, name);
+      if (!updated) throw new AppError(404, 'Passkey not found', 'NOT_FOUND');
+
+      return reply.status(200).send({ success: true, message: 'Passkey renamed', data: { id: updated.id, name: updated.name } });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Rename passkey');
+    }
+  });
+
+  /**
+   * DELETE /api/user/passkeys/:id - Delete a passkey
+   */
+  fastify.delete<{ Params: { id: string } }>('/passkeys/:id', {
+    config: { rateLimit: sensitiveOperationRateLimit },
+    schema: {
+      description: 'Delete a passkey',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const passkeyId = parseInt(request.params.id, 10);
+
+      if (isNaN(passkeyId)) throw new AppError(400, 'Invalid passkey ID', 'INVALID_ID');
+
+      const deleted = await store.passkeys.delete(passkeyId, userId);
+      if (!deleted) throw new AppError(404, 'Passkey not found', 'NOT_FOUND');
+
+      await store.createAuditLog(
+        userId,
+        'passkey_deleted',
+        JSON.stringify({ passkey_id: passkeyId }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+
+      return reply.status(200).send({ success: true, message: 'Passkey deleted' });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Delete passkey');
     }
   });
 

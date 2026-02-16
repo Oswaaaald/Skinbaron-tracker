@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingState } from '@/components/ui/loading-state'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Dialog,
   DialogContent,
@@ -22,12 +23,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck, Download } from 'lucide-react'
+import { AlertCircle, CheckCircle, Shield, User, Mail, Lock, Trash2, Activity, ShieldCheck, Download, Fingerprint, Link2, History } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { usePageVisible } from '@/hooks/use-page-visible'
 import { TwoFactorSetup } from '@/components/two-factor-setup'
 import { SecurityHistory } from '@/components/security-history'
+import { PasskeyManager } from '@/components/settings-passkeys'
 import { useFormState } from '@/hooks/use-form-state'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
@@ -58,7 +60,6 @@ export function ProfileSettings() {
   const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
   const [twoFactorPassword, setTwoFactorPassword] = useState('')
 
-  // Sync local state with user context when user data changes
   useEffect(() => {
     if (user) {
       setUsername(user.username)
@@ -66,7 +67,6 @@ export function ProfileSettings() {
     }
   }, [user])
 
-  // Fetch user stats
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: [QUERY_KEYS.USER_STATS],
     queryFn: async () => {
@@ -79,7 +79,6 @@ export function ProfileSettings() {
     refetchOnWindowFocus: true,
   })
 
-  // Fetch linked OAuth accounts (for email picker)
   const { data: oauthAccounts } = useQuery({
     queryKey: ['oauth-accounts'],
     queryFn: async () => {
@@ -90,9 +89,8 @@ export function ProfileSettings() {
     staleTime: 30_000,
   })
 
-  // Build list of available emails for non-admin users
   const availableEmails = (() => {
-    if (user?.is_admin) return [] // admins use free-text input
+    if (user?.is_admin) return []
     const emails = new Set<string>()
     if (user?.email) emails.add(user.email)
     for (const a of oauthAccounts ?? []) {
@@ -101,99 +99,50 @@ export function ProfileSettings() {
     return [...emails]
   })()
 
-  // Update profile mutation
   const updateProfileMutation = useApiMutation(
     (data: { username?: string; email?: string }) => apiClient.patch('/api/user/profile', data),
     {
       invalidateKeys: [[QUERY_KEYS.USER_PROFILE], [QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.USER_AUDIT_LOGS]],
       successMessage: 'Profile updated successfully',
       onSuccess: (response) => {
-        // Update auth context with data from backend (includes updated avatar_url)
         if (response?.data) {
-          const userData = response.data as { 
-            id: number; 
-            username: string; 
-            email: string; 
-            avatar_url?: string; 
-            is_admin?: boolean; 
-          };
-          updateUser({
-            id: userData.id,
-            username: userData.username,
-            email: userData.email,
-            avatar_url: userData.avatar_url,
-            is_admin: userData.is_admin,
-          })  
+          const userData = response.data as { id: number; username: string; email: string; avatar_url?: string; is_admin?: boolean }
+          updateUser({ id: userData.id, username: userData.username, email: userData.email, avatar_url: userData.avatar_url, is_admin: userData.is_admin })
         }
         setSuccess('profile', 'Profile updated successfully')
       },
-      onError: (error: unknown) => {
-        const errorMsg = extractErrorMessage(error, 'Failed to update profile')
-        setError('profile', errorMsg)
-      },
+      onError: (error: unknown) => setError('profile', extractErrorMessage(error, 'Failed to update profile')),
     }
   )
 
-  // Update password mutation
   const updatePasswordMutation = useApiMutation(
     (data: { current_password: string; new_password: string }) => apiClient.patch('/api/user/password', data),
     {
       invalidateKeys: [[QUERY_KEYS.USER_AUDIT_LOGS]],
       successMessage: 'Password updated successfully',
-      onSuccess: () => {
-        setSuccess('password', 'Password updated successfully')
-        setCurrentPassword('')
-        setNewPassword('')
-        setConfirmPassword('')
-      },
-      onError: (error: unknown) => {
-        const errorMsg = extractErrorMessage(error, 'Failed to update password')
-        setError('password', errorMsg)
-      },
+      onSuccess: () => { setSuccess('password', 'Password updated successfully'); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('') },
+      onError: (error: unknown) => setError('password', extractErrorMessage(error, 'Failed to update password')),
     }
   )
 
-  // Set password mutation (for OAuth-only users)
   const setPasswordMutation = useApiMutation(
     (data: { new_password: string }) => apiClient.post('/api/user/set-password', data),
     {
       invalidateKeys: [[QUERY_KEYS.USER_AUDIT_LOGS], [QUERY_KEYS.USER_PROFILE]],
       successMessage: 'Password set successfully',
-      onSuccess: () => {
-        setSuccess('password', 'Password set successfully! You can now use it to log in.')
-        setNewPassword('')
-        setConfirmPassword('')
-        // Update local user to reflect has_password
-        if (user) updateUser({ ...user, has_password: true })
-      },
-      onError: (error: unknown) => {
-        const errorMsg = extractErrorMessage(error, 'Failed to set password')
-        setError('password', errorMsg)
-      },
+      onSuccess: () => { setSuccess('password', 'Password set successfully! You can now use it to log in.'); setNewPassword(''); setConfirmPassword(''); if (user) updateUser({ ...user, has_password: true }) },
+      onError: (error: unknown) => setError('password', extractErrorMessage(error, 'Failed to set password')),
     }
   )
 
-  // Delete account mutation
   const deleteAccountMutation = useApiMutation(
     (data: { password?: string; totp_code?: string }) => apiClient.delete('/api/user/account', data),
     {
-      onSuccess: () => {
-        toast({
-          title: "✅ Account deleted",
-          description: "Your account has been permanently deleted",
-        })
-        void logout()
-      },
-      onError: (error: unknown) => {
-        const errorMsg = extractErrorMessage(error, 'Failed to delete account')
-        setError('general', errorMsg)
-        setDeleteDialog(false)
-        setDeleteConfirmText('')
-      },
+      onSuccess: () => { toast({ title: "Account deleted", description: "Your account has been permanently deleted" }); void logout() },
+      onError: (error: unknown) => { setError('general', extractErrorMessage(error, 'Failed to delete account')); setDeleteDialog(false); setDeleteConfirmText('') },
     }
   )
 
-  // 2FA status query
   const { data: twoFactorStatus } = useQuery({
     queryKey: [QUERY_KEYS.TWO_FA_STATUS],
     queryFn: async () => {
@@ -203,144 +152,68 @@ export function ProfileSettings() {
     enabled: isReady && isAuthenticated,
   })
 
-  // Disable 2FA mutation
   const disableTwoFactorMutation = useApiMutation(
     (data?: { password?: string; totp_code?: string }) => apiClient.post('/api/user/2fa/disable', data ?? {}),
     {
       invalidateKeys: [[QUERY_KEYS.TWO_FA_STATUS]],
       successMessage: 'Two-factor authentication disabled successfully',
-      onSuccess: () => {
-        setSuccess('general', 'Two-factor authentication disabled successfully')
-        clear('twoFactor')
-        setDisableTwoFactorDialog(false)
-        setTwoFactorPassword('')
-      },
-      onError: (error: unknown) => {
-        const errorMsg = extractErrorMessage(error, 'Failed to disable 2FA')
-        setError('twoFactor', errorMsg)
-      },
+      onSuccess: () => { setSuccess('general', 'Two-factor authentication disabled successfully'); clear('twoFactor'); setDisableTwoFactorDialog(false); setTwoFactorPassword('') },
+      onError: (error: unknown) => setError('twoFactor', extractErrorMessage(error, 'Failed to disable 2FA')),
     }
   )
 
   const handleUpdateProfile = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Clear previous messages
-    clear('profile')
-    
+    e.preventDefault(); clear('profile')
     const updates: { username?: string; email?: string } = {}
-    
     if (username !== user?.username) {
-      // Validate username
       const result = validateUsername(username)
-      if (!result.valid) {
-        setError('profile', result.error || 'Invalid username')
-        return
-      }
+      if (!result.valid) { setError('profile', result.error || 'Invalid username'); return }
       updates.username = username
     }
-    
     if (email !== user?.email) {
-      // Validate email
       const result = validateEmail(email)
-      if (!result.valid) {
-        setError('profile', result.error || 'Invalid email')
-        return
-      }
+      if (!result.valid) { setError('profile', result.error || 'Invalid email'); return }
       updates.email = email
     }
-    
-    if (Object.keys(updates).length === 0) {
-      setError('profile', 'No changes to save')
-      return
-    }
-    
+    if (Object.keys(updates).length === 0) { setError('profile', 'No changes to save'); return }
     updateProfileMutation.mutate(updates)
   }
 
   const handleUpdatePassword = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Clear previous messages
-    clear('password')
-    
+    e.preventDefault(); clear('password')
     if (!user?.has_password) {
-      // Set password flow for OAuth-only users
-      const result = validateSetPassword({
-        newPassword,
-        confirmPassword,
-      })
-      
-      if (!result.valid) {
-        setError('password', result.error || 'Validation failed')
-        return
-      }
-      
-      setPasswordMutation.mutate({
-        new_password: newPassword,
-      })
+      const result = validateSetPassword({ newPassword, confirmPassword })
+      if (!result.valid) { setError('password', result.error || 'Validation failed'); return }
+      setPasswordMutation.mutate({ new_password: newPassword })
     } else {
-      // Change password flow for users with existing password
-      const result = validatePasswordChange({
-        currentPassword,
-        newPassword,
-        confirmPassword,
-      })
-      
-      if (!result.valid) {
-        setError('password', result.error || 'Validation failed')
-        return
-      }
-      
-      updatePasswordMutation.mutate({
-        current_password: currentPassword,
-        new_password: newPassword,
-      })
+      const result = validatePasswordChange({ currentPassword, newPassword, confirmPassword })
+      if (!result.valid) { setError('password', result.error || 'Validation failed'); return }
+      updatePasswordMutation.mutate({ current_password: currentPassword, new_password: newPassword })
     }
   }
 
   const handleDeleteAccount = () => {
-    if (deleteConfirmText === user?.username) {
-      if (user?.has_password) {
-        if (deletePassword) deleteAccountMutation.mutate({ password: deletePassword })
-      } else if (twoFactorStatus?.enabled) {
-        // OAuth-only users with 2FA enabled: require TOTP code
-        if (deletePassword) deleteAccountMutation.mutate({ totp_code: deletePassword })
-      } else {
-        deleteAccountMutation.mutate({})
-      }
-    }
+    if (deleteConfirmText !== user?.username) return
+    if (user?.has_password) { if (deletePassword) deleteAccountMutation.mutate({ password: deletePassword }) }
+    else if (twoFactorStatus?.enabled) { if (deletePassword) deleteAccountMutation.mutate({ totp_code: deletePassword }) }
+    else { deleteAccountMutation.mutate({}) }
   }
 
   const handleDisable2FA = (e: React.FormEvent) => {
     e.preventDefault()
-    if (user?.has_password) {
-      if (twoFactorPassword) disableTwoFactorMutation.mutate({ password: twoFactorPassword })
-    } else {
-      // OAuth-only users need to provide a TOTP code
-      if (twoFactorPassword) disableTwoFactorMutation.mutate({ totp_code: twoFactorPassword })
-    }
+    if (user?.has_password) { if (twoFactorPassword) disableTwoFactorMutation.mutate({ password: twoFactorPassword }) }
+    else { if (twoFactorPassword) disableTwoFactorMutation.mutate({ totp_code: twoFactorPassword }) }
   }
 
-  if (isLoadingStats) {
-    return <LoadingState variant="card" />
-  }
+  if (isLoadingStats) return <LoadingState variant="card" />
 
   return (
     <div className="space-y-6">
-      {/* Success/Error Messages */}
       {formState.general.success && (
-        <Alert className="border-primary/50 bg-primary/10">
-          <CheckCircle className="h-4 w-4 text-primary" />
-          <AlertDescription className="text-primary">{formState.general.success}</AlertDescription>
-        </Alert>
+        <Alert className="border-primary/50 bg-primary/10"><CheckCircle className="h-4 w-4 text-primary" /><AlertDescription className="text-primary">{formState.general.success}</AlertDescription></Alert>
       )}
-      
       {formState.general.error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{formState.general.error}</AlertDescription>
-        </Alert>
+        <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{formState.general.error}</AlertDescription></Alert>
       )}
 
       {/* User Stats */}
@@ -350,523 +223,255 @@ export function ProfileSettings() {
             <CardTitle className="text-sm font-medium">Active Rules</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            {isLoadingStats && !stats ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <div className="text-2xl font-bold">{stats?.rules_count ?? 0}</div>
-            )}
-          </CardContent>
+          <CardContent>{isLoadingStats && !stats ? <LoadingSpinner size="sm" /> : <div className="text-2xl font-bold">{stats?.rules_count ?? 0}</div>}</CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            {isLoadingStats && !stats ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <div className="text-2xl font-bold">{stats?.alerts_count ?? 0}</div>
-            )}
-          </CardContent>
+          <CardContent>{isLoadingStats && !stats ? <LoadingSpinner size="sm" /> : <div className="text-2xl font-bold">{stats?.alerts_count ?? 0}</div>}</CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Webhooks</CardTitle>
             <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            {isLoadingStats && !stats ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <div className="text-2xl font-bold">{stats?.webhooks_count ?? 0}</div>
-            )}
-          </CardContent>
+          <CardContent>{isLoadingStats && !stats ? <LoadingSpinner size="sm" /> : <div className="text-2xl font-bold">{stats?.webhooks_count ?? 0}</div>}</CardContent>
         </Card>
       </div>
 
-      {/* Profile Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile Information
-          </CardTitle>
-          <CardDescription>Update your account details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Profile update messages */}
-          {formState.profile.success && (
-            <Alert className="border-primary/50 bg-primary/10 mb-4">
-              <CheckCircle className="h-4 w-4 text-primary" />
-              <AlertDescription className="text-primary">{formState.profile.success}</AlertDescription>
-            </Alert>
-          )}
-          
-          {formState.profile.error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{formState.profile.error}</AlertDescription>
-            </Alert>
-          )}
-          
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              {user?.is_admin ? (
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter email"
-                />
-              ) : availableEmails.length > 1 ? (
-                <>
-                  <Select value={email} onValueChange={setEmail}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select email" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableEmails.map(e => (
-                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    You can choose from your linked OAuth provider emails
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    disabled
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Link an OAuth account with a different email to change it
-                  </p>
-                </>
-              )}
-            </div>
+      {/* Tabbed Settings */}
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="w-full flex">
+          <TabsTrigger value="profile" className="flex items-center gap-1.5"><User className="h-4 w-4" /><span className="hidden sm:inline">Profile</span></TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Security</span></TabsTrigger>
+          <TabsTrigger value="oauth" className="flex items-center gap-1.5"><Link2 className="h-4 w-4" /><span className="hidden sm:inline">Accounts</span></TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
+          <TabsTrigger value="danger" className="flex items-center gap-1.5"><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">Danger</span></TabsTrigger>
+        </TabsList>
 
-            <div className="flex items-center gap-2">
-              <Label>Role:</Label>
-              {user?.is_super_admin ? (
-                <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                  <Shield className="h-3 w-3" />
-                  Super Admin
-                </Badge>
-              ) : user?.is_admin ? (
-                <Badge variant="default" className="gap-1">
-                  <Shield className="h-3 w-3" />
-                  Admin
-                </Badge>
-              ) : (
-                <Badge variant="outline">User</Badge>
-              )}
-            </div>
-            
-            <Button 
-              type="submit" 
-              disabled={updateProfileMutation.isPending}
-            >
-              {updateProfileMutation.isPending ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" inline />
-                  Updating...
-                </>
-              ) : (
-                'Update Profile'
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        {/* ===================== Profile Tab ===================== */}
+        <TabsContent value="profile" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Profile Information</CardTitle>
+              <CardDescription>Update your account details</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {formState.profile.success && (<Alert className="border-primary/50 bg-primary/10 mb-4"><CheckCircle className="h-4 w-4 text-primary" /><AlertDescription className="text-primary">{formState.profile.success}</AlertDescription></Alert>)}
+              {formState.profile.error && (<Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>{formState.profile.error}</AlertDescription></Alert>)}
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter username" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  {user?.is_admin ? (
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter email" />
+                  ) : availableEmails.length > 1 ? (
+                    <>
+                      <Select value={email} onValueChange={setEmail}>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Select email" /></SelectTrigger>
+                        <SelectContent>{availableEmails.map(e => (<SelectItem key={e} value={e}>{e}</SelectItem>))}</SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">You can choose from your linked OAuth provider emails</p>
+                    </>
+                  ) : (
+                    <><Input id="email" type="email" value={email} disabled /><p className="text-sm text-muted-foreground">Link an OAuth account with a different email to change it</p></>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label>Role:</Label>
+                  {user?.is_super_admin ? (<Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white"><Shield className="h-3 w-3" /> Super Admin</Badge>)
+                    : user?.is_admin ? (<Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> Admin</Badge>)
+                    : (<Badge variant="outline">User</Badge>)}
+                </div>
+                <Button type="submit" disabled={updateProfileMutation.isPending}>
+                  {updateProfileMutation.isPending ? <><LoadingSpinner size="sm" className="mr-2" inline /> Updating...</> : 'Update Profile'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Change Password / Set Password */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            {user?.has_password ? 'Change Password' : 'Set Password'}
-          </CardTitle>
-          <CardDescription>
-            {user?.has_password
-              ? 'Update your password to keep your account secure'
-              : 'Set a password to enable email/password login alongside your social accounts'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Password change messages */}
-          {formState.password.success && (
-            <Alert className="border-primary/50 bg-primary/10 mb-4">
-              <CheckCircle className="h-4 w-4 text-primary" />
-              <AlertDescription className="text-primary">{formState.password.success}</AlertDescription>
-            </Alert>
-          )}
-          
-          {formState.password.error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{formState.password.error}</AlertDescription>
-            </Alert>
-          )}
-          
-          <form onSubmit={handleUpdatePassword} className="space-y-4">
-            {user?.has_password && (
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                />
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="new-password">{user?.has_password ? 'New Password' : 'Password'}</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 characters)"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm Password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-              />
-            </div>
-            
-            <Button 
-              type="submit" 
-              disabled={updatePasswordMutation.isPending || setPasswordMutation.isPending}
-            >
-              {(updatePasswordMutation.isPending || setPasswordMutation.isPending) ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" inline />
-                  {user?.has_password ? 'Updating...' : 'Setting...'}
-                </>
-              ) : (
-                user?.has_password ? 'Change Password' : 'Set Password'
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Two-Factor Authentication */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            Two-Factor Authentication
-          </CardTitle>
-          <CardDescription>Add an extra layer of security to your account</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Status:</span>
-                {twoFactorStatus?.enabled ? (
-                  <Badge variant="default" className="gap-1">
-                    <Shield className="h-3 w-3" />
-                    Enabled
-                  </Badge>
-                ) : (
-                  <Badge variant="outline">Disabled</Badge>
+        {/* ===================== Security Tab ===================== */}
+        <TabsContent value="security" className="space-y-4 mt-4">
+          {/* Password */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5" /> {user?.has_password ? 'Change Password' : 'Set Password'}</CardTitle>
+              <CardDescription>{user?.has_password ? 'Update your password to keep your account secure' : 'Set a password to enable email/password login alongside your social accounts'}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {formState.password.success && (<Alert className="border-primary/50 bg-primary/10 mb-4"><CheckCircle className="h-4 w-4 text-primary" /><AlertDescription className="text-primary">{formState.password.success}</AlertDescription></Alert>)}
+              {formState.password.error && (<Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>{formState.password.error}</AlertDescription></Alert>)}
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
+                {user?.has_password && (
+                  <div className="space-y-2"><Label htmlFor="current-password">Current Password</Label><Input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" /></div>
                 )}
+                <div className="space-y-2"><Label htmlFor="new-password">{user?.has_password ? 'New Password' : 'Password'}</Label><Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password (min 8 characters)" /></div>
+                <div className="space-y-2"><Label htmlFor="confirm-password">Confirm Password</Label><Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm password" /></div>
+                <Button type="submit" disabled={updatePasswordMutation.isPending || setPasswordMutation.isPending}>
+                  {(updatePasswordMutation.isPending || setPasswordMutation.isPending)
+                    ? <><LoadingSpinner size="sm" className="mr-2" inline /> {user?.has_password ? 'Updating...' : 'Setting...'}</>
+                    : (user?.has_password ? 'Change Password' : 'Set Password')}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* TOTP 2FA */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Authenticator App (TOTP)</CardTitle>
+              <CardDescription>Use an authenticator app like Google Authenticator or Authy</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Status:</span>
+                    {twoFactorStatus?.enabled ? (<Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> Enabled</Badge>) : (<Badge variant="outline">Disabled</Badge>)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{twoFactorStatus?.enabled ? 'Your account is protected with 2FA' : 'Use an authenticator app for extra security'}</p>
+                </div>
+                {twoFactorStatus?.enabled
+                  ? <Button variant="destructive" onClick={() => setDisableTwoFactorDialog(true)}>Disable 2FA</Button>
+                  : <Button onClick={() => setTwoFactorDialog(true)}>Enable 2FA</Button>}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {twoFactorStatus?.enabled 
-                  ? 'Your account is protected with 2FA' 
-                  : 'Use an authenticator app for extra security'}
-              </p>
-            </div>
-            
-            {twoFactorStatus?.enabled ? (
-              <Button 
-                variant="destructive" 
-                onClick={() => setDisableTwoFactorDialog(true)}
-              >
-                Disable 2FA
+              {twoFactorStatus?.enabled && (
+                <Alert><Shield className="h-4 w-4" /><AlertDescription>You&apos;ll be asked for a verification code when logging in. Keep your authenticator app accessible.</AlertDescription></Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Passkeys */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Fingerprint className="h-5 w-5" /> Passkeys &amp; Hardware Keys</CardTitle>
+              <CardDescription>Sign in with biometrics, security keys (YubiKey), or device passkeys</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PasskeyManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===================== OAuth Tab ===================== */}
+        <TabsContent value="oauth" className="space-y-4 mt-4">
+          <LinkedAccounts />
+        </TabsContent>
+
+        {/* ===================== Logs Tab ===================== */}
+        <TabsContent value="logs" className="space-y-4 mt-4">
+          <SecurityHistory />
+        </TabsContent>
+
+        {/* ===================== Danger Tab ===================== */}
+        <TabsContent value="danger" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" /> Your Data</CardTitle>
+              <CardDescription>Download or delete all your personal data (GDPR)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.</p>
+              <Button variant="outline" onClick={() => {
+                void (async () => {
+                  try {
+                    const response = await apiClient.get('/api/user/data-export')
+                    if (response.success && response.data) {
+                      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `skinbaron-tracker-export-${new Date().toISOString().split('T')[0]}.json`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      setTimeout(() => URL.revokeObjectURL(url), 1000)
+                      toast({ title: 'Data exported', description: 'Your data has been downloaded' })
+                    }
+                  } catch (error) {
+                    toast({ variant: 'destructive', title: 'Export failed', description: extractErrorMessage(error, 'Failed to export data') })
+                  }
+                })()
+              }}>
+                <Download className="h-4 w-4 mr-2" /> Export My Data
               </Button>
-            ) : (
-              <Button onClick={() => setTwoFactorDialog(true)}>
-                Enable 2FA
-              </Button>
-            )}
-          </div>
+            </CardContent>
+          </Card>
 
-          {twoFactorStatus?.enabled && (
-            <Alert>
-              <Shield className="h-4 w-4" />
-              <AlertDescription>
-                You&apos;ll be asked for a verification code when logging in. Keep your authenticator app accessible.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Delete Account</CardTitle>
+              <CardDescription>Permanently delete your account and all associated data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.</AlertDescription></Alert>
+              <Button variant="destructive" onClick={() => setDeleteDialog(true)}><Trash2 className="h-4 w-4 mr-2" /> Delete Account</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-      {/* Data Export (GDPR Art. 20) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Your Data
-          </CardTitle>
-          <CardDescription>Download or delete all your personal data (GDPR)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void (async () => {
-              try {
-                const response = await apiClient.get('/api/user/data-export')
-                if (response.success && response.data) {
-                  const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `skinbaron-tracker-export-${new Date().toISOString().split('T')[0]}.json`
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
-                  // Delay revoke to ensure browser picks up the blob
-                  setTimeout(() => URL.revokeObjectURL(url), 1000)
-                  toast({ title: '✅ Data exported', description: 'Your data has been downloaded' })
-                }
-              } catch (error) {
-                toast({ variant: 'destructive', title: '❌ Export failed', description: extractErrorMessage(error, 'Failed to export data') })
-              }
-            })()
-            }}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export My Data
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Linked OAuth Accounts */}
-      <LinkedAccounts />
-
-      {/* Danger Zone */}
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <Trash2 className="h-5 w-5" />
-            Danger Zone
-          </CardTitle>
-          <CardDescription>Permanently delete your account and all associated data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.
-            </AlertDescription>
-          </Alert>
-          
-          <Button 
-            variant="destructive" 
-            onClick={() => setDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Account
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* 2FA Setup Dialog */}
+      {/* Dialogs */}
       <TwoFactorSetup open={twoFactorDialog} onOpenChange={setTwoFactorDialog} />
 
-      {/* Disable 2FA Dialog */}
       <Dialog open={disableTwoFactorDialog} onOpenChange={setDisableTwoFactorDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Disable Two-Factor Authentication?</DialogTitle>
-            <DialogDescription>
-              {user?.has_password
-                ? 'Enter your password to confirm disabling 2FA'
-                : 'Enter a 2FA code from your authenticator app to confirm'}
-            </DialogDescription>
+            <DialogDescription>{user?.has_password ? 'Enter your password to confirm disabling 2FA' : 'Enter a 2FA code from your authenticator app to confirm'}</DialogDescription>
           </DialogHeader>
-          
           <form onSubmit={handleDisable2FA}>
             <div className="space-y-4">
-              {formState.twoFactor.error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{formState.twoFactor.error}</AlertDescription>
-                </Alert>
-              )}
-              
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Your account will be less secure without 2FA protection.
-                </AlertDescription>
-              </Alert>
-              
+              {formState.twoFactor.error && (<Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{formState.twoFactor.error}</AlertDescription></Alert>)}
+              <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>Your account will be less secure without 2FA protection.</AlertDescription></Alert>
               <div className="space-y-2">
-                <Label htmlFor="2fa-password">
-                  {user?.has_password ? 'Password' : '2FA Code'}
-                </Label>
-                <Input
-                  id="2fa-password"
-                  type={user?.has_password ? 'password' : 'text'}
-                  inputMode={user?.has_password ? undefined : 'numeric'}
-                  maxLength={user?.has_password ? undefined : 8}
-                  value={twoFactorPassword}
-                  onChange={(e) => setTwoFactorPassword(e.target.value)}
-                  placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'}
-                />
+                <Label htmlFor="2fa-password">{user?.has_password ? 'Password' : '2FA Code'}</Label>
+                <Input id="2fa-password" type={user?.has_password ? 'password' : 'text'} inputMode={user?.has_password ? undefined : 'numeric'} maxLength={user?.has_password ? undefined : 8} value={twoFactorPassword} onChange={(e) => setTwoFactorPassword(e.target.value)} placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'} />
               </div>
             </div>
-            
             <DialogFooter className="mt-4">
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => {
-                  setDisableTwoFactorDialog(false)
-                  setTwoFactorPassword('')
-                  clear('twoFactor')
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="destructive"
-                disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}
-              >
-                {disableTwoFactorMutation.isPending ? (
-                  <>
-                    <LoadingSpinner size="sm" inline />
-                    <span className="ml-2">Disabling...</span>
-                  </>
-                ) : (
-                  'Disable 2FA'
-                )}
+              <Button type="button" variant="outline" onClick={() => { setDisableTwoFactorDialog(false); setTwoFactorPassword(''); clear('twoFactor') }}>Cancel</Button>
+              <Button type="submit" variant="destructive" disabled={!twoFactorPassword || disableTwoFactorMutation.isPending}>
+                {disableTwoFactorMutation.isPending ? <><LoadingSpinner size="sm" inline /><span className="ml-2">Disabling...</span></> : 'Disable 2FA'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete your account and all associated data. This action cannot be undone.
-            </DialogDescription>
+            <DialogDescription>This will permanently delete your account and all associated data.</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Warning:</strong> You will lose access to:
-                <ul className="list-disc list-inside mt-2">
-                  <li>{stats?.rules_count || 0} active rules</li>
-                  <li>{stats?.alerts_count || 0} alert history</li>
-                  <li>{stats?.webhooks_count || 0} webhook configurations</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
-            
+            <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription><strong>Warning:</strong> You will lose access to:<ul className="list-disc list-inside mt-2"><li>{stats?.rules_count || 0} active rules</li><li>{stats?.alerts_count || 0} alert history</li><li>{stats?.webhooks_count || 0} webhook configurations</li></ul></AlertDescription></Alert>
             <div className="space-y-2">
               <Label>Type your username to confirm: <strong>{user?.username}</strong></Label>
-              <Input
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder={user?.username}
-              />
+              <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder={user?.username} />
             </div>
-            
             {(user?.has_password || twoFactorStatus?.enabled) && (
               <div className="space-y-2">
-                <Label htmlFor="delete-password">
-                  {user?.has_password ? 'Enter your password' : 'Enter your 2FA code'}
-                </Label>
-                <Input
-                  id="delete-password"
-                  type={user?.has_password ? 'password' : 'text'}
-                  inputMode={user?.has_password ? undefined : 'numeric'}
-                  maxLength={user?.has_password ? undefined : 8}
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'}
-                />
+                <Label htmlFor="delete-password">{user?.has_password ? 'Enter your password' : 'Enter your 2FA code'}</Label>
+                <Input id="delete-password" type={user?.has_password ? 'password' : 'text'} inputMode={user?.has_password ? undefined : 'numeric'} maxLength={user?.has_password ? undefined : 8} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'} />
               </div>
             )}
           </div>
-          
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setDeleteDialog(false)
-                setDeleteConfirmText('')
-                setDeletePassword('')
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteAccount}
-              disabled={deleteConfirmText !== user?.username || ((user?.has_password || twoFactorStatus?.enabled) && !deletePassword) || deleteAccountMutation.isPending}
-            >
-              {deleteAccountMutation.isPending ? (
-                <>
-                  <LoadingSpinner size="sm" inline />
-                  <span className="ml-2">Deleting...</span>
-                </>
-              ) : (
-                'Delete My Account'
-              )}
+            <Button variant="outline" onClick={() => { setDeleteDialog(false); setDeleteConfirmText(''); setDeletePassword('') }}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleteConfirmText !== user?.username || ((user?.has_password || twoFactorStatus?.enabled) && !deletePassword) || deleteAccountMutation.isPending}>
+              {deleteAccountMutation.isPending ? <><LoadingSpinner size="sm" inline /><span className="ml-2">Deleting...</span></> : 'Delete My Account'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Security History - Non-intrusive placement at bottom */}
-      <SecurityHistory />
     </div>
   )
 }
@@ -899,22 +504,18 @@ function LinkedAccounts() {
   const [unlinking, setUnlinking] = useState<string | null>(null)
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
 
-  // Handle ?linked= and ?link_error= query params from OAuth redirect
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const linked = params.get('linked')
     const linkError = params.get('link_error')
-
     if (linked) {
       const label = PROVIDER_META[linked]?.label ?? linked
-      toast({ title: '✅ Account linked', description: `${label} account has been linked successfully.` })
+      toast({ title: 'Account linked', description: `${label} account has been linked successfully.` })
     }
     if (linkError) {
-      toast({ variant: 'destructive', title: '❌ Link failed', description: LINK_ERROR_MESSAGES[linkError] || 'Could not link account. Please try again.' })
+      toast({ variant: 'destructive', title: 'Link failed', description: LINK_ERROR_MESSAGES[linkError] || 'Could not link account.' })
     }
-
-    // Clean the URL
     if (linked || linkError) {
       const url = new URL(window.location.href)
       url.searchParams.delete('linked')
@@ -923,23 +524,15 @@ function LinkedAccounts() {
     }
   }, [toast])
 
-  // Fetch enabled providers
   const { data: enabledProviders } = useQuery({
     queryKey: ['oauth-providers'],
-    queryFn: async () => {
-      const res = await apiClient.getOAuthProviders()
-      return res.success ? (res.data?.providers ?? []) : []
-    },
+    queryFn: async () => { const res = await apiClient.getOAuthProviders(); return res.success ? (res.data?.providers ?? []) : [] },
     staleTime: 5 * 60 * 1000,
   })
 
-  // Fetch linked accounts
   const { data: accounts, refetch } = useQuery({
     queryKey: ['oauth-accounts'],
-    queryFn: async () => {
-      const res = await apiClient.getOAuthAccounts()
-      return res.success ? (res.data ?? []) : []
-    },
+    queryFn: async () => { const res = await apiClient.getOAuthAccounts(); return res.success ? (res.data ?? []) : [] },
     staleTime: 30_000,
   })
 
@@ -947,24 +540,14 @@ function LinkedAccounts() {
     setUnlinking(provider)
     try {
       const res = await apiClient.unlinkOAuthAccount(provider)
-      if (res.success) {
-        toast({ title: '✅ Account unlinked', description: `${PROVIDER_META[provider]?.label ?? provider} account has been unlinked.` })
-        void refetch()
-      } else {
-        toast({ variant: 'destructive', title: '❌ Failed', description: res.message || 'Could not unlink account.' })
-      }
-    } catch (err) {
-      toast({ variant: 'destructive', title: '❌ Error', description: extractErrorMessage(err, 'Could not unlink account.') })
-    } finally {
-      setUnlinking(null)
-    }
+      if (res.success) { toast({ title: 'Account unlinked', description: `${PROVIDER_META[provider]?.label ?? provider} account has been unlinked.` }); void refetch() }
+      else { toast({ variant: 'destructive', title: 'Failed', description: res.message || 'Could not unlink account.' }) }
+    } catch (err) { toast({ variant: 'destructive', title: 'Error', description: extractErrorMessage(err, 'Could not unlink account.') }) }
+    finally { setUnlinking(null) }
   }
 
-  const handleLink = (provider: string) => {
-    window.location.href = apiClient.getOAuthLoginUrl(provider)
-  }
+  const handleLink = (provider: string) => { window.location.href = apiClient.getOAuthLoginUrl(provider) }
 
-  // Don't render if no providers are enabled
   if (!enabledProviders || enabledProviders.length === 0) return null
 
   const linkedProviders = new Set((accounts ?? []).map(a => a.provider))
@@ -972,10 +555,7 @@ function LinkedAccounts() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5" />
-          Linked Accounts
-        </CardTitle>
+        <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Linked Accounts</CardTitle>
         <CardDescription>Manage your social login connections</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -983,37 +563,22 @@ function LinkedAccounts() {
           const meta = PROVIDER_META[provider] ?? { label: provider, icon: null }
           const isLinked = linkedProviders.has(provider)
           const account = (accounts ?? []).find(a => a.provider === provider)
-
           return (
             <div key={provider} className="flex items-center justify-between rounded-lg border p-3">
               <div className="flex items-center gap-3">
                 {meta.icon}
                 <div>
                   <p className="text-sm font-medium">{meta.label}</p>
-                  {isLinked && account?.provider_email && (
-                    <p className="text-xs text-muted-foreground">{account.provider_email}</p>
-                  )}
+                  {isLinked && account?.provider_email && (<p className="text-xs text-muted-foreground">{account.provider_email}</p>)}
                 </div>
               </div>
-              {isLinked ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={unlinking === provider}
-                  onClick={() => setConfirmUnlink(provider)}
-                >
-                  {unlinking === provider ? <LoadingSpinner size="sm" inline /> : 'Unlink'}
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => handleLink(provider)}>
-                  Link
-                </Button>
-              )}
+              {isLinked
+                ? <Button variant="outline" size="sm" disabled={unlinking === provider} onClick={() => setConfirmUnlink(provider)}>{unlinking === provider ? <LoadingSpinner size="sm" inline /> : 'Unlink'}</Button>
+                : <Button variant="outline" size="sm" onClick={() => handleLink(provider)}>Link</Button>}
             </div>
           )
         })}
       </CardContent>
-
       <ConfirmDialog
         open={!!confirmUnlink}
         onOpenChange={(open) => { if (!open) setConfirmUnlink(null) }}

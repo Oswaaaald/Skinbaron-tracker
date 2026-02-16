@@ -149,6 +149,23 @@ export const accessTokenBlacklist = pgTable('access_token_blacklist', {
   index('idx_token_blacklist_user').on(table.user_id),
 ]);
 
+export const passkeys = pgTable('passkeys', {
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  credential_id: text('credential_id').notNull().unique(),
+  public_key: text('public_key').notNull(),
+  counter: integer('counter').notNull().default(0),
+  device_type: text('device_type').notNull(), // 'singleDevice' | 'multiDevice'
+  backed_up: boolean('backed_up').notNull().default(false),
+  transports: text('transports'), // JSON array of AuthenticatorTransport
+  name: text('name').notNull().default('My Passkey'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  last_used_at: timestamp('last_used_at', { withTimezone: true }),
+}, (table) => [
+  index('idx_passkeys_user_id').on(table.user_id),
+  index('idx_passkeys_credential_id').on(table.credential_id),
+]);
+
 export const oauthAccounts = pgTable('oauth_accounts', {
   id: serial('id').primaryKey(),
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -193,6 +210,9 @@ export type RefreshTokenRecord = typeof refreshTokens.$inferSelect;
 
 /** OAuth account linked to a user */
 export type OAuthAccount = typeof oauthAccounts.$inferSelect;
+
+/** Passkey/WebAuthn credential */
+export type Passkey = typeof passkeys.$inferSelect;
 
 /** Audit log with optional joined user info */
 export type AuditLog = typeof auditLog.$inferSelect & {

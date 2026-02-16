@@ -144,6 +144,16 @@ export interface OAuthAccount {
   created_at: string;
 }
 
+export interface PasskeyInfo {
+  id: number;
+  name: string;
+  device_type: string;
+  backed_up: boolean;
+  transports: string[];
+  created_at: string;
+  last_used_at: string | null;
+}
+
 class ApiClient {
   private baseURL: string;
   private onLogout: (() => void) | null = null;
@@ -667,6 +677,69 @@ class ApiClient {
   /** Unlink an OAuth provider */
   async unlinkOAuthAccount(provider: string): Promise<ApiResponse<{ message: string }>> {
     return this.request(`/api/user/oauth-accounts/${provider}`, { method: 'DELETE' });
+  }
+
+  // ==================== Passkeys / WebAuthn ====================
+
+  /** List registered passkeys */
+  async getPasskeys(): Promise<ApiResponse<PasskeyInfo[]>> {
+    return this.get('/api/user/passkeys');
+  }
+
+  /** Get registration options for a new passkey */
+  async getPasskeyRegisterOptions(): Promise<ApiResponse<unknown>> {
+    return this.post('/api/user/passkeys/register-options');
+  }
+
+  /** Verify passkey registration */
+  async verifyPasskeyRegistration(credential: unknown, name?: string): Promise<ApiResponse<PasskeyInfo>> {
+    return this.post('/api/user/passkeys/register-verify', { credential, name });
+  }
+
+  /** Rename a passkey */
+  async renamePasskey(id: number, name: string): Promise<ApiResponse<{ id: number; name: string }>> {
+    return this.patch(`/api/user/passkeys/${id}`, { name });
+  }
+
+  /** Delete a passkey */
+  async deletePasskey(id: number): Promise<ApiResponse<{ message: string }>> {
+    return this.delete(`/api/user/passkeys/${id}`);
+  }
+
+  /** Get passkey authentication options (no auth required) */
+  async getPasskeyAuthOptions(): Promise<ApiResponse<unknown>> {
+    return this.post('/api/auth/passkey/authenticate-options');
+  }
+
+  /** Verify passkey authentication (no auth required) */
+  async verifyPasskeyAuth(credential: unknown, challengeKey: string): Promise<ApiResponse<UserProfile & { token_expires_at?: number }>> {
+    this.hasCalledLogout = false;
+    return this.request('/api/auth/passkey/authenticate-verify', {
+      method: 'POST',
+      body: JSON.stringify({ credential, challengeKey }),
+    }, false);
+  }
+
+  // ==================== Admin Users (Paginated) ====================
+
+  /** Get admin users with pagination */
+  async getAdminUsers(params?: {
+    limit?: number;
+    offset?: number;
+    sort_by?: string;
+    sort_dir?: 'asc' | 'desc';
+    search?: string;
+    role?: string;
+  }): Promise<PaginatedResponse<unknown>> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.offset) query.append('offset', params.offset.toString());
+    if (params?.sort_by) query.append('sort_by', params.sort_by);
+    if (params?.sort_dir) query.append('sort_dir', params.sort_dir);
+    if (params?.search) query.append('search', params.search);
+    if (params?.role && params.role !== 'all') query.append('role', params.role);
+    const qs = query.toString();
+    return this.get(`/api/admin/users${qs ? `?${qs}` : ''}`) as Promise<PaginatedResponse<unknown>>;
   }
 }
 

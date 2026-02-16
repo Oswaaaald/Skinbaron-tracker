@@ -54,6 +54,11 @@ const ConfigSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   DISCORD_CLIENT_ID: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
+
+  // WebAuthn / Passkeys (optional — derived from CORS_ORIGIN if not set)
+  WEBAUTHN_RP_ID: z.string().optional(),
+  WEBAUTHN_RP_NAME: z.string().optional(),
+  WEBAUTHN_RP_ORIGIN: z.string().optional(),
 });
 
 // Parse and validate configuration
@@ -76,7 +81,25 @@ function loadConfig() {
       JWT_ACCESS_SECRET: parsed.JWT_ACCESS_SECRET || parsed.JWT_SECRET,
       JWT_REFRESH_SECRET: parsed.JWT_REFRESH_SECRET || parsed.JWT_SECRET,
     };
-    return config;
+
+    // Derive WebAuthn RP values from CORS_ORIGIN if not explicitly set
+    const rpOrigin = config.WEBAUTHN_RP_ORIGIN || config.CORS_ORIGIN;
+    let rpId = config.WEBAUTHN_RP_ID;
+    if (!rpId) {
+      try {
+        rpId = new URL(rpOrigin).hostname;
+      } catch {
+        rpId = 'localhost';
+      }
+    }
+    const webauthnConfig = {
+      ...config,
+      WEBAUTHN_RP_ID: rpId,
+      WEBAUTHN_RP_NAME: config.WEBAUTHN_RP_NAME || 'SkinBaron Tracker',
+      WEBAUTHN_RP_ORIGIN: rpOrigin,
+    };
+
+    return webauthnConfig;
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('❌ Configuration validation failed:');
