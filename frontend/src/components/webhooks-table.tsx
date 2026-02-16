@@ -14,10 +14,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Edit, Trash2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Edit, Trash2, Play, Pause } from 'lucide-react'
 import { apiClient, type Webhook } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { useToast } from '@/hooks/use-toast'
 import { useSyncStats } from '@/hooks/use-sync-stats'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { QUERY_KEYS } from '@/lib/constants'
@@ -48,6 +57,7 @@ export function WebhooksTable() {
 
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
+  const { toast } = useToast()
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
@@ -97,6 +107,27 @@ export function WebhooksTable() {
       },
       onError: (error: Error) => {
         setError(error.message)
+      },
+    }
+  )
+
+  // Toggle active mutation (lightweight, no dialog)
+  const toggleActiveMutation = useApiMutation(
+    ({ id, is_active }: { id: number; is_active: boolean }) =>
+      apiClient.updateWebhook(id, { is_active }).then(result => {
+        if (!result.success) throw new Error(result.error)
+        return result.data
+      }),
+    {
+      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
+      onSuccess: (_, { is_active }) => {
+        toast({
+          title: is_active ? '✅ Webhook enabled' : '⚠️ Webhook disabled',
+          description: is_active
+            ? 'Webhook is now active and will send notifications'
+            : 'Webhook has been paused',
+        })
+        void syncStats()
       },
     }
   )
@@ -167,6 +198,12 @@ export function WebhooksTable() {
       resetForm()
     }
     setIsDialogOpen(true)
+  }
+
+  const handleToggleActive = (webhook: Webhook) => {
+    if (webhook.id != null) {
+      toggleActiveMutation.mutate({ id: webhook.id, is_active: !webhook.is_active })
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -525,25 +562,42 @@ export function WebhooksTable() {
                     {webhook.created_at ? new Date(webhook.created_at).toLocaleDateString('en-GB') : '-'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenDialog(webhook)}
-                        aria-label="Edit webhook"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(webhook)}
-                        className="text-red-600 hover:text-red-700"
-                        aria-label="Delete webhook"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open webhook actions menu">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleOpenDialog(webhook)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleActive(webhook)}>
+                          {webhook.is_active ? (
+                            <>
+                              <Pause className="mr-2 h-4 w-4" />
+                              Disable
+                            </>
+                          ) : (
+                            <>
+                              <Play className="mr-2 h-4 w-4" />
+                              Enable
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(webhook)}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
