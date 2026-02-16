@@ -1179,7 +1179,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       await store.createAuditLog(
         userId,
         'passkey_registered',
-        JSON.stringify({ passkey_id: passkey.id, name: passkey.name, device_type: credentialDeviceType }),
+        JSON.stringify({ passkey_id: passkey.id, name: passkey.name, device_type: credentialDeviceType, aaguid }),
         getClientIp(request),
         request.headers['user-agent'],
       );

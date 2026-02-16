@@ -8,6 +8,7 @@ export const AAGUID_NAMES: Record<string, string> = {
   // Apple
   'fbfc3007-154e-4ecc-8c0b-6e020557d7bd': 'iCloud Keychain',
   'dd4ec289-e01d-41c9-bb89-70fa845d4bf2': 'iCloud Keychain (managed)',
+  'f24a8e70-d0d3-f82c-2937-32523b688764': 'Apple Passwords',
   // Google
   'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': 'Google Password Manager',
   'b5397571-f314-4a3f-b949-0f0ce53875f3': 'Google Password Manager (Chromium)',

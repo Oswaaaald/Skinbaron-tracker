@@ -31,14 +31,6 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function deviceLabel(deviceType: string): string {
-  switch (deviceType) {
-    case 'singleDevice': return 'Hardware key'
-    case 'multiDevice': return 'Synced passkey'
-    default: return deviceType
-  }
-}
-
 function DeviceIcon({ deviceType }: { deviceType: string }) {
   if (deviceType === 'singleDevice') return <Usb className="h-4 w-4 text-muted-foreground" />
   return <Fingerprint className="h-4 w-4 text-muted-foreground" />
@@ -179,7 +171,6 @@ export function PasskeyManager() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium truncate">{pk.name}</p>
-                    <Badge variant="outline" className="text-xs shrink-0">{deviceLabel(pk.device_type)}</Badge>
                     {pk.backed_up && <Badge variant="secondary" className="text-xs shrink-0">Synced</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">
