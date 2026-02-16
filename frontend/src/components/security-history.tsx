@@ -93,7 +93,7 @@ export function SecurityHistory() {
             : "No events recorded"}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="mt-2">
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No security events recorded
