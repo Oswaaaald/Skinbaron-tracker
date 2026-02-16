@@ -9,8 +9,8 @@ import type { MultipartFile } from '@fastify/multipart';
 /** Directory where processed avatars are stored */
 const UPLOAD_DIR = process.env['AVATAR_UPLOAD_DIR'] || '/data/avatars';
 
-/** Maximum raw upload size (2 MB) */
-export const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+/** Maximum raw upload size (5 MB) */
+export const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 /** Output dimensions (square, enough for retina) */
 const AVATAR_SIZE = 256;

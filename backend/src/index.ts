@@ -257,10 +257,10 @@ async function registerPlugins() {
     hook: 'onRequest',
   });
 
-  // Multipart for avatar uploads (2 MB limit)
+  // Multipart for avatar uploads (5 MB limit)
   await fastify.register(multipart, {
     limits: {
-      fileSize: 2 * 1024 * 1024,
+      fileSize: 5 * 1024 * 1024,
       files: 1,
       fields: 0,
     },

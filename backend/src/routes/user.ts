@@ -79,6 +79,10 @@ const UpdateProfileSchema = z.object({
   message: 'At least one field must be provided',
 });
 
+const AvatarSettingsSchema = z.object({
+  use_gravatar: z.boolean(),
+});
+
 /**
  * User profile routes - Authenticated users can manage their own profile
  */
@@ -527,7 +531,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   fastify.post('/avatar', {
     config: { rateLimit: sensitiveOperationRateLimit },
     schema: {
-      description: 'Upload a custom avatar image (max 2 MB, PNG/JPEG/WebP/GIF)',
+      description: 'Upload a custom avatar image (max 5 MB, PNG/JPEG/WebP/GIF)',
       tags: ['User'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       consumes: ['multipart/form-data'],
@@ -575,7 +579,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       await store.updateUser(userId, { avatar_filename: filename });
 
       // Audit log
-      await store.createAuditLog(userId, 'avatar_uploaded', undefined, getClientIp(request), request.headers['user-agent']);
+      await store.createAuditLog(userId, 'avatar_uploaded', JSON.stringify({ filename }), getClientIp(request), request.headers['user-agent']);
 
       const avatarUrl = AuthService.getAvatarUrl({ ...user, avatar_filename: filename }, appConfig.NEXT_PUBLIC_API_URL);
 
@@ -624,7 +628,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       await store.updateUser(userId, { avatar_filename: null });
 
-      await store.createAuditLog(userId, 'avatar_removed', undefined, getClientIp(request), request.headers['user-agent']);
+      await store.createAuditLog(userId, 'avatar_removed', JSON.stringify({ had_custom: !!user.avatar_filename }), getClientIp(request), request.headers['user-agent']);
 
       const avatarUrl = AuthService.getAvatarUrl({ ...user, avatar_filename: null }, appConfig.NEXT_PUBLIC_API_URL);
 
@@ -672,12 +676,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { use_gravatar } = request.body as { use_gravatar: boolean };
+      const { use_gravatar } = validateWithZod(AvatarSettingsSchema, request.body);
 
       const user = await store.getUserById(userId);
       if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
 
       await store.updateUser(userId, { use_gravatar });
+
+      await store.createAuditLog(userId, 'gravatar_toggled', JSON.stringify({ use_gravatar }), getClientIp(request), request.headers['user-agent']);
 
       const avatarUrl = AuthService.getAvatarUrl({ ...user, use_gravatar }, appConfig.NEXT_PUBLIC_API_URL);
 
@@ -890,6 +896,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
         userId,
         JSON.stringify({ username: user.username, email: user.email, was_admin: user.is_admin }),
       );
+
+      // Clean up avatar file from disk before deleting user
+      if (user.avatar_filename) {
+        await deleteAvatarFile(user.avatar_filename);
+      }
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       await store.deleteUser(userId);

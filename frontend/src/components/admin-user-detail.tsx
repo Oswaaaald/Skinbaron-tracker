@@ -1,13 +1,18 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Shield, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle } from 'lucide-react'
+import { Shield, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle, Camera, Trash2 } from 'lucide-react'
 import { apiClient, type AdminUserDetail } from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
+import { extractErrorMessage } from '@/lib/utils'
+import Image from 'next/image'
 import type { ReactNode } from 'react'
 
 interface AdminUserDetailDialogProps {
@@ -34,6 +39,10 @@ const PROVIDER_ICONS: Record<string, ReactNode> = {
 }
 
 export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserDetailDialogProps) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [removingAvatar, setRemovingAvatar] = useState(false)
+
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin-user-detail', userId],
     queryFn: async () => {
@@ -46,6 +55,24 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     enabled: open && userId !== null,
     staleTime: 30_000,
   })
+
+  const handleRemoveAvatar = async () => {
+    if (!userId) return
+    setRemovingAvatar(true)
+    try {
+      const res = await apiClient.adminDeleteUserAvatar(userId)
+      if (res.success) {
+        toast({ title: '✅ Avatar removed', description: 'User avatar has been removed' })
+        void queryClient.invalidateQueries({ queryKey: ['admin-user-detail', userId] })
+      } else {
+        toast({ title: '❌ Failed', description: res.message || 'Failed to remove avatar', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed to remove avatar'), variant: 'destructive' })
+    } finally {
+      setRemovingAvatar(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,7 +101,32 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                   Identity
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3">
+                {/* Avatar */}
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-full overflow-hidden ring-2 ring-border bg-muted flex items-center justify-center shrink-0">
+                    {detail.avatar_url ? (
+                      <Image src={detail.avatar_url} alt={detail.username} width={56} height={56} className="h-full w-full object-cover" unoptimized />
+                    ) : (
+                      <span className="text-lg font-semibold text-muted-foreground">
+                        {detail.username.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{detail.username}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Camera className="h-3 w-3" />
+                      {detail.has_custom_avatar ? 'Custom avatar' : detail.avatar_url ? 'Gravatar' : 'No avatar'}
+                    </p>
+                  </div>
+                  {detail.has_custom_avatar && (
+                    <Button variant="outline" size="sm" onClick={() => void handleRemoveAvatar()} disabled={removingAvatar} className="text-destructive hover:text-destructive shrink-0">
+                      {removingAvatar ? <LoadingSpinner size="sm" inline /> : <><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Remove avatar</>}
+                    </Button>
+                  )}
+                </div>
+                <Separator />
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Username</span>

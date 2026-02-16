@@ -158,6 +158,8 @@ export interface AdminUserDetail {
   id: number;
   username: string;
   email: string;
+  avatar_url: string | null;
+  has_custom_avatar: boolean;
   is_admin: boolean;
   is_super_admin: boolean;
   is_approved: boolean;
@@ -787,6 +789,10 @@ class ApiClient {
 
   async getAdminUserDetail(userId: number): Promise<ApiResponse<AdminUserDetail>> {
     return this.get(`/api/admin/users/${userId}`) as Promise<ApiResponse<AdminUserDetail>>;
+  }
+
+  async adminDeleteUserAvatar(userId: number): Promise<ApiResponse<{ avatar_url: string | null }>> {
+    return this.delete(`/api/admin/users/${userId}/avatar`);
   }
 }
 

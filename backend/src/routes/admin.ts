@@ -4,6 +4,9 @@ import { getScheduler } from '../lib/scheduler.js';
 import { getClientIp, getAuthUser, invalidateUserCache } from '../lib/middleware.js';
 import { handleRouteError } from '../lib/validation-handler.js';
 import { Errors } from '../lib/errors.js';
+import { AuthService } from '../lib/auth.js';
+import { appConfig } from '../lib/config.js';
+import { deleteAvatarFile } from '../lib/avatar.js';
 
 /**
  * Admin routes - All routes require admin privileges
@@ -174,6 +177,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           id: user.id,
           username: user.username,
           email: user.email,
+          avatar_url: AuthService.getAvatarUrl(user, appConfig.NEXT_PUBLIC_API_URL),
+          has_custom_avatar: !!user.avatar_filename,
           is_admin: user.is_admin || false,
           is_super_admin: user.is_super_admin || false,
           is_approved: user.is_approved || false,
@@ -209,6 +214,65 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'View user detail');
+    }
+  });
+
+  /**
+   * DELETE /api/admin/users/:id/avatar - Remove a user's custom avatar (admin only)
+   * GDPR: Logged as admin data modification.
+   */
+  fastify.delete('/users/:id/avatar', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
+    schema: {
+      description: 'Remove a user\'s custom avatar (admin only, GDPR-audited)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'integer', minimum: 1 },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const adminId = getAuthUser(request).id;
+
+      const user = await store.getUserById(id);
+      if (!user) throw Errors.notFound('User');
+
+      if (!user.avatar_filename) {
+        return reply.status(200).send({
+          success: true,
+          message: 'User has no custom avatar',
+        });
+      }
+
+      // Delete file from disk
+      await deleteAvatarFile(user.avatar_filename);
+
+      // Clear in database
+      await store.updateUser(id, { avatar_filename: null });
+
+      // GDPR audit: log admin action
+      await store.logAdminAction(adminId, 'admin_avatar_removed', id, `Removed custom avatar for ${user.username} (${user.email})`);
+
+      // Also log in user's own audit trail
+      await store.createAuditLog(id, 'avatar_removed', JSON.stringify({ removed_by_admin: adminId }), getClientIp(request), request.headers['user-agent']);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'User avatar removed successfully',
+        data: {
+          avatar_url: AuthService.getAvatarUrl({ ...user, avatar_filename: null }, appConfig.NEXT_PUBLIC_API_URL),
+        },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Admin remove user avatar');
     }
   });
 
@@ -301,6 +365,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Invalidate user cache so the auth middleware immediately rejects requests
       invalidateUserCache(id);
+
+      // Clean up avatar file from disk before deleting user
+      if (user.avatar_filename) {
+        await deleteAvatarFile(user.avatar_filename);
+      }
 
       // Delete user (CASCADE will handle rules, alerts, webhooks)
       const deleted = await store.deleteUser(id);

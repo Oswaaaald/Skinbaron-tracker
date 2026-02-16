@@ -180,11 +180,11 @@ export function ProfileSettings() {
     // Client-side validation
     const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) {
-      toast({ title: 'Invalid file type', description: 'Please upload a PNG, JPEG, WebP, or GIF image', variant: 'destructive' })
+      toast({ title: '❌ Invalid file type', description: 'Please upload a PNG, JPEG, WebP, or GIF image', variant: 'destructive' })
       return
     }
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Maximum file size is 2 MB', variant: 'destructive' })
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: '❌ File too large', description: 'Maximum file size is 5 MB', variant: 'destructive' })
       return
     }
 
@@ -195,13 +195,13 @@ export function ProfileSettings() {
       const response = await apiClient.uploadFile<{ avatar_url: string }>('/api/user/avatar', formData)
       if (response.success && response.data) {
         updateUser({ avatar_url: response.data.avatar_url })
-        toast({ title: 'Avatar updated', description: 'Your avatar has been uploaded successfully' })
+        toast({ title: '✅ Avatar updated', description: 'Your avatar has been uploaded successfully' })
         void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
       } else {
-        toast({ title: 'Upload failed', description: response.message || 'Failed to upload avatar', variant: 'destructive' })
+        toast({ title: '❌ Upload failed', description: response.message || 'Failed to upload avatar', variant: 'destructive' })
       }
     } catch (error) {
-      toast({ title: 'Upload failed', description: extractErrorMessage(error, 'Failed to upload avatar'), variant: 'destructive' })
+      toast({ title: '❌ Upload failed', description: extractErrorMessage(error, 'Failed to upload avatar'), variant: 'destructive' })
     } finally {
       setAvatarUploading(false)
     }
@@ -213,13 +213,13 @@ export function ProfileSettings() {
       const response = await apiClient.delete<{ avatar_url: string | null }>('/api/user/avatar')
       if (response.success) {
         updateUser({ avatar_url: response.data?.avatar_url ?? undefined })
-        toast({ title: 'Avatar removed', description: 'Your custom avatar has been removed' })
+        toast({ title: '✅ Avatar removed', description: 'Your custom avatar has been removed' })
         void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
       } else {
-        toast({ title: 'Failed', description: response.message || 'Failed to remove avatar', variant: 'destructive' })
+        toast({ title: '❌ Remove failed', description: response.message || 'Failed to remove avatar', variant: 'destructive' })
       }
     } catch (error) {
-      toast({ title: 'Failed', description: extractErrorMessage(error, 'Failed to remove avatar'), variant: 'destructive' })
+      toast({ title: '❌ Remove failed', description: extractErrorMessage(error, 'Failed to remove avatar'), variant: 'destructive' })
     } finally {
       setAvatarDeleting(false)
     }
@@ -231,13 +231,13 @@ export function ProfileSettings() {
       const response = await apiClient.patch<{ use_gravatar: boolean; avatar_url: string | null }>('/api/user/avatar-settings', { use_gravatar: checked })
       if (response.success && response.data) {
         updateUser({ use_gravatar: response.data.use_gravatar, avatar_url: response.data.avatar_url ?? undefined })
-        toast({ title: checked ? 'Gravatar enabled' : 'Gravatar disabled', description: checked ? 'Your Gravatar will be used as fallback' : 'Gravatar fallback has been disabled' })
+        toast({ title: checked ? '✅ Gravatar enabled' : '✅ Gravatar disabled', description: checked ? 'Your Gravatar will be used as fallback' : 'Gravatar fallback has been disabled' })
         void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
       } else {
-        toast({ title: 'Failed', description: response.message || 'Failed to update setting', variant: 'destructive' })
+        toast({ title: '❌ Update failed', description: response.message || 'Failed to update setting', variant: 'destructive' })
       }
     } catch (error) {
-      toast({ title: 'Failed', description: extractErrorMessage(error, 'Failed to update avatar settings'), variant: 'destructive' })
+      toast({ title: '❌ Update failed', description: extractErrorMessage(error, 'Failed to update avatar settings'), variant: 'destructive' })
     } finally {
       setGravatarToggling(false)
     }
@@ -373,23 +373,25 @@ export function ProfileSettings() {
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF. Max 2 MB. Will be resized to 256×256.</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF. Max 5 MB. Will be resized to 256×256.</p>
                 </div>
               </div>
               <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={(e) => void handleAvatarUpload(e)} />
-              {/* Gravatar toggle */}
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="gravatar-toggle" className="text-sm font-medium">Use Gravatar</Label>
-                  <p className="text-xs text-muted-foreground">Use your Gravatar as fallback when no custom avatar is set</p>
+              {/* Gravatar toggle — only shown when no custom avatar is set */}
+              {!(user?.avatar_url && user.avatar_url.includes('/api/avatars/')) && (
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="gravatar-toggle" className="text-sm font-medium">Use Gravatar</Label>
+                    <p className="text-xs text-muted-foreground">Use your Gravatar as fallback when no custom avatar is set</p>
+                  </div>
+                  <Switch
+                    id="gravatar-toggle"
+                    checked={user?.use_gravatar !== false}
+                    onCheckedChange={(checked) => void handleGravatarToggle(checked)}
+                    disabled={gravatarToggling}
+                  />
                 </div>
-                <Switch
-                  id="gravatar-toggle"
-                  checked={user?.use_gravatar !== false}
-                  onCheckedChange={(checked) => void handleGravatarToggle(checked)}
-                  disabled={gravatarToggling}
-                />
-              </div>
+              )}
             </CardContent>
           </Card>
           <Card>

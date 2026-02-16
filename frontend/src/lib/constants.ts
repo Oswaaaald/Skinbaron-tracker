@@ -36,6 +36,7 @@ import {
   Unlink,
   UserPlus,
   Fingerprint,
+  Camera,
   type LucideIcon
 } from "lucide-react"
 
@@ -66,6 +67,9 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   oauth_unlinked: { icon: Unlink, label: "Account Unlinked", variant: "secondary" },
   passkey_registered: { icon: Fingerprint, label: "Passkey Registered", variant: "default" },
   passkey_deleted: { icon: Fingerprint, label: "Passkey Deleted", variant: "secondary" },
+  avatar_uploaded: { icon: Camera, label: "Avatar Uploaded", variant: "default" },
+  avatar_removed: { icon: Camera, label: "Avatar Removed", variant: "secondary" },
+  gravatar_toggled: { icon: Camera, label: "Gravatar Setting Changed", variant: "outline" },
 } as const;
 
 /** Event type options for filter dropdowns */
@@ -92,6 +96,9 @@ export const AUDIT_EVENT_TYPES = [
   { value: "oauth_unlinked", label: "Account Unlinked" },
   { value: "passkey_registered", label: "Passkey Registered" },
   { value: "passkey_deleted", label: "Passkey Deleted" },
+  { value: "avatar_uploaded", label: "Avatar Uploaded" },
+  { value: "avatar_removed", label: "Avatar Removed" },
+  { value: "gravatar_toggled", label: "Gravatar Setting Changed" },
 ] as const;
 
 // ==================== QUERY KEYS ====================
