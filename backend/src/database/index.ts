@@ -259,6 +259,14 @@ class Store {
     return this.audit.cleanupOldLogs(daysToKeep);
   }
 
+  async cleanOldAdminActions(daysToKeep: number): Promise<number> {
+    return this.audit.cleanupOldAdminActions(daysToKeep);
+  }
+
+  async cleanOldAlerts(daysToKeep: number): Promise<number> {
+    return this.alerts.cleanupOldAlerts(daysToKeep);
+  }
+
   async getGlobalStats() {
     return this.audit.getGlobalStats();
   }

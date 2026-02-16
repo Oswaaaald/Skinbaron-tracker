@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, count, sql, ilike, inArray, isNull, getTableColumns } from 'drizzle-orm';
+import { eq, and, desc, asc, count, sql, lt, ilike, inArray, isNull, getTableColumns } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { alerts, rules } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
@@ -135,5 +135,12 @@ export class AlertsRepository {
     await this.db.update(alerts)
       .set({ notified_at: new Date() })
       .where(inArray(alerts.id, alertIds));
+  }
+
+  async cleanupOldAlerts(daysToKeep: number = 90): Promise<number> {
+    const result = await this.db.delete(alerts)
+      .where(lt(alerts.sent_at, sql`NOW() - ${daysToKeep} * INTERVAL '1 day'`))
+      .returning({ id: alerts.id });
+    return result.length;
   }
 }

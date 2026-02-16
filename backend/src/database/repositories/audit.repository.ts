@@ -87,6 +87,13 @@ export class AuditRepository {
     return result.length;
   }
 
+  async cleanupOldAdminActions(daysToKeep: number = 365): Promise<number> {
+    const result = await this.db.delete(adminActions)
+      .where(lt(adminActions.created_at, sql`NOW() - ${daysToKeep} * INTERVAL '1 day'`))
+      .returning({ id: adminActions.id });
+    return result.length;
+  }
+
   async getGlobalStats(): Promise<{
     total_users: number;
     total_admins: number;

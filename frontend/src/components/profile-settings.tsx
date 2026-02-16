@@ -248,7 +248,6 @@ export function ProfileSettings() {
           <TabsTrigger value="security" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Security</span></TabsTrigger>
           <TabsTrigger value="oauth" className="flex items-center gap-1.5"><Link2 className="h-4 w-4" /><span className="hidden sm:inline">Accounts</span></TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
-          <TabsTrigger value="danger" className="flex items-center gap-1.5"><Trash2 className="h-4 w-4" /><span className="hidden sm:inline">Danger</span></TabsTrigger>
         </TabsList>
 
         {/* ===================== Profile Tab ===================== */}
@@ -354,6 +353,18 @@ export function ProfileSettings() {
               <PasskeyManager />
             </CardContent>
           </Card>
+
+          {/* Delete Account */}
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Delete Account</CardTitle>
+              <CardDescription>Permanently delete your account and all associated data</CardDescription>
+            </CardHeader>
+            <CardContent className="mt-2 space-y-4">
+              <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.</AlertDescription></Alert>
+              <Button variant="destructive" onClick={() => setDeleteDialog(true)}><Trash2 className="h-4 w-4 mr-2" /> Delete Account</Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ===================== OAuth Tab ===================== */}
@@ -364,14 +375,12 @@ export function ProfileSettings() {
         {/* ===================== Logs Tab ===================== */}
         <TabsContent value="logs" className="space-y-4 mt-4">
           <SecurityHistory />
-        </TabsContent>
 
-        {/* ===================== Danger Tab ===================== */}
-        <TabsContent value="danger" className="space-y-4 mt-4">
+          {/* Data Export (GDPR) */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" /> Your Data</CardTitle>
-              <CardDescription>Download or delete all your personal data (GDPR)</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Download className="h-5 w-5" /> Export My Data</CardTitle>
+              <CardDescription>Download all your personal data (GDPR Art. 20 — Right to data portability)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.</p>
@@ -398,17 +407,6 @@ export function ProfileSettings() {
               }}>
                 <Download className="h-4 w-4 mr-2" /> Export My Data
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive"><Trash2 className="h-5 w-5" /> Delete Account</CardTitle>
-              <CardDescription>Permanently delete your account and all associated data</CardDescription>
-            </CardHeader>
-            <CardContent className="mt-2 space-y-4">
-              <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.</AlertDescription></Alert>
-              <Button variant="destructive" onClick={() => setDeleteDialog(true)}><Trash2 className="h-4 w-4 mr-2" /> Delete Account</Button>
             </CardContent>
           </Card>
         </TabsContent>

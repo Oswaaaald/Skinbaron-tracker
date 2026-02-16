@@ -46,6 +46,7 @@ const ConfigSchema = z.object({
   
   // Audit logs retention (GDPR compliance)
   AUDIT_LOG_RETENTION_DAYS: z.coerce.number().default(365),
+  ALERT_RETENTION_DAYS: z.coerce.number().default(90),
 
   // OAuth2 providers (all optional — only enabled if configured)
   GOOGLE_CLIENT_ID: z.string().optional(),

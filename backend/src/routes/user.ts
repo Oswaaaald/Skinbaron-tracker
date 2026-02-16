@@ -541,6 +541,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const alerts = await store.getAlertsByUserId(userId, 0, 0); // limit=0 → all alerts
       const auditLogs = await store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
       const oauthAccounts = await store.getOAuthAccountsByUserId(userId);
+      const passkeys = await store.passkeys.findByUserId(userId);
 
       const exportData = {
         profile: {
@@ -605,6 +606,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
           ip_address: l.ip_address,
           user_agent: l.user_agent,
           created_at: l.created_at,
+        })),
+        passkeys: passkeys.map(p => ({
+          id: p.id,
+          name: p.name,
+          device_type: p.device_type,
+          backed_up: p.backed_up,
+          last_used_at: p.last_used_at,
+          created_at: p.created_at,
         })),
         exported_at: new Date().toISOString(),
       };
@@ -696,13 +705,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
       // OAuth-only users without 2FA can delete without extra verification (confirmed on frontend)
 
-      // Audit log BEFORE deletion (FK constraint requires user to exist)
-      await store.createAuditLog(
+      // Log self-deletion in admin_actions (survives CASCADE delete on user)
+      await store.logAdminAction(
         userId,
         'account_self_deleted',
+        userId,
         JSON.stringify({ username: user.username, email: user.email, was_admin: user.is_admin }),
-        getClientIp(request),
-        request.headers['user-agent'],
       );
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)

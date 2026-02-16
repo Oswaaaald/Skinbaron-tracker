@@ -137,6 +137,26 @@ export class AlertScheduler {
         } catch (error) {
           this.logger.error({ error }, '[Scheduler] Failed to clean old audit logs');
         }
+
+        // Clean old admin actions (same retention as audit logs)
+        try {
+          const result = await store.cleanOldAdminActions(appConfig.AUDIT_LOG_RETENTION_DAYS);
+          if (result > 0) {
+            this.logger.info({ deleted: result, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old admin actions');
+          }
+        } catch (error) {
+          this.logger.error({ error }, '[Scheduler] Failed to clean old admin actions');
+        }
+
+        // Clean old alerts (GDPR — configurable retention, default 90 days)
+        try {
+          const result = await store.cleanOldAlerts(appConfig.ALERT_RETENTION_DAYS);
+          if (result > 0) {
+            this.logger.info({ deleted: result, retentionDays: appConfig.ALERT_RETENTION_DAYS }, '[Scheduler] Cleaned old alerts');
+          }
+        } catch (error) {
+          this.logger.error({ error }, '[Scheduler] Failed to clean old alerts');
+        }
       }
 
       // Clean expired blacklisted access tokens periodically (every run)
@@ -144,6 +164,13 @@ export class AlertScheduler {
         await store.cleanupExpiredBlacklistTokens();
       } catch (error) {
         this.logger.error({ error }, '[Scheduler] Failed to cleanup expired blacklist tokens');
+      }
+
+      // Clean expired refresh tokens (every run)
+      try {
+        await store.cleanupRefreshTokens();
+      } catch (error) {
+        this.logger.error({ error }, '[Scheduler] Failed to cleanup expired refresh tokens');
       }
 
       // Get all enabled rules
