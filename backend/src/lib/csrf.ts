@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AppError } from './errors.js';
+import { appConfig } from './config.js';
 
 const CSRF_COOKIE = 'sb_csrf';
 const CSRF_HEADER = 'x-csrf-token';
@@ -44,6 +45,17 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
   const skipPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/logout', '/api/auth/verify-oauth-2fa', '/api/auth/finalize-oauth-registration'];
   const urlPath = request.url.split('?')[0] ?? ''; // Strip query string for exact match
   if (skipPaths.includes(urlPath)) {
+    return;
+  }
+
+  // Skip CSRF for Swagger UI requests (already behind authentication).
+  // Check Origin header (reliably sent by browsers for non-GET same-origin fetch)
+  // and Referer as fallback.
+  const origin = request.headers['origin'] || '';
+  const referer = request.headers['referer'] || '';
+  const originStr = Array.isArray(origin) ? origin[0] ?? '' : origin;
+  const refererStr = Array.isArray(referer) ? referer[0] ?? '' : referer;
+  if (originStr === appConfig.NEXT_PUBLIC_API_URL || refererStr.includes('/docs')) {
     return;
   }
 
