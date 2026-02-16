@@ -372,7 +372,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative" style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}>
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.65_0.19_280/0.1),transparent)]" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.5_0_0/0.06),transparent)]" />
       <Card className="w-full max-w-md border-border/50 shadow-lg">
         <CardHeader className="space-y-1.5 text-center pb-2">
           <CardTitle className="text-2xl font-bold tracking-tight">

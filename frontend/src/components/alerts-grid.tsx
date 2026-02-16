@@ -372,11 +372,11 @@ export function AlertsGrid() {
               {filteredAlerts.length} result{filteredAlerts.length !== 1 ? 's' : ''}
             </p>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={handleClearAllAlerts}
               disabled={isClearingAll}
-              className="text-destructive hover:text-destructive h-8 text-xs"
+              className="h-7 text-xs"
             >
               {isClearingAll ? (
                 <>

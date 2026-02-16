@@ -166,13 +166,13 @@ export function AdminAuditLogs() {
             : "No security events recorded"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {isFetching && (
           <div className="text-xs text-muted-foreground">Refreshing...</div>
         )}
         {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="space-y-2 flex-1 min-w-[200px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="event-type">Event Type</Label>
             <Select value={eventType} onValueChange={setEventType}>
               <SelectTrigger id="event-type">
@@ -188,7 +188,7 @@ export function AdminAuditLogs() {
             </Select>
           </div>
 
-          <div className="space-y-2 relative flex-1 min-w-[200px]">
+          <div className="space-y-2 relative">
             <Label htmlFor="user-search">Search User</Label>
             <div className="relative">
               <Input
@@ -241,7 +241,7 @@ export function AdminAuditLogs() {
             )}
           </div>
 
-          <div className="space-y-2 flex-1 min-w-[150px]">
+          <div className="space-y-2">
             <Label htmlFor="limit">Limit</Label>
             <Select value={limit.toString()} onValueChange={(v) => setLimit(parseInt(v))}>
               <SelectTrigger id="limit">
@@ -257,7 +257,7 @@ export function AdminAuditLogs() {
             </Select>
           </div>
 
-          <div className="space-y-2 flex-shrink-0 w-auto min-w-[220px] flex flex-col">
+          <div className="space-y-2 flex flex-col">
             <Label className="invisible">Actions</Label>
             <div className="flex items-end gap-2">
               <Button onClick={() => void refetch()} variant="outline" className="flex-1" disabled={isFetching}>

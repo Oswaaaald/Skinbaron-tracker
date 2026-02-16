@@ -36,14 +36,14 @@ function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.65_0.19_280/0.15),transparent)]" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.5_0_0/0.06),transparent)]" />
         <div className="container mx-auto px-4 sm:px-6 pt-20 pb-16 sm:pt-28 sm:pb-24 text-center">
           <Badge variant="secondary" className="mb-6 px-3 py-1 text-xs font-medium">
             Free &amp; Open Source
           </Badge>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-5 max-w-3xl mx-auto leading-[1.1]">
             Never Miss a Deal on{" "}
-            <span className="text-primary">CS2 Skins</span>
+            <span className="text-primary">SkinBaron</span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             Get instant Discord notifications when CS2 skins matching your criteria appear on SkinBaron.
