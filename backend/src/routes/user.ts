@@ -1147,8 +1147,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       const { credential: cred, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
 
-      // Encode binary fields to base64url for storage
-      const credentialIdB64 = Buffer.from(cred.id).toString('base64url');
+      // cred.id is already a Base64URLString in @simplewebauthn/server v13
+      const credentialIdB64 = cred.id;
+      // cred.publicKey is a Uint8Array, encode to base64url for storage
       const publicKeyB64 = Buffer.from(cred.publicKey).toString('base64url');
 
       const passkey = await store.passkeys.create({
