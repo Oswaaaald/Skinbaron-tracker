@@ -435,14 +435,14 @@ export function WebhooksTable() {
     return (
       <>
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground mt-1">
                 Manage your encrypted webhook endpoints for notifications
               </p>
             </div>
-            <Button onClick={() => handleOpenDialog()}>
+            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
               Add Webhook
             </Button>
           </div>
@@ -462,16 +462,16 @@ export function WebhooksTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-1">
             Manage your encrypted webhook endpoints for notifications
           </p>
         </div>
-          <Button onClick={() => handleOpenDialog()}>
-            Add Webhook
-          </Button>
+        <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
+          Add Webhook
+        </Button>
       </div>
 
       <Card>

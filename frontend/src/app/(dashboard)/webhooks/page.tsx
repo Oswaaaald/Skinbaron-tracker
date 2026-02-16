@@ -11,9 +11,5 @@ export default function WebhooksPage() {
     return <LoadingState variant="page" />
   }
 
-  return (
-    <div className="space-y-4">
-      <WebhooksTable />
-    </div>
-  )
+  return <WebhooksTable />
 }

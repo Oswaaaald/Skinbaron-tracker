@@ -226,11 +226,16 @@ export function AlertsGrid() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Filters */}
-      <Card className="border-border/40">
+      <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-muted-foreground">
+              {filteredAlerts.length} result{filteredAlerts.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
             <div className="col-span-2 sm:col-span-1">
               <label htmlFor="item-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Item
@@ -366,34 +371,31 @@ export function AlertsGrid() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
-            <p className="text-xs text-muted-foreground">
-              {filteredAlerts.length} result{filteredAlerts.length !== 1 ? 's' : ''}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearAllAlerts}
-              disabled={isClearingAll}
-              className="h-7 text-xs"
-            >
-              {isClearingAll ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-1.5" inline />
-                  Clearing...
-                </>
-              ) : (
-                'Clear All Alerts'
-              )}
-            </Button>
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearAllAlerts}
+                disabled={isClearingAll}
+                className="h-9 w-full text-xs"
+              >
+                {isClearingAll ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-1.5" inline />
+                    Clearing...
+                  </>
+                ) : (
+                  'Clear All Alerts'
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Grid */}
       {alerts.length === 0 ? (
-        <Card className="border-dashed border-border/50">
+        <Card className="border-dashed">
           <CardContent className="p-16 text-center" role="status" aria-live="polite">
             <p className="text-muted-foreground text-sm">No alerts found matching your criteria.</p>
           </CardContent>
@@ -406,7 +408,7 @@ export function AlertsGrid() {
               return (
                 <Card
                   key={alert.id}
-                  className="group relative overflow-hidden border-border/50 bg-card shadow-sm hover:shadow-md hover:border-border transition-all duration-200 flex flex-col p-0"
+                  className="group relative overflow-hidden bg-card shadow-sm hover:shadow-md hover:border-border transition-all duration-200 flex flex-col p-0"
                 >
                   {/* Image Header */}
                   <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95">

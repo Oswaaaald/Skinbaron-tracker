@@ -155,7 +155,7 @@ export function AdminAuditLogs() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
           Security Audit Logs (Super Admin)
@@ -166,12 +166,12 @@ export function AdminAuditLogs() {
             : "No security events recorded"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {isFetching && (
           <div className="text-xs text-muted-foreground">Refreshing...</div>
         )}
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-2">
             <Label htmlFor="event-type">Event Type</Label>
             <Select value={eventType} onValueChange={setEventType}>
