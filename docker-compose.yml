@@ -135,7 +135,6 @@ volumes:
   skinbaron_postgres_data:
     external: true
   skinbaron_avatar_data:
-  skinbaron_avatar_data:
 
 networks:
   skinbaron_network:
