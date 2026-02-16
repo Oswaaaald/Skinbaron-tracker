@@ -361,7 +361,8 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       
       // Check if button should be disabled
       if (isLoading) return
-      if ((requires2FA || oauthPending2FA) && (totpCode.length === 7 || totpCode.length < 6)) return
+      if (!requires2FA && !oauthPending2FA && !isLogin && !formData.tosAccepted) return
+      if ((requires2FA || oauthPending2FA) && totpCode.length !== 6 && totpCode.length !== 8) return
       
       void handleSubmit(e as unknown as React.FormEvent)
     }
@@ -509,6 +510,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                         onChange={(e) => handleInputChange('username', e.target.value)}
                         className="pl-10"
                         disabled={isLoading}
+                        maxLength={20}
                       />
                     </div>
                   </div>
@@ -648,7 +650,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={isLoading}
+                  disabled={isLoading || (!isLogin && !formData.tosAccepted)}
                 >
                   {isLoading ? (
                     <>

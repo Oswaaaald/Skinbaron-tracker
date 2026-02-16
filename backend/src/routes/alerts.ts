@@ -14,7 +14,7 @@ const AlertsQuerySchema = z.object({
   }),
   offset: z.string().default('0').transform(val => parseInt(val, 10)),
   rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
-  item_name: z.string().optional(),
+  item_name: z.string().max(200).optional(),
   sort_by: z.enum(['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc']).optional(),
 });
 
@@ -37,7 +37,7 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
           limit: { type: 'string', default: '50', description: 'Max results per page (max: 1000, default: 50)' },
           offset: { type: 'string', default: '0' },
           rule_id: { type: 'string' },
-          item_name: { type: 'string', description: 'Filter by item name (partial match)' },
+          item_name: { type: 'string', maxLength: 200, description: 'Filter by item name (partial match)' },
           sort_by: { type: 'string', enum: ['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc'], description: 'Sort order' },
         },
       },

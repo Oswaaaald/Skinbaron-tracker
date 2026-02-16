@@ -384,6 +384,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           rule_ids: { 
             type: 'array', 
             items: { type: 'number' },
+            maxItems: 50,
             description: 'Array of rule IDs to enable. If empty or not provided, enables all rules'
           },
         },
@@ -452,6 +453,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           rule_ids: { 
             type: 'array', 
             items: { type: 'number' },
+            maxItems: 50,
             description: 'Array of rule IDs to disable. If empty or not provided, disables all rules'
           },
         },
@@ -520,6 +522,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           rule_ids: { 
             type: 'array', 
             items: { type: 'number' },
+            maxItems: 50,
             description: 'Array of rule IDs to delete. If empty or not provided, deletes all rules'
           },
           confirm_all: {

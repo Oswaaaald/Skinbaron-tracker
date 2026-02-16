@@ -34,7 +34,7 @@ export const RuleSchema = z.object({
   stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   souvenir_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   sticker_filter: z.enum(['all', 'only', 'exclude']).default('all'),
-  webhook_ids: z.array(z.number()).default([]),
+  webhook_ids: z.array(z.number()).max(10).default([]),
   enabled: z.boolean().default(true),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),

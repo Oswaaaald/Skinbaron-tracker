@@ -45,7 +45,7 @@ import { extractErrorMessage } from "@/lib/utils"
 import { QUERY_KEYS } from "@/lib/constants"
 
 const ruleFormSchema = z.object({
-  search_item: z.string().min(1, "Search item is required"),
+  search_item: z.string().min(1, "Search item is required").max(200, "Search item is too long"),
   min_price: z.number().min(0, "Minimum price must be positive").optional(),
   max_price: z.number().min(0, "Maximum price must be positive").optional(),
   min_wear: z.number().min(0, "Min wear must be between 0 and 100").max(100, "Min wear must be between 0 and 100").optional(),

@@ -172,11 +172,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['Authentication'],
       body: {
         type: 'object',
-        required: ['username', 'email', 'password'],
+        required: ['username', 'email', 'password', 'tos_accepted'],
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
-          password: { type: 'string', minLength: 8 },
+          password: { type: 'string', minLength: 8, maxLength: 128 },
           tos_accepted: { type: 'boolean' },
         },
       },
@@ -289,8 +289,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         required: ['email', 'password'],
         properties: {
           email: { type: 'string', format: 'email' },
-          password: { type: 'string' },
-          totp_code: { type: 'string' },
+          password: { type: 'string', maxLength: 128 },
+          totp_code: { type: 'string', minLength: 6, maxLength: 8 },
         },
       },
       response: {
@@ -978,7 +978,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           type: 'object',
           required: ['username', 'tos_accepted'],
           properties: {
-            username: { type: 'string', minLength: 3, maxLength: 20 },
+            username: { type: 'string', minLength: 3, maxLength: 20, pattern: '^[a-zA-Z0-9_]+$' },
             tos_accepted: { type: 'boolean' },
           },
         },
@@ -1123,7 +1123,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           type: 'object',
           required: ['totp_code'],
           properties: {
-            totp_code: { type: 'string' },
+            totp_code: { type: 'string', minLength: 6, maxLength: 8 },
           },
         },
         response: {

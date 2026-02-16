@@ -338,8 +338,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          current_password: { type: 'string', minLength: 1 },
-          new_password: { type: 'string', minLength: 8 },
+          current_password: { type: 'string', minLength: 1, maxLength: 128 },
+          new_password: { type: 'string', minLength: 8, maxLength: 128 },
         },
         required: ['current_password', 'new_password'],
       },
@@ -446,7 +446,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          new_password: { type: 'string', minLength: 8 },
+          new_password: { type: 'string', minLength: 8, maxLength: 128 },
         },
         required: ['new_password'],
       },
@@ -618,8 +618,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          password: { type: 'string' },
-          totp_code: { type: 'string', description: 'Required for OAuth-only users with 2FA enabled' },
+          password: { type: 'string', maxLength: 128 },
+          totp_code: { type: 'string', maxLength: 8, description: 'Required for OAuth-only users with 2FA enabled' },
         },
       },
       response: {
@@ -787,7 +787,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          code: { type: 'string' },
+          code: { type: 'string', minLength: 6, maxLength: 6 },
         },
         required: ['code'],
       },
@@ -883,8 +883,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          password: { type: 'string' },
-          totp_code: { type: 'string', description: 'Required for OAuth-only users (no password)' },
+          password: { type: 'string', maxLength: 128 },
+          totp_code: { type: 'string', maxLength: 8, description: 'Required for OAuth-only users (no password)' },
         },
       },
       response: {

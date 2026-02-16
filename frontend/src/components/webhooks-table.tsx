@@ -284,6 +284,7 @@ export function WebhooksTable() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="My Discord Webhook"
+                  maxLength={50}
                 />
               </div>
 
