@@ -383,8 +383,10 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       const opts = optionsRes.data as any
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const challengeKey = String(opts.challengeKey || '')
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const publicKeyOptions = opts.options
+      // The backend spreads the WebAuthn options flat alongside challengeKey,
+      // so we extract challengeKey and pass the rest to startAuthentication.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const { challengeKey: _ck, ...publicKeyOptions } = opts
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const assertion = await startAuthentication({ optionsJSON: publicKeyOptions })
