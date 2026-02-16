@@ -328,7 +328,7 @@ export function ProfileSettings() {
               <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Authenticator App (TOTP)</CardTitle>
               <CardDescription>Use an authenticator app like Google Authenticator or Authy</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Status:</span>
                 {twoFactorStatus?.enabled ? (<Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> Enabled</Badge>) : (<Badge variant="outline">Disabled</Badge>)}
@@ -350,7 +350,7 @@ export function ProfileSettings() {
               <CardTitle className="flex items-center gap-2"><Fingerprint className="h-5 w-5" /> Passkeys &amp; Hardware Keys</CardTitle>
               <CardDescription>Sign in with biometrics, security keys, or device passkeys</CardDescription>
             </CardHeader>
-            <CardContent className="pt-2">
+            <CardContent>
               <PasskeyManager />
             </CardContent>
           </Card>
