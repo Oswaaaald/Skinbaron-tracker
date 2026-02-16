@@ -91,8 +91,8 @@ export function PasskeyManager() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
       const attResp = await startRegistration({ optionsJSON: optionsRes.data as any })
 
-      const name = detectPasskeyName(attResp)
-      const verifyRes = await apiClient.verifyPasskeyRegistration(attResp, name)
+      // Backend auto-detects the name from AAGUID (e.g. "iCloud Keychain", "Dashlane")
+      const verifyRes = await apiClient.verifyPasskeyRegistration(attResp)
       if (!verifyRes.success) {
         setError(verifyRes.message || 'Passkey verification failed')
         return
@@ -256,15 +256,4 @@ export function PasskeyManager() {
       />
     </div>
   )
-}
-
-/**
- * Try to detect a useful name from the attestation response.
- * Falls back to a generic name with timestamp.
- */
-function detectPasskeyName(_attResp: unknown): string {
-  // Most browsers don't expose a useful name, so we use a timestamp-based default
-  const now = new Date()
-  const date = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  return `Passkey ${date}`
 }

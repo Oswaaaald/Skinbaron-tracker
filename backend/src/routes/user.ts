@@ -15,6 +15,7 @@ import {
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
+import { resolvePasskeyName } from '../lib/passkey-aaguids.js';
 
 /**
  * Server-side store for pending 2FA secrets.
@@ -1154,12 +1155,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
         throw new AppError(400, 'Passkey verification failed', 'VERIFICATION_FAILED');
       }
 
-      const { credential: cred, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+      const { credential: cred, credentialDeviceType, credentialBackedUp, aaguid } = verification.registrationInfo;
 
       // cred.id is already a Base64URLString in @simplewebauthn/server v13
       const credentialIdB64 = cred.id;
       // cred.publicKey is a Uint8Array, encode to base64url for storage
       const publicKeyB64 = Buffer.from(cred.publicKey).toString('base64url');
+
+      // Resolve a friendly name from the AAGUID (e.g. "iCloud Keychain", "Dashlane", "YubiKey 5")
+      const detectedName = resolvePasskeyName(aaguid, credentialDeviceType, cred.transports);
 
       const passkey = await store.passkeys.create({
         user_id: userId,
@@ -1169,7 +1173,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         device_type: credentialDeviceType,
         backed_up: credentialBackedUp,
         transports: cred.transports ? JSON.stringify(cred.transports) : undefined,
-        name: name || 'My Passkey',
+        name: name || detectedName,
       });
 
       await store.createAuditLog(
