@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Trash2, Users, Wrench } from 'lucide-react'
+import { Activity, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, Eye, History, Search, Shield, ShieldOff, Trash2, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -563,6 +563,14 @@ export function AdminPanel() {
                   })}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDetailUserId(user.id)}
+                        title="View user details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       {user.is_super_admin ? (
                         // Super Admin - show locked state
                         <>
