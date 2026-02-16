@@ -33,7 +33,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs \
-    && adduser --system --uid 1001 skinbaron
+    && adduser --system --uid 1001 skinbaron \
+    && mkdir -p /data/avatars \
+    && chown skinbaron:nodejs /data/avatars
 
 COPY --from=deps --chown=skinbaron:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=skinbaron:nodejs /app/dist ./dist
