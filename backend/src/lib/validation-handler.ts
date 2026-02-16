@@ -36,8 +36,8 @@ export function handleRouteError(
   reply: FastifyReply,
   context: string
 ): FastifyReply {
-  // Log error for debugging
-  request.log.error({ error, context }, `Error in ${context}`);
+  // Log error for debugging — use 'err' key so pino serializes message + stack
+  request.log.error({ err: error, context }, `Error in ${context}`);
   
   // Handle AppError (custom errors with status codes)
   if (error instanceof AppError) {

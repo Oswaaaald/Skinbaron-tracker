@@ -1315,18 +1315,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(401, 'Passkey not recognized', 'PASSKEY_NOT_FOUND');
       }
 
-      const verification = await verifyAuthenticationResponse({
-        response: credential as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
-        expectedChallenge: challengeEntry.challenge,
-        expectedOrigin: rpOrigin,
-        expectedRPID: rpID,
-        credential: {
-          id: passkey.credential_id,
-          publicKey: Buffer.from(passkey.public_key, 'base64url'),
-          counter: passkey.counter,
-          transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[]) : undefined,
-        },
-      });
+      let verification;
+      try {
+        verification = await verifyAuthenticationResponse({
+          response: credential as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
+          expectedChallenge: challengeEntry.challenge,
+          expectedOrigin: rpOrigin,
+          expectedRPID: rpID,
+          credential: {
+            id: passkey.credential_id,
+            publicKey: new Uint8Array(Buffer.from(passkey.public_key, 'base64url')),
+            counter: passkey.counter,
+            transports: passkey.transports ? (JSON.parse(passkey.transports) as AuthenticatorTransportFuture[]) : undefined,
+          },
+        });
+      } catch (verifyErr) {
+        request.log.error({ err: verifyErr }, 'verifyAuthenticationResponse failed');
+        const msg = verifyErr instanceof Error ? verifyErr.message : 'Passkey verification failed';
+        throw new AppError(401, msg, 'VERIFICATION_FAILED');
+      }
 
       if (!verification.verified) {
         throw new AppError(401, 'Passkey verification failed', 'VERIFICATION_FAILED');
