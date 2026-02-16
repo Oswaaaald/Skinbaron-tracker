@@ -1084,7 +1084,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
           transports: k.transports ? (JSON.parse(k.transports) as AuthenticatorTransportFuture[]) : undefined,
         })),
         authenticatorSelection: {
-          residentKey: 'preferred',
+          residentKey: 'required',
+          requireResidentKey: true,
           userVerification: 'preferred',
         },
       });
