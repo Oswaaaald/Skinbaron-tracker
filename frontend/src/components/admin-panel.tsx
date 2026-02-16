@@ -99,7 +99,6 @@ export function AdminPanel() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
     placeholderData: (prev) => prev,
   })
 
