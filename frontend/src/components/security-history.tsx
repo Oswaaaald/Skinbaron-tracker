@@ -82,7 +82,7 @@ export function SecurityHistory() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
           Security History
@@ -93,13 +93,13 @@ export function SecurityHistory() {
             : "No events recorded"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="mt-2">
+      <CardContent>
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No security events recorded
           </p>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="h-[600px] pr-4">
             <div className="space-y-4">
               {logs.map((log: AuditLog, index: number) => {
                 const config = AUDIT_EVENT_CONFIG[log.event_type] || {
@@ -170,7 +170,7 @@ export function SecurityHistory() {
                             </>
                           )}
                           <span className="text-xs text-muted-foreground ml-auto">
-                            {formatRelativeDate(log.created_at)}
+                            {formatRelativeDate(log.created_at, 'fr')}
                           </span>
                           {(log.ip_address || log.user_agent) && (
                             <div className="h-6 px-2 ml-2 flex items-center">
