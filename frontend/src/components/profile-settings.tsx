@@ -555,7 +555,7 @@ function LinkedAccounts() {
         <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Linked Accounts</CardTitle>
         <CardDescription>Manage your social login connections</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="mt-2 space-y-2">
         {enabledProviders.map(provider => {
           const meta = PROVIDER_META[provider] ?? { label: provider, icon: null }
           const isLinked = linkedProviders.has(provider)
