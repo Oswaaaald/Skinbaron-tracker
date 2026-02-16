@@ -593,7 +593,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       };
 
       // Log the export action
-      await store.createAuditLog(userId, 'data_export', undefined, getClientIp(request));
+      await store.createAuditLog(userId, 'data_export', undefined, getClientIp(request), request.headers['user-agent']);
 
       return reply.status(200).send({
         success: true,
