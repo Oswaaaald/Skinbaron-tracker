@@ -65,6 +65,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
                   is_admin: { type: 'boolean' },
                   is_super_admin: { type: 'boolean' },
                   created_at: { type: 'string' },
+                  avatar_url: { type: ['string', 'null'] },
                   stats: {
                     type: 'object',
                     properties: {
