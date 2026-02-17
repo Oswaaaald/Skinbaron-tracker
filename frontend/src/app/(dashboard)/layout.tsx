@@ -4,6 +4,7 @@ import { DashboardNav, MobileNavTrigger } from "@/components/dashboard-nav"
 import { UserNav } from "@/components/user-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
+import { useAlertNotifier } from "@/hooks/use-alert-notifier"
 import { flushQueuedToasts } from "@/hooks/use-toast"
 import { useEffect, useState } from "react"
 
@@ -26,6 +27,9 @@ export default function DashboardLayout({
   useEffect(() => {
     flushQueuedToasts()
   }, [])
+
+  // Show a toast whenever new alerts arrive (works on every page)
+  useAlertNotifier()
 
   // Show navigation if:
   // 1. User is currently authenticated, OR
