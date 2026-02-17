@@ -119,9 +119,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         is_admin: user.is_admin || false,
         is_super_admin: user.is_super_admin || false,
         created_at: user.created_at,
-        avatar_url: user.avatar_filename
-          ? `${appConfig.NEXT_PUBLIC_API_URL}/api/avatars/${user.avatar_filename}`
-          : null,
+        avatar_url: AuthService.getAvatarUrl(user, appConfig.NEXT_PUBLIC_API_URL),
         stats: user.stats,
       }));
 
