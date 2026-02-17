@@ -208,6 +208,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
@@ -337,6 +338,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           current_password: { type: 'string', minLength: 1, maxLength: 128 },
           new_password: { type: 'string', minLength: 8, maxLength: 128 },
@@ -445,6 +447,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           new_password: { type: 'string', minLength: 8, maxLength: 128 },
         },
@@ -628,6 +631,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['use_gravatar'],
         properties: {
           use_gravatar: { type: 'boolean' },
@@ -820,6 +824,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           password: { type: 'string', maxLength: 128 },
           totp_code: { type: 'string', maxLength: 8, description: 'Required for OAuth-only users with 2FA enabled' },
@@ -897,6 +902,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
       await store.users.delete(userId);
+
+      // Blacklist the current access token so it cannot be reused during the remaining TTL
+      const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
+      if (accessToken) {
+        const tokenPayload = AuthService.verifyToken(accessToken, 'access');
+        if (tokenPayload?.jti) {
+          const exp = tokenPayload.exp ? tokenPayload.exp * 1000 : Date.now();
+          await store.auth.blacklistAccessToken(tokenPayload.jti, userId, exp, 'account_deleted');
+        }
+      }
 
       // Clear auth cookies so the browser doesn't retain stale tokens
       clearAuthCookies(reply);
@@ -993,6 +1008,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           code: { type: 'string', minLength: 6, maxLength: 6 },
         },
@@ -1089,6 +1105,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           password: { type: 'string', maxLength: 128 },
           totp_code: { type: 'string', maxLength: 8, description: 'Required for OAuth-only users (no password)' },
@@ -1306,6 +1323,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           credential: { type: 'object', maxProperties: 20 },
           name: { type: 'string', maxLength: 64 },
@@ -1398,6 +1416,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       },
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: { name: { type: 'string', minLength: 1, maxLength: 64 } },
         required: ['name'],
       },

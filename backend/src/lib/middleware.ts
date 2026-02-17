@@ -112,7 +112,11 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
     throw new AppError(401, 'Token is invalid or expired', 'INVALID_TOKEN');
   }
 
-  if (payload.jti && await store.auth.isBlacklisted(payload.jti)) {
+  if (!payload.jti) {
+    throw new AppError(401, 'Token is malformed', 'INVALID_TOKEN');
+  }
+
+  if (await store.auth.isBlacklisted(payload.jti)) {
     throw new AppError(401, 'Token has been revoked', 'TOKEN_REVOKED');
   }
 

@@ -14,6 +14,7 @@ import { getAuthUser } from '../lib/middleware.js';
  */
 const CreateRuleRequestSchema = RuleSchema.omit({ 
   id: true, 
+  user_id: true,
   created_at: true, 
   updated_at: true 
 });
@@ -120,6 +121,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['search_item'],
         properties: {
           search_item: { type: 'string', minLength: 1, maxLength: 200 },
@@ -170,13 +172,9 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         throw new AppError(400, `You have reached the maximum limit of ${MAX_RULES_PER_USER} rules per user. Please delete some rules before creating new ones.`, 'MAX_RULES_REACHED');
       }
       
-      // Parse body but add user_id from authenticated user
-      const bodyData = request.body as Record<string, unknown>;
-      
-      const ruleData = validateWithZod(CreateRuleRequestSchema, {
-        ...bodyData,
-        user_id: getAuthUser(request).id,
-      });
+      // Validate body then add user_id from authenticated user (never trust client-supplied user_id)
+      const bodyData = validateWithZod(CreateRuleRequestSchema, request.body);
+      const ruleData = { ...bodyData, user_id: getAuthUser(request).id };
       
       // Validate webhook_ids if provided - must belong to user
       if (ruleData.webhook_ids && ruleData.webhook_ids.length > 0) {
@@ -222,6 +220,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       },
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           search_item: { type: 'string', minLength: 1, maxLength: 200 },
           min_price: { type: 'number', minimum: 0, nullable: true },
@@ -284,13 +283,8 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
         throw new AppError(403, 'You can only update your own rules', 'ACCESS_DENIED');
       }
 
-      // Parse body but add user_id from authenticated user (same as create)
-      const bodyData = request.body as Record<string, unknown>;
-      
-      const updates = validateWithZod(UpdateRuleRequestSchema, {
-        ...bodyData,
-        user_id: getAuthUser(request).id,
-      });
+      // Validate body (user_id excluded from schema — never trust client input)
+      const updates = validateWithZod(UpdateRuleRequestSchema, request.body);
       
       // Validate webhook_ids - filter out deleted webhooks automatically
       const userWebhooks = await store.webhooks.findByUserId(getAuthUser(request).id);
@@ -409,6 +403,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           rule_ids: { 
             type: 'array', 
@@ -478,6 +473,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           rule_ids: { 
             type: 'array', 
@@ -547,6 +543,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           rule_ids: { 
             type: 'array', 

@@ -32,7 +32,7 @@ export const UserRegistrationSchema = z.object({
 export const UserLoginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required').max(128),
-  totp_code: z.string().min(6).max(8).regex(/^\d+$/, '2FA code must contain only digits').optional(),
+  totp_code: z.string().min(6).max(8).regex(/^[0-9A-Fa-f]+$/, '2FA code must contain only digits or recovery code characters').optional(),
 });
 
 export const PasswordChangeSchema = z.object({

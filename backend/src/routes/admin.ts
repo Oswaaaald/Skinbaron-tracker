@@ -62,6 +62,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           sort_dir: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
           search: { type: 'string', maxLength: 200 },
           role: { type: 'string', enum: ['admin', 'user', 'all'], default: 'all' },
+          status: { type: 'string', enum: ['all', 'sanctioned', 'active'], default: 'all' },
         },
       },
       response: {
@@ -368,6 +369,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Cannot delete other super admins
+      if (user.is_super_admin) {
+        throw Errors.forbidden('Cannot delete a super administrator account');
+      }
+
       if (user.is_admin) {
         const adminCount = await store.users.countAdmins();
         
@@ -456,6 +461,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       },
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['is_admin'],
         properties: {
           is_admin: { type: 'boolean' },
@@ -575,6 +581,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['restriction_type', 'reason'],
         properties: {
           restriction_type: { type: 'string', enum: ['temporary', 'permanent'] },
@@ -683,6 +690,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['reason'],
         properties: {
           reason: { type: 'string', minLength: 1, maxLength: 500 },
@@ -698,6 +706,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
       if (!user.is_restricted) throw Errors.badRequest('This user is not currently restricted');
+
+      // Protect admin targets: only super admins can unrestrict admin/super_admin users
+      if (user.is_super_admin) throw Errors.forbidden('Cannot unrestrict a super administrator');
+      if (user.is_admin) {
+        const currentAdmin = await store.users.findById(adminId);
+        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can unrestrict admin accounts');
+      }
 
       const admin = await store.users.findById(adminId);
       const adminUsername = admin?.username || 'Unknown';
@@ -849,6 +864,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['username'],
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 32, pattern: '^[a-zA-Z0-9_]+$' },
@@ -913,6 +929,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['target'],
         properties: {
           target: { type: 'string', enum: ['2fa', 'passkeys', 'sessions'] },
@@ -1111,6 +1128,16 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
+      
+      // Check user exists and isn't already approved
+      const user = await store.users.findById(id);
+      if (!user) {
+        throw Errors.notFound('User');
+      }
+      if (user.is_approved) {
+        throw Errors.badRequest('User is already approved');
+      }
+
       const success = await store.users.approveUser(id);
 
       if (!success) {

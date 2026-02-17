@@ -57,6 +57,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 50 },
           webhook_url: { type: 'string', format: 'uri' },
@@ -195,6 +196,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       },
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 50 },
           webhook_url: { type: 'string', format: 'uri' },
@@ -345,6 +347,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           webhook_ids: { 
             type: 'array', 
@@ -412,6 +415,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           webhook_ids: { 
             type: 'array', 
@@ -479,6 +483,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           webhook_ids: { 
             type: 'array', 

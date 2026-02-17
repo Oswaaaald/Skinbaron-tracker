@@ -90,7 +90,14 @@ async function verifyTotpOrRecoveryCode(
 
   // If invalid, try recovery codes
   if (!isValidTotp) {
-    const recoveryCodes = user.recovery_codes ? JSON.parse(user.recovery_codes) as string[] : [];
+    let recoveryCodes: string[] = [];
+    if (user.recovery_codes) {
+      try {
+        recoveryCodes = JSON.parse(user.recovery_codes) as string[];
+      } catch {
+        request.log.error({ userId: user.id }, 'Corrupted recovery codes JSON — treating as empty');
+      }
+    }
 
     // Use constant-time comparison to prevent timing attacks
     let codeIndex = -1;
@@ -177,6 +184,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['Authentication'],
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['username', 'email', 'password', 'tos_accepted'],
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 20 },
@@ -297,6 +305,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['Authentication'],
       body: {
         type: 'object',
+        additionalProperties: false,
         required: ['email', 'password'],
         properties: {
           email: { type: 'string', format: 'email' },
@@ -547,6 +556,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['Authentication'],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           refresh_token: { type: 'string' },
         },
@@ -973,6 +983,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         tags: ['Authentication'],
         body: {
           type: 'object',
+          additionalProperties: false,
           required: ['username', 'tos_accepted'],
           properties: {
             username: { type: 'string', minLength: 3, maxLength: 20, pattern: '^[a-zA-Z0-9_]+$' },
@@ -1115,6 +1126,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         tags: ['Authentication'],
         body: {
           type: 'object',
+          additionalProperties: false,
           required: ['totp_code'],
           properties: {
             totp_code: { type: 'string', minLength: 6, maxLength: 8 },
@@ -1259,6 +1271,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['Authentication'],
       body: {
         type: 'object',
+        additionalProperties: false,
         properties: {
           credential: { type: 'object', maxProperties: 20 },
           challengeKey: { type: 'string' },
