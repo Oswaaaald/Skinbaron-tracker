@@ -164,4 +164,35 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+// ==================== Cross-navigation toast queue ====================
+// Survives full page reloads via sessionStorage.
+// Call queueToast() before window.location.href, then flushQueuedToasts() after mount.
+
+const QUEUED_TOAST_KEY = 'queued_toast'
+
+type QueuedToast = {
+  title?: string
+  description?: string
+  variant?: 'default' | 'destructive'
+}
+
+function queueToast(props: QueuedToast) {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem(QUEUED_TOAST_KEY, JSON.stringify(props))
+  }
+}
+
+function flushQueuedToasts() {
+  if (typeof window === 'undefined') return
+  const raw = sessionStorage.getItem(QUEUED_TOAST_KEY)
+  if (!raw) return
+  sessionStorage.removeItem(QUEUED_TOAST_KEY)
+  try {
+    const data = JSON.parse(raw) as QueuedToast
+    toast(data)
+  } catch {
+    // corrupted data — ignore
+  }
+}
+
+export { useToast, toast, queueToast, flushQueuedToasts }

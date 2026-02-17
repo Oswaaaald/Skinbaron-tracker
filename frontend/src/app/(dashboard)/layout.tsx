@@ -4,6 +4,7 @@ import { DashboardNav, MobileNavTrigger } from "@/components/dashboard-nav"
 import { UserNav } from "@/components/user-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
+import { flushQueuedToasts } from "@/hooks/use-toast"
 import { useEffect, useState } from "react"
 
 export default function DashboardLayout({
@@ -20,6 +21,11 @@ export default function DashboardLayout({
       setHasBeenAuthenticated(true)
     }
   }, [isAuthenticated])
+
+  // Flush any toasts queued before a hard navigation (e.g. post-login redirect)
+  useEffect(() => {
+    flushQueuedToasts()
+  }, [])
 
   // Show navigation if:
   // 1. User is currently authenticated, OR

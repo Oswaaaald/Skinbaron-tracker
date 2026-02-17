@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/auth-context'
-import { useToast } from '@/hooks/use-toast'
+import { useToast, queueToast } from '@/hooks/use-toast'
 import { validateRegistration, validateLogin } from '@/lib/validation'
 import { apiClient } from '@/lib/api'
 import { PROVIDER_ICONS, PROVIDER_LABELS } from '@/lib/oauth-icons'
@@ -207,7 +207,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           if (typeof window !== 'undefined') {
             localStorage.setItem('has_session', 'true')
           }
-          toast({
+          queueToast({
             title: '\u2705 Account created',
             description: 'Your account has been created successfully',
           })
@@ -241,7 +241,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           if (typeof window !== 'undefined') {
             localStorage.setItem('has_session', 'true')
           }
-          toast({
+          queueToast({
             title: '✅ Welcome back!',
             description: 'You have been logged in successfully',
           })
@@ -405,7 +405,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('has_session', 'true')
         }
-        toast({
+        queueToast({
           title: '✅ Welcome back!',
           description: 'Signed in with passkey',
         })
