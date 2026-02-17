@@ -319,6 +319,21 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       case "user_deleted":
         return "";
       
+      case "2fa_reset_by_admin": {
+        const adminName = raw['admin_username'] ? `by ${s('admin_username')}` : 'by admin';
+        return `Two-factor authentication reset ${adminName}`;
+      }
+
+      case "passkeys_reset_by_admin": {
+        const adminName = raw['admin_username'] ? `by ${s('admin_username')}` : 'by admin';
+        return `All passkeys removed ${adminName}`;
+      }
+
+      case "sessions_reset_by_admin": {
+        const adminName = raw['admin_username'] ? `by ${s('admin_username')}` : 'by admin';
+        return `All sessions revoked ${adminName}`;
+      }
+
       case "logout":
         return raw['reason'] === "user_logout" ? "User logout" : "Logged out";
       

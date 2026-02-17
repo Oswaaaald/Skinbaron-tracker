@@ -39,6 +39,8 @@ import {
   Camera,
   Ban,
   Trash2,
+  RotateCcw,
+  LogOut,
   type LucideIcon
 } from "lucide-react"
 
@@ -75,6 +77,9 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   account_restricted: { icon: Ban, label: "Account Restricted", variant: "destructive" },
   account_unrestricted: { icon: Ban, label: "Account Unrestricted", variant: "default" },
   sanction_deleted: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },
+  "2fa_reset_by_admin": { icon: RotateCcw, label: "2FA Reset by Admin", variant: "destructive" },
+  passkeys_reset_by_admin: { icon: RotateCcw, label: "Passkeys Reset by Admin", variant: "destructive" },
+  sessions_reset_by_admin: { icon: LogOut, label: "Sessions Revoked by Admin", variant: "destructive" },
 } as const;
 
 // ==================== ADMIN ACTION LOG CONFIGURATION ====================
@@ -94,6 +99,10 @@ export const ADMIN_ACTION_CONFIG: Record<string, {
   unrestrict_user: { icon: Ban, label: "User Unrestricted", variant: "default" },
   delete_sanction: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },
   change_username: { icon: User, label: "Username Changed", variant: "outline" },
+  admin_avatar_removed: { icon: Camera, label: "Avatar Removed", variant: "secondary" },
+  reset_2fa: { icon: RotateCcw, label: "2FA Reset", variant: "destructive" },
+  reset_passkeys: { icon: RotateCcw, label: "Passkeys Reset", variant: "destructive" },
+  reset_sessions: { icon: LogOut, label: "Sessions Revoked", variant: "destructive" },
   force_scheduler: { icon: AlertCircle, label: "Scheduler Forced", variant: "outline" },
 } as const;
 
@@ -109,6 +118,10 @@ export const ADMIN_ACTION_TYPES = [
   { value: "unrestrict_user", label: "User Unrestricted" },
   { value: "delete_sanction", label: "Sanction Deleted" },
   { value: "change_username", label: "Username Changed" },
+  { value: "admin_avatar_removed", label: "Avatar Removed" },
+  { value: "reset_2fa", label: "2FA Reset" },
+  { value: "reset_passkeys", label: "Passkeys Reset" },
+  { value: "reset_sessions", label: "Sessions Revoked" },
   { value: "force_scheduler", label: "Scheduler Forced" },
 ] as const;
 
@@ -142,6 +155,9 @@ export const AUDIT_EVENT_TYPES = [
   { value: "account_restricted", label: "Account Restricted" },
   { value: "account_unrestricted", label: "Account Unrestricted" },
   { value: "sanction_deleted", label: "Sanction Deleted" },
+  { value: "2fa_reset_by_admin", label: "2FA Reset by Admin" },
+  { value: "passkeys_reset_by_admin", label: "Passkeys Reset by Admin" },
+  { value: "sessions_reset_by_admin", label: "Sessions Revoked by Admin" },
 ] as const;
 
 // ==================== QUERY KEYS ====================
