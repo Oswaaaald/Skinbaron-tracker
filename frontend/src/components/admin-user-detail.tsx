@@ -243,7 +243,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[85%] max-w-[85%] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <User className="h-5 w-5" />
@@ -533,7 +533,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
               )}
 
               {/* Admin Actions (moved from table) */}
-              {!detail.is_super_admin && (
+              {!detail.is_super_admin && !isCurrentUser && (
                 <Card className="border-red-500/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-600 dark:text-red-400">
