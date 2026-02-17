@@ -1361,6 +1361,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(400, 'Authentication challenge expired. Please try again.', 'CHALLENGE_EXPIRED');
       }
 
+      // Consume challenge immediately (single-use, prevents replay)
+      pendingPasskeyAuthnChallenges.delete(challengeKey);
+
       // Extract credential ID from the response to find the passkey
       const cred = credential as { id?: string; rawId?: string; response?: unknown };
       if (!cred.id) throw new AppError(400, 'Missing credential ID', 'INVALID_CREDENTIAL');
@@ -1388,12 +1391,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       } catch (verifyErr) {
         request.log.error({ err: verifyErr }, 'verifyAuthenticationResponse failed');
-        pendingPasskeyAuthnChallenges.delete(challengeKey);
         throw new AppError(401, 'Authentication failed', 'VERIFICATION_FAILED');
       }
-
-      // Consume challenge immediately after successful verification (single-use)
-      pendingPasskeyAuthnChallenges.delete(challengeKey);
 
       if (!verification.verified) {
         throw new AppError(401, 'Authentication failed', 'VERIFICATION_FAILED');
@@ -1406,6 +1405,22 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const user = await store.getUserById(passkey.user_id);
       if (!user) throw new AppError(401, 'Authentication failed', 'AUTH_FAILED');
       if (!user.is_approved) throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
+
+      // Check moderation status (same logic as password login)
+      if (user.is_restricted) {
+        if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
+          await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
+        } else {
+          await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: 'passkey', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+          if (user.restriction_type === 'permanent') {
+            throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
+          }
+          const expiresStr = user.restriction_expires_at
+            ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+            : '';
+          throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+        }
+      }
 
       // Generate tokens and set cookies
       const accessToken = AuthService.generateAccessToken(user.id);
