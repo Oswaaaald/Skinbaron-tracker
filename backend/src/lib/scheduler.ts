@@ -173,6 +173,13 @@ export class AlertScheduler {
         this.logger.error({ error }, '[Scheduler] Failed to cleanup expired refresh tokens');
       }
 
+      // Clean expired pending challenges (every run)
+      try {
+        await store.challenges.cleanup();
+      } catch (error) {
+        this.logger.error({ error }, '[Scheduler] Failed to cleanup expired pending challenges');
+      }
+
       // Get all enabled rules
       const rules = await store.getEnabledRules();
       if (rules.length === 0) {

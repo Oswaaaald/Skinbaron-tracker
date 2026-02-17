@@ -57,6 +57,13 @@
       "when": 1771459200000,
       "tag": "0007_restriction_system",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771351260311,
+      "tag": "0008_shallow_thanos",
+      "breakpoints": true
     }
   ]
 }

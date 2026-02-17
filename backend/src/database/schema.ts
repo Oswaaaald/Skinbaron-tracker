@@ -215,6 +215,17 @@ export const oauthAccounts = pgTable('oauth_accounts', {
   index('idx_oauth_provider_email').on(table.provider_email),
 ]);
 
+export const pendingChallenges = pgTable('pending_challenges', {
+  key: text('key').primaryKey(),
+  type: text('type').notNull(), // '2fa_secret' | 'webauthn_registration' | 'passkey_authn'
+  value: text('value').notNull(),
+  expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('idx_pending_challenges_expires').on(table.expires_at),
+  index('idx_pending_challenges_type').on(table.type),
+]);
+
 // ==================== INFERRED TYPES ====================
 
 /** User row from database */

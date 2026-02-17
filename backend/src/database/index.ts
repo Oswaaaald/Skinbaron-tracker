@@ -8,6 +8,7 @@ import { AuthRepository } from './repositories/auth.repository.js';
 import { AuditRepository } from './repositories/audit.repository.js';
 import { OAuthRepository } from './repositories/oauth.repository.js';
 import { PasskeysRepository } from './repositories/passkeys.repository.js';
+import { ChallengesRepository } from './repositories/challenges.repository.js';
 import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog, OAuthAccount } from './schema.js';
 import { bannedEmails, sanctions } from './schema.js';
 import { eq, desc } from 'drizzle-orm';
@@ -21,6 +22,7 @@ class Store {
   public audit: AuditRepository;
   public oauth: OAuthRepository;
   public passkeys: PasskeysRepository;
+  public challenges: ChallengesRepository;
 
   constructor(database: AppDatabase) {
     this.users = new UsersRepository(database);
@@ -31,6 +33,7 @@ class Store {
     this.audit = new AuditRepository(database);
     this.oauth = new OAuthRepository(database);
     this.passkeys = new PasskeysRepository(database);
+    this.challenges = new ChallengesRepository(database);
   }
 
   // ==================== User operations ====================

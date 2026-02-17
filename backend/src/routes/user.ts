@@ -28,55 +28,9 @@ import {
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
 import { resolvePasskeyName } from '../lib/passkey-aaguids.js';
 
-/**
- * Server-side store for pending 2FA secrets.
- * Keyed by userId → { secret, expiresAt }.
- * Prevents the client from supplying a secret they control.
- */
-const pending2FASecrets = new Map<number, { secret: string; expiresAt: number }>();
+// TTL constants for pending challenges (stored in PostgreSQL)
 const PENDING_2FA_TTL = 10 * 60 * 1000; // 10 minutes
-
-/**
- * Server-side store for pending WebAuthn challenges.
- * Keyed by `registration:${userId}` or `authentication:${userId}`.
- */
-const pendingWebAuthnChallenges = new Map<string, { challenge: string; expiresAt: number }>();
 const WEBAUTHN_CHALLENGE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Periodic cleanup of expired entries to prevent memory leaks
-const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [userId, entry] of pending2FASecrets) {
-    if (now > entry.expiresAt) pending2FASecrets.delete(userId);
-  }
-  for (const [key, entry] of pendingWebAuthnChallenges) {
-    if (now > entry.expiresAt) pendingWebAuthnChallenges.delete(key);
-  }
-}, CLEANUP_INTERVAL).unref(); // unref so it doesn't keep the process alive
-
-function storePending2FA(userId: number, secret: string): void {
-  pending2FASecrets.set(userId, { secret, expiresAt: Date.now() + PENDING_2FA_TTL });
-}
-
-function consumePending2FA(userId: number): string | null {
-  const entry = pending2FASecrets.get(userId);
-  if (!entry) return null;
-  pending2FASecrets.delete(userId);
-  if (Date.now() > entry.expiresAt) return null;
-  return entry.secret;
-}
-
-/** Peek at the pending secret without consuming it (for verification attempts) */
-function getPending2FA(userId: number): string | null {
-  const entry = pending2FASecrets.get(userId);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
-    pending2FASecrets.delete(userId);
-    return null;
-  }
-  return entry.secret;
-}
 
 const UpdateProfileSchema = z.object({
   username: z.string()
@@ -1012,7 +966,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const qrCode = await QRCode.toDataURL(otpauth);
 
       // Store secret server-side (client only gets it for display, cannot tamper on enable)
-      storePending2FA(userId, secret);
+      await store.challenges.store(`2fa_secret:${userId}`, '2fa_secret', secret, PENDING_2FA_TTL);
 
       return reply.status(200).send({
         success: true,
@@ -1068,7 +1022,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const { code } = validateWithZod(Enable2FASchema, request.body);
 
       // Retrieve the secret stored server-side during /2fa/setup (peek, don't consume yet)
-      const secret = getPending2FA(userId);
+      const secret = await store.challenges.get(`2fa_secret:${userId}`);
       if (!secret) {
         throw new AppError(400, 'No pending 2FA setup found. Please start setup again.', 'NO_PENDING_2FA');
       }
@@ -1087,7 +1041,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Code is valid — now consume (delete) the pending secret
-      consumePending2FA(userId);
+      await store.challenges.consume(`2fa_secret:${userId}`);
 
       // Generate 10 recovery codes
       const recoveryCodes = Array.from({ length: 10 }, () => 
@@ -1333,10 +1287,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       });
 
       // Store challenge server-side
-      pendingWebAuthnChallenges.set(`registration:${userId}`, {
-        challenge: options.challenge,
-        expiresAt: Date.now() + WEBAUTHN_CHALLENGE_TTL,
-      });
+      await store.challenges.store(`webauthn_reg:${userId}`, 'webauthn_registration', options.challenge, WEBAUTHN_CHALLENGE_TTL);
 
       return reply.status(200).send({ success: true, data: options });
     } catch (error) {
@@ -1370,18 +1321,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Sanitize passkey name
       const name = rawName ? rawName.trim().replace(/[<>]/g, '').slice(0, 64) : undefined;
 
-      const challengeEntry = pendingWebAuthnChallenges.get(`registration:${userId}`);
-      if (!challengeEntry || Date.now() > challengeEntry.expiresAt) {
-        pendingWebAuthnChallenges.delete(`registration:${userId}`);
+      const challengeValue = await store.challenges.consume(`webauthn_reg:${userId}`);
+      if (!challengeValue) {
         throw new AppError(400, 'Registration challenge expired. Please try again.', 'CHALLENGE_EXPIRED');
       }
 
-      // Consume challenge immediately (single-use, prevents replay)
-      pendingWebAuthnChallenges.delete(`registration:${userId}`);
-
       const verification = await verifyRegistrationResponse({
         response: credential as Parameters<typeof verifyRegistrationResponse>[0]['response'],
-        expectedChallenge: challengeEntry.challenge,
+        expectedChallenge: challengeValue,
         expectedOrigin: rpOrigin,
         expectedRPID: rpID,
         requireUserVerification: false,

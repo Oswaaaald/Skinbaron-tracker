@@ -1206,16 +1206,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // ==================== Passkey Authentication ====================
 
-  const pendingPasskeyAuthnChallenges = new Map<string, { challenge: string; expiresAt: number }>();
   const PASSKEY_CHALLENGE_TTL = 5 * 60 * 1000;
-
-  // Cleanup interval
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of pendingPasskeyAuthnChallenges) {
-      if (now > entry.expiresAt) pendingPasskeyAuthnChallenges.delete(key);
-    }
-  }, 5 * 60 * 1000).unref();
 
   const rpID = appConfig.WEBAUTHN_RP_ID;
   const rpOrigin = appConfig.WEBAUTHN_RP_ORIGIN;
@@ -1238,10 +1229,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Use a random key since the user is not yet identified
       const challengeKey = crypto.randomBytes(16).toString('hex');
-      pendingPasskeyAuthnChallenges.set(challengeKey, {
-        challenge: options.challenge,
-        expiresAt: Date.now() + PASSKEY_CHALLENGE_TTL,
-      });
+      await store.challenges.store(`passkey_authn:${challengeKey}`, 'passkey_authn', options.challenge, PASSKEY_CHALLENGE_TTL);
 
       return reply.status(200).send({
         success: true,
@@ -1276,14 +1264,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const { credential, challengeKey } = validateWithZod(PasskeyAuthVerifySchema, request.body);
 
-      const challengeEntry = pendingPasskeyAuthnChallenges.get(challengeKey);
-      if (!challengeEntry || Date.now() > challengeEntry.expiresAt) {
-        pendingPasskeyAuthnChallenges.delete(challengeKey);
+      const challengeValue = await store.challenges.consume(`passkey_authn:${challengeKey}`);
+      if (!challengeValue) {
         throw new AppError(400, 'Authentication challenge expired. Please try again.', 'CHALLENGE_EXPIRED');
       }
-
-      // Consume challenge immediately (single-use, prevents replay)
-      pendingPasskeyAuthnChallenges.delete(challengeKey);
 
       // Extract credential ID from the response to find the passkey
       const cred = credential as { id?: string; rawId?: string; response?: unknown };
@@ -1299,7 +1283,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       try {
         verification = await verifyAuthenticationResponse({
           response: credential as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
-          expectedChallenge: challengeEntry.challenge,
+          expectedChallenge: challengeValue,
           expectedOrigin: rpOrigin,
           expectedRPID: rpID,
           credential: {
