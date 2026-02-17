@@ -151,7 +151,7 @@ export function AdminActionLogs() {
         </CardTitle>
         <CardDescription>
           {logs.length > 0
-            ? `${logs.length} admin actions - Auto-deleted after 365 days`
+            ? `${logs.length} admin actions - Auto-deleted after ${process.env['NEXT_PUBLIC_AUDIT_RETENTION_DAYS'] || 365} days (GDPR)`
             : "No admin actions recorded"}
         </CardDescription>
       </CardHeader>
