@@ -452,7 +452,7 @@ export function WebhooksTable() {
               <CardDescription>
                 Create your first webhook to receive Discord notifications when alerts are triggered.
               </CardDescription>
-              <Button onClick={() => handleOpenDialog()} variant="outline" size="sm" className="mt-4">
+              <Button onClick={() => handleOpenDialog()} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Webhook
               </Button>

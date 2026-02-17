@@ -318,7 +318,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
             Create your first rule to start monitoring SkinBaron for CS2 skins.
           </CardDescription>
           {onCreateRule && (
-            <Button onClick={onCreateRule} variant="outline" size="sm" className="mt-4">
+            <Button onClick={onCreateRule} className="mt-4">
               <Plus className="h-4 w-4 mr-2" />
               Create Rule
             </Button>
