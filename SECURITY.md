@@ -2,159 +2,82 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+| Version | Supported |
+|---------|-----------|
+| Latest (main branch) | ✅ |
+| Older versions | ❌ |
+
+Only the latest version deployed from the `main` branch receives security updates.
 
 ## Reporting a Vulnerability
 
-**Please DO NOT open public issues for security vulnerabilities.**
+If you discover a security vulnerability, **do not open a public issue**.
 
-If you discover a security vulnerability in this project, please report it privately:
+Please report vulnerabilities privately via:
+- **Email:** [contact the repository owner via GitHub profile](https://github.com/Oswaaaald)
+- **GitHub Security Advisories:** [Report a vulnerability](https://github.com/Oswaaaald/Skinbaron-tracker/security/advisories/new)
 
-1. **Email:** [admin@oswaaaald.be](mailto:admin@oswaaaald.be)
-2. **Subject:** `[SECURITY] Brief description`
-3. **Include:**
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
+### What to include
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if any)
 
-### Response Timeline
-
-- **Initial response:** Within 48 hours
-- **Status update:** Within 7 days
-- **Fix timeline:** Depends on severity (critical: 7 days, high: 14 days, medium: 30 days)
-
-### Disclosure Policy
-
-- Security issues will be fixed before public disclosure
-- Credit will be given to reporters (unless anonymity requested)
-- CVE assignment for critical vulnerabilities
+### Response timeline
+- **Acknowledgment:** within 48 hours
+- **Initial assessment:** within 7 days
+- **Fix & disclosure:** coordinated with reporter
 
 ## Security Architecture
 
 ### Authentication
+- **Passwords:** bcrypt (12 rounds) with zxcvbn strength validation (score ≥ 3)
+- **JWT:** Separate signing keys for access tokens (`JWT_ACCESS_SECRET`) and refresh tokens (`JWT_REFRESH_SECRET`), with token rotation and JTI-based revocation
+- **2FA:** TOTP (otplib) with encrypted secrets (AES-256-GCM), 10 recovery codes with constant-time comparison
+- **Passkeys:** WebAuthn/FIDO2 via @simplewebauthn/server with single-use challenges stored in PostgreSQL
+- **OAuth2:** Google, Discord, GitHub with PKCE; encrypted state/pending cookies; auto-links by verified email
+- **Timing attacks:** Fake bcrypt hash for non-existent users; `timingSafeEqual` on all token/code comparisons
 
-| Layer | Implementation |
-|-------|---------------|
-| **Password hashing** | bcrypt (12 rounds) with timing-safe comparison |
-| **Password strength** | zxcvbn (score ≥ 3 required) |
-| **JWT tokens** | Separate signing keys for access (10min) and refresh (14d) tokens |
-| **Token rotation** | Automatic access/refresh token rotation with JTI tracking |
-| **Token blacklisting** | Access tokens blacklisted on logout/password change |
-| **TOTP 2FA** | otplib with encrypted secrets (AES-256-GCM), 10 recovery codes |
-| **WebAuthn/Passkeys** | FIDO2 compliant (discoverable + non-discoverable credentials) |
-| **OAuth2** | Google (PKCE), Discord (PKCE), GitHub — with encrypted state cookies |
-| **Session invalidation** | All refresh tokens revoked + access token blacklisted on password change |
-| **Timing-attack prevention** | Fake bcrypt hash comparison on non-existent users |
+### Encryption
+- **Algorithm:** AES-256-GCM with random 12-byte IV per encryption
+- **Encrypted data:** Webhook URLs, TOTP secrets, recovery codes, OAuth state cookies
+- **Key management:** `ENCRYPTION_KEY` required in production, must differ from `JWT_SECRET`
 
-### Authorization
+### Access Control
+- **3-tier RBAC:** User → Admin → Super Admin
+- **Middleware chain:** Rate limiting → CSRF → Auth → RBAC per route
+- **Account restrictions:** Temporary (auto-expiry) and permanent with email banning
+- **Restriction enforcement:** Checked at every auth flow (login, refresh, OAuth, passkey)
 
-| Layer | Implementation |
-|-------|---------------|
-| **RBAC** | Three-tier: user → admin → super admin |
-| **Route protection** | Per-route middleware with role verification |
-| **Account restrictions** | Temporary (auto-expiry) + permanent bans with email blocking |
-| **User approval** | New accounts require admin approval (first user auto-approved as super admin) |
+### Input Validation & Injection Prevention
+- **Zod v4** schema validation on all route inputs (body, query, params)
+- **Drizzle ORM** parameterized queries (no raw SQL interpolation)
+- **SSRF protection:** Webhook URLs validated against domain allowlist, DNS resolution blocks private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, ::1)
+- **Avatar upload:** Magic-byte validation, sharp re-encoding to WebP (strips EXIF, resizes to 256px), random filenames via `crypto.randomBytes`
 
-### Data Protection
+### Transport & Cookie Security
+- **Cookies:** `httpOnly`, `secure` (production), `sameSite: none` (cross-origin) / `lax` (dev), scoped `domain`
+- **CORS:** Strict origin allowlist via `CORS_ORIGIN`
+- **CSRF:** Double-submit cookie pattern with encrypted HMAC token and constant-time verification
+- **Helmet:** Security headers (CSP, HSTS, X-Frame-Options, etc.)
 
-| Layer | Implementation |
-|-------|---------------|
-| **Encryption at rest** | AES-256-GCM for webhooks, TOTP secrets, recovery codes |
-| **Separate encryption key** | `ENCRYPTION_KEY` independent from JWT secrets |
-| **SQL injection** | Drizzle ORM parameterized queries + foreign key constraints |
-| **XSS prevention** | Zod input validation on all endpoints + React output encoding |
-| **CSRF protection** | Double-submit cookie pattern with constant-time comparison |
-| **CORS** | Strict origin validation (single allowed origin) |
-| **SSRF protection** | Webhook URL validation: domain whitelist, DNS resolution check, private IP blocking |
-| **Avatar security** | Magic-byte validation, sharp re-encoding to WebP, EXIF stripping, random filenames, atomic writes |
+### Infrastructure
+- **Docker hardening:** Read-only filesystems, `cap_drop: ALL`, `no-new-privileges`, non-root user (UID 1001)
+- **PostgreSQL:** Internal Docker network only (not exposed to host), optional SSL (`DATABASE_SSL`)
+- **Rate limiting:** Per-IP, configurable globally and per-route (auth: 5/min, batch: 10/min, avatar: 3/5min)
+- **Graceful shutdown:** SIGTERM/SIGINT handlers drain connections and stop scheduler
 
-### Infrastructure Security
+### Data Lifecycle
+- **Audit logs:** Auto-cleanup after configurable retention (`AUDIT_LOG_RETENTION_DAYS`, default: 365)
+- **Alerts:** Auto-cleanup after configurable retention (`ALERT_RETENTION_DAYS`, default: 90)
+- **Refresh tokens:** Expired/revoked tokens cleaned up on each scheduler cycle
+- **Access token blacklist:** Expired entries cleaned up on each scheduler cycle
+- **Pending challenges:** TTL-based expiry with periodic cleanup (replaces in-memory Maps)
+- **GDPR data export:** Users can download all personal data as JSON (Art. 20)
+- **Account deletion:** Self-service with identity verification, cascade deletes all user data
 
-| Layer | Implementation |
-|-------|---------------|
-| **Security headers** | Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options) |
-| **Rate limiting** | Global per-IP (configurable) + strict per-route (5 req/min for auth endpoints) |
-| **Docker hardening** | Read-only filesystem, non-root user (1001), cap_drop ALL, no-new-privileges, tmpfs /tmp |
-| **Network isolation** | Internal Docker network, PostgreSQL not exposed externally |
-| **Health checks** | Lightweight database connectivity check at `/api/health` |
-| **Graceful shutdown** | SIGTERM/SIGINT handlers with connection draining |
-| **Cloudflare support** | `trustProxy: 1`, CF-Connecting-IP header extraction |
+## Known Considerations
 
-### Audit & Compliance
-
-| Layer | Implementation |
-|-------|---------------|
-| **Security audit logs** | All auth events logged with IP + user agent (GDPR-compliant retention) |
-| **Admin action logs** | Separate table tracking all administrative actions with admin attribution |
-| **GDPR data export** | Full Art. 20 data portability (all user data as JSON) |
-| **Account self-deletion** | With identity verification (password + 2FA if enabled) |
-| **Cookie consent** | Banner with explicit consent tracking |
-| **Auto-cleanup** | Configurable retention periods for audit logs and alerts |
-
-## Security Headers
-
-The API automatically sets these headers via Helmet:
-
-```
-Content-Security-Policy: default-src 'self'
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-Strict-Transport-Security: max-age=31536000
-X-XSS-Protection: 1; mode=block
-```
-
-## Deployment Best Practices
-
-### 1. Generate Strong Secrets
-
-```bash
-# Each must be unique and ≥ 32 characters
-openssl rand -base64 48  # JWT_SECRET
-openssl rand -base64 48  # JWT_ACCESS_SECRET (recommended, falls back to JWT_SECRET)
-openssl rand -base64 48  # JWT_REFRESH_SECRET (recommended, falls back to JWT_SECRET)
-openssl rand -base64 48  # ENCRYPTION_KEY (MUST differ from JWT secrets)
-```
-
-### 2. Enable HTTPS
-
-- Use a reverse proxy (Nginx, Caddy, Traefik) or Cloudflare
-- Configure HSTS headers
-- Use valid TLS certificates (Let's Encrypt)
-- Set `SSL/TLS Full (Strict)` mode in Cloudflare
-
-### 3. Restrict Database Access
-
-- Never expose PostgreSQL port publicly (keep on internal Docker network)
-- Use strong `POSTGRES_PASSWORD`
-- Use Docker volumes with proper permissions
-- Enable encrypted backups
-
-### 4. Configure Cloudflare (Recommended)
-
-- WAF rules enabled
-- DDoS protection
-- Bot management
-- SSL/TLS Full (Strict) mode
-
-### Environment Variables
-
-**NEVER commit these to Git:**
-- `JWT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
-- `ENCRYPTION_KEY`
-- `SB_API_KEY`
-- `POSTGRES_PASSWORD`
-- OAuth client secrets (`GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_SECRET`, `DISCORD_CLIENT_SECRET`)
-- Any `.env` file (except `.env.example`)
-
-## Dependencies
-
-- Automated dependency scanning via `npm audit`
-- Regular updates for security patches
-- Zero known vulnerabilities (as of Feb 2026)
-
-## Contact
-
-For security issues, email: [admin@oswaaaald.be](mailto:admin@oswaaaald.be)
+- **Single-instance deployment:** The application is designed for single-instance Docker deployment behind a reverse proxy (e.g., Caddy, Traefik, Nginx). Session affinity is not required since all state is in PostgreSQL.
+- **OAuth provider trust:** OAuth email linking trusts the `email_verified` claim from providers. This is industry-standard but means account security depends on the OAuth provider's email verification.
+- **Rate limiting scope:** Rate limiting is per-IP. Behind a reverse proxy, ensure `X-Forwarded-For` / `X-Real-IP` headers are correctly set to avoid all traffic sharing one IP.
