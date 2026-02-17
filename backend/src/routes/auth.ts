@@ -850,6 +850,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const user = await store.getUserById(existingOAuth.user_id);
           if (!user) return fail('oauth_user_not_found');
           if (!user.is_approved) return fail('pending_approval');
+
+          // Check restriction status (consistent with password & passkey login)
+          if (user.is_restricted) {
+            if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
+              await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
+            } else {
+              await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+              return fail('account_restricted');
+            }
+          }
+
           userId = user.id;
 
           // Keep provider_email in sync if user changed their email on the provider
@@ -1241,6 +1252,22 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
         // Verify TOTP code or recovery code (shared logic)
         await verifyTotpOrRecoveryCode(user, totp_code, request, `oauth_${pending.provider}`);
+
+        // Check restriction status (user may have been restricted between OAuth redirect and 2FA verification)
+        if (user.is_restricted) {
+          if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
+            await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
+          } else {
+            await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${pending.provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+            if (user.restriction_type === 'permanent') {
+              throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
+            }
+            const expiresStr = user.restriction_expires_at
+              ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+              : '';
+            throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+          }
+        }
 
         // --- 2FA verified, issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(user.id);

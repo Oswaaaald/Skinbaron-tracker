@@ -122,6 +122,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         oauth_user_not_found: 'Associated account not found.',
         oauth_already_linked_other: 'This social account is already linked to another user.',
         pending_approval: 'Your account is awaiting admin approval.',
+        account_restricted: 'Your account has been suspended.',
         oauth_no_account: 'No account found with this email. Please register first.',
         oauth_server_error: 'An unexpected error occurred. Please try again.'
       }
