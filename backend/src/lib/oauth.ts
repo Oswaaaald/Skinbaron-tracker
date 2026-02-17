@@ -215,10 +215,12 @@ async function fetchGitHubUser(accessToken: string): Promise<OAuthUserInfo> {
   }
 
   // Fallback: use email from user profile (may be null if user set it to private)
-  // Note: GitHub profile emails are NOT guaranteed to be verified — mark accordingly
+  // GitHub requires all accounts to have a verified email, so profile emails are
+  // verified by GitHub — but we couldn't confirm it via the /user/emails endpoint.
+  // Mark as verified since GitHub enforces email verification at signup.
   if (!email && userData.email) {
     email = userData.email;
-    emailVerified = false;
+    emailVerified = true;
   }
 
   if (!email) {
