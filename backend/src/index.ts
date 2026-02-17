@@ -7,6 +7,8 @@ import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { appConfig, MAX_UPLOAD_SIZE } from './lib/config.js';
+import { ACCESS_COOKIE, baseCookieOptions } from './lib/middleware.js';
+import { OAUTH_STATE_COOKIE } from './lib/oauth.js';
 import { store } from './database/index.js';
 import { closeDatabase, checkDatabaseHealth, initializeDatabase } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
@@ -347,7 +349,23 @@ async function registerPlugins() {
   fastify.setErrorHandler(async (error, request, reply) => {
     const { AppError } = await import('./lib/errors.js');
     const { handleRouteError } = await import('./lib/validation-handler.js');
-    
+
+    // Rate limit on OAuth browser-navigation routes → redirect instead of JSON 429
+    if (
+      (error as { statusCode?: number }).statusCode === 429 &&
+      request.method === 'GET' &&
+      request.url.startsWith('/api/auth/oauth/')
+    ) {
+      // Clear state cookie if present (mirrors fail/failLink in the callback route)
+      reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
+      // Logged-in user → link flow (same detection as the /oauth/:provider initiation route)
+      const isLinkFlow = !!request.cookies?.[ACCESS_COOKIE];
+      const target = isLinkFlow
+        ? `${appConfig.CORS_ORIGIN}/settings?link_error=rate_limited`
+        : `${appConfig.CORS_ORIGIN}/login?error=rate_limited`;
+      return reply.redirect(target);
+    }
+
     if (error instanceof AppError) {
       return handleRouteError(error, request, reply, 'Global handler');
     }

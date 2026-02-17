@@ -619,6 +619,7 @@ export function ProfileSettings() {
 const LINK_ERROR_MESSAGES: Record<string, string> = {
   already_linked_other: 'This social account is already linked to another user.',
   account_not_found: 'Your account was not found. Please log in again.',
+  rate_limited: 'Too many attempts. Please try again in a moment.',
   server_error: 'An unexpected error occurred. Please try again.',
 }
 

@@ -213,19 +213,19 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
                 id="code"
                 placeholder="000000"
                 value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 8))}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (verificationCode.length === 6 || verificationCode.length === 8) && !enableMutation.isPending) {
+                  if (e.key === 'Enter' && verificationCode.length === 6 && !enableMutation.isPending) {
                     e.preventDefault()
                     handleVerify()
                   }
                 }}
-                maxLength={8}
+                maxLength={6}
                 className="text-center text-2xl tracking-widest font-mono"
                 autoFocus
               />
               <p className="text-xs text-muted-foreground text-center">
-                Enter the 6-digit code from your authenticator app or an 8-character recovery code
+                Enter the 6-digit code from your authenticator app
               </p>
             </div>
 
@@ -235,7 +235,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
               </Button>
               <Button
                 onClick={handleVerify}
-                disabled={enableMutation.isPending || (verificationCode.length !== 6 && verificationCode.length !== 8)}
+                disabled={enableMutation.isPending || verificationCode.length !== 6}
               >
                 {enableMutation.isPending ? (
                   <>
