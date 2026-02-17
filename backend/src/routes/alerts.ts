@@ -9,11 +9,11 @@ import { getAuthUser } from '../lib/middleware.js';
 const AlertsQuerySchema = z.object({
   limit: z.string().default('50').transform(val => {
     const num = parseInt(val, 10);
-    if (num <= 0) return 1000; // 0 = "all" capped at 1000 to prevent DoS
+    if (isNaN(num) || num <= 0) return 1000; // 0 or invalid = "all" capped at 1000 to prevent DoS
     return Math.min(num, 1000);
   }),
-  offset: z.string().default('0').transform(val => parseInt(val, 10)),
-  rule_id: z.string().transform(val => parseInt(val, 10)).optional(),
+  offset: z.coerce.number().int().min(0).default(0),
+  rule_id: z.coerce.number().int().positive().optional(),
   item_name: z.string().max(200).optional(),
   sort_by: z.enum(['date', 'price_asc', 'price_desc', 'wear_asc', 'wear_desc']).optional(),
 });

@@ -275,6 +275,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
 
+      // Protect admin targets: only super admins can modify other admins
+      if (user.is_admin || user.is_super_admin) {
+        const currentAdmin = await store.users.findById(adminId);
+        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can modify admin accounts');
+      }
+
       if (!user.avatar_filename) {
         return reply.status(200).send({
           success: true,
@@ -858,6 +864,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
 
+      // Protect admin targets: only super admins can modify other admins
+      if (user.is_admin || user.is_super_admin) {
+        const currentAdmin = await store.users.findById(adminId);
+        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can change admin usernames');
+      }
+
       if (user.username === username) {
         throw Errors.badRequest('New username is the same as the current one');
       }
@@ -918,6 +930,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       if (user.is_super_admin) {
         throw Errors.forbidden('Cannot reset data for super administrators');
+      }
+
+      // Protect admin targets: only super admins can reset other admins
+      if (user.is_admin) {
+        const currentAdmin = await store.users.findById(adminId);
+        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can reset admin data');
       }
 
       const admin = await store.users.findById(adminId);
@@ -1050,7 +1068,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       return reply.status(200).send({
         success: true,
-        data: pendingUsers,
+        data: pendingUsers.map(u => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          created_at: u.created_at,
+        })),
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Get pending users');

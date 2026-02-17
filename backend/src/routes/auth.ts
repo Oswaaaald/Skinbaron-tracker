@@ -221,7 +221,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Check if email is already used as an OAuth provider email by another user
       const oauthWithEmail = await store.oauth.findByProviderEmail(userData.email);
       if (oauthWithEmail) {
-        throw new AppError(409, 'An account with this email already exists', 'USER_EXISTS');
+        throw new AppError(409, 'Unable to create account with these credentials', 'REGISTRATION_FAILED');
       }
 
       // Check if email is banned
@@ -389,7 +389,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Check if 2FA is enabled
       if (user.totp_enabled) {
-        const { totp_code } = request.body as { totp_code?: string };
+        const { totp_code } = loginData;
 
         // If no code provided, return requires_2fa flag
         if (!totp_code) {
@@ -487,13 +487,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const tokenRecord = await store.auth.getRefreshToken(refresh_token);
       const isExpired = tokenRecord ? tokenRecord.expires_at.getTime() <= Date.now() : true;
       if (!tokenRecord || tokenRecord.revoked_at || tokenRecord.replaced_by_jti || isExpired) {
-        request.log.warn({ 
-          hasRecord: !!tokenRecord, 
-          isRevoked: tokenRecord?.revoked_at ? true : false,
-          isReplaced: tokenRecord?.replaced_by_jti ? true : false,
-          isExpired,
-          jti: payload.jti 
-        }, 'Refresh token expired, revoked, or replaced');
+        // SECURITY: If a replaced token is reused, this is a strong signal of token theft.
+        // Revoke ALL tokens for this user to neutralize the stolen token chain.
+        if (tokenRecord?.replaced_by_jti) {
+          request.log.error({ jti: payload.jti, userId: payload.userId }, 'Refresh token reuse detected — revoking all tokens for user');
+          await store.auth.revokeAllForUser(payload.userId);
+        } else {
+          request.log.warn({ 
+            hasRecord: !!tokenRecord, 
+            isRevoked: tokenRecord?.revoked_at ? true : false,
+            isExpired,
+            jti: payload.jti 
+          }, 'Refresh token expired or revoked');
+        }
         throw new AppError(401, 'Refresh token expired or revoked', 'REFRESH_TOKEN_EXPIRED');
       }
 
@@ -1282,7 +1288,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       let verification;
       try {
         verification = await verifyAuthenticationResponse({
-          response: credential as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
+          response: credential as unknown as Parameters<typeof verifyAuthenticationResponse>[0]['response'],
           expectedChallenge: challengeValue,
           expectedOrigin: rpOrigin,
           expectedRPID: rpID,

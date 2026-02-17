@@ -1327,7 +1327,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       const verification = await verifyRegistrationResponse({
-        response: credential as Parameters<typeof verifyRegistrationResponse>[0]['response'],
+        response: credential as unknown as Parameters<typeof verifyRegistrationResponse>[0]['response'],
         expectedChallenge: challengeValue,
         expectedOrigin: rpOrigin,
         expectedRPID: rpID,

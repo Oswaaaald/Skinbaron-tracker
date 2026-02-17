@@ -22,7 +22,7 @@ const CreateRuleRequestSchema = RuleSchema.omit({
 const UpdateRuleRequestSchema = CreateRuleRequestSchema.partial();
 
 const RuleParamsSchema = z.object({
-  id: z.string().transform(val => parseInt(val, 10)),
+  id: z.coerce.number().int().positive(),
 });
 
 // Route handlers

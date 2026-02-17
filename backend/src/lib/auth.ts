@@ -21,6 +21,7 @@ export const UserRegistrationSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be at most 128 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
     .refine(strongPasswordValidator, {
       message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
@@ -30,13 +31,15 @@ export const UserRegistrationSchema = z.object({
 
 export const UserLoginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(1, 'Password is required').max(128),
+  totp_code: z.string().min(6).max(8).regex(/^\d+$/, '2FA code must contain only digits').optional(),
 });
 
 export const PasswordChangeSchema = z.object({
-  current_password: z.string().min(1, 'Current password is required'),
+  current_password: z.string().min(1, 'Current password is required').max(128),
   new_password: z.string()
     .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be at most 128 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
     .refine(strongPasswordValidator, {
       message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
@@ -47,6 +50,7 @@ export const PasswordChangeSchema = z.object({
 export const SetPasswordSchema = z.object({
   new_password: z.string()
     .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be at most 128 characters')
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
     .refine(strongPasswordValidator, {
       message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
@@ -127,7 +131,7 @@ export class AuthService {
    */
   static verifyToken(token: string, expectedType: TokenType): TokenPayload | null {
     try {
-      const payload = jwt.verify(token, getSecret(expectedType)) as TokenPayload;
+      const payload = jwt.verify(token, getSecret(expectedType), { algorithms: ['HS256'] }) as TokenPayload;
       if (payload.type !== expectedType) return null;
       return payload;
     } catch {

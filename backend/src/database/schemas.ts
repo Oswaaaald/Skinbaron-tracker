@@ -27,8 +27,8 @@ export const RuleSchema = z.object({
   id: z.number().optional(),
   user_id: z.number(),
   search_item: z.string().min(1).max(200),
-  min_price: z.number().min(0).nullable().optional(),
-  max_price: z.number().min(0).nullable().optional(),
+  min_price: z.number().min(0).max(1_000_000).nullable().optional(),
+  max_price: z.number().min(0).max(1_000_000).nullable().optional(),
   min_wear: z.number().min(0).max(1).nullable().optional(),
   max_wear: z.number().min(0).max(1).nullable().optional(),
   stattrak_filter: z.enum(['all', 'only', 'exclude']).default('all'),
@@ -170,17 +170,17 @@ export const VerifyOAuth2FASchema = z.object({
 
 /** POST /auth/refresh body (optional refresh token) */
 export const RefreshBodySchema = z.object({
-  refresh_token: z.string().optional(),
+  refresh_token: z.string().max(2048).optional(),
 });
 
 /** POST /auth/logout body (optional refresh token) */
 export const LogoutBodySchema = z.object({
-  refresh_token: z.string().optional(),
+  refresh_token: z.string().max(2048).optional(),
 });
 
 /** GET /auth/oauth/:provider params */
 export const OAuthProviderParamsSchema = z.object({
-  provider: z.string().min(1),
+  provider: z.string().min(1).max(20),
 });
 
 /** GET /auth/oauth/:provider querystring */
@@ -190,22 +190,22 @@ export const OAuthProviderQuerySchema = z.object({
 
 /** GET /auth/oauth/:provider/callback querystring */
 export const OAuthCallbackQuerySchema = z.object({
-  code: z.string().optional(),
-  state: z.string().optional(),
-  error: z.string().optional(),
+  code: z.string().max(4096).optional(),
+  state: z.string().max(4096).optional(),
+  error: z.string().max(500).optional(),
 });
 
 /** POST /auth/passkey/authenticate-verify body */
 export const PasskeyAuthVerifySchema = z.object({
-  credential: z.unknown(),
-  challengeKey: z.string().min(1),
+  credential: z.record(z.string(), z.unknown()).refine(obj => JSON.stringify(obj).length <= 65536, 'Credential payload too large'),
+  challengeKey: z.string().min(1).max(512),
 });
 
 // ==================== User Route Schemas ====================
 
 /** POST /user/2fa/enable body */
 export const Enable2FASchema = z.object({
-  code: z.string().length(6, '2FA code must be exactly 6 digits'),
+  code: z.string().length(6, '2FA code must be exactly 6 digits').regex(/^\d{6}$/, '2FA code must be exactly 6 digits'),
 });
 
 /** POST /user/2fa/disable body */
@@ -232,7 +232,7 @@ export const PasskeyRenameSchema = z.object({
 
 /** POST /user/passkeys/register-verify body */
 export const PasskeyRegisterVerifySchema = z.object({
-  credential: z.unknown(),
+  credential: z.record(z.string(), z.unknown()).refine(obj => JSON.stringify(obj).length <= 65536, 'Credential payload too large'),
   name: z.string().max(64).optional(),
 });
 
@@ -243,7 +243,7 @@ export const UserAuditQuerySchema = z.object({
 
 /** DELETE /user/oauth-accounts/:provider params */
 export const OAuthUnlinkParamsSchema = z.object({
-  provider: z.string().min(1),
+  provider: z.string().min(1).max(20),
 });
 
 // ==================== Items Route Schemas ====================

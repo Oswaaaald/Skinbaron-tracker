@@ -10,7 +10,7 @@ import { MAX_WEBHOOKS_PER_USER } from '../lib/config.js';
 
 // Query parameters schemas
 const WebhookParamsSchema = z.object({
-  id: z.string().transform(val => parseInt(val, 10)),
+  id: z.coerce.number().int().positive(),
 });
 
 const WebhookQuerySchema = z.object({
