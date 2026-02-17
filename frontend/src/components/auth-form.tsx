@@ -126,6 +126,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         account_restricted: 'Your account has been suspended.',
         oauth_no_account: 'No account found with this email. Please register first.',
         rate_limited: 'Too many attempts. Please try again in a moment.',
+        docs_auth_required: 'Please log in to access the API documentation.',
         oauth_server_error: 'An unexpected error occurred. Please try again.'
       }
       setError(messages[oauthError] || 'OAuth sign-in failed. Please try again.')

@@ -232,24 +232,28 @@ async function registerPlugins() {
     uiHooks: {
       onRequest: (request, reply, done) => {
         // Require authentication (any logged-in user)
-        fastify.authenticate(request, reply)
-          .then(() => {
-            if (!request.user) {
-              reply.status(401).send({
-                success: false,
-                error: 'Unauthorized',
-                message: 'Authentication required to view API documentation',
-              });
-              return;
-            }
-            done();
-          })
-          .catch(() => {
+        const redirectToLogin = () => {
+          const accepts = request.headers.accept ?? '';
+          if (accepts.includes('text/html')) {
+            reply.status(302).redirect(`${appConfig.CORS_ORIGIN}/login?error=docs_auth_required`);
+          } else {
             reply.status(401).send({
               success: false,
               error: 'Unauthorized',
               message: 'Authentication required to view API documentation',
             });
+          }
+        };
+        fastify.authenticate(request, reply)
+          .then(() => {
+            if (!request.user) {
+              redirectToLogin();
+              return;
+            }
+            done();
+          })
+          .catch(() => {
+            redirectToLogin();
           });
       },
     },
@@ -375,6 +379,19 @@ async function registerPlugins() {
     
     // Let other errors fall through to default handler
     throw error;
+  });
+
+  // Custom 404 handler — redirect browsers to frontend, JSON for API consumers
+  fastify.setNotFoundHandler((request, reply) => {
+    const accepts = request.headers.accept ?? '';
+    if (request.method === 'GET' && accepts.includes('text/html')) {
+      return reply.redirect(`${appConfig.CORS_ORIGIN}/not-found`);
+    }
+    return reply.status(404).send({
+      success: false,
+      error: 'Not Found',
+      message: `Route ${request.method}:${request.url} not found`,
+    });
   });
 }
 
