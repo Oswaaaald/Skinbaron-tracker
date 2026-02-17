@@ -698,8 +698,10 @@ class ApiClient {
   }
 
   // Search users by username or email (admin only)
-  async searchUsers(query: string): Promise<ApiResponse<Array<{ id: number; username: string; email: string }>>> {
-    return this.get(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
+  async searchUsers(query: string, adminsOnly: boolean = false): Promise<ApiResponse<Array<{ id: number; username: string; email: string }>>> {
+    const params = new URLSearchParams({ q: query });
+    if (adminsOnly) params.append('admins_only', 'true');
+    return this.get(`/api/admin/users/search?${params.toString()}`);
   }
 
   // Get all audit logs (admin only)
@@ -839,9 +841,11 @@ class ApiClient {
     return this.patch(`/api/admin/users/${userId}/username`, { username });
   }
 
-  async getAdminLogs(params?: { limit?: number }): Promise<ApiResponse<AdminActionLog[]>> {
+  async getAdminLogs(params?: { limit?: number; action?: string; admin_id?: number }): Promise<ApiResponse<AdminActionLog[]>> {
     const query = new URLSearchParams();
     if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.action) query.append('action', params.action);
+    if (params?.admin_id) query.append('admin_id', params.admin_id.toString());
     return this.get(`/api/admin/admin-logs?${query.toString()}`);
   }
 }

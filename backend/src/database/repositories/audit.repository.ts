@@ -65,9 +65,13 @@ export class AuditRepository {
     });
   }
 
-  async getAdminLogs(limit: number = 100): Promise<AdminAction[]> {
+  async getAdminLogs(limit: number = 100, action?: string, adminId?: number): Promise<AdminAction[]> {
     const adminUser = alias(users, 'admin_user');
     const targetUser = alias(users, 'target_user');
+
+    const conditions = [];
+    if (action) conditions.push(eq(adminActions.action, action));
+    if (adminId) conditions.push(eq(adminActions.admin_user_id, adminId));
 
     return this.db.select({
       ...getTableColumns(adminActions),
@@ -76,6 +80,7 @@ export class AuditRepository {
     }).from(adminActions)
       .leftJoin(adminUser, eq(adminActions.admin_user_id, adminUser.id))
       .leftJoin(targetUser, eq(adminActions.target_user_id, targetUser.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(adminActions.created_at))
       .limit(limit);
   }

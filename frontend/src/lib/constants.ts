@@ -97,6 +97,21 @@ export const ADMIN_ACTION_CONFIG: Record<string, {
   force_scheduler: { icon: AlertCircle, label: "Scheduler Forced", variant: "outline" },
 } as const;
 
+/** Action type options for admin logs filter dropdown */
+export const ADMIN_ACTION_TYPES = [
+  { value: "all", label: "All Actions" },
+  { value: "approve_user", label: "User Approved" },
+  { value: "reject_user", label: "User Rejected" },
+  { value: "delete_user", label: "User Deleted" },
+  { value: "grant_admin", label: "Admin Granted" },
+  { value: "revoke_admin", label: "Admin Revoked" },
+  { value: "restrict_user", label: "User Restricted" },
+  { value: "unrestrict_user", label: "User Unrestricted" },
+  { value: "delete_sanction", label: "Sanction Deleted" },
+  { value: "change_username", label: "Username Changed" },
+  { value: "force_scheduler", label: "Scheduler Forced" },
+] as const;
+
 /** Event type options for filter dropdowns */
 export const AUDIT_EVENT_TYPES = [
   { value: "all", label: "All Events" },

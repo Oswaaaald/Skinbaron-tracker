@@ -224,7 +224,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       
       case "username_changed":
         return raw['changed_by_admin']
-          ? `Username changed by admin: "${s('old_username')}" → "${s('new_username')}"`
+          ? `Username changed by ${s('admin_username', 'admin')}: "${s('old_username')}" → "${s('new_username')}"`
           : `New username: ${s('new_username')}`;
       
       case "password_changed":

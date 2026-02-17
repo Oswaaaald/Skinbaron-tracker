@@ -127,6 +127,8 @@ export const AdminAuditQuerySchema = z.object({
 /** GET /admin/admin-logs querystring (superadmin only) */
 export const AdminLogsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(1000).default(100),
+  action: z.string().max(50).optional(),
+  admin_id: z.coerce.number().int().positive().optional(),
 });
 
 /** GET /admin/audit-logs/:userId params + querystring */
@@ -141,6 +143,7 @@ export const AdminUserAuditQuerySchema = z.object({
 /** GET /admin/users/search querystring */
 export const AdminSearchQuerySchema = z.object({
   q: z.string().min(1).max(100),
+  admins_only: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
 });
 
 // ==================== Auth Route Schemas ====================

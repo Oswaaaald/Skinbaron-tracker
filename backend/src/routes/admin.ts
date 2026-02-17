@@ -1280,6 +1280,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           limit: { type: 'integer', minimum: 1, default: 100, maximum: 1000 },
+          action: { type: 'string', maxLength: 50 },
+          admin_id: { type: 'integer', minimum: 1 },
         },
       },
       response: {
@@ -1316,8 +1318,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         throw Errors.forbidden('Only super administrators can view admin logs');
       }
 
-      const { limit } = validateWithZod(AdminLogsQuerySchema, request.query);
-      const logs = await store.audit.getAdminLogs(limit);
+      const { limit, action, admin_id } = validateWithZod(AdminLogsQuerySchema, request.query);
+      const logs = await store.audit.getAdminLogs(limit, action, admin_id);
 
       return reply.status(200).send({
         success: true,
@@ -1340,6 +1342,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           q: { type: 'string', minLength: 1, maxLength: 100 },
+          admins_only: { type: 'string', enum: ['true', 'false'] },
         },
         required: ['q'],
       },
@@ -1365,8 +1368,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { q } = validateWithZod(AdminSearchQuerySchema, request.query);
-      const users = await store.searchUsers(q);
+      const { q, admins_only } = validateWithZod(AdminSearchQuerySchema, request.query);
+      const users = await store.searchUsers(q, admins_only);
 
       return reply.status(200).send({
         success: true,

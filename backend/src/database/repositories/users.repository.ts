@@ -193,15 +193,17 @@ export class UsersRepository {
       .orderBy(desc(users.created_at));
   }
 
-  async searchUsers(query: string): Promise<Array<{ id: number; username: string; email: string }>> {
+  async searchUsers(query: string, adminsOnly: boolean = false): Promise<Array<{ id: number; username: string; email: string }>> {
     const escaped = query.replace(/[%_\\]/g, '\\$&');
     const pattern = `%${escaped}%`;
+    const conditions = [or(ilike(users.username, pattern), ilike(users.email, pattern))];
+    if (adminsOnly) conditions.push(eq(users.is_admin, true));
     return this.db.select({
       id: users.id,
       username: users.username,
       email: users.email,
     }).from(users)
-      .where(or(ilike(users.username, pattern), ilike(users.email, pattern)))
+      .where(and(...conditions))
       .limit(20);
   }
 

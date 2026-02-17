@@ -83,8 +83,8 @@ class Store {
     return this.users.findPendingUsers();
   }
 
-  async searchUsers(query: string) {
-    return this.users.searchUsers(query);
+  async searchUsers(query: string, adminsOnly: boolean = false) {
+    return this.users.searchUsers(query, adminsOnly);
   }
 
   // ==================== Banned emails ====================

@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { 
@@ -17,24 +18,53 @@ import {
 } from "@/components/ui/select"
 import { 
   Shield, 
+  X,
   RefreshCw,
   ArrowRight,
 } from "lucide-react"
 import { apiClient, type AdminActionLog } from "@/lib/api"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { LoadingState } from "@/components/ui/loading-state"
-import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_ACTION_CONFIG } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_ACTION_TYPES, ADMIN_ACTION_CONFIG } from "@/lib/constants"
 import { formatRelativeDate } from "@/lib/formatters"
 
 export function AdminActionLogs() {
+  const [actionType, setActionType] = useState<string>("all")
+  const [adminSearch, setAdminSearch] = useState<string>("")
+  const [selectedAdmin, setSelectedAdmin] = useState<{ id: number; username: string; email: string } | null>(null)
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false)
   const [limit, setLimit] = useState<number>(100)
   const isVisible = usePageVisible()
 
+  // Search admins with debounce
+  const { data: searchResults } = useQuery({
+    queryKey: [QUERY_KEYS.SEARCH_USERS, 'admins', adminSearch],
+    queryFn: async () => {
+      if (adminSearch.length < 2) return { success: true, data: [] }
+      return apiClient.ensureSuccess(await apiClient.searchUsers(adminSearch, true), 'Failed to search admins')
+    },
+    enabled: adminSearch.length >= 2,
+    staleTime: 30000,
+  })
+
+  // Hide suggestions when clicking outside
+  useEffect(() => {
+    if (!showSuggestions) return
+
+    const handleClickOutside = () => setShowSuggestions(false)
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [showSuggestions])
+
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: [QUERY_KEYS.ADMIN_LOGS, limit],
+    queryKey: [QUERY_KEYS.ADMIN_LOGS, actionType, selectedAdmin?.id, limit],
     queryFn: async () => {
       const result = apiClient.ensureSuccess(
-        await apiClient.getAdminLogs({ limit }),
+        await apiClient.getAdminLogs({
+          limit,
+          action: actionType === "all" ? undefined : actionType,
+          admin_id: selectedAdmin?.id,
+        }),
         'Failed to load admin logs'
       )
       return result
@@ -47,6 +77,29 @@ export function AdminActionLogs() {
     staleTime: 0,
     gcTime: 0,
   })
+
+  const handleClearFilters = () => {
+    setActionType("all")
+    handleClearAdminFilter()
+    setLimit(100)
+  }
+
+  const handleSelectAdmin = (admin: { id: number; username: string; email: string }) => {
+    setSelectedAdmin(admin)
+    setAdminSearch(`${admin.username} (${admin.email})`)
+    setShowSuggestions(false)
+  }
+
+  const handleAdminSearchChange = (value: string) => {
+    setAdminSearch(value)
+    setShowSuggestions(true)
+  }
+
+  const handleClearAdminFilter = () => {
+    setAdminSearch("")
+    setSelectedAdmin(null)
+    setShowSuggestions(false)
+  }
 
   const initialLoading = isLoading && !data
 
@@ -107,7 +160,76 @@ export function AdminActionLogs() {
           <div className="text-xs text-muted-foreground">Refreshing...</div>
         )}
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="action-type">Action Type</Label>
+            <Select value={actionType} onValueChange={setActionType}>
+              <SelectTrigger id="action-type">
+                <SelectValue placeholder="All Actions" />
+              </SelectTrigger>
+              <SelectContent>
+                {ADMIN_ACTION_TYPES.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 relative">
+            <Label htmlFor="admin-search">Search Admin</Label>
+            <div className="relative">
+              <Input
+                id="admin-search"
+                type="text"
+                placeholder="Search by username or email..."
+                value={adminSearch}
+                onChange={(e) => handleAdminSearchChange(e.target.value)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (adminSearch.length >= 2) setShowSuggestions(true)
+                }}
+                className={selectedAdmin ? "pr-8" : ""}
+                autoComplete="off"
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                name="admin-search-filter"
+              />
+              {selectedAdmin && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleClearAdminFilter()
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {showSuggestions && searchResults?.data && searchResults.data.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                {searchResults.data.map((admin) => (
+                  <button
+                    key={admin.id}
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer border-b last:border-b-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSelectAdmin(admin)
+                    }}
+                  >
+                    <div className="font-medium">{admin.username}</div>
+                    <div className="text-xs text-muted-foreground">{admin.email}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="admin-log-limit">Limit</Label>
             <Select value={limit.toString()} onValueChange={(v) => setLimit(parseInt(v))}>
@@ -126,10 +248,16 @@ export function AdminActionLogs() {
 
           <div className="space-y-2 flex flex-col">
             <Label className="invisible">Actions</Label>
-            <Button onClick={() => void refetch()} variant="outline" disabled={isFetching}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh results
-            </Button>
+            <div className="flex items-end gap-2">
+              <Button onClick={() => void refetch()} variant="outline" className="flex-1" disabled={isFetching}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button onClick={handleClearFilters} variant="outline" className="flex-1">
+                <X className="h-4 w-4 mr-2" />
+                Clear Filters
+              </Button>
+            </div>
           </div>
         </div>
 
