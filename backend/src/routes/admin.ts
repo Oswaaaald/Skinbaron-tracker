@@ -166,7 +166,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
-      const adminId = getAuthUser(request).id;
 
       const user = await store.getUserById(id);
       if (!user) {
@@ -182,9 +181,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         store.audit.getUserStats(id),
         store.getSanctionsByUserId(id),
       ]);
-
-      // GDPR audit: log admin data access
-      await store.logAdminAction(adminId, 'view_user_detail', id, `Viewed detailed profile of ${user.username} (${user.email})`);
 
       // Sanitize: never expose secrets
       return reply.status(200).send({
@@ -272,6 +268,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
       const adminId = getAuthUser(request).id;
+      const admin = await store.getUserById(adminId);
 
       const user = await store.getUserById(id);
       if (!user) throw Errors.notFound('User');
@@ -293,7 +290,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await store.logAdminAction(adminId, 'admin_avatar_removed', id, `Removed custom avatar for ${user.username} (${user.email})`);
 
       // Also log in user's own audit trail
-      await store.createAuditLog(id, 'avatar_removed', JSON.stringify({ removed_by_admin: adminId }), getClientIp(request), request.headers['user-agent']);
+      await store.createAuditLog(id, 'avatar_removed', JSON.stringify({ removed_by_admin: adminId, admin_username: admin?.username }), getClientIp(request), request.headers['user-agent']);
 
       return reply.status(200).send({
         success: true,

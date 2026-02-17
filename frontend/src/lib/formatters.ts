@@ -275,7 +275,9 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return "Custom avatar uploaded";
       
       case "avatar_removed":
-        return raw['removed_by_admin'] ? "Avatar removed by admin" : "Custom avatar removed";
+        return raw['removed_by_admin']
+          ? `Avatar removed by ${s('admin_username', 'admin')}`
+          : "Custom avatar removed";
       
       case "gravatar_toggled":
         return raw['use_gravatar'] ? "Gravatar fallback enabled" : "Gravatar fallback disabled";
