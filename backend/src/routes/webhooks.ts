@@ -22,10 +22,35 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
+  // Rate limiting for write operations
+  const writeRateLimit = {
+    max: 10,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many webhook changes. Please try again in 1 minute.',
+    }),
+  };
+
+  // Stricter rate limit for batch/destructive operations
+  const batchRateLimit = {
+    max: 5,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many batch operations. Please try again in 1 minute.',
+    }),
+  };
+
   /**
    * POST /webhooks - Create a new webhook for the authenticated user
    */
   fastify.post('/', {
+    config: { rateLimit: writeRateLimit },
     schema: {
       description: 'Create a new webhook for the authenticated user',
       tags: ['Webhooks'],
@@ -157,6 +182,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
    * PATCH /webhooks/:id - Update a webhook for the authenticated user
    */
   fastify.patch('/:id', {
+    config: { rateLimit: writeRateLimit },
     schema: {
       description: 'Update a webhook for the authenticated user (partial update)',
       tags: ['Webhooks'],
@@ -251,6 +277,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
    * DELETE /webhooks/:id - Delete a webhook for the authenticated user
    */
   fastify.delete('/:id', {
+    config: { rateLimit: writeRateLimit },
     schema: {
       description: 'Delete a webhook for the authenticated user',
       tags: ['Webhooks'],
@@ -311,6 +338,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
    * POST /webhooks/batch/enable - Enable multiple or all webhooks
    */
   fastify.post('/batch/enable', {
+    config: { rateLimit: batchRateLimit },
     schema: {
       description: 'Enable multiple webhooks or all webhooks for authenticated user',
       tags: ['Webhooks'],
@@ -378,6 +406,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
    * POST /webhooks/batch/disable - Disable multiple or all webhooks
    */
   fastify.post('/batch/disable', {
+    config: { rateLimit: batchRateLimit },
     schema: {
       description: 'Disable multiple webhooks or all webhooks for authenticated user',
       tags: ['Webhooks'],
@@ -445,6 +474,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
    * POST /webhooks/batch/delete - Delete multiple or all webhooks
    */
   fastify.post('/batch/delete', {
+    config: { rateLimit: batchRateLimit },
     schema: {
       description: 'Delete multiple webhooks or all webhooks for authenticated user',
       tags: ['Webhooks'],

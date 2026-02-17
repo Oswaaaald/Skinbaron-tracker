@@ -263,6 +263,15 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       case "passkey_deleted":
         return `Passkey removed`;
       
+      case "avatar_uploaded":
+        return "Custom avatar uploaded";
+      
+      case "avatar_removed":
+        return data['removed_by_admin'] ? "Avatar removed by admin" : "Custom avatar removed";
+      
+      case "gravatar_toggled":
+        return data['use_gravatar'] ? "Gravatar fallback enabled" : "Gravatar fallback disabled";
+      
       case "user_deleted":
         return "";
       

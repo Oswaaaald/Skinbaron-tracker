@@ -29,6 +29,30 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
   // Local hook for defense in depth - ensures all routes require authentication
   fastify.addHook('preHandler', fastify.authenticate);
 
+  // Rate limiting for write operations
+  const writeRateLimit = {
+    max: 15,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many rule changes. Please try again in 1 minute.',
+    }),
+  };
+
+  // Stricter rate limit for batch/destructive operations
+  const batchRateLimit = {
+    max: 5,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many batch operations. Please try again in 1 minute.',
+    }),
+  };
+
   /**
    * GET /rules - Get all rules for authenticated user
    */
@@ -88,6 +112,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
    * POST /rules - Create a new rule
    */
   fastify.post('/', {
+    config: { rateLimit: writeRateLimit },
     schema: {
       description: 'Create a new alert rule for authenticated user',
       tags: ['Rules'],
@@ -183,6 +208,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
    * PUT /rules/:id - Update a rule
    */
   fastify.patch('/:id', {
+    config: { rateLimit: writeRateLimit },
     schema: {
       description: 'Update an existing rule (user-owned, partial update)',
       tags: ['Rules'],
@@ -312,6 +338,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
    * DELETE /rules/:id - Delete a rule
    */
   fastify.delete('/:id', {
+    config: { rateLimit: writeRateLimit },
     schema: {
       description: 'Delete a rule (user-owned)',
       tags: ['Rules'],
@@ -374,6 +401,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
    * POST /rules/batch/enable - Enable multiple or all rules
    */
   fastify.post('/batch/enable', {
+    config: { rateLimit: batchRateLimit },
     schema: {
       description: 'Enable multiple rules or all rules for authenticated user',
       tags: ['Rules'],
@@ -443,6 +471,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
    * POST /rules/batch/disable - Disable multiple or all rules
    */
   fastify.post('/batch/disable', {
+    config: { rateLimit: batchRateLimit },
     schema: {
       description: 'Disable multiple rules or all rules for authenticated user',
       tags: ['Rules'],
@@ -512,6 +541,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
    * POST /rules/batch/delete - Delete multiple or all rules
    */
   fastify.post('/batch/delete', {
+    config: { rateLimit: batchRateLimit },
     schema: {
       description: 'Delete multiple rules or all rules for authenticated user',
       tags: ['Rules'],
