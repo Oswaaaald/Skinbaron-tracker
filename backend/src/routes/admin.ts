@@ -775,6 +775,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       if (!user) throw Errors.notFound('User');
 
       // If this is the most recent "restrict" sanction and user is currently restricted, unrestrict them
+      // If this is the most recent "restrict" sanction and user is currently restricted, unrestrict them
       if (sanction.action === 'restrict' && user.is_restricted) {
         // Check if this is the sanction that caused the current restriction
         // (most recent restrict sanction for this user)
@@ -790,17 +791,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
             restricted_by_admin_id: null,
           });
           invalidateUserCache(sanction.user_id);
+        }
+      }
 
-          // Unban email(s) if it was a permanent restriction
-          if (sanction.restriction_type === 'permanent') {
-            await store.unbanEmail(user.email);
+      // Always unban emails when deleting a permanent restrict sanction,
+      // regardless of current restriction status (the user may have been
+      // unrestricted first, but email bans persist separately)
+      if (sanction.action === 'restrict' && sanction.restriction_type === 'permanent') {
+        await store.unbanEmail(user.email);
 
-            const oauthAccounts = await store.getOAuthAccountsByUserId(sanction.user_id);
-            for (const acc of oauthAccounts) {
-              if (acc.provider_email && acc.provider_email !== user.email) {
-                await store.unbanEmail(acc.provider_email);
-              }
-            }
+        const oauthAccounts = await store.getOAuthAccountsByUserId(sanction.user_id);
+        for (const acc of oauthAccounts) {
+          if (acc.provider_email && acc.provider_email !== user.email) {
+            await store.unbanEmail(acc.provider_email);
           }
         }
       }
