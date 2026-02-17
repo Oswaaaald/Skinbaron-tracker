@@ -1269,6 +1269,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
    * GET /api/admin/admin-logs - Get admin action logs (super admin only)
    */
   fastify.get('/admin-logs', {
+    preHandler: [fastify.requireSuperAdmin],
     schema: {
       description: 'Get admin action logs (super admin only)',
       tags: ['Admin'],
@@ -1308,13 +1309,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      // Super admin only
-      const adminId = getAuthUser(request).id;
-      const admin = await store.getUserById(adminId);
-      if (!admin?.is_super_admin) {
-        throw Errors.forbidden('Only super administrators can view admin logs');
-      }
-
       const { limit, action, admin_id } = validateWithZod(AdminLogsQuerySchema, request.query);
       const logs = await store.audit.getAdminLogs(limit, action, admin_id);
 
