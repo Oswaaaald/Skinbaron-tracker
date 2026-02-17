@@ -2,11 +2,24 @@ import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { getScheduler } from '../lib/scheduler.js';
 import { getClientIp, getAuthUser, invalidateUserCache } from '../lib/middleware.js';
-import { handleRouteError } from '../lib/validation-handler.js';
+import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { Errors } from '../lib/errors.js';
 import { AuthService } from '../lib/auth.js';
 import { appConfig } from '../lib/config.js';
 import { deleteAvatarFile } from '../lib/avatar.js';
+import {
+  AdminUserParamsSchema,
+  SanctionParamsSchema,
+  AdminUsersQuerySchema,
+  AdminToggleSchema,
+  RestrictUserSchema,
+  UnrestrictUserSchema,
+  AdminUsernameSchema,
+  AdminAuditQuerySchema,
+  AdminUserAuditParamsSchema,
+  AdminUserAuditQuerySchema,
+  AdminSearchQuerySchema,
+} from '../database/schemas.js';
 
 /**
  * Admin routes - All routes require admin privileges
@@ -94,17 +107,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const query = request.query as {
-        limit?: number;
-        offset?: number;
-        sort_by?: 'username' | 'email' | 'role' | 'created_at' | 'rules' | 'alerts' | 'webhooks';
-        sort_dir?: 'asc' | 'desc';
-        search?: string;
-        role?: 'admin' | 'user' | 'all';
-      };
+      const query = validateWithZod(AdminUsersQuerySchema, request.query);
 
-      const limit = query.limit ?? 20;
-      const offset = query.offset ?? 0;
+      const limit = query.limit;
+      const offset = query.offset;
 
       const { data: usersWithStats, total } = await store.users.findAllWithStatsPaginated({
         limit,
@@ -158,7 +164,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
       const adminId = getAuthUser(request).id;
 
       const user = await store.getUserById(id);
@@ -263,7 +269,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
       const adminId = getAuthUser(request).id;
 
       const user = await store.getUserById(id);
@@ -330,7 +336,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
       const adminId = getAuthUser(request).id;
 
       // Prevent deleting yourself
@@ -455,8 +461,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
-      const { is_admin } = request.body as { is_admin: boolean };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
+      const { is_admin } = validateWithZod(AdminToggleSchema, request.body);
       const adminId = getAuthUser(request).id;
 
       // Prevent modifying your own admin status
@@ -563,21 +569,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
-      const { restriction_type, reason, duration_hours, ban_email } = request.body as {
-        restriction_type: 'temporary' | 'permanent';
-        reason: string;
-        duration_hours?: number;
-        ban_email?: boolean;
-      };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
+      const { restriction_type, reason, duration_hours, ban_email } = validateWithZod(RestrictUserSchema, request.body);
       const adminId = getAuthUser(request).id;
 
       if (id === adminId) throw Errors.forbidden('You cannot restrict your own account');
-
-      // Validate duration for temporary restrictions
-      if (restriction_type === 'temporary' && !duration_hours) {
-        throw Errors.badRequest('duration_hours is required for temporary restrictions');
-      }
 
       const user = await store.getUserById(id);
       if (!user) throw Errors.notFound('User');
@@ -678,8 +674,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
-      const { reason } = request.body as { reason: string };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
+      const { reason } = validateWithZod(UnrestrictUserSchema, request.body);
       const adminId = getAuthUser(request).id;
 
       const user = await store.getUserById(id);
@@ -748,7 +744,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { sanctionId } = request.params as { sanctionId: number };
+      const { sanctionId } = validateWithZod(SanctionParamsSchema, request.params);
       const adminId = getAuthUser(request).id;
 
       // Super admin only
@@ -821,8 +817,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
-      const { username } = request.body as { username: string };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
+      const { username } = validateWithZod(AdminUsernameSchema, request.body);
       const adminId = getAuthUser(request).id;
 
       const user = await store.getUserById(id);
@@ -971,7 +967,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
       const success = await store.approveUser(id);
 
       if (!success) {
@@ -1031,7 +1027,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { id } = request.params as { id: number };
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
 
       // Verify user exists and is actually pending approval
       const user = await store.getUserById(id);
@@ -1157,8 +1153,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { userId } = request.params as { userId: number };
-      const { limit = 100 } = request.query as { limit?: number };
+      const { userId } = validateWithZod(AdminUserAuditParamsSchema, request.params);
+      const { limit } = validateWithZod(AdminUserAuditQuerySchema, request.query);
 
       const user = await store.getUserById(userId);
       if (!user) {
@@ -1227,7 +1223,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { limit = 100, event_type, user_id } = request.query as { limit?: number; event_type?: string; user_id?: number };
+      const { limit, event_type, user_id } = validateWithZod(AdminAuditQuerySchema, request.query);
 
       const logs = await store.getAllAuditLogs(limit, event_type, user_id);
 
@@ -1277,7 +1273,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { q } = request.query as { q: string };
+      const { q } = validateWithZod(AdminSearchQuerySchema, request.query);
       const users = await store.searchUsers(q);
 
       return reply.status(200).send({

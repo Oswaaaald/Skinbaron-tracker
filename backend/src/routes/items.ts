@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getSkinBaronClient } from '../lib/sbclient.js';
-import { handleRouteError } from '../lib/validation-handler.js';
+import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
+import { ItemSearchQuerySchema } from '../database/schemas.js';
 
 export default async function itemsRoutes(fastify: FastifyInstance) {
   
@@ -56,7 +57,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { q, limit } = request.query as { q?: string; limit?: string };
+      const { q, limit } = validateWithZod(ItemSearchQuerySchema, request.query);
       
       if (!q || q.trim().length === 0) {
         return reply.status(200).send({
@@ -65,8 +66,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Limit results for autocomplete (max 20 suggestions)
-      const maxResults = Math.min(parseInt(limit || '20', 10), 50);
+      const maxResults = limit;
 
       const skinBaronClient = getSkinBaronClient();
       const result = await skinBaronClient.search({

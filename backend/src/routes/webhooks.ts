@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
-import { CreateUserWebhookSchema } from '../database/schemas.js';
+import { CreateUserWebhookSchema, BatchWebhookIdsSchema, BatchWebhookDeleteSchema } from '../database/schemas.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
 import { validateWebhookUrl } from '../lib/webhook-validator.js';
@@ -367,7 +367,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { webhook_ids } = request.body as { webhook_ids?: number[] };
+      const { webhook_ids } = validateWithZod(BatchWebhookIdsSchema, request.body);
       const userId = getAuthUser(request).id;
 
       let updated = 0;
@@ -435,7 +435,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { webhook_ids } = request.body as { webhook_ids?: number[] };
+      const { webhook_ids } = validateWithZod(BatchWebhookIdsSchema, request.body);
       const userId = getAuthUser(request).id;
 
       let updated = 0;
@@ -507,7 +507,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { webhook_ids, confirm_all } = request.body as { webhook_ids?: number[]; confirm_all?: boolean };
+      const { webhook_ids, confirm_all } = validateWithZod(BatchWebhookDeleteSchema, request.body);
       const userId = getAuthUser(request).id;
 
       let deleted = 0;

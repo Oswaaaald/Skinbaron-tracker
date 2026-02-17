@@ -12,6 +12,16 @@ import { validateWithZod, handleRouteError } from '../lib/validation-handler.js'
 import { AppError } from '../lib/errors.js';
 import { appConfig } from '../lib/config.js';
 import {
+  Enable2FASchema,
+  Disable2FASchema,
+  DeleteAccountSchema,
+  PasskeyParamsSchema,
+  PasskeyRenameSchema,
+  PasskeyRegisterVerifySchema,
+  UserAuditQuerySchema,
+  OAuthUnlinkParamsSchema,
+} from '../database/schemas.js';
+import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
@@ -874,7 +884,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { password, totp_code } = request.body as { password?: string; totp_code?: string };
+      const { password, totp_code } = validateWithZod(DeleteAccountSchema, request.body);
 
       const user = await store.getUserById(userId);
       if (!user) {
@@ -1055,7 +1065,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { code } = request.body as { code: string };
+      const { code } = validateWithZod(Enable2FASchema, request.body);
 
       // Retrieve the secret stored server-side during /2fa/setup (peek, don't consume yet)
       const secret = getPending2FA(userId);
@@ -1143,7 +1153,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { password, totp_code } = request.body as { password?: string; totp_code?: string };
+      const { password, totp_code } = validateWithZod(Disable2FASchema, request.body);
 
       const user = await store.getUserById(userId, true);
       if (!user) {
@@ -1355,7 +1365,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { credential, name: rawName } = request.body as { credential: unknown; name?: string };
+      const { credential, name: rawName } = validateWithZod(PasskeyRegisterVerifySchema, request.body);
 
       // Sanitize passkey name
       const name = rawName ? rawName.trim().replace(/[<>]/g, '').slice(0, 64) : undefined;
@@ -1448,10 +1458,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const passkeyId = parseInt(request.params.id, 10);
-      const { name } = request.body as { name: string };
-
-      if (isNaN(passkeyId)) throw new AppError(400, 'Invalid passkey ID', 'INVALID_ID');
+      const { id: passkeyId } = validateWithZod(PasskeyParamsSchema, request.params);
+      const { name } = validateWithZod(PasskeyRenameSchema, request.body);
 
       const updated = await store.passkeys.rename(passkeyId, userId, name);
       if (!updated) throw new AppError(404, 'Passkey not found', 'NOT_FOUND');
@@ -1480,9 +1488,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const passkeyId = parseInt(request.params.id, 10);
-
-      if (isNaN(passkeyId)) throw new AppError(400, 'Invalid passkey ID', 'INVALID_ID');
+      const { id: passkeyId } = validateWithZod(PasskeyParamsSchema, request.params);
 
       const deleted = await store.passkeys.delete(passkeyId, userId);
       if (!deleted) throw new AppError(404, 'Passkey not found', 'NOT_FOUND');
@@ -1541,7 +1547,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const { limit = 100 } = request.query as { limit?: number };
+      const { limit } = validateWithZod(UserAuditQuerySchema, request.query);
 
       const logs = await store.getAuditLogsByUserId(userId, limit);
 
@@ -1623,7 +1629,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const user = getAuthUser(request);
-      const { provider } = request.params;
+      const { provider } = validateWithZod(OAuthUnlinkParamsSchema, request.params);
       const accounts = await store.getOAuthAccountsByUserId(user.id);
 
       const target = accounts.find(a => a.provider === provider);

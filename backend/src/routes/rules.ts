@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
 import { RuleSchema } from '../database/schemas.js';
+import { BatchRuleIdsSchema, BatchRuleDeleteSchema } from '../database/schemas.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
@@ -430,7 +431,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { rule_ids } = request.body as { rule_ids?: number[] };
+      const { rule_ids } = validateWithZod(BatchRuleIdsSchema, request.body);
       const userId = getAuthUser(request).id;
 
       let updated = 0;
@@ -500,7 +501,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { rule_ids } = request.body as { rule_ids?: number[] };
+      const { rule_ids } = validateWithZod(BatchRuleIdsSchema, request.body);
       const userId = getAuthUser(request).id;
 
       let updated = 0;
@@ -574,7 +575,7 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { rule_ids, confirm_all } = request.body as { rule_ids?: number[]; confirm_all?: boolean };
+      const { rule_ids, confirm_all } = validateWithZod(BatchRuleDeleteSchema, request.body);
       const userId = getAuthUser(request).id;
 
       let deleted = 0;

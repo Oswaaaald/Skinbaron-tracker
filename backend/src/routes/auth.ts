@@ -16,6 +16,16 @@ import {
 } from '../lib/oauth.js';
 import type { User } from '../database/schema.js';
 import {
+  FinalizeOAuthRegistrationSchema,
+  VerifyOAuth2FASchema,
+  RefreshBodySchema,
+  LogoutBodySchema,
+  OAuthProviderParamsSchema,
+  OAuthProviderQuerySchema,
+  OAuthCallbackQuerySchema,
+  PasskeyAuthVerifySchema,
+} from '../database/schemas.js';
+import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
@@ -481,8 +491,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { refresh_token: refreshFromBody } = (request.body as { refresh_token?: string } | null) || {};
-      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE]);
+      const body = validateWithZod(RefreshBodySchema, request.body ?? {});
+      const refresh_token = body.refresh_token || (request.cookies?.[REFRESH_COOKIE]);
 
       if (!refresh_token) {
         request.log.warn({ cookies: request.cookies }, 'Refresh token missing');
@@ -578,8 +588,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const authHeader = request.headers.authorization;
       const accessToken = AuthService.extractTokenFromHeader(authHeader ?? '') || (request.cookies?.[ACCESS_COOKIE]);
-      const { refresh_token: refreshFromBody } = request.body as { refresh_token?: string };
-      const refresh_token = refreshFromBody || (request.cookies?.[REFRESH_COOKIE]);
+      const body = validateWithZod(LogoutBodySchema, request.body ?? {});
+      const refresh_token = body.refresh_token || (request.cookies?.[REFRESH_COOKIE]);
 
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
       
@@ -668,8 +678,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    const { provider } = request.params;
-    const mode = request.query.mode;
+    const { provider } = validateWithZod(OAuthProviderParamsSchema, request.params);
+    const { mode } = validateWithZod(OAuthProviderQuerySchema, request.query);
 
     if (!isProviderEnabled(provider)) {
       throw new AppError(400, `OAuth provider "${provider}" is not available`, 'INVALID_PROVIDER');
@@ -726,8 +736,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { provider } = request.params;
-      const { code, state, error: oauthError } = request.query;
+      const { provider } = validateWithZod(OAuthProviderParamsSchema, request.params);
+      const { code, state, error: oauthError } = validateWithZod(OAuthCallbackQuerySchema, request.query);
       const loginUrl = `${appConfig.CORS_ORIGIN}/login`;
 
       // Helper to redirect with error and clean the state cookie
@@ -1060,17 +1070,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const { username, tos_accepted } = request.body;
-
-        // Validate TOS acceptance
-        if (!tos_accepted) {
-          throw new AppError(400, 'You must accept the Terms of Service to create an account', 'TOS_NOT_ACCEPTED');
-        }
-
-        // Validate username format (same regex as UserRegistrationSchema)
-        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-          throw new AppError(400, 'Username can only contain letters, numbers and underscores', 'INVALID_USERNAME');
-        }
+        const { username } = validateWithZod(FinalizeOAuthRegistrationSchema, request.body);
 
         // Read pending registration cookie
         const cookie = request.cookies[OAUTH_PENDING_REG_COOKIE];
@@ -1211,7 +1211,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const { totp_code } = request.body;
+        const { totp_code } = validateWithZod(VerifyOAuth2FASchema, request.body);
         const pendingCookie = request.cookies[OAUTH_2FA_COOKIE];
 
         if (!pendingCookie) {
@@ -1353,7 +1353,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const { credential, challengeKey } = request.body as { credential: unknown; challengeKey: string };
+      const { credential, challengeKey } = validateWithZod(PasskeyAuthVerifySchema, request.body);
 
       const challengeEntry = pendingPasskeyAuthnChallenges.get(challengeKey);
       if (!challengeEntry || Date.now() > challengeEntry.expiresAt) {
