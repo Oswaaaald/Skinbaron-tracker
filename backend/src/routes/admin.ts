@@ -566,7 +566,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: number };
       const { restriction_type, reason, duration_hours, ban_email } = request.body as {
         restriction_type: 'temporary' | 'permanent';
-        reason?: string;
+        reason: string;
         duration_hours?: number;
         ban_email?: boolean;
       };
@@ -597,7 +597,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await store.updateUser(id, {
         is_restricted: true,
         restriction_type,
-        restriction_reason: reason || null,
+        restriction_reason: reason,
         restriction_expires_at: expiresAt,
         restricted_at: new Date(),
         restricted_by_admin_id: adminId,
@@ -610,7 +610,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         admin_username: adminUsername,
         action: 'restrict',
         restriction_type,
-        reason: reason || null,
+        reason,
         duration_hours: duration_hours || null,
         expires_at: expiresAt,
       });
@@ -621,19 +621,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Ban email for permanent restrictions if requested
       if (restriction_type === 'permanent' && ban_email) {
-        await store.banEmail(user.email, reason || 'Account permanently restricted', adminId);
+        await store.banEmail(user.email, reason, adminId);
       }
 
       const durationLabel = restriction_type === 'permanent'
         ? 'permanently'
-        : `for ${duration_hours}h (until ${expiresAt!.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })})`;
+        : `for ${duration_hours}h (until ${expiresAt!.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })})`;
 
-      await store.logAdminAction(adminId, 'restrict_user', id, `Restricted ${user.username} ${durationLabel}${reason ? ` — ${reason}` : ''}`);
+      await store.logAdminAction(adminId, 'restrict_user', id, `Restricted ${user.username} ${durationLabel} — ${reason}`);
       await store.createAuditLog(id, 'account_restricted', JSON.stringify({
         admin_id: adminId,
         admin_username: adminUsername,
         restriction_type,
-        reason: reason || null,
+        reason,
         duration_hours: duration_hours || null,
         expires_at: expiresAt,
         email_banned: ban_email || false,
