@@ -260,7 +260,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
           </div>
         ) : detail ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* LEFT COLUMN */}
+            {/* LEFT COLUMN — Info */}
             <div className="space-y-4">
               {/* Identity */}
               <Card>
@@ -389,6 +389,171 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Security */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4" />
+                    Security
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Key className="h-3.5 w-3.5" />
+                      Two-Factor Auth (TOTP)
+                    </span>
+                    <Badge variant={detail.totp_enabled ? 'default' : 'outline'}>
+                      {detail.totp_enabled ? '✅ Enabled' : '❌ Disabled'}
+                    </Badge>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <Fingerprint className="h-3.5 w-3.5" />
+                        Passkeys
+                      </span>
+                      <Badge variant="secondary">{detail.passkeys.length}</Badge>
+                    </div>
+                    {detail.passkeys.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {detail.passkeys.map(pk => (
+                          <div key={pk.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-1.5 text-xs">
+                            <span className="font-medium">{pk.name}</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={pk.device_type === 'multiDevice' ? 'secondary' : 'outline'} className="text-[10px] px-1.5">
+                                {pk.device_type === 'multiDevice' ? 'Synced' : 'Device-bound'}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {pk.last_used_at ? `Used ${formatDate(pk.last_used_at)}` : 'Never used'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No passkeys registered</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Linked Accounts */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    Linked Accounts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {detail.oauth_accounts.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {detail.oauth_accounts.map(acc => (
+                        <div key={acc.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-1.5 text-sm">
+                          <span className="flex items-center gap-2">
+                            {PROVIDER_ICONS[acc.provider] ?? <Link2 className="h-4 w-4" />}
+                            <span className="font-medium capitalize">{acc.provider}</span>
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {acc.provider_email || 'No email'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No linked accounts</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Activity Stats */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="bg-muted/50 rounded-md px-3 py-2">
+                      <span className="text-muted-foreground text-xs">Rules</span>
+                      <p className="font-bold">{detail.stats.active_rules_count} / {detail.stats.rules_count}</p>
+                      <span className="text-[10px] text-muted-foreground">active / total</span>
+                    </div>
+                    <div className="bg-muted/50 rounded-md px-3 py-2">
+                      <span className="text-muted-foreground text-xs">Webhooks</span>
+                      <p className="font-bold">{detail.stats.active_webhooks_count} / {detail.stats.webhooks_count}</p>
+                      <span className="text-[10px] text-muted-foreground">active / total</span>
+                    </div>
+                    <div className="bg-muted/50 rounded-md px-3 py-2">
+                      <span className="text-muted-foreground text-xs">Alerts</span>
+                      <p className="font-bold">{detail.stats.alerts_count}</p>
+                      <span className="text-[10px] text-muted-foreground">total received</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* RIGHT COLUMN — Actions & History */}
+            <div className="space-y-4">
+              {/* Sanctions History (Casier) */}
+              {!detail.is_super_admin && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <ScrollText className="h-4 w-4" />
+                      Sanctions History
+                      {detail.sanctions.length > 0 && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5">{detail.sanctions.length}</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {detail.sanctions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No sanctions recorded</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {detail.sanctions.map((s: Sanction) => (
+                          <div key={s.id} className={`rounded-md border px-3 py-2 text-xs space-y-1 ${s.action === 'restrict' ? 'border-red-500/20 bg-red-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium flex items-center gap-1.5">
+                                {s.action === 'restrict' ? (
+                                  <Ban className="h-3 w-3 text-red-500" />
+                                ) : (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                )}
+                                {s.action === 'restrict' ? 'Restricted' : 'Unrestricted'}
+                                {s.restriction_type && s.action === 'restrict' && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
+                                    {s.restriction_type === 'permanent' ? 'Permanent' : `${formatDuration(s.duration_hours ?? 0)}`}
+                                  </Badge>
+                                )}
+                              </span>
+                              <span className="text-muted-foreground">{formatDate(s.created_at)}</span>
+                            </div>
+                            <p className="text-muted-foreground">
+                              By <span className="font-medium text-foreground">{s.admin_username}</span>
+                            </p>
+                            {s.reason && (
+                              <p className="text-muted-foreground italic">&quot;{s.reason}&quot;</p>
+                            )}
+                            {s.expires_at && s.action === 'restrict' && (
+                              <p className="text-muted-foreground">Expires: {formatDate(s.expires_at)}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Moderation — Restrict / Unrestrict */}
               {!detail.is_super_admin && !isCurrentUser && (
@@ -532,7 +697,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                 </Card>
               )}
 
-              {/* Admin Actions (moved from table) */}
+              {/* Admin Actions */}
               {!detail.is_super_admin && !isCurrentUser && (
                 <Card className="border-red-500/20">
                   <CardHeader className="pb-3">
@@ -599,171 +764,6 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                   </CardContent>
                 </Card>
               )}
-            </div>
-
-            {/* RIGHT COLUMN */}
-            <div className="space-y-4">
-              {/* Sanctions History (Casier) */}
-              {!detail.is_super_admin && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <ScrollText className="h-4 w-4" />
-                      Sanctions History
-                      {detail.sanctions.length > 0 && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">{detail.sanctions.length}</Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {detail.sanctions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">No sanctions recorded</p>
-                    ) : (
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                        {detail.sanctions.map((s: Sanction) => (
-                          <div key={s.id} className={`rounded-md border px-3 py-2 text-xs space-y-1 ${s.action === 'restrict' ? 'border-red-500/20 bg-red-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium flex items-center gap-1.5">
-                                {s.action === 'restrict' ? (
-                                  <Ban className="h-3 w-3 text-red-500" />
-                                ) : (
-                                  <Check className="h-3 w-3 text-green-500" />
-                                )}
-                                {s.action === 'restrict' ? 'Restricted' : 'Unrestricted'}
-                                {s.restriction_type && s.action === 'restrict' && (
-                                  <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
-                                    {s.restriction_type === 'permanent' ? 'Permanent' : `${formatDuration(s.duration_hours ?? 0)}`}
-                                  </Badge>
-                                )}
-                              </span>
-                              <span className="text-muted-foreground">{formatDate(s.created_at)}</span>
-                            </div>
-                            <p className="text-muted-foreground">
-                              By <span className="font-medium text-foreground">{s.admin_username}</span>
-                            </p>
-                            {s.reason && (
-                              <p className="text-muted-foreground italic">&quot;{s.reason}&quot;</p>
-                            )}
-                            {s.expires_at && s.action === 'restrict' && (
-                              <p className="text-muted-foreground">Expires: {formatDate(s.expires_at)}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Security */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" />
-                    Security
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Key className="h-3.5 w-3.5" />
-                      Two-Factor Auth (TOTP)
-                    </span>
-                    <Badge variant={detail.totp_enabled ? 'default' : 'outline'}>
-                      {detail.totp_enabled ? '✅ Enabled' : '❌ Disabled'}
-                    </Badge>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                        <Fingerprint className="h-3.5 w-3.5" />
-                        Passkeys
-                      </span>
-                      <Badge variant="secondary">{detail.passkeys.length}</Badge>
-                    </div>
-                    {detail.passkeys.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {detail.passkeys.map(pk => (
-                          <div key={pk.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-1.5 text-xs">
-                            <span className="font-medium">{pk.name}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={pk.device_type === 'multiDevice' ? 'secondary' : 'outline'} className="text-[10px] px-1.5">
-                                {pk.device_type === 'multiDevice' ? 'Synced' : 'Device-bound'}
-                              </Badge>
-                              <span className="text-muted-foreground">
-                                {pk.last_used_at ? `Used ${formatDate(pk.last_used_at)}` : 'Never used'}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No passkeys registered</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Linked Accounts */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Link2 className="h-4 w-4" />
-                    Linked Accounts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {detail.oauth_accounts.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {detail.oauth_accounts.map(acc => (
-                        <div key={acc.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-1.5 text-sm">
-                          <span className="flex items-center gap-2">
-                            {PROVIDER_ICONS[acc.provider] ?? <Link2 className="h-4 w-4" />}
-                            <span className="font-medium capitalize">{acc.provider}</span>
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {acc.provider_email || 'No email'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No linked accounts</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Activity Stats */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-3 text-sm">
-                    <div className="bg-muted/50 rounded-md px-3 py-2">
-                      <span className="text-muted-foreground text-xs">Rules</span>
-                      <p className="font-bold">{detail.stats.active_rules_count} / {detail.stats.rules_count}</p>
-                      <span className="text-[10px] text-muted-foreground">active / total</span>
-                    </div>
-                    <div className="bg-muted/50 rounded-md px-3 py-2">
-                      <span className="text-muted-foreground text-xs">Webhooks</span>
-                      <p className="font-bold">{detail.stats.active_webhooks_count} / {detail.stats.webhooks_count}</p>
-                      <span className="text-[10px] text-muted-foreground">active / total</span>
-                    </div>
-                    <div className="bg-muted/50 rounded-md px-3 py-2">
-                      <span className="text-muted-foreground text-xs">Alerts</span>
-                      <p className="font-bold">{detail.stats.alerts_count}</p>
-                      <span className="text-[10px] text-muted-foreground">total received</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* GDPR Notice (full width) */}
