@@ -139,12 +139,12 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
       });
       invalidateUserCache(user.id);
     } else if (user.restriction_type === 'permanent') {
-      throw new AppError(403, 'Votre compte a été définitivement suspendu', 'ACCOUNT_RESTRICTED');
+      throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
     } else {
       const expiresStr = user.restriction_expires_at
-        ? new Date(user.restriction_expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
         : '';
-      throw new AppError(403, `Votre compte est suspendu jusqu'au ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+      throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
     }
   }
 

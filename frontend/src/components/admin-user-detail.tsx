@@ -39,12 +39,13 @@ const DURATION_PRESETS = [
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
+  return new Date(dateStr).toLocaleString('en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   })
 }
 
@@ -258,7 +259,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             <LoadingSpinner size="lg" />
           </div>
         ) : detail ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* LEFT COLUMN */}
             <div className="space-y-4">
               {/* Identity */}
@@ -766,7 +767,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             </div>
 
             {/* GDPR Notice (full width) */}
-            <div className="lg:col-span-2">
+            <div className="md:col-span-2">
               <p className="text-[10px] text-muted-foreground text-center">
                 🔒 This data access has been logged in accordance with GDPR Art. 5(1)(f) — integrity & confidentiality.
               </p>

@@ -389,12 +389,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
           // Log the failed login attempt due to restriction
           await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
           if (user.restriction_type === 'permanent') {
-            throw new AppError(403, 'Votre compte a été définitivement suspendu', 'ACCOUNT_RESTRICTED');
+            throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
           }
           const expiresStr = user.restriction_expires_at
-            ? new Date(user.restriction_expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
             : '';
-          throw new AppError(403, `Votre compte est suspendu jusqu'au ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+          throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
         }
       }
 
@@ -519,12 +519,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         } else {
           await store.revokeAllRefreshTokensForUser(payload.userId);
           if (refreshUser.restriction_type === 'permanent') {
-            throw new AppError(403, 'Votre compte a été définitivement suspendu', 'ACCOUNT_RESTRICTED');
+            throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
           }
           const expiresStr = refreshUser.restriction_expires_at
-            ? new Date(refreshUser.restriction_expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            ? new Date(refreshUser.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
             : '';
-          throw new AppError(403, `Votre compte est suspendu jusqu'au ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+          throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
         }
       }
 

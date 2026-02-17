@@ -540,8 +540,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   /**
    * PATCH /api/admin/users/:id/restrict - Restrict a user (temporary or permanent)
    * Restricted users cannot log in or make API requests.
-   * - temporary: user sees a French-formatted expiry date on login
-   * - permanent: user sees "votre compte a été définitivement suspendu"
+   * - temporary: user sees expiry date on login (dd/MM/yyyy, HH:mm Europe/Paris)
+   * - permanent: user sees "Your account has been permanently suspended"
    */
   fastify.patch('/users/:id/restrict', {
     config: { rateLimit: adminWriteRateLimit },
