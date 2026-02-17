@@ -90,8 +90,11 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Get total count for pagination metadata
-      const total = await store.alerts.countByUserId(getAuthUser(request).id);
+      // Get total count for pagination metadata (respects same filters)
+      const total = await store.alerts.countByUserId(getAuthUser(request).id, {
+        ruleId: query.rule_id,
+        itemName: query.item_name,
+      });
 
       // Get user's alerts with filters (limit=0 means return all)
       const alerts = await store.getAlertsByUserId(

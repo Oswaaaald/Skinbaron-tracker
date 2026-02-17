@@ -100,11 +100,24 @@ export class AlertsRepository {
     return result.length;
   }
 
-  async countByUserId(userId: number): Promise<number> {
+  async countByUserId(userId: number, options?: {
+    ruleId?: number;
+    itemName?: string;
+  }): Promise<number> {
+    const conditions: SQL[] = [eq(rules.user_id, userId)];
+
+    if (options?.ruleId !== undefined) {
+      conditions.push(eq(alerts.rule_id, options.ruleId));
+    }
+    if (options?.itemName) {
+      const escaped = options.itemName.replace(/[%_\\]/g, '\\$&');
+      conditions.push(ilike(alerts.item_name, `%${escaped}%`));
+    }
+
     const [result] = await this.db.select({ value: count() })
       .from(alerts)
       .innerJoin(rules, eq(alerts.rule_id, rules.id))
-      .where(eq(rules.user_id, userId));
+      .where(and(...conditions));
     return result?.value ?? 0;
   }
 
