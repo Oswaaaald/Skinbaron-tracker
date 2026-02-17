@@ -8,12 +8,11 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, Ban, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Snowflake, Trash2, User, Users, Wrench } from 'lucide-react'
+import { Activity, AlertCircle, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, History, Search, Shield, User, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -39,8 +38,9 @@ interface AdminUser {
   email: string
   is_admin: boolean
   is_super_admin: boolean
-  is_frozen: boolean
-  is_banned: boolean
+  is_restricted: boolean
+  restriction_type: string | null
+  restriction_expires_at: string | null
   created_at: string
   avatar_url: string | null
   stats: UserStats
@@ -57,15 +57,6 @@ interface GlobalStats {
 export function AdminPanel() {
   const { user: currentUser } = useAuth()
   const { toast } = useToast()
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: AdminUser | null }>({
-    open: false,
-    user: null,
-  })
-  const [adminDialog, setAdminDialog] = useState<{ open: boolean; user: AdminUser | null; action: 'grant' | 'revoke' }>({
-    open: false,
-    user: null,
-    action: 'grant',
-  })
   const [pendingUserDialog, setpendingUserDialog] = useState<{ open: boolean; userId: number | null; action: 'approve' | 'reject' }>({
     open: false,
     userId: null,
@@ -130,55 +121,6 @@ export function AdminPanel() {
     refetchOnWindowFocus: true,
     refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   })
-
-  // Delete user mutation
-  const deleteUserMutation = useApiMutation(
-    (userId: number) => apiClient.delete(`/api/admin/users/${userId}`),
-    {
-      invalidateKeys: [[QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
-      onSuccess: () => {
-        toast({
-          title: "✅ User deleted",
-          description: "User account has been permanently deleted",
-        })
-        setDeleteDialog({ open: false, user: null })
-      },
-      onError: (error: unknown) => {
-        toast({
-          variant: "destructive",
-          title: "❌ Failed to delete user",
-          description: extractErrorMessage(error),
-        })
-      },
-    }
-  )
-
-  // Toggle admin mutation
-  const toggleAdminMutation = useApiMutation(
-    ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) =>
-      apiClient.patch(`/api/admin/users/${userId}/admin`, { is_admin: isAdmin }),
-    {
-      invalidateKeys: [[QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
-      onSuccess: (_, { isAdmin }) => {
-        toast({
-          title: isAdmin ? "✅ Admin granted" : "✅ Admin revoked",
-          description: isAdmin 
-            ? "User has been granted admin privileges" 
-            : "Admin privileges have been revoked",
-        })
-        // Force all connected users to refresh their profile immediately
-        window.dispatchEvent(new CustomEvent('user-profile-changed'))
-        setAdminDialog({ open: false, user: null, action: 'grant' })
-      },
-      onError: (error: unknown) => {
-        toast({
-          variant: "destructive",
-          title: "❌ Failed to update admin status",
-          description: extractErrorMessage(error),
-        })
-      },
-    }
-  )
 
   // Approve user mutation
   const approveUserMutation = useApiMutation(
@@ -252,15 +194,6 @@ export function AdminPanel() {
     }
   )
 
-  const isCurrentUser = (user: AdminUser) => {
-    return currentUser?.id === user.id
-  }
-
-  const isLastAdmin = () => {
-    // Default to true (safe) when stats haven't loaded yet
-    return !statsData || statsData.total_admins <= 1
-  }
-
   const toggleSort = (column: string) => {
     if (sortBy === column) {
       setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -274,27 +207,6 @@ export function AdminPanel() {
   const usersData = usersResponse?.users
   const totalUsers = usersResponse?.pagination?.total ?? 0
   const totalPages = Math.ceil(totalUsers / ADMIN_USERS_PAGE_SIZE)
-
-  const handleDeleteUser = (user: AdminUser) => {
-    setDeleteDialog({ open: true, user })
-  }
-
-  const handleToggleAdmin = (user: AdminUser, action: 'grant' | 'revoke') => {
-    setAdminDialog({ open: true, user, action })
-  }
-
-  const confirmDelete = () => {
-    if (deleteDialog.user) {
-      deleteUserMutation.mutate(deleteDialog.user.id)
-    }
-  }
-
-  const confirmToggleAdmin = () => {
-    if (adminDialog.user) {
-      const isAdmin = adminDialog.action === 'grant'
-      toggleAdminMutation.mutate({ userId: adminDialog.user.id, isAdmin })
-    }
-  }
 
   const handleForceScheduler = () => {
     setSchedulerConfirmOpen(true)
@@ -452,41 +364,6 @@ export function AdminPanel() {
             </Select>
           </div>
 
-          {deleteUserMutation.error
-            ? (() => {
-                const raw = deleteUserMutation.error;
-                const message =
-                  raw instanceof Error
-                    ? raw.message
-                    : typeof raw === 'object' && raw && 'error' in raw && typeof (raw as { error?: unknown }).error === 'string'
-                      ? (raw as { error?: string }).error
-                      : 'Failed to delete user';
-                return (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{message}</AlertDescription>
-                  </Alert>
-                );
-              })()
-            : null}
-          {toggleAdminMutation.error
-            ? (() => {
-                const raw = toggleAdminMutation.error;
-                const message =
-                  raw instanceof Error
-                    ? raw.message
-                    : typeof raw === 'object' && raw && 'error' in raw && typeof (raw as { error?: unknown }).error === 'string'
-                      ? (raw as { error?: string }).error
-                      : 'Failed to update admin status';
-                return (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{message}</AlertDescription>
-                  </Alert>
-                );
-              })()
-            : null}
-
           <div className="relative">
             {usersFetching && !usersLoading && (
               <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center rounded-md">
@@ -517,13 +394,12 @@ export function AdminPanel() {
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('created_at')}>
                     <span className="flex items-center gap-1">Joined <ArrowUpDown className="h-3 w-3" />{sortBy === 'created_at' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(!usersData || usersData.length === 0) && !usersLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       {debouncedSearch || roleFilter !== 'all' ? 'No users match your filters' : 'No users found'}
                     </TableCell>
                   </TableRow>
@@ -566,16 +442,16 @@ export function AdminPanel() {
                       ) : (
                         <Badge variant="outline">User</Badge>
                       )}
-                      {user.is_banned && (
+                      {user.is_restricted && user.restriction_type === 'permanent' && (
                         <Badge variant="destructive" className="gap-1">
                           <Ban className="h-3 w-3" />
-                          Banned
+                          Restricted
                         </Badge>
                       )}
-                      {user.is_frozen && !user.is_banned && (
-                        <Badge variant="secondary" className="gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                          <Snowflake className="h-3 w-3" />
-                          Frozen
+                      {user.is_restricted && user.restriction_type === 'temporary' && user.restriction_expires_at && new Date(user.restriction_expires_at) > new Date() && (
+                        <Badge variant="secondary" className="gap-1 bg-orange-500/15 text-orange-600 dark:text-orange-400">
+                          <Clock className="h-3 w-3" />
+                          Restricted
                         </Badge>
                       )}
                     </div>
@@ -588,107 +464,6 @@ export function AdminPanel() {
                     month: '2-digit', 
                     year: 'numeric' 
                   })}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {user.is_super_admin ? (
-                        // Super Admin - show locked state
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled
-                            className="opacity-40 cursor-not-allowed"
-                            title="Cannot revoke super admin status"
-                          >
-                            <ShieldOff className="h-4 w-4 mr-1" />
-                            Protected
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled
-                            className="opacity-40 cursor-not-allowed"
-                            title="Cannot delete super admin"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Protected
-                          </Button>
-                        </>
-                      ) : user.is_admin ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleAdmin(user, 'revoke')}
-                            disabled={
-                              toggleAdminMutation.isPending || 
-                              isCurrentUser(user) || 
-                              isLastAdmin() ||
-                              !currentUser?.is_super_admin
-                            }
-                            title={
-                              !currentUser?.is_super_admin
-                                ? "Only super administrators can manage admin privileges"
-                                : isCurrentUser(user)
-                                ? "You cannot revoke your own admin status"
-                                : isLastAdmin()
-                                ? "Cannot revoke the last admin"
-                                : undefined
-                            }
-                          >
-                            <ShieldOff className="h-4 w-4 mr-1" />
-                            Revoke Admin
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user)}
-                            disabled={
-                              deleteUserMutation.isPending || 
-                              isCurrentUser(user) ||
-                              !currentUser?.is_super_admin
-                            }
-                            title={
-                              !currentUser?.is_super_admin
-                                ? "Only super administrators can delete other administrators"
-                                : isCurrentUser(user)
-                                ? "You cannot delete your own account"
-                                : undefined
-                            }
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleAdmin(user, 'grant')}
-                            disabled={toggleAdminMutation.isPending || !currentUser?.is_super_admin}
-                            title={
-                              !currentUser?.is_super_admin
-                                ? "Only super administrators can grant admin privileges"
-                                : undefined
-                            }
-                          >
-                            <Shield className="h-4 w-4 mr-1" />
-                            Make Admin
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user)}
-                            disabled={deleteUserMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -755,28 +530,6 @@ export function AdminPanel() {
           </TabsContent>
         )}
       </Tabs>
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
-        title="Delete User"
-        description={`Are you sure you want to delete ${deleteDialog.user?.username}? This will permanently delete their account and all associated data (rules, alerts, webhooks).`}
-        confirmText={deleteUserMutation.isPending ? 'Deleting...' : 'Delete User'}
-        variant="destructive"
-        onConfirm={confirmDelete}
-      />
-
-      {/* Admin Toggle Confirmation Dialog */}
-      <ConfirmDialog
-        open={adminDialog.open}
-        onOpenChange={(open) => setAdminDialog({ ...adminDialog, open })}
-        title={adminDialog.action === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}
-        description={`Are you sure you want to ${adminDialog.action === 'grant' ? 'grant' : 'revoke'} administrator privileges ${adminDialog.action === 'grant' ? 'to' : 'from'} ${adminDialog.user?.username}?`}
-        confirmText={toggleAdminMutation.isPending ? 'Updating...' : 'Confirm'}
-        variant="default"
-        onConfirm={confirmToggleAdmin}
-      />
 
       {/* Pending User Approval/Reject Dialog */}
       <ConfirmDialog

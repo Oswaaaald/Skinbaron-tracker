@@ -202,6 +202,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         if (data['reason'] === "invalid_password") return "Failed: invalid password";
         if (data['reason'] === "invalid_2fa_code") return "Failed: invalid 2FA code";
         if (data['reason'] === "invalid_2fa_backup_code") return "Failed: invalid 2FA backup code";
+        if (data['reason'] === "account_restricted") return "Failed: account restricted";
         return `Failed: ${String(data['reason'])}`;
       
       case "2fa_enabled":
@@ -272,19 +273,22 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       case "gravatar_toggled":
         return data['use_gravatar'] ? "Gravatar fallback enabled" : "Gravatar fallback disabled";
       
-      case "account_frozen":
-        return data['reason'] ? `Account frozen: ${String(data['reason'])}` : "Account frozen by admin";
+      case "account_restricted": {
+        const adminName = data['admin_username'] ? `by ${String(data['admin_username'])}` : 'by admin';
+        const rType = String(data['restriction_type'] || '');
+        const reason = data['reason'] ? `: ${String(data['reason'])}` : '';
+        if (rType === 'permanent') {
+          return `Account permanently restricted ${adminName}${reason}`;
+        }
+        const duration = data['duration_hours'] ? ` for ${String(data['duration_hours'])}h` : '';
+        return `Account temporarily restricted${duration} ${adminName}${reason}`;
+      }
       
-      case "account_unfrozen":
-        return "Account unfrozen by admin";
-      
-      case "account_banned":
-        return data['reason'] 
-          ? `Account banned: ${String(data['reason'])}${data['email_banned'] ? ' (email also banned)' : ''}`
-          : `Account banned by admin${data['email_banned'] ? ' (email also banned)' : ''}`;
-      
-      case "account_unbanned":
-        return "Account unbanned by admin";
+      case "account_unrestricted": {
+        const adminName = data['admin_username'] ? `by ${String(data['admin_username'])}` : 'by admin';
+        const reason = data['reason'] ? `: ${String(data['reason'])}` : '';
+        return `Account unrestricted ${adminName}${reason}`;
+      }
       
       case "username_changed":
         return data['changed_by_admin']

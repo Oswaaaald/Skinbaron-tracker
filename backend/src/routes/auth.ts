@@ -381,11 +381,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check moderation status
-      if (user.is_banned) {
-        throw new AppError(403, 'Your account has been permanently banned', 'ACCOUNT_BANNED');
-      }
-      if (user.is_frozen) {
-        throw new AppError(403, 'Your account has been temporarily suspended', 'ACCOUNT_FROZEN');
+      if (user.is_restricted) {
+        // Auto-clear expired temporary restrictions
+        if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
+          await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
+        } else {
+          // Log the failed login attempt due to restriction
+          await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+          if (user.restriction_type === 'permanent') {
+            throw new AppError(403, 'Votre compte a été définitivement suspendu', 'ACCOUNT_RESTRICTED');
+          }
+          const expiresStr = user.restriction_expires_at
+            ? new Date(user.restriction_expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : '';
+          throw new AppError(403, `Votre compte est suspendu jusqu'au ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+        }
       }
 
       // Check if 2FA is enabled
@@ -503,13 +513,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!refreshUser) {
         throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
       }
-      if (refreshUser.is_banned) {
-        await store.revokeAllRefreshTokensForUser(payload.userId);
-        throw new AppError(403, 'Your account has been permanently banned', 'ACCOUNT_BANNED');
-      }
-      if (refreshUser.is_frozen) {
-        await store.revokeAllRefreshTokensForUser(payload.userId);
-        throw new AppError(403, 'Your account has been temporarily suspended', 'ACCOUNT_FROZEN');
+      if (refreshUser.is_restricted) {
+        if (refreshUser.restriction_type === 'temporary' && refreshUser.restriction_expires_at && refreshUser.restriction_expires_at <= new Date()) {
+          await store.updateUser(payload.userId, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
+        } else {
+          await store.revokeAllRefreshTokensForUser(payload.userId);
+          if (refreshUser.restriction_type === 'permanent') {
+            throw new AppError(403, 'Votre compte a été définitivement suspendu', 'ACCOUNT_RESTRICTED');
+          }
+          const expiresStr = refreshUser.restriction_expires_at
+            ? new Date(refreshUser.restriction_expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : '';
+          throw new AppError(403, `Votre compte est suspendu jusqu'au ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+        }
       }
 
       // Rotate refresh token

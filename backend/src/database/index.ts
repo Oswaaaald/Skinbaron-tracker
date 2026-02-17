@@ -9,8 +9,8 @@ import { AuditRepository } from './repositories/audit.repository.js';
 import { OAuthRepository } from './repositories/oauth.repository.js';
 import { PasskeysRepository } from './repositories/passkeys.repository.js';
 import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog, OAuthAccount } from './schema.js';
-import { bannedEmails } from './schema.js';
-import { eq } from 'drizzle-orm';
+import { bannedEmails, sanctions } from './schema.js';
+import { eq, desc } from 'drizzle-orm';
 
 class Store {
   public users: UsersRepository;
@@ -110,6 +110,37 @@ class Store {
       .where(eq(bannedEmails.email, email.toLowerCase().trim()))
       .returning({ id: bannedEmails.id });
     return result.length > 0;
+  }
+
+  // ==================== Sanctions (casier) ====================
+
+  async createSanction(data: {
+    user_id: number;
+    admin_id: number;
+    admin_username: string;
+    action: string;
+    restriction_type?: string | null;
+    reason?: string | null;
+    duration_hours?: number | null;
+    expires_at?: Date | null;
+  }): Promise<void> {
+    await db.insert(sanctions).values({
+      user_id: data.user_id,
+      admin_id: data.admin_id,
+      admin_username: data.admin_username,
+      action: data.action,
+      restriction_type: data.restriction_type || null,
+      reason: data.reason || null,
+      duration_hours: data.duration_hours || null,
+      expires_at: data.expires_at || null,
+    });
+  }
+
+  async getSanctionsByUserId(userId: number, limit = 50): Promise<Array<typeof sanctions.$inferSelect>> {
+    return db.select().from(sanctions)
+      .where(eq(sanctions.user_id, userId))
+      .orderBy(desc(sanctions.created_at))
+      .limit(limit);
   }
 
   // ==================== Rule operations ====================

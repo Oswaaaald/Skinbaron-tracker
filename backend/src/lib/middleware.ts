@@ -125,12 +125,27 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
     throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
   }
 
-  if (user.is_banned) {
-    throw new AppError(403, 'Your account has been permanently banned', 'ACCOUNT_BANNED');
-  }
-
-  if (user.is_frozen) {
-    throw new AppError(403, 'Your account has been temporarily suspended', 'ACCOUNT_FROZEN');
+  // Check restriction status with auto-expiry for temporary restrictions
+  if (user.is_restricted) {
+    if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
+      // Temporary restriction expired — auto-clear (lazy cleanup)
+      await store.updateUser(user.id, {
+        is_restricted: false,
+        restriction_type: null,
+        restriction_reason: null,
+        restriction_expires_at: null,
+        restricted_at: null,
+        restricted_by_admin_id: null,
+      });
+      invalidateUserCache(user.id);
+    } else if (user.restriction_type === 'permanent') {
+      throw new AppError(403, 'Votre compte a été définitivement suspendu', 'ACCOUNT_RESTRICTED');
+    } else {
+      const expiresStr = user.restriction_expires_at
+        ? new Date(user.restriction_expires_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '';
+      throw new AppError(403, `Votre compte est suspendu jusqu'au ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+    }
   }
 
   // Attach user to request (type-safe)

@@ -154,6 +154,17 @@ export interface PasskeyInfo {
   last_used_at: string | null;
 }
 
+export interface Sanction {
+  id: number;
+  admin_username: string;
+  action: 'restrict' | 'unrestrict';
+  restriction_type: 'temporary' | 'permanent' | null;
+  reason: string | null;
+  duration_hours: number | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
 export interface AdminUserDetail {
   id: number;
   username: string;
@@ -163,12 +174,11 @@ export interface AdminUserDetail {
   is_admin: boolean;
   is_super_admin: boolean;
   is_approved: boolean;
-  is_frozen: boolean;
-  frozen_at: string | null;
-  frozen_reason: string | null;
-  is_banned: boolean;
-  banned_at: string | null;
-  ban_reason: string | null;
+  is_restricted: boolean;
+  restriction_type: 'temporary' | 'permanent' | null;
+  restriction_reason: string | null;
+  restriction_expires_at: string | null;
+  restricted_at: string | null;
   totp_enabled: boolean;
   tos_accepted_at: string | null;
   created_at: string;
@@ -194,6 +204,7 @@ export interface AdminUserDetail {
     active_webhooks_count: number;
     alerts_count: number;
   };
+  sanctions: Sanction[];
 }
 
 class ApiClient {
@@ -801,12 +812,12 @@ class ApiClient {
     return this.delete(`/api/admin/users/${userId}/avatar`);
   }
 
-  async adminFreezeUser(userId: number, is_frozen: boolean, reason?: string): Promise<ApiResponse<{ is_frozen: boolean }>> {
-    return this.patch(`/api/admin/users/${userId}/freeze`, { is_frozen, reason });
+  async adminRestrictUser(userId: number, data: { restriction_type: 'temporary' | 'permanent'; reason?: string; duration_hours?: number; ban_email?: boolean }): Promise<ApiResponse<unknown>> {
+    return this.patch(`/api/admin/users/${userId}/restrict`, data);
   }
 
-  async adminBanUser(userId: number, is_banned: boolean, reason?: string, ban_email?: boolean): Promise<ApiResponse<{ is_banned: boolean }>> {
-    return this.patch(`/api/admin/users/${userId}/ban`, { is_banned, reason, ban_email });
+  async adminUnrestrictUser(userId: number, reason: string): Promise<ApiResponse<unknown>> {
+    return this.patch(`/api/admin/users/${userId}/unrestrict`, { reason });
   }
 
   async adminChangeUsername(userId: number, username: string): Promise<ApiResponse<{ username: string }>> {

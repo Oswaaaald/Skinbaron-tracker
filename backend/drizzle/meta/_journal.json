@@ -50,6 +50,13 @@
       "when": 1771372800000,
       "tag": "0006_user_moderation",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1771459200000,
+      "tag": "0007_restriction_system",
+      "breakpoints": true
     }
   ]
 }

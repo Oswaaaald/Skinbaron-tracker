@@ -37,7 +37,6 @@ import {
   UserPlus,
   Fingerprint,
   Camera,
-  Snowflake,
   Ban,
   type LucideIcon
 } from "lucide-react"
@@ -72,10 +71,8 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   avatar_uploaded: { icon: Camera, label: "Avatar Uploaded", variant: "default" },
   avatar_removed: { icon: Camera, label: "Avatar Removed", variant: "secondary" },
   gravatar_toggled: { icon: Camera, label: "Gravatar Setting Changed", variant: "outline" },
-  account_frozen: { icon: Snowflake, label: "Account Frozen", variant: "secondary" },
-  account_unfrozen: { icon: Snowflake, label: "Account Unfrozen", variant: "default" },
-  account_banned: { icon: Ban, label: "Account Banned", variant: "destructive" },
-  account_unbanned: { icon: Ban, label: "Account Unbanned", variant: "default" },
+  account_restricted: { icon: Ban, label: "Account Restricted", variant: "destructive" },
+  account_unrestricted: { icon: Ban, label: "Account Unrestricted", variant: "default" },
 } as const;
 
 /** Event type options for filter dropdowns */
@@ -105,10 +102,8 @@ export const AUDIT_EVENT_TYPES = [
   { value: "avatar_uploaded", label: "Avatar Uploaded" },
   { value: "avatar_removed", label: "Avatar Removed" },
   { value: "gravatar_toggled", label: "Gravatar Setting Changed" },
-  { value: "account_frozen", label: "Account Frozen" },
-  { value: "account_unfrozen", label: "Account Unfrozen" },
-  { value: "account_banned", label: "Account Banned" },
-  { value: "account_unbanned", label: "Account Unbanned" },
+  { value: "account_restricted", label: "Account Restricted" },
+  { value: "account_unrestricted", label: "Account Unrestricted" },
 ] as const;
 
 // ==================== QUERY KEYS ====================

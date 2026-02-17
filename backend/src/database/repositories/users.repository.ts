@@ -11,12 +11,12 @@ interface UserUpdate {
   is_admin?: boolean;
   is_super_admin?: boolean;
   is_approved?: boolean;
-  is_frozen?: boolean;
-  frozen_at?: Date | null;
-  frozen_reason?: string | null;
-  is_banned?: boolean;
-  banned_at?: Date | null;
-  ban_reason?: string | null;
+  is_restricted?: boolean;
+  restriction_type?: string | null;
+  restriction_reason?: string | null;
+  restriction_expires_at?: Date | null;
+  restricted_at?: Date | null;
+  restricted_by_admin_id?: number | null;
   totp_enabled?: boolean;
   totp_secret_encrypted?: string | null;
   recovery_codes_encrypted?: string | null;
@@ -74,12 +74,12 @@ export class UsersRepository {
       is_admin: row.is_admin,
       is_super_admin: row.is_super_admin,
       is_approved: row.is_approved,
-      is_frozen: row.is_frozen,
-      frozen_at: row.frozen_at,
-      frozen_reason: row.frozen_reason,
-      is_banned: row.is_banned,
-      banned_at: row.banned_at,
-      ban_reason: row.ban_reason,
+      is_restricted: row.is_restricted,
+      restriction_type: row.restriction_type,
+      restriction_reason: row.restriction_reason,
+      restriction_expires_at: row.restriction_expires_at,
+      restricted_at: row.restricted_at,
+      restricted_by_admin_id: row.restricted_by_admin_id,
       totp_enabled: row.totp_enabled,
       totp_secret_encrypted: row.totp_secret_encrypted,
       recovery_codes_encrypted: row.recovery_codes_encrypted,
@@ -162,12 +162,12 @@ export class UsersRepository {
         is_admin: row.is_admin,
         is_super_admin: row.is_super_admin,
         is_approved: row.is_approved,
-        is_frozen: row.is_frozen,
-        frozen_at: row.frozen_at,
-        frozen_reason: row.frozen_reason,
-        is_banned: row.is_banned,
-        banned_at: row.banned_at,
-        ban_reason: row.ban_reason,
+        is_restricted: row.is_restricted,
+        restriction_type: row.restriction_type,
+        restriction_reason: row.restriction_reason,
+        restriction_expires_at: row.restriction_expires_at,
+        restricted_at: row.restricted_at,
+        restricted_by_admin_id: row.restricted_by_admin_id,
         totp_enabled: row.totp_enabled,
         totp_secret_encrypted: row.totp_secret_encrypted,
         recovery_codes_encrypted: row.recovery_codes_encrypted,

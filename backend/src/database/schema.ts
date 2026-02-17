@@ -17,12 +17,12 @@ export const users = pgTable('users', {
   is_admin: boolean('is_admin').default(false).notNull(),
   is_super_admin: boolean('is_super_admin').default(false).notNull(),
   is_approved: boolean('is_approved').default(false).notNull(),
-  is_frozen: boolean('is_frozen').default(false).notNull(),
-  frozen_at: timestamp('frozen_at', { withTimezone: true }),
-  frozen_reason: text('frozen_reason'),
-  is_banned: boolean('is_banned').default(false).notNull(),
-  banned_at: timestamp('banned_at', { withTimezone: true }),
-  ban_reason: text('ban_reason'),
+  is_restricted: boolean('is_restricted').default(false).notNull(),
+  restriction_type: text('restriction_type'),  // 'temporary' | 'permanent' | null
+  restriction_reason: text('restriction_reason'),
+  restriction_expires_at: timestamp('restriction_expires_at', { withTimezone: true }),
+  restricted_at: timestamp('restricted_at', { withTimezone: true }),
+  restricted_by_admin_id: integer('restricted_by_admin_id'), // FK to users.id handled in migration
   totp_enabled: boolean('totp_enabled').default(false).notNull(),
   totp_secret_encrypted: text('totp_secret_encrypted'),
   recovery_codes_encrypted: text('recovery_codes_encrypted'),
@@ -108,6 +108,22 @@ export const bannedEmails = pgTable('banned_emails', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index('idx_banned_emails_email').on(table.email),
+]);
+
+export const sanctions = pgTable('sanctions', {
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  admin_id: integer('admin_id').references(() => users.id, { onDelete: 'set null' }),
+  admin_username: text('admin_username').notNull(),
+  action: text('action').notNull(),  // 'restrict' | 'unrestrict'
+  restriction_type: text('restriction_type'),  // 'temporary' | 'permanent' | null
+  reason: text('reason'),
+  duration_hours: integer('duration_hours'),  // null for permanent
+  expires_at: timestamp('expires_at', { withTimezone: true }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('idx_sanctions_user_id').on(table.user_id),
+  index('idx_sanctions_created_at').on(table.created_at),
 ]);
 
 export const auditLog = pgTable('audit_log', {
