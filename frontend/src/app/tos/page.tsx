@@ -102,17 +102,24 @@ export default function TermsOfService() {
             prior notice.
           </li>
           <li>
-            Restricted accounts lose the ability to create rules, receive alerts,
-            and send notifications. Permanent restrictions also ban the associated
-            email address(es) from future registration.
+            Restricted accounts lose access to all service features, including
+            creating rules, receiving alerts, sending notifications, exporting
+            data, and deleting the account. Permanent restrictions also ban the
+            associated email address(es) from future registration.
           </li>
           <li>
-            Restriction decisions and reasons are logged in your sanctions history,
-            which you can view and export.
+            The specific reason for a restriction is not disclosed to the user.
+            If you believe your restriction is in error, contact the operator at{" "}
+            <a className="underline" href="mailto:admin@oswaaaald.be">admin@oswaaaald.be</a>.
+          </li>
+          <li>
+            Restriction decisions and reasons are recorded internally for
+            administrative and audit purposes.
           </li>
           <li>
             The operator may delete your account at any time. You may also delete
-            your account at any time through the settings page.
+            your account at any time through the settings page (while your
+            account is not restricted).
           </li>
         </ul>
       </section>

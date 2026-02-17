@@ -88,6 +88,14 @@ export default function PrivacyPolicy() {
             Protection Authority – Autorité de protection des données).
           </li>
         </ul>
+        <p className="text-muted-foreground">
+          <strong>Note:</strong> If your account is restricted (temporarily or permanently),
+          self-service features such as data export and account deletion are
+          unavailable. To exercise your GDPR rights while restricted, contact the
+          operator at{" "}
+          <a className="underline" href="mailto:admin@oswaaaald.be">admin@oswaaaald.be</a>
+          {" "}who will process your request manually.
+        </p>
       </section>
 
       <section className="space-y-2">
