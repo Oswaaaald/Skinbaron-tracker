@@ -11,7 +11,7 @@ export default function TermsOfService() {
         </Button>
       </Link>
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: 17 Feb 2026</p>
         <h1 className="text-3xl font-bold">Terms of Service &amp; Legal Notice</h1>
         <p className="text-muted-foreground">
           By creating an account or using SkinBaron Tracker you agree to these
@@ -94,12 +94,27 @@ export default function TermsOfService() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xl font-semibold">9. Termination</h2>
-        <p className="text-muted-foreground">
-          The operator may suspend or delete your account at any time for
-          violation of these terms or for any other reason. You may delete your
-          account at any time through the settings page.
-        </p>
+        <h2 className="text-xl font-semibold">9. Moderation and termination</h2>
+        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+          <li>
+            The operator may temporarily or permanently restrict your account for
+            violation of these terms, abuse, or any other reason, with or without
+            prior notice.
+          </li>
+          <li>
+            Restricted accounts lose the ability to create rules, receive alerts,
+            and send notifications. Permanent restrictions also ban the associated
+            email address(es) from future registration.
+          </li>
+          <li>
+            Restriction decisions and reasons are logged in your sanctions history,
+            which you can view and export.
+          </li>
+          <li>
+            The operator may delete your account at any time. You may also delete
+            your account at any time through the settings page.
+          </li>
+        </ul>
       </section>
 
       <section className="space-y-2">

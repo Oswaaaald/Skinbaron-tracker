@@ -140,7 +140,7 @@ class Store {
     return db.select().from(sanctions)
       .where(eq(sanctions.user_id, userId))
       .orderBy(desc(sanctions.created_at))
-      .limit(limit);
+      .limit(limit > 0 ? limit : 10000);
   }
 
   async getSanctionById(sanctionId: number): Promise<typeof sanctions.$inferSelect | null> {

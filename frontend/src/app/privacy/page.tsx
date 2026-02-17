@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
         </Button>
       </Link>
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Last updated: 12 Jan 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: 17 Feb 2026</p>
         <h1 className="text-3xl font-bold">Privacy Policy</h1>
         <p className="text-muted-foreground">
           This personal, non-commercial project collects limited data to provide the alerting service and protect the platform. Below is a concise overview of what is collected, why, and how you can exercise your rights under GDPR.
@@ -23,14 +23,19 @@ export default function PrivacyPolicy() {
         <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
           <li>Account data: username, email, password hash.</li>
           <li>
-            Security data: TOTP secrets, recovery codes (encrypted at rest),
+            Security data: TOTP secrets, recovery codes, passkey/WebAuthn credentials (all encrypted at rest),
             authentication logs and IP addresses for security and anti-abuse.
+          </li>
+          <li>
+            OAuth data: linked provider accounts (Google, GitHub, Discord) and associated provider emails.
           </li>
           <li>
             Alert configuration: rules, price/wear filters, StatTrak/Souvenir
             filters, sticker preference.
           </li>
           <li>Notifications: webhook URLs (stored encrypted) and related metadata.</li>
+          <li>Avatar data: custom uploaded avatars and Gravatar display preferences.</li>
+          <li>Moderation data: account restriction history (sanctions, reasons, durations).</li>
           <li>System logs: technical logs to monitor performance and reliability.</li>
         </ul>
       </section>

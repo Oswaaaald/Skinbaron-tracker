@@ -736,6 +736,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const auditLogs = await store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
       const oauthAccounts = await store.getOAuthAccountsByUserId(userId);
       const passkeys = await store.passkeys.findByUserId(userId);
+      const sanctionsHistory = await store.getSanctionsByUserId(userId, 0); // limit=0 → all sanctions
 
       const exportData = {
         profile: {
@@ -745,6 +746,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
           is_admin: user.is_admin,
           is_approved: user.is_approved,
           two_factor_enabled: user.totp_enabled,
+          is_super_admin: user.is_super_admin,
+          is_restricted: user.is_restricted,
+          restriction_type: user.restriction_type,
+          restriction_reason: user.restriction_reason,
+          restriction_expires_at: user.restriction_expires_at,
+          restricted_at: user.restricted_at,
           has_custom_avatar: !!user.avatar_filename,
           use_gravatar: user.use_gravatar,
           tos_accepted_at: user.tos_accepted_at,
@@ -810,6 +817,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
           backed_up: p.backed_up,
           last_used_at: p.last_used_at,
           created_at: p.created_at,
+        })),
+        sanctions: sanctionsHistory.map(s => ({
+          id: s.id,
+          action: s.action,
+          restriction_type: s.restriction_type,
+          reason: s.reason,
+          duration_hours: s.duration_hours,
+          expires_at: s.expires_at,
+          admin_username: s.admin_username,
+          created_at: s.created_at,
         })),
         exported_at: new Date().toISOString(),
       };
