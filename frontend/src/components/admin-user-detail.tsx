@@ -243,7 +243,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <User className="h-5 w-5" />
@@ -391,7 +391,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
               </Card>
 
               {/* Moderation — Restrict / Unrestrict */}
-              {!detail.is_super_admin && (
+              {!detail.is_super_admin && !isCurrentUser && (
                 <Card className="border-amber-500/30">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
