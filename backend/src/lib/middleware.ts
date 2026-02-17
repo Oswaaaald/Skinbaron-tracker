@@ -126,26 +126,12 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
   }
 
   // Check restriction status with auto-expiry for temporary restrictions
-  if (user.is_restricted) {
-    if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
-      // Temporary restriction expired — auto-clear (lazy cleanup)
-      await store.updateUser(user.id, {
-        is_restricted: false,
-        restriction_type: null,
-        restriction_reason: null,
-        restriction_expires_at: null,
-        restricted_at: null,
-        restricted_by_admin_id: null,
-      });
-      invalidateUserCache(user.id);
-    } else if (user.restriction_type === 'permanent') {
-      throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
-    } else {
-      const expiresStr = user.restriction_expires_at
-        ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
-        : '';
-      throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
-    }
+  const restriction = await enforceRestriction(user);
+  if (restriction.result === 'blocked') {
+    throw new AppError(403, restriction.errorMessage!, 'ACCOUNT_RESTRICTED');
+  }
+  if (restriction.result === 'clear') {
+    invalidateUserCache(user.id);
   }
 
   // Attach user to request (type-safe)
@@ -197,20 +183,34 @@ export function getAuthUser(request: FastifyRequest) {
 }
 
 /**
- * Clear authentication cookies from the response.
- * Clears both domain-scoped and host-only cookie variants
- * to ensure full cleanup regardless of how cookies were originally set.
+ * Shared cookie options for cross-subdomain cookies.
+ * Used by auth cookies, OAuth state cookies, CSRF cookies, etc.
  */
-export function clearAuthCookies(reply: FastifyReply): void {
-  const opts = {
+export function baseCookieOptions(expiresAt?: number): {
+  httpOnly: boolean;
+  sameSite: 'none' | 'lax';
+  path: string;
+  secure: boolean;
+  domain: string | undefined;
+  expires: Date | undefined;
+} {
+  return {
     httpOnly: true,
     sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
     path: '/',
     secure: appConfig.NODE_ENV === 'production',
     domain: appConfig.COOKIE_DOMAIN || undefined,
-    expires: new Date(0),
-    maxAge: 0,
+    expires: expiresAt ? new Date(expiresAt) : undefined,
   };
+}
+
+/**
+ * Clear authentication cookies from the response.
+ * Clears both domain-scoped and host-only cookie variants
+ * to ensure full cleanup regardless of how cookies were originally set.
+ */
+export function clearAuthCookies(reply: FastifyReply): void {
+  const opts = { ...baseCookieOptions(), expires: new Date(0), maxAge: 0 };
 
   reply.setCookie(ACCESS_COOKIE, '', opts);
   reply.setCookie(REFRESH_COOKIE, '', opts);
@@ -218,4 +218,61 @@ export function clearAuthCookies(reply: FastifyReply): void {
   // Also clear host-only variants in case cookies were set without domain
   reply.setCookie(ACCESS_COOKIE, '', { ...opts, domain: undefined });
   reply.setCookie(REFRESH_COOKIE, '', { ...opts, domain: undefined });
+}
+
+// ==================== Restriction enforcement ====================
+
+/**
+ * Result of enforceRestriction():
+ * - 'clear' → temporary restriction has expired and was auto-cleared
+ * - 'blocked' → user is restricted and should be denied access
+ * - 'ok' → user is not restricted
+ */
+export type RestrictionResult = 'ok' | 'clear' | 'blocked';
+
+/**
+ * Check if a user is restricted and either auto-clear expired temporary
+ * restrictions or throw/return the appropriate error.
+ *
+ * Returns a result struct so callers can decide how to respond (throw vs redirect).
+ * Callers that simply want to throw can use `enforceRestrictionOrThrow`.
+ */
+export async function enforceRestriction(user: User): Promise<{
+  result: RestrictionResult;
+  errorMessage?: string;
+}> {
+  if (!user.is_restricted) return { result: 'ok' };
+
+  // Auto-clear expired temporary restrictions
+  if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
+    await store.updateUser(user.id, {
+      is_restricted: false, restriction_type: null, restriction_reason: null,
+      restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null,
+    });
+    return { result: 'clear' };
+  }
+
+  // Build human-readable error message
+  if (user.restriction_type === 'permanent') {
+    return { result: 'blocked', errorMessage: 'Your account has been permanently suspended' };
+  }
+
+  const expiresStr = user.restriction_expires_at
+    ? new Date(user.restriction_expires_at).toLocaleString('en-GB', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
+      })
+    : '';
+  return { result: 'blocked', errorMessage: `Your account is suspended until ${expiresStr}` };
+}
+
+/**
+ * Convenience wrapper that throws AppError directly.
+ * Used by routes that return JSON errors (login, refresh, passkey auth, OAuth 2FA).
+ */
+export async function enforceRestrictionOrThrow(user: User): Promise<void> {
+  const { result, errorMessage } = await enforceRestriction(user);
+  if (result === 'blocked') {
+    throw new AppError(403, errorMessage!, 'ACCOUNT_RESTRICTED');
+  }
 }

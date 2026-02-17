@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AuthService, UserRegistrationSchema, UserLoginSchema } from '../lib/auth.js';
 import { store } from '../database/index.js';
-import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '../lib/middleware.js';
+import { getClientIp, ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies, baseCookieOptions, enforceRestriction } from '../lib/middleware.js';
 import { appConfig } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
@@ -160,19 +160,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }),
   };
 
-  const cookieOptions = (expiresAt?: number) => ({
-    httpOnly: true,
-    // Cross-subdomain (frontend vs API) needs SameSite=None
-    sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-    path: '/',
-    secure: appConfig.NODE_ENV === 'production',
-    domain: appConfig.COOKIE_DOMAIN || undefined,
-    expires: expiresAt ? new Date(expiresAt) : undefined,
-  });
-
   const setAuthCookies = (reply: FastifyReply, accessToken: { token: string; expiresAt: number }, refreshToken: { token: string; expiresAt: number }) => {
-    reply.setCookie(ACCESS_COOKIE, accessToken.token, cookieOptions(accessToken.expiresAt));
-    reply.setCookie(REFRESH_COOKIE, refreshToken.token, cookieOptions(refreshToken.expiresAt));
+    reply.setCookie(ACCESS_COOKIE, accessToken.token, baseCookieOptions(accessToken.expiresAt));
+    reply.setCookie(REFRESH_COOKIE, refreshToken.token, baseCookieOptions(refreshToken.expiresAt));
   };
 
   /**
@@ -391,21 +381,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check moderation status
-      if (user.is_restricted) {
-        // Auto-clear expired temporary restrictions
-        if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
-          await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
-        } else {
-          // Log the failed login attempt due to restriction
-          await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-          if (user.restriction_type === 'permanent') {
-            throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
-          }
-          const expiresStr = user.restriction_expires_at
-            ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
-            : '';
-          throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
-        }
+      const loginRestriction = await enforceRestriction(user);
+      if (loginRestriction.result === 'blocked') {
+        await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+        throw new AppError(403, loginRestriction.errorMessage!, 'ACCOUNT_RESTRICTED');
       }
 
       // Check if 2FA is enabled
@@ -524,17 +503,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
       }
       if (refreshUser.is_restricted) {
-        if (refreshUser.restriction_type === 'temporary' && refreshUser.restriction_expires_at && refreshUser.restriction_expires_at <= new Date()) {
-          await store.updateUser(payload.userId, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
-        } else {
+        const restriction = await enforceRestriction(refreshUser);
+        if (restriction.result === 'blocked') {
           await store.revokeAllRefreshTokensForUser(payload.userId);
-          if (refreshUser.restriction_type === 'permanent') {
-            throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
-          }
-          const expiresStr = refreshUser.restriction_expires_at
-            ? new Date(refreshUser.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
-            : '';
-          throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
+          throw new AppError(403, restriction.errorMessage!, 'ACCOUNT_RESTRICTED');
         }
       }
 
@@ -699,11 +671,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     // Store state + codeVerifier (+ linkUserId if linking, + mode) in encrypted HttpOnly cookie
     reply.setCookie(OAUTH_STATE_COOKIE, encryptOAuthState(state, codeVerifier, linkUserId, mode), {
-      httpOnly: true,
-      sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-      path: '/',
-      secure: appConfig.NODE_ENV === 'production',
-      domain: appConfig.COOKIE_DOMAIN || undefined,
+      ...baseCookieOptions(),
       maxAge: 600, // 10 minutes
     });
 
@@ -742,13 +710,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       // Helper to redirect with error and clean the state cookie
       const fail = (reason: string) => {
-        reply.clearCookie(OAUTH_STATE_COOKIE, {
-          httpOnly: true,
-          sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-          path: '/',
-          secure: appConfig.NODE_ENV === 'production',
-          domain: appConfig.COOKIE_DOMAIN || undefined,
-        });
+        reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
         return reply.redirect(`${loginUrl}?error=${reason}`);
       };
 
@@ -786,13 +748,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // For link flow, errors redirect to settings page (not login)
         const settingsUrl = `${appConfig.CORS_ORIGIN}/settings`;
         const failLink = (reason: string) => {
-          reply.clearCookie(OAUTH_STATE_COOKIE, {
-            httpOnly: true,
-            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-            path: '/',
-            secure: appConfig.NODE_ENV === 'production',
-            domain: appConfig.COOKIE_DOMAIN || undefined,
-          });
+          reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
           return reply.redirect(`${settingsUrl}?link_error=${reason}`);
         };
 
@@ -824,13 +780,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           }
 
           // Clean state cookie and redirect to settings
-          reply.clearCookie(OAUTH_STATE_COOKIE, {
-            httpOnly: true,
-            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-            path: '/',
-            secure: appConfig.NODE_ENV === 'production',
-            domain: appConfig.COOKIE_DOMAIN || undefined,
-          });
+          reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
 
           return reply.redirect(`${appConfig.CORS_ORIGIN}/settings?linked=${provider}`);
         } catch (err) {
@@ -852,13 +802,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
           if (!user.is_approved) return fail('pending_approval');
 
           // Check restriction status (consistent with password & passkey login)
-          if (user.is_restricted) {
-            if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
-              await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
-            } else {
-              await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-              return fail('account_restricted');
-            }
+          const oauthRestriction = await enforceRestriction(user);
+          if (oauthRestriction.result === 'blocked') {
+            await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+            return fail('account_restricted');
           }
 
           userId = user.id;
@@ -896,22 +843,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
               email: userInfo.email,
               suggestedUsername,
             }), {
-              httpOnly: true,
-              sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-              path: '/',
-              secure: appConfig.NODE_ENV === 'production',
-              domain: appConfig.COOKIE_DOMAIN || undefined,
+              ...baseCookieOptions(),
               maxAge: 600, // 10 minutes
             });
 
             // Clean state cookie
-            reply.clearCookie(OAUTH_STATE_COOKIE, {
-              httpOnly: true,
-              sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-              path: '/',
-              secure: appConfig.NODE_ENV === 'production',
-              domain: appConfig.COOKIE_DOMAIN || undefined,
-            });
+            reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
 
             return reply.redirect(`${appConfig.CORS_ORIGIN}/register?oauth_finalize=pending`);
           }
@@ -922,22 +859,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         if (oauthUser?.totp_enabled) {
           // Set a short-lived encrypted pending-2FA cookie
           reply.setCookie(OAUTH_2FA_COOKIE, encryptOAuth2FAPending(userId, provider), {
-            httpOnly: true,
-            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-            path: '/',
-            secure: appConfig.NODE_ENV === 'production',
-            domain: appConfig.COOKIE_DOMAIN || undefined,
+            ...baseCookieOptions(),
             maxAge: 5 * 60, // 5 minutes
           });
 
           // Clean state cookie
-          reply.clearCookie(OAUTH_STATE_COOKIE, {
-            httpOnly: true,
-            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-            path: '/',
-            secure: appConfig.NODE_ENV === 'production',
-            domain: appConfig.COOKIE_DOMAIN || undefined,
-          });
+          reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
 
           // Redirect to login page with 2FA challenge
           return reply.redirect(`${appConfig.CORS_ORIGIN}/login?oauth_2fa=pending`);
@@ -950,13 +877,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clean state cookie
-        reply.clearCookie(OAUTH_STATE_COOKIE, {
-          httpOnly: true,
-          sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-          path: '/',
-          secure: appConfig.NODE_ENV === 'production',
-          domain: appConfig.COOKIE_DOMAIN || undefined,
-        });
+        reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
 
         await store.createAuditLog(
           userId,
@@ -977,13 +898,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // ==================== Finalize OAuth Registration ====================
 
-  const pendingRegCookieOptions = {
-    httpOnly: true,
-    sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-    path: '/',
-    secure: appConfig.NODE_ENV === 'production',
-    domain: appConfig.COOKIE_DOMAIN || undefined,
-  };
+  const pendingRegCookieOptions = baseCookieOptions();
 
   /**
    * Get pending OAuth registration info (email, suggested username, provider).
@@ -1234,13 +1149,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           pending = decryptOAuth2FAPending(pendingCookie);
         } catch {
           // Clear invalid cookie
-          reply.clearCookie(OAUTH_2FA_COOKIE, {
-            httpOnly: true,
-            sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-            path: '/',
-            secure: appConfig.NODE_ENV === 'production',
-            domain: appConfig.COOKIE_DOMAIN || undefined,
-          });
+          reply.clearCookie(OAUTH_2FA_COOKIE, baseCookieOptions());
           throw new AppError(401, '2FA challenge has expired. Please try logging in again.', 'OAUTH_2FA_EXPIRED');
         }
 
@@ -1254,19 +1163,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
         await verifyTotpOrRecoveryCode(user, totp_code, request, `oauth_${pending.provider}`);
 
         // Check restriction status (user may have been restricted between OAuth redirect and 2FA verification)
-        if (user.is_restricted) {
-          if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
-            await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
-          } else {
-            await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${pending.provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-            if (user.restriction_type === 'permanent') {
-              throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
-            }
-            const expiresStr = user.restriction_expires_at
-              ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
-              : '';
-            throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
-          }
+        const oauth2faRestriction = await enforceRestriction(user);
+        if (oauth2faRestriction.result === 'blocked') {
+          await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${pending.provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+          throw new AppError(403, oauth2faRestriction.errorMessage!, 'ACCOUNT_RESTRICTED');
         }
 
         // --- 2FA verified, issue JWT tokens ---
@@ -1276,13 +1176,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clear the pending 2FA cookie
-        reply.clearCookie(OAUTH_2FA_COOKIE, {
-          httpOnly: true,
-          sameSite: appConfig.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
-          path: '/',
-          secure: appConfig.NODE_ENV === 'production',
-          domain: appConfig.COOKIE_DOMAIN || undefined,
-        });
+        reply.clearCookie(OAUTH_2FA_COOKIE, baseCookieOptions());
 
         await store.createAuditLog(
           user.id,
@@ -1434,19 +1328,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!user.is_approved) throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
 
       // Check moderation status (same logic as password login)
-      if (user.is_restricted) {
-        if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
-          await store.updateUser(user.id, { is_restricted: false, restriction_type: null, restriction_reason: null, restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null });
-        } else {
-          await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: 'passkey', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-          if (user.restriction_type === 'permanent') {
-            throw new AppError(403, 'Your account has been permanently suspended', 'ACCOUNT_RESTRICTED');
-          }
-          const expiresStr = user.restriction_expires_at
-            ? new Date(user.restriction_expires_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
-            : '';
-          throw new AppError(403, `Your account is suspended until ${expiresStr}`, 'ACCOUNT_RESTRICTED');
-        }
+      const passkeyRestriction = await enforceRestriction(user);
+      if (passkeyRestriction.result === 'blocked') {
+        await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: 'passkey', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+        throw new AppError(403, passkeyRestriction.errorMessage!, 'ACCOUNT_RESTRICTED');
       }
 
       // Generate tokens and set cookies
