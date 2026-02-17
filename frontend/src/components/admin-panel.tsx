@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, Eye, History, Search, Shield, ShieldOff, Trash2, Users, Wrench } from 'lucide-react'
+import { Activity, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Trash2, User, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -40,6 +40,7 @@ interface AdminUser {
   is_admin: boolean
   is_super_admin: boolean
   created_at: string
+  avatar_url: string | null
   stats: UserStats
 }
 
@@ -530,10 +531,20 @@ export function AdminPanel() {
                   <TableCell className="font-medium">
                     <button
                       type="button"
-                      className="hover:underline text-left cursor-pointer text-primary flex items-center gap-1.5"
+                      className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2"
                       onClick={() => setDetailUserId(user.id)}
                     >
-                      <Eye className="h-3.5 w-3.5 shrink-0" />
+                      {user.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt=""
+                          className="h-7 w-7 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <span className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        </span>
+                      )}
                       {user.username}
                     </button>
                   </TableCell>
