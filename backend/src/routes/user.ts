@@ -102,6 +102,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }),
   };
 
+  // Strict rate limit for avatar operations (file I/O + image processing)
+  const avatarRateLimit = {
+    max: 3,
+    timeWindow: '5 minutes',
+    errorResponseBuilder: () => ({
+      statusCode: 429,
+      success: false,
+      error: 'Too many attempts',
+      message: 'Too many avatar changes. Please try again in 5 minutes.',
+    }),
+  };
+
   // Stricter rate limit for expensive/destructive operations
   const heavyOperationRateLimit = {
     max: 3,
@@ -529,7 +541,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * random filename, size limit, rate limited
    */
   fastify.post('/avatar', {
-    config: { rateLimit: sensitiveOperationRateLimit },
+    config: { rateLimit: avatarRateLimit },
     schema: {
       description: 'Upload a custom avatar image (max 5 MB, PNG/JPEG/WebP/GIF)',
       tags: ['User'],
@@ -596,7 +608,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * DELETE /api/user/avatar - Remove custom avatar (revert to gravatar or initials)
    */
   fastify.delete('/avatar', {
-    config: { rateLimit: sensitiveOperationRateLimit },
+    config: { rateLimit: avatarRateLimit },
     schema: {
       description: 'Remove custom avatar',
       tags: ['User'],
@@ -645,7 +657,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * PATCH /api/user/avatar-settings - Toggle Gravatar fallback
    */
   fastify.patch('/avatar-settings', {
-    config: { rateLimit: sensitiveOperationRateLimit },
+    config: { rateLimit: avatarRateLimit },
     schema: {
       description: 'Toggle Gravatar fallback for avatar',
       tags: ['User'],
