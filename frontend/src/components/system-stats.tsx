@@ -13,7 +13,7 @@ import {
 import { apiClient, type ApiResponse, type SystemStats as SystemStatsType } from "@/lib/api"
 import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
-import { LoadingState } from "@/components/ui/loading-state"
+import { SystemStatsSkeleton } from "@/components/ui/skeletons"
 import { formatUptime, formatSystemDate } from "@/lib/formatters"
 import { QUERY_KEYS, POLL_INTERVAL, SLOW_POLL_INTERVAL } from "@/lib/constants"
 
@@ -45,7 +45,7 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
 
 
   if (shouldFetch && isLoadingStatus) {
-    return <LoadingState variant="card" />
+    return <SystemStatsSkeleton />
   }
 
   const status = prefetched?.data || statusResponse?.data

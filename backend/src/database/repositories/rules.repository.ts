@@ -160,8 +160,8 @@ export class RulesRepository {
     const found = new Map(rows.map(r => [r.id, r.user_id]));
     for (const id of ruleIds) {
       const ownerId = found.get(id);
-      if (ownerId === undefined) throw { type: 'not_found' as const, id };
-      if (ownerId !== userId) throw { type: 'access_denied' as const, id };
+      if (ownerId === undefined) throw new Error(`Rule ${id} not found`);
+      if (ownerId !== userId) throw new Error(`Access denied to rule ${id}`);
     }
   }
 }

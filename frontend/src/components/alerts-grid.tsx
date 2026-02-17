@@ -6,7 +6,7 @@ import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-quer
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { LoadingState } from "@/components/ui/loading-state"
+import { AlertsGridSkeleton } from "@/components/ui/skeletons"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
@@ -39,6 +39,15 @@ function getWearCondition(wearValue?: number | null): string | null {
   if (wearValue < 0.38) return 'ft'
   if (wearValue < 0.45) return 'ww'
   return 'bs'
+}
+
+function getSkinBaronUrl(saleId: string, itemName?: string) {
+  if (itemName) {
+    const productName = itemName.replace(/StatTrak™\s+/, '').replace(/Souvenir\s+/, '')
+    const encodedProductName = encodeURIComponent(productName)
+    return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodedProductName}`
+  }
+  return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
 }
 
 export function AlertsGrid() {
@@ -188,7 +197,7 @@ export function AlertsGrid() {
   const hasMorePages = endIndex < filteredAlerts.length
 
   if (isLoading) {
-    return <LoadingState variant="section" />
+    return <AlertsGridSkeleton />
   }
 
   if (error) {
@@ -201,15 +210,6 @@ export function AlertsGrid() {
         </CardContent>
       </Card>
     )
-  }
-
-  const getSkinBaronUrl = (saleId: string, itemName?: string) => {
-    if (itemName) {
-      const productName = itemName.replace(/StatTrak™\s+/, '').replace(/Souvenir\s+/, '')
-      const encodedProductName = encodeURIComponent(productName)
-      return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodedProductName}`
-    }
-    return `https://skinbaron.de/offers/show?offerUuid=${saleId}`
   }
 
   if (allAlerts.length === 0) {

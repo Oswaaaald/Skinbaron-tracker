@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { PasskeyListSkeleton } from '@/components/ui/skeletons'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Dialog,
@@ -170,9 +171,7 @@ export function PasskeyManager() {
 
       {/* List existing passkeys */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-6">
-          <LoadingSpinner size="sm" />
-        </div>
+        <PasskeyListSkeleton />
       ) : passkeys && passkeys.length > 0 ? (
         <div className="space-y-2">
           {passkeys.map((pk) => (

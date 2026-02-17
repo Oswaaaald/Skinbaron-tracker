@@ -6,7 +6,7 @@ import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import { appConfig } from './lib/config.js';
+import { appConfig, MAX_UPLOAD_SIZE } from './lib/config.js';
 import { store } from './database/index.js';
 import { closeDatabase, checkDatabaseHealth, initializeDatabase } from './database/connection.js';
 import { getSkinBaronClient } from './lib/sbclient.js';
@@ -257,10 +257,10 @@ async function registerPlugins() {
     hook: 'onRequest',
   });
 
-  // Multipart for avatar uploads (5 MB limit)
+  // Multipart for avatar uploads
   await fastify.register(multipart, {
     limits: {
-      fileSize: 5 * 1024 * 1024,
+      fileSize: MAX_UPLOAD_SIZE,
       files: 1,
       fields: 0,
     },
@@ -457,7 +457,7 @@ function setupHealthCheck() {
     // Lightweight health check - only check database, not external APIs
     let dbHealth = 'healthy';
     try {
-      await store.getStats();
+      await store.audit.getGlobalStats();
     } catch {
       dbHealth = 'unhealthy';
     }

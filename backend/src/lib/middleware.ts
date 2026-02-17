@@ -5,7 +5,7 @@ import { AuthService } from './auth.js';
 import { store } from '../database/index.js';
 import type { User } from '../database/schemas.js';
 import { AppError } from './errors.js';
-import { appConfig } from './config.js';
+import { appConfig, USER_CACHE_MAX, USER_CACHE_TTL_MS } from './config.js';
 
 /**
  * Modern LRU cache for user data (2026 best practices)
@@ -14,8 +14,8 @@ import { appConfig } from './config.js';
  * - O(1) access time
  */
 const userCache = new LRUCache<number, User>({
-  max: 500, // Increased from 200 for better performance
-  ttl: 30_000, // 30 seconds TTL
+  max: USER_CACHE_MAX,
+  ttl: USER_CACHE_TTL_MS,
   updateAgeOnGet: true, // Reset TTL on access
   allowStale: false,
 });
@@ -34,7 +34,7 @@ async function getUserById(id: number): Promise<User | null> {
   const cached = userCache.get(id);
   if (cached) return cached;
 
-  const user = await store.getUserById(id);
+  const user = await store.users.findById(id);
 
   if (user) {
     userCache.set(id, user);
@@ -112,7 +112,7 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
     throw new AppError(401, 'Token is invalid or expired', 'INVALID_TOKEN');
   }
 
-  if (payload.jti && await store.isAccessTokenBlacklisted(payload.jti)) {
+  if (payload.jti && await store.auth.isBlacklisted(payload.jti)) {
     throw new AppError(401, 'Token has been revoked', 'TOKEN_REVOKED');
   }
 
@@ -128,7 +128,7 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
   // Check restriction status with auto-expiry for temporary restrictions
   const restriction = await enforceRestriction(user);
   if (restriction.result === 'blocked') {
-    throw new AppError(403, restriction.errorMessage!, 'ACCOUNT_RESTRICTED');
+    throw new AppError(403, restriction.errorMessage, 'ACCOUNT_RESTRICTED');
   }
   if (restriction.result === 'clear') {
     invalidateUserCache(user.id);
@@ -230,6 +230,10 @@ export function clearAuthCookies(reply: FastifyReply): void {
  */
 export type RestrictionResult = 'ok' | 'clear' | 'blocked';
 
+type RestrictionOutcome =
+  | { result: 'ok' | 'clear'; errorMessage?: undefined }
+  | { result: 'blocked'; errorMessage: string };
+
 /**
  * Check if a user is restricted and either auto-clear expired temporary
  * restrictions or throw/return the appropriate error.
@@ -237,15 +241,12 @@ export type RestrictionResult = 'ok' | 'clear' | 'blocked';
  * Returns a result struct so callers can decide how to respond (throw vs redirect).
  * Callers that simply want to throw can use `enforceRestrictionOrThrow`.
  */
-export async function enforceRestriction(user: User): Promise<{
-  result: RestrictionResult;
-  errorMessage?: string;
-}> {
+export async function enforceRestriction(user: User): Promise<RestrictionOutcome> {
   if (!user.is_restricted) return { result: 'ok' };
 
   // Auto-clear expired temporary restrictions
   if (user.restriction_type === 'temporary' && user.restriction_expires_at && user.restriction_expires_at <= new Date()) {
-    await store.updateUser(user.id, {
+    await store.users.update(user.id, {
       is_restricted: false, restriction_type: null, restriction_reason: null,
       restriction_expires_at: null, restricted_at: null, restricted_by_admin_id: null,
     });
@@ -273,6 +274,6 @@ export async function enforceRestriction(user: User): Promise<{
 export async function enforceRestrictionOrThrow(user: User): Promise<void> {
   const { result, errorMessage } = await enforceRestriction(user);
   if (result === 'blocked') {
-    throw new AppError(403, errorMessage!, 'ACCOUNT_RESTRICTED');
+    throw new AppError(403, errorMessage, 'ACCOUNT_RESTRICTED');
   }
 }

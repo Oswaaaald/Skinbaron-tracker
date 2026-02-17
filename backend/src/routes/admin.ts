@@ -167,7 +167,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
 
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -268,9 +268,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
       const adminId = getAuthUser(request).id;
-      const admin = await store.getUserById(adminId);
+      const admin = await store.users.findById(adminId);
 
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
 
       if (!user.avatar_filename) {
@@ -284,13 +284,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await deleteAvatarFile(user.avatar_filename);
 
       // Clear in database
-      await store.updateUser(id, { avatar_filename: null });
+      await store.users.update(id, { avatar_filename: null });
 
       // GDPR audit: log admin action
-      await store.logAdminAction(adminId, 'admin_avatar_removed', id, `Removed custom avatar for ${user.username} (${user.email})`);
+      await store.audit.logAdminAction(adminId, 'admin_avatar_removed', id, `Removed custom avatar for ${user.username} (${user.email})`);
 
       // Also log in user's own audit trail
-      await store.createAuditLog(id, 'avatar_removed', JSON.stringify({ removed_by_admin: adminId, admin_username: admin?.username }), getClientIp(request), request.headers['user-agent']);
+      await store.audit.createLog(id, 'avatar_removed', JSON.stringify({ removed_by_admin: adminId, admin_username: admin?.username }), getClientIp(request), request.headers['user-agent']);
 
       return reply.status(200).send({
         success: true,
@@ -343,7 +343,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Check if user exists
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -354,7 +354,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Only super admins can delete users
-      const currentAdmin = await store.getUserById(adminId);
+      const currentAdmin = await store.users.findById(adminId);
       if (!currentAdmin?.is_super_admin) {
         throw Errors.forbidden('Only super administrators can delete users');
       }
@@ -369,13 +369,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action BEFORE deleting user (for audit trail)
-      await store.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
+      await store.audit.logAdminAction(adminId, 'delete_user', id, `Deleted user ${user.username} (${user.email})`);
 
       // Get admin info for the audit log
-      const admin = await store.getUserById(adminId);
+      const admin = await store.users.findById(adminId);
 
       // Create audit log for the ADMIN who performed the deletion
-      await store.createAuditLog(
+      await store.audit.createLog(
         adminId,  // Use admin's ID, not the deleted user's ID
         'user_deleted',
         JSON.stringify({ 
@@ -390,7 +390,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       );
 
       // Revoke all refresh tokens so the user cannot obtain new access tokens
-      await store.revokeAllRefreshTokensForUser(id);
+      await store.auth.revokeAllForUser(id);
 
       // Invalidate user cache so the auth middleware immediately rejects requests
       invalidateUserCache(id);
@@ -399,7 +399,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       if (user.is_restricted && user.restriction_type === 'permanent') {
         await store.unbanEmail(user.email);
 
-        const oauthAccounts = await store.getOAuthAccountsByUserId(id);
+        const oauthAccounts = await store.oauth.findByUserId(id);
         for (const acc of oauthAccounts) {
           if (acc.provider_email && acc.provider_email !== user.email) {
             await store.unbanEmail(acc.provider_email);
@@ -413,7 +413,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Delete user (CASCADE will handle rules, alerts, webhooks)
-      const deleted = await store.deleteUser(id);
+      const deleted = await store.users.delete(id);
 
       if (!deleted) {
         throw Errors.internal('Failed to delete user');
@@ -482,7 +482,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Check if user exists
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -493,7 +493,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Only super admins can grant or revoke admin status
-      const currentAdmin = await store.getUserById(adminId);
+      const currentAdmin = await store.users.findById(adminId);
       if (!currentAdmin?.is_super_admin) {
         throw Errors.forbidden('Only super administrators can manage admin privileges');
       }
@@ -513,7 +513,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Toggle admin status
-      const updated = await store.toggleUserAdmin(id, is_admin);
+      const updated = await store.users.toggleAdmin(id, is_admin);
 
       if (!updated) {
         throw Errors.internal('Failed to update admin status');
@@ -525,11 +525,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       // Log admin action
       const action = is_admin ? 'grant_admin' : 'revoke_admin';
       const details = `${is_admin ? 'Granted' : 'Revoked'} admin privileges for ${user.username}`;
-      await store.logAdminAction(adminId, action, id, details);
+      await store.audit.logAdminAction(adminId, action, id, details);
 
       // Create audit log
       const eventType = is_admin ? 'user_promoted' : 'user_demoted';
-      await store.createAuditLog(
+      await store.audit.createLog(
         id,
         eventType,
         JSON.stringify({ 
@@ -584,22 +584,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       if (id === adminId) throw Errors.forbidden('You cannot restrict your own account');
 
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
       if (user.is_super_admin) throw Errors.forbidden('Cannot moderate a super administrator');
       if (user.is_admin) {
-        const currentAdmin = await store.getUserById(adminId);
+        const currentAdmin = await store.users.findById(adminId);
         if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can restrict admins');
       }
 
-      const admin = await store.getUserById(adminId);
+      const admin = await store.users.findById(adminId);
       const adminUsername = admin?.username || 'Unknown';
 
       const expiresAt = restriction_type === 'temporary' && duration_hours
         ? new Date(Date.now() + duration_hours * 60 * 60 * 1000)
         : null;
 
-      await store.updateUser(id, {
+      await store.users.update(id, {
         is_restricted: true,
         restriction_type,
         restriction_reason: reason,
@@ -622,7 +622,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Invalidate cache + revoke sessions
       invalidateUserCache(id);
-      await store.revokeAllRefreshTokensForUser(id);
+      await store.auth.revokeAllForUser(id);
 
       // Ban email for permanent restrictions if requested
       if (restriction_type === 'permanent' && ban_email) {
@@ -630,7 +630,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         await store.banEmail(user.email, reason, adminId);
 
         // Ban all OAuth provider emails
-        const oauthAccounts = await store.getOAuthAccountsByUserId(id);
+        const oauthAccounts = await store.oauth.findByUserId(id);
         for (const acc of oauthAccounts) {
           if (acc.provider_email && acc.provider_email !== user.email) {
             await store.banEmail(acc.provider_email, reason, adminId);
@@ -642,8 +642,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         ? 'permanently'
         : `for ${duration_hours}h (until ${expiresAt?.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })})`;
 
-      await store.logAdminAction(adminId, 'restrict_user', id, `Restricted ${user.username} ${durationLabel} — ${reason}`);
-      await store.createAuditLog(id, 'account_restricted', JSON.stringify({
+      await store.audit.logAdminAction(adminId, 'restrict_user', id, `Restricted ${user.username} ${durationLabel} — ${reason}`);
+      await store.audit.createLog(id, 'account_restricted', JSON.stringify({
         admin_id: adminId,
         admin_username: adminUsername,
         restriction_type,
@@ -687,15 +687,15 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { reason } = validateWithZod(UnrestrictUserSchema, request.body);
       const adminId = getAuthUser(request).id;
 
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
       if (!user.is_restricted) throw Errors.badRequest('This user is not currently restricted');
 
-      const admin = await store.getUserById(adminId);
+      const admin = await store.users.findById(adminId);
       const adminUsername = admin?.username || 'Unknown';
       const wasType = user.restriction_type;
 
-      await store.updateUser(id, {
+      await store.users.update(id, {
         is_restricted: false,
         restriction_type: null,
         restriction_reason: null,
@@ -721,7 +721,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         await store.unbanEmail(user.email);
 
         // Also unban all OAuth provider emails
-        const oauthAccounts = await store.getOAuthAccountsByUserId(id);
+        const oauthAccounts = await store.oauth.findByUserId(id);
         for (const acc of oauthAccounts) {
           if (acc.provider_email && acc.provider_email !== user.email) {
             await store.unbanEmail(acc.provider_email);
@@ -729,8 +729,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         }
       }
 
-      await store.logAdminAction(adminId, 'unrestrict_user', id, `Unrestricted ${user.username} — ${reason}`);
-      await store.createAuditLog(id, 'account_unrestricted', JSON.stringify({
+      await store.audit.logAdminAction(adminId, 'unrestrict_user', id, `Unrestricted ${user.username} — ${reason}`);
+      await store.audit.createLog(id, 'account_unrestricted', JSON.stringify({
         admin_id: adminId,
         admin_username: adminUsername,
         reason,
@@ -765,13 +765,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const adminId = getAuthUser(request).id;
 
       // Super admin only
-      const admin = await store.getUserById(adminId);
+      const admin = await store.users.findById(adminId);
       if (!admin?.is_super_admin) throw Errors.forbidden('Only super admins can delete sanctions');
 
       const sanction = await store.getSanctionById(sanctionId);
       if (!sanction) throw Errors.notFound('Sanction');
 
-      const user = await store.getUserById(sanction.user_id);
+      const user = await store.users.findById(sanction.user_id);
       if (!user) throw Errors.notFound('User');
 
       // If this is the most recent "restrict" sanction and user is currently restricted, unrestrict them
@@ -782,7 +782,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         const allSanctions = await store.getSanctionsByUserId(sanction.user_id);
         const latestRestrict = allSanctions.find(s => s.action === 'restrict');
         if (latestRestrict && latestRestrict.id === sanction.id) {
-          await store.updateUser(sanction.user_id, {
+          await store.users.update(sanction.user_id, {
             is_restricted: false,
             restriction_type: null,
             restriction_reason: null,
@@ -800,7 +800,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       if (sanction.action === 'restrict' && sanction.restriction_type === 'permanent') {
         await store.unbanEmail(user.email);
 
-        const oauthAccounts = await store.getOAuthAccountsByUserId(sanction.user_id);
+        const oauthAccounts = await store.oauth.findByUserId(sanction.user_id);
         for (const acc of oauthAccounts) {
           if (acc.provider_email && acc.provider_email !== user.email) {
             await store.unbanEmail(acc.provider_email);
@@ -810,8 +810,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       await store.deleteSanction(sanctionId);
 
-      await store.logAdminAction(adminId, 'delete_sanction', sanction.user_id, `Deleted sanction #${sanctionId} (${sanction.action}) for ${user.username}`);
-      await store.createAuditLog(sanction.user_id, 'sanction_deleted', JSON.stringify({
+      await store.audit.logAdminAction(adminId, 'delete_sanction', sanction.user_id, `Deleted sanction #${sanctionId} (${sanction.action}) for ${user.username}`);
+      await store.audit.createLog(sanction.user_id, 'sanction_deleted', JSON.stringify({
         sanction_id: sanctionId,
         action: sanction.action,
         restriction_type: sanction.restriction_type,
@@ -853,27 +853,27 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { username } = validateWithZod(AdminUsernameSchema, request.body);
       const adminId = getAuthUser(request).id;
 
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) throw Errors.notFound('User');
 
       if (user.username === username) {
         throw Errors.badRequest('New username is the same as the current one');
       }
 
-      const existing = await store.getUserByUsername(username);
+      const existing = await store.users.findByUsername(username);
       if (existing) {
         throw Errors.conflict('This username is already taken');
       }
 
-      const admin = await store.getUserById(adminId);
+      const admin = await store.users.findById(adminId);
       const adminUsername = admin?.username || 'Unknown';
       const oldUsername = user.username;
 
-      await store.updateUser(id, { username });
+      await store.users.update(id, { username });
       invalidateUserCache(id);
 
-      await store.logAdminAction(adminId, 'change_username', id, `Changed username from "${oldUsername}" to "${username}"`);
-      await store.createAuditLog(id, 'username_changed', JSON.stringify({ old_username: oldUsername, new_username: username, changed_by_admin: adminId, admin_username: adminUsername }), getClientIp(request), request.headers['user-agent']);
+      await store.audit.logAdminAction(adminId, 'change_username', id, `Changed username from "${oldUsername}" to "${username}"`);
+      await store.audit.createLog(id, 'username_changed', JSON.stringify({ old_username: oldUsername, new_username: username, changed_by_admin: adminId, admin_username: adminUsername }), getClientIp(request), request.headers['user-agent']);
 
       return reply.status(200).send({
         success: true,
@@ -916,7 +916,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const stats = await store.getGlobalStats();
+      const stats = await store.audit.getGlobalStats();
 
       return reply.status(200).send({
         success: true,
@@ -958,7 +958,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     },
   }, async (request, reply) => {
     try {
-      const pendingUsers = await store.getPendingUsers();
+      const pendingUsers = await store.users.findPendingUsers();
 
       return reply.status(200).send({
         success: true,
@@ -1000,17 +1000,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
-      const success = await store.approveUser(id);
+      const success = await store.users.approveUser(id);
 
       if (!success) {
         throw Errors.notFound('User');
       }
 
       // Log admin action
-      await store.logAdminAction(getAuthUser(request).id, 'approve_user', id, `Approved user ID ${id}`);
+      await store.audit.logAdminAction(getAuthUser(request).id, 'approve_user', id, `Approved user ID ${id}`);
 
       // Create audit log
-      await store.createAuditLog(
+      await store.audit.createLog(
         id,
         'user_approved',
         JSON.stringify({ 
@@ -1062,7 +1062,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(AdminUserParamsSchema, request.params);
 
       // Verify user exists and is actually pending approval
-      const user = await store.getUserById(id);
+      const user = await store.users.findById(id);
       if (!user) {
         throw Errors.notFound('User');
       }
@@ -1071,9 +1071,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }
 
       // Log admin action BEFORE deleting so the FK to target_user_id is still valid
-      await store.logAdminAction(getAuthUser(request).id, 'reject_user', id, `Rejected user ${user.username} (${user.email})`);
+      await store.audit.logAdminAction(getAuthUser(request).id, 'reject_user', id, `Rejected user ${user.username} (${user.email})`);
 
-      const success = await store.rejectUser(id);
+      const success = await store.users.rejectUser(id);
 
       if (!success) {
         throw Errors.notFound('User');
@@ -1115,7 +1115,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       await scheduler.forceRun();
 
       // Log admin action
-      await store.logAdminAction(getAuthUser(request).id, 'force_scheduler', null, 'Manually triggered scheduler run');
+      await store.audit.logAdminAction(getAuthUser(request).id, 'force_scheduler', null, 'Manually triggered scheduler run');
 
       return reply.status(200).send({
         success: true,
@@ -1188,12 +1188,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const { userId } = validateWithZod(AdminUserAuditParamsSchema, request.params);
       const { limit } = validateWithZod(AdminUserAuditQuerySchema, request.query);
 
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) {
         throw Errors.notFound('User');
       }
 
-      const logs = await store.getAuditLogsByUserId(userId, limit);
+      const logs = await store.audit.getLogsByUserId(userId, limit);
 
       return reply.status(200).send({
         success: true,
@@ -1257,7 +1257,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { limit, event_type, user_id } = validateWithZod(AdminAuditQuerySchema, request.query);
 
-      const logs = await store.getAllAuditLogs(limit, event_type, user_id);
+      const logs = await store.audit.getAllLogs(limit, event_type, user_id);
 
       return reply.status(200).send({
         success: true,
@@ -1363,7 +1363,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { q, admins_only } = validateWithZod(AdminSearchQuerySchema, request.query);
-      const users = await store.searchUsers(q, admins_only);
+      const users = await store.users.searchUsers(q, admins_only);
 
       return reply.status(200).send({
         success: true,

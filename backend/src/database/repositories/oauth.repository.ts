@@ -11,11 +11,11 @@ export class OAuthRepository {
   /**
    * Find an OAuth account by provider + provider account ID
    */
-  async findByProviderAccount(provider: OAuthProvider, providerAccountId: string): Promise<OAuthAccount | null> {
+  async findByProviderAccount(provider: string, providerAccountId: string): Promise<OAuthAccount | null> {
     const [account] = await this.db.select()
       .from(oauthAccounts)
       .where(and(
-        eq(oauthAccounts.provider, provider),
+        eq(oauthAccounts.provider, provider as OAuthProvider),
         eq(oauthAccounts.provider_account_id, providerAccountId),
       ))
       .limit(1);
@@ -49,11 +49,11 @@ export class OAuthRepository {
   /**
    * Link an OAuth account to a user
    */
-  async link(userId: number, provider: OAuthProvider, providerAccountId: string, providerEmail?: string): Promise<OAuthAccount> {
+  async link(userId: number, provider: string, providerAccountId: string, providerEmail?: string): Promise<OAuthAccount> {
     const [account] = await this.db.insert(oauthAccounts)
       .values({
         user_id: userId,
-        provider,
+        provider: provider as OAuthProvider,
         provider_account_id: providerAccountId,
         provider_email: providerEmail ?? null,
       })
@@ -66,11 +66,11 @@ export class OAuthRepository {
    * Update the stored provider_email for an existing OAuth account.
    * Called when a returning user's email on the provider has changed.
    */
-  async updateProviderEmail(provider: OAuthProvider, providerAccountId: string, newEmail: string): Promise<void> {
+  async updateProviderEmail(provider: string, providerAccountId: string, newEmail: string): Promise<void> {
     await this.db.update(oauthAccounts)
       .set({ provider_email: newEmail })
       .where(and(
-        eq(oauthAccounts.provider, provider),
+        eq(oauthAccounts.provider, provider as OAuthProvider),
         eq(oauthAccounts.provider_account_id, providerAccountId),
       ));
   }
@@ -78,11 +78,11 @@ export class OAuthRepository {
   /**
    * Unlink an OAuth account from a user
    */
-  async unlink(userId: number, provider: OAuthProvider): Promise<boolean> {
+  async unlink(userId: number, provider: string): Promise<boolean> {
     const result = await this.db.delete(oauthAccounts)
       .where(and(
         eq(oauthAccounts.user_id, userId),
-        eq(oauthAccounts.provider, provider),
+        eq(oauthAccounts.provider, provider as OAuthProvider),
       ))
       .returning({ id: oauthAccounts.id });
     return result.length > 0;

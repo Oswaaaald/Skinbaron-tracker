@@ -134,3 +134,18 @@ export const DISCORD_COLORS = {
 // User limits
 export const MAX_RULES_PER_USER = 50;
 export const MAX_WEBHOOKS_PER_USER = 20;
+
+// User cache
+export const USER_CACHE_MAX = 500;
+export const USER_CACHE_TTL_MS = 30_000; // 30 seconds
+
+// Scheduler / Discord rate-limiting
+export const DISCORD_DELAY_MS = 2100; // ~28 messages/min with safety margin
+export const API_PAGE_SIZE = 250; // SkinBaron max items per page
+
+// 2FA recovery codes
+export const RECOVERY_CODE_COUNT = 10;
+export const RECOVERY_CODE_BYTES = 4; // produces 8 hex characters
+
+// Upload limits
+export const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB

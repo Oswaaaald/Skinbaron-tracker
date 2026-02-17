@@ -177,15 +177,21 @@ export class AuditRepository {
 
     const adminMap = new Map(admins.map(a => [a.id, a.username]));
 
+    const usernameKeyMap: Record<string, string> = {
+      admin_id: 'admin_username',
+      approved_by_admin_id: 'approved_by_admin_username',
+      deleted_by_admin_id: 'deleted_by_admin_username',
+    };
+
     return logs.map(log => {
       if (!log.event_data) return log;
       try {
         const data = JSON.parse(log.event_data) as Record<string, unknown>;
         let modified = false;
-        for (const key of ['admin_id', 'approved_by_admin_id', 'deleted_by_admin_id']) {
-          const id = data[key];
+        for (const [idKey, usernameKey] of Object.entries(usernameKeyMap)) {
+          const id = data[idKey];
           if (typeof id === 'number' && adminMap.has(id)) {
-            data['admin_username'] = adminMap.get(id);
+            data[usernameKey] = adminMap.get(id);
             modified = true;
           }
         }

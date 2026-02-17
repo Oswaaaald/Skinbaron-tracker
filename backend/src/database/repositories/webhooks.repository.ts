@@ -95,12 +95,16 @@ export class WebhooksRepository {
 
   async deleteBatch(ids: number[], userId: number): Promise<number> {
     if (ids.length === 0) return 0;
-    // Clean up junction table entries first
-    if (ids.length > 0) {
-      await this.db.delete(ruleWebhooks).where(inArray(ruleWebhooks.webhook_id, ids));
-    }
+    // Only delete junction entries for webhooks actually owned by this user
+    const ownedRows = await this.db.select({ id: userWebhooks.id })
+      .from(userWebhooks)
+      .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)));
+    const ownedIds = ownedRows.map(r => r.id);
+    if (ownedIds.length === 0) return 0;
+    // Clean up junction table entries for owned webhooks only
+    await this.db.delete(ruleWebhooks).where(inArray(ruleWebhooks.webhook_id, ownedIds));
     const result = await this.db.delete(userWebhooks)
-      .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)))
+      .where(inArray(userWebhooks.id, ownedIds))
       .returning({ id: userWebhooks.id });
     return result.length;
   }
@@ -137,8 +141,8 @@ export class WebhooksRepository {
     const found = new Map(rows.map(r => [r.id, r.user_id]));
     for (const id of webhookIds) {
       const ownerId = found.get(id);
-      if (ownerId === undefined) throw { type: 'not_found' as const, id };
-      if (ownerId !== userId) throw { type: 'access_denied' as const, id };
+      if (ownerId === undefined) throw new Error(`Webhook ${id} not found`);
+      if (ownerId !== userId) throw new Error(`Access denied to webhook ${id}`);
     }
   }
 }

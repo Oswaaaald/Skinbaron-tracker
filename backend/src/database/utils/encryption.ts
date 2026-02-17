@@ -84,3 +84,35 @@ export function decryptData(encryptedData: string): string {
 export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
+
+// ==================== Lightweight cookie encryption ====================
+// Used for short-lived, non-persistent data (OAuth state, 2FA pending, etc.)
+// No PBKDF2 — derives key via SHA-256 hash of ENCRYPTION_KEY for speed.
+// PBKDF2 is reserved for at-rest data (webhook URLs, TOTP secrets).
+
+/**
+ * Encrypt a JSON-serialisable payload into a base64url cookie value.
+ * Uses AES-256-GCM with a SHA-256-derived key (fast, safe for ephemeral data).
+ */
+export function encryptCookie(payload: string): string {
+  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, encrypted]).toString('base64url');
+}
+
+/**
+ * Decrypt a base64url cookie value produced by encryptCookie().
+ */
+export function decryptCookie(cookieValue: string): string {
+  const buf = Buffer.from(cookieValue, 'base64url');
+  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
+  const iv = buf.subarray(0, 12);
+  const tag = buf.subarray(12, 28);
+  const encrypted = buf.subarray(28);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+}

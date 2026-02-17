@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { Activity, AlertCircle, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clo
 import Image from 'next/image'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
-import { LoadingState } from '@/components/ui/loading-state'
+import { AdminPanelSkeleton } from '@/components/ui/skeletons'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
@@ -196,7 +196,7 @@ export function AdminPanel() {
     }
   )
 
-  const toggleSort = (column: string) => {
+  const toggleSort = useCallback((column: string) => {
     if (sortBy === column) {
       setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
     } else {
@@ -204,7 +204,7 @@ export function AdminPanel() {
       setSortDir(column === 'created_at' ? 'desc' : 'asc')
     }
     setPage(0)
-  }
+  }, [sortBy])
 
   const usersData = usersResponse?.users
   const totalUsers = usersResponse?.pagination?.total ?? 0
@@ -214,12 +214,12 @@ export function AdminPanel() {
     setSchedulerConfirmOpen(true)
   }
 
-  const confirmScheduler = () => {
+  const confirmScheduler = useCallback(() => {
     forceSchedulerMutation.mutate()
-  }
+  }, [forceSchedulerMutation])
 
   if (usersLoading) {
-    return <LoadingState variant="card" />
+    return <AdminPanelSkeleton />
   }
 
   return (

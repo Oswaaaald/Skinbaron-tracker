@@ -1,5 +1,5 @@
 import { CronJob } from 'cron';
-import { appConfig } from './config.js';
+import { appConfig, DISCORD_DELAY_MS, API_PAGE_SIZE } from './config.js';
 import { store } from '../database/index.js';
 import type { Rule, CreateAlert } from '../database/schemas.js';
 import type { Alert, UserWebhook } from '../database/schema.js';
@@ -30,10 +30,6 @@ export class AlertScheduler {
   private cronJob: CronJob | null = null;
   private notificationService = getNotificationService();
   private lastCleanupTime: number = 0; // Track last audit log cleanup by timestamp
-
-  // Discord rate limiting: max 30 messages per minute per webhook
-  private readonly DISCORD_DELAY_MS = 2100; // ~2 seconds between messages (allows ~28 per minute with safety margin)
-  private readonly API_PAGE_SIZE = 250; // SkinBaron max items per page
 
   // Concurrency guard — prevents overlapping poll executions
   private polling = false;
@@ -130,7 +126,7 @@ export class AlertScheduler {
       if (now - this.lastCleanupTime >= ONE_DAY_MS) {
         this.lastCleanupTime = now;
         try {
-          const result = await store.cleanOldAuditLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
+          const result = await store.audit.cleanupOldLogs(appConfig.AUDIT_LOG_RETENTION_DAYS);
           if (result > 0) {
             this.logger.info({ deleted: result, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old audit logs');
           }
@@ -140,7 +136,7 @@ export class AlertScheduler {
 
         // Clean old admin actions (same retention as audit logs)
         try {
-          const result = await store.cleanOldAdminActions(appConfig.AUDIT_LOG_RETENTION_DAYS);
+          const result = await store.audit.cleanupOldAdminActions(appConfig.AUDIT_LOG_RETENTION_DAYS);
           if (result > 0) {
             this.logger.info({ deleted: result, retentionDays: appConfig.AUDIT_LOG_RETENTION_DAYS }, '[Scheduler] Cleaned old admin actions');
           }
@@ -150,7 +146,7 @@ export class AlertScheduler {
 
         // Clean old alerts (GDPR — configurable retention, default 90 days)
         try {
-          const result = await store.cleanOldAlerts(appConfig.ALERT_RETENTION_DAYS);
+          const result = await store.alerts.cleanupOldAlerts(appConfig.ALERT_RETENTION_DAYS);
           if (result > 0) {
             this.logger.info({ deleted: result, retentionDays: appConfig.ALERT_RETENTION_DAYS }, '[Scheduler] Cleaned old alerts');
           }
@@ -161,14 +157,14 @@ export class AlertScheduler {
 
       // Clean expired blacklisted access tokens periodically (every run)
       try {
-        await store.cleanupExpiredBlacklistTokens();
+        await store.auth.cleanupExpiredBlacklistTokens();
       } catch (error) {
         this.logger.error({ error }, '[Scheduler] Failed to cleanup expired blacklist tokens');
       }
 
       // Clean expired refresh tokens (every run)
       try {
-        await store.cleanupRefreshTokens();
+        await store.auth.cleanupRefreshTokens();
       } catch (error) {
         this.logger.error({ error }, '[Scheduler] Failed to cleanup expired refresh tokens');
       }
@@ -181,7 +177,7 @@ export class AlertScheduler {
       }
 
       // Get all enabled rules
-      const rules = await store.getEnabledRules();
+      const rules = await store.rules.findAllEnabled();
       if (rules.length === 0) {
         return;
       }
@@ -289,7 +285,7 @@ export class AlertScheduler {
       souvenir: souvenirFilters.size === 1 && souvenirFilters.has('only') ? true
              : souvenirFilters.size === 1 && souvenirFilters.has('exclude') ? false
              : undefined,
-      limit: this.API_PAGE_SIZE,
+      limit: API_PAGE_SIZE,
     };
   }
 
@@ -302,7 +298,7 @@ export class AlertScheduler {
 
     const response = await client.search(params);
     const allItems = response.items ?? [];
-    const hitPageLimit = allItems.length >= this.API_PAGE_SIZE;
+    const hitPageLimit = allItems.length >= API_PAGE_SIZE;
 
     this.logger.info({
       searchItem: params.search_item,
@@ -410,7 +406,7 @@ export class AlertScheduler {
           continue;
         }
         // Price changed — remove old alert so it gets recreated below
-        await store.deleteBySaleIdAndRuleId(item.saleId, ruleId);
+        await store.alerts.deleteBySaleIdAndRuleId(item.saleId, ruleId);
         priceChanges++;
       }
 
@@ -431,14 +427,14 @@ export class AlertScheduler {
         skin_url: item.imageUrl || item.skinUrl || client.getSkinUrl(item.saleId),
       }));
 
-      const insertedCount = await store.createAlertsBatch(alertsToCreate);
+      const insertedCount = await store.alerts.createBatch(alertsToCreate);
       newAlerts = insertedCount;
     }
 
     // ── Send notifications for ALL un-notified alerts (catches new + missed from previous runs/restarts) ──
-    const webhooks = await store.getRuleWebhooksForNotification(ruleId);
+    const webhooks = await store.webhooks.getRuleWebhooksForNotification(ruleId);
     if (webhooks.length > 0) {
-      const unnotifiedAlerts = await store.findUnnotifiedAlertsByRuleId(ruleId);
+      const unnotifiedAlerts = await store.alerts.findUnnotifiedByRuleId(ruleId);
       if (unnotifiedAlerts.length > 0) {
         await this.sendAndMarkNotifications(unnotifiedAlerts, webhooks, rule, client);
       }
@@ -507,7 +503,7 @@ export class AlertScheduler {
           }, '[Scheduler] Webhook notification threw error');
         }
         // Delay between messages per webhook to respect Discord rate limits
-        await new Promise(resolve => setTimeout(resolve, this.DISCORD_DELAY_MS));
+        await new Promise(resolve => setTimeout(resolve, DISCORD_DELAY_MS));
       }
 
       // Mark as notified if at least one webhook succeeded (avoid infinite retry on permanently broken webhooks)
@@ -518,7 +514,7 @@ export class AlertScheduler {
 
     // Batch-update notified_at for all successfully sent alerts
     if (notifiedIds.length > 0) {
-      await store.markAlertsNotified(notifiedIds);
+      await store.alerts.markNotified(notifiedIds);
       this.logger.info({ ruleId: rule.id, notified: notifiedIds.length, total: unnotifiedAlerts.length }, '[Scheduler] Marked alerts as notified');
     }
   }

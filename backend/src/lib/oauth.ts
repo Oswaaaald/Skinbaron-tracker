@@ -1,6 +1,6 @@
 import { Google, GitHub, Discord, generateState, generateCodeVerifier } from 'arctic';
-import crypto from 'crypto';
 import { appConfig } from './config.js';
+import { encryptCookie, decryptCookie } from '../database/utils/encryption.js';
 
 // ==================== Types ====================
 
@@ -277,16 +277,11 @@ const PENDING_REG_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Encrypt OAuth state (state + codeVerifier + optional linkUserId) into a cookie value.
- * Uses AES-256-GCM with the encryption key.
+ * Uses AES-256-GCM via the shared encryptCookie helper.
  */
 export function encryptOAuthState(state: string, codeVerifier: string, linkUserId?: number, mode?: string): string {
   const payload = JSON.stringify({ state, codeVerifier, exp: Date.now() + STATE_TTL_MS, ...(linkUserId != null && { linkUserId }), ...(mode && { mode }) });
-  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]).toString('base64url');
+  return encryptCookie(payload);
 }
 
 /**
@@ -294,14 +289,7 @@ export function encryptOAuthState(state: string, codeVerifier: string, linkUserI
  * Throws if expired, tampered, or invalid.
  */
 export function decryptOAuthState(cookieValue: string): { state: string; codeVerifier: string; linkUserId?: number; mode?: string } {
-  const buf = Buffer.from(cookieValue, 'base64url');
-  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
-  const iv = buf.subarray(0, 12);
-  const tag = buf.subarray(12, 28);
-  const encrypted = buf.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  const decrypted = decryptCookie(cookieValue);
   const payload = JSON.parse(decrypted) as { state: string; codeVerifier: string; exp: number; linkUserId?: number; mode?: string };
 
   if (Date.now() > payload.exp) {
@@ -317,12 +305,7 @@ export function decryptOAuthState(cookieValue: string): { state: string; codeVer
  */
 export function encryptOAuth2FAPending(userId: number, provider: string): string {
   const payload = JSON.stringify({ userId, provider, exp: Date.now() + PENDING_2FA_TTL_MS });
-  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]).toString('base64url');
+  return encryptCookie(payload);
 }
 
 /**
@@ -330,14 +313,7 @@ export function encryptOAuth2FAPending(userId: number, provider: string): string
  * Throws if expired, tampered, or invalid.
  */
 export function decryptOAuth2FAPending(cookieValue: string): { userId: number; provider: string } {
-  const buf = Buffer.from(cookieValue, 'base64url');
-  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
-  const iv = buf.subarray(0, 12);
-  const tag = buf.subarray(12, 28);
-  const encrypted = buf.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  const decrypted = decryptCookie(cookieValue);
   const payload = JSON.parse(decrypted) as { userId: number; provider: string; exp: number };
 
   if (Date.now() > payload.exp) {
@@ -358,12 +334,7 @@ export function encryptOAuthPendingRegistration(data: {
   suggestedUsername: string;
 }): string {
   const payload = JSON.stringify({ ...data, exp: Date.now() + PENDING_REG_TTL_MS });
-  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, encrypted]).toString('base64url');
+  return encryptCookie(payload);
 }
 
 /**
@@ -376,14 +347,7 @@ export function decryptOAuthPendingRegistration(cookieValue: string): {
   email: string;
   suggestedUsername: string;
 } {
-  const buf = Buffer.from(cookieValue, 'base64url');
-  const key = crypto.createHash('sha256').update(appConfig.ENCRYPTION_KEY).digest();
-  const iv = buf.subarray(0, 12);
-  const tag = buf.subarray(12, 28);
-  const encrypted = buf.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  const decrypted = decryptCookie(cookieValue);
   const payload = JSON.parse(decrypted) as {
     provider: string;
     providerAccountId: string;

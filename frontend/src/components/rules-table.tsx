@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   Table,
@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { LoadingState } from "@/components/ui/loading-state"
+import { RulesTableSkeleton } from "@/components/ui/skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
@@ -64,10 +64,10 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   })
 
   // webhooksResponse is directly an array since queryFn returns result.data || []
-  const webhooks = webhooksResponse || []
+  const webhooks = useMemo(() => webhooksResponse || [], [webhooksResponse])
 
   // Helper function to get webhook display text
-  const getWebhookDisplay = (rule: Rule) => {
+  const getWebhookDisplay = useCallback((rule: Rule) => {
     
     if (rule.webhook_ids && rule.webhook_ids.length > 0 && webhooks) {
       const webhookNames = rule.webhook_ids
@@ -94,7 +94,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
         No webhook
       </Badge>
     )
-  }
+  }, [webhooks])
 
   const toggleRuleMutation = useApiMutation(
     ({ rule, enabled }: { rule: Rule; enabled: boolean }) => {
@@ -245,12 +245,12 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
     setDeleteConfirmOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (ruleToDelete?.id) {
       deleteRuleMutation.mutate(ruleToDelete.id)
     }
     setRuleToDelete(null)
-  }
+  }, [ruleToDelete, deleteRuleMutation])
 
   const handleSelectAll = () => {
     if (selectedRules.size === rules.length) {
@@ -284,15 +284,17 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
     setBatchAction('delete')
   }
 
-  const confirmBatchDelete = () => {
+  const confirmBatchDelete = useCallback(() => {
     const ruleIds = selectedRules.size > 0 ? Array.from(selectedRules) : undefined
     const confirmAll = selectedRules.size === 0
     batchDeleteMutation.mutate({ ruleIds, confirmAll })
     setBatchAction(null)
-  }
+  }, [selectedRules, batchDeleteMutation])
+
+  const rules = useMemo(() => rulesResponse?.data || [], [rulesResponse?.data])
 
   if (isLoading) {
-    return <LoadingState variant="section" />
+    return <RulesTableSkeleton />
   }
 
   if (error) {
@@ -306,8 +308,6 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
       </Card>
     )
   }
-
-  const rules = rulesResponse?.data || []
 
   if (rules.length === 0) {
     return (

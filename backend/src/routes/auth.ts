@@ -50,7 +50,7 @@ async function verifyTotpOrRecoveryCode(
   if (!user.totp_secret || user.totp_secret.length < 16) {
     const reason = !user.totp_secret ? '2FA secret decryption failed' : '2FA secret too short';
     request.log.warn({ userId: user.id, reason }, 'Disabling 2FA');
-    await store.updateUser(user.id, {
+    await store.users.update(user.id, {
       totp_enabled: false,
       totp_secret_encrypted: null,
       recovery_codes_encrypted: null,
@@ -73,7 +73,7 @@ async function verifyTotpOrRecoveryCode(
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'SecretTooShortError') {
       request.log.warn({ userId: user.id }, '2FA secret validation failed, disabling 2FA');
-      await store.updateUser(user.id, {
+      await store.users.update(user.id, {
         totp_enabled: false,
         totp_secret_encrypted: null,
         recovery_codes_encrypted: null,
@@ -113,7 +113,7 @@ async function verifyTotpOrRecoveryCode(
     if (codeIndex === -1) {
       // Audit log for failed 2FA
       const reason = totpCode.length === 8 ? 'invalid_2fa_backup_code' : 'invalid_2fa_code';
-      await store.createAuditLog(
+      await store.audit.createLog(
         user.id,
         'login_failed',
         JSON.stringify({ reason, method }),
@@ -129,11 +129,11 @@ async function verifyTotpOrRecoveryCode(
 
     // Remove used recovery code
     recoveryCodes.splice(codeIndex, 1);
-    await store.updateUser(user.id, {
+    await store.users.update(user.id, {
       recovery_codes: JSON.stringify(recoveryCodes),
     });
 
-    await store.createAuditLog(
+    await store.audit.createLog(
       user.id,
       '2fa_recovery_code_used',
       JSON.stringify({ remaining_codes: recoveryCodes.length, method }),
@@ -213,13 +213,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const userData = validateWithZod(UserRegistrationSchema, request.body);
       
       // Check if user already exists (return generic error to prevent account enumeration)
-      const existingUser = await store.getUserByEmail(userData.email);
+      const existingUser = await store.users.findByEmail(userData.email);
       if (existingUser) {
         throw new AppError(409, 'Unable to create account with these credentials', 'REGISTRATION_FAILED');
       }
 
       // Check if email is already used as an OAuth provider email by another user
-      const oauthWithEmail = await store.findOAuthAccountByEmail(userData.email);
+      const oauthWithEmail = await store.oauth.findByProviderEmail(userData.email);
       if (oauthWithEmail) {
         throw new AppError(409, 'An account with this email already exists', 'USER_EXISTS');
       }
@@ -230,7 +230,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check if username is taken
-      const existingUsername = await store.getUserByUsername(userData.username);
+      const existingUsername = await store.users.findByUsername(userData.username);
       if (existingUsername) {
         throw new AppError(409, 'This username is already taken', 'USERNAME_TAKEN');
       }
@@ -239,14 +239,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const passwordHash = await AuthService.hashPassword(userData.password);
 
       // Create user
-      const user = await store.createUser({
+      const user = await store.users.create({
         username: userData.username,
         email: userData.email,
         password_hash: passwordHash,
       });
 
       // Record ToS acceptance timestamp via repository
-      await store.acceptTos(user.id);
+      await store.users.acceptTos(user.id);
 
       // Check if user is approved
       if (!user.is_approved) {
@@ -263,7 +263,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens (only for approved users)
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
 
       setAuthCookies(reply, accessToken, refreshToken);
 
@@ -331,7 +331,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const loginData = validateWithZod(UserLoginSchema, request.body);
       
       // Find user by email - decrypt 2FA secrets for verification
-      const user = await store.getUserByEmail(loginData.email, true);
+      const user = await store.users.findByEmail(loginData.email, true);
       
       // SECURITY: Always execute bcrypt to prevent timing attacks
       // If user doesn't exist, use a pre-computed hash to make response time consistent
@@ -343,7 +343,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Still run bcrypt to prevent timing attacks
         await AuthService.verifyPassword(loginData.password, FAKE_HASH);
 
-        const oauthAccounts = await store.getOAuthAccountsByUserId(user.id);
+        const oauthAccounts = await store.oauth.findByUserId(user.id);
         const providerNames = oauthAccounts.map(a => a.provider);
         throw new AppError(
           401,
@@ -364,7 +364,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       if (!user || !isValidPassword) {
         // Audit log for failed login (only if user exists to avoid FK constraint error)
         if (user) {
-          await store.createAuditLog(
+          await store.audit.createLog(
             user.id,
             'login_failed',
             JSON.stringify({ reason: 'invalid_password' }),
@@ -383,8 +383,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Check moderation status
       const loginRestriction = await enforceRestriction(user);
       if (loginRestriction.result === 'blocked') {
-        await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-        throw new AppError(403, loginRestriction.errorMessage!, 'ACCOUNT_RESTRICTED');
+        await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+        throw new AppError(403, loginRestriction.errorMessage, 'ACCOUNT_RESTRICTED');
       }
 
       // Check if 2FA is enabled
@@ -408,11 +408,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log for successful login
-      await store.createAuditLog(
+      await store.audit.createLog(
         user.id,
         'login_success',
         JSON.stringify({ method: user.totp_enabled ? '2fa' : 'password' }),
@@ -484,7 +484,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(401, 'Invalid refresh token', 'INVALID_REFRESH_TOKEN');
       }
 
-      const tokenRecord = await store.getRefreshToken(refresh_token);
+      const tokenRecord = await store.auth.getRefreshToken(refresh_token);
       const isExpired = tokenRecord ? tokenRecord.expires_at.getTime() <= Date.now() : true;
       if (!tokenRecord || tokenRecord.revoked_at || tokenRecord.replaced_by_jti || isExpired) {
         request.log.warn({ 
@@ -498,15 +498,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
 
       // Check moderation status before refreshing
-      const refreshUser = await store.getUserById(payload.userId);
+      const refreshUser = await store.users.findById(payload.userId);
       if (!refreshUser) {
         throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
       }
       if (refreshUser.is_restricted) {
         const restriction = await enforceRestriction(refreshUser);
         if (restriction.result === 'blocked') {
-          await store.revokeAllRefreshTokensForUser(payload.userId);
-          throw new AppError(403, restriction.errorMessage!, 'ACCOUNT_RESTRICTED');
+          await store.auth.revokeAllForUser(payload.userId);
+          throw new AppError(403, restriction.errorMessage, 'ACCOUNT_RESTRICTED');
         }
       }
 
@@ -514,9 +514,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const newAccess = AuthService.generateAccessToken(payload.userId);
       const newRefresh = AuthService.generateRefreshToken(payload.userId);
 
-      await store.revokeRefreshToken(refresh_token, newRefresh.jti);
-      await store.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
-      await store.cleanupRefreshTokens();
+      await store.auth.revokeRefreshToken(refresh_token, newRefresh.jti);
+      await store.auth.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
+      await store.auth.cleanupRefreshTokens();
 
       setAuthCookies(reply, newAccess, newRefresh);
 
@@ -566,24 +566,24 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
       
       // Check if user still exists (may have been deleted)
-      const userExists = accessPayload ? (await store.getUserById(accessPayload.userId)) !== null : false;
+      const userExists = accessPayload ? (await store.users.findById(accessPayload.userId)) !== null : false;
       
       if (accessPayload?.jti && userExists) {
         const exp = accessPayload.exp ? accessPayload.exp * 1000 : Date.now();
-        await store.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
+        await store.auth.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
       }
 
       if (refresh_token && userExists) {
-        await store.revokeRefreshToken(refresh_token, 'logout');
+        await store.auth.revokeRefreshToken(refresh_token, 'logout');
       } else if (accessPayload && userExists) {
-        await store.revokeAllRefreshTokensForUser(accessPayload.userId);
+        await store.auth.revokeAllForUser(accessPayload.userId);
       }
 
       // Clean up revoked tokens from database
-      await store.cleanupRefreshTokens();
+      await store.auth.cleanupRefreshTokens();
 
       if (accessPayload && userExists) {
-        await store.createAuditLog(
+        await store.audit.createLog(
           accessPayload.userId,
           'logout',
           JSON.stringify({ reason: 'user_logout' }),
@@ -753,24 +753,24 @@ export default async function authRoutes(fastify: FastifyInstance) {
         };
 
         try {
-          const linkUser = await store.getUserById(storedState.linkUserId);
+          const linkUser = await store.users.findById(storedState.linkUserId);
           if (!linkUser) return failLink('account_not_found');
 
           // Check if this provider account is already linked to a DIFFERENT user
-          const existingOAuth = await store.findOAuthAccount(provider, userInfo.id);
+          const existingOAuth = await store.oauth.findByProviderAccount(provider, userInfo.id);
           if (existingOAuth && existingOAuth.user_id !== linkUser.id) {
             return failLink('already_linked_other');
           }
 
           if (!existingOAuth) {
-            await store.linkOAuthAccount(
+            await store.oauth.link(
               linkUser.id,
               provider,
               userInfo.id,
               userInfo.email,
             );
 
-            await store.createAuditLog(
+            await store.audit.createLog(
               linkUser.id,
               'oauth_linked',
               JSON.stringify({ provider, provider_email: userInfo.email }),
@@ -792,19 +792,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // --- Login / Register flow (user was NOT logged in) ---
       try {
         // 1. Check if this OAuth account is already linked
-        const existingOAuth = await store.findOAuthAccount(provider, userInfo.id);
+        const existingOAuth = await store.oauth.findByProviderAccount(provider, userInfo.id);
         let userId: number;
 
         if (existingOAuth) {
           // Already linked → verify user
-          const user = await store.getUserById(existingOAuth.user_id);
+          const user = await store.users.findById(existingOAuth.user_id);
           if (!user) return fail('oauth_user_not_found');
           if (!user.is_approved) return fail('pending_approval');
 
           // Check restriction status (consistent with password & passkey login)
           const oauthRestriction = await enforceRestriction(user);
           if (oauthRestriction.result === 'blocked') {
-            await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+            await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
             return fail('account_restricted');
           }
 
@@ -812,7 +812,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           // Keep provider_email in sync if user changed their email on the provider
           if (existingOAuth.provider_email !== userInfo.email) {
-            await store.updateOAuthProviderEmail(provider, userInfo.id, userInfo.email);
+            await store.oauth.updateProviderEmail(provider, userInfo.id, userInfo.email);
             request.log.info(
               { userId, provider, emailChanged: true },
               'Updated OAuth provider_email after provider-side change',
@@ -820,7 +820,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           }
         } else {
           // 2. Check if a user with the same email already exists
-          const existingUser = await store.getUserByEmail(userInfo.email);
+          const existingUser = await store.users.findByEmail(userInfo.email);
 
           if (existingUser) {
             // Account exists but OAuth is not linked → user must log in and link manually
@@ -855,7 +855,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         // --- Check if 2FA is required before issuing tokens ---
-        const oauthUser = await store.getUserById(userId);
+        const oauthUser = await store.users.findById(userId);
         if (oauthUser?.totp_enabled) {
           // Set a short-lived encrypted pending-2FA cookie
           reply.setCookie(OAUTH_2FA_COOKIE, encryptOAuth2FAPending(userId, provider), {
@@ -873,13 +873,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // --- Issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(userId);
         const refreshToken = AuthService.generateRefreshToken(userId);
-        await store.addRefreshToken(userId, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        await store.auth.addRefreshToken(userId, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clean state cookie
         reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
 
-        await store.createAuditLog(
+        await store.audit.createLog(
           userId,
           'login_success',
           JSON.stringify({ method: `oauth_${provider}` }),
@@ -1013,13 +1013,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Check username availability
-        const existingUsername = await store.getUserByUsername(username);
+        const existingUsername = await store.users.findByUsername(username);
         if (existingUsername) {
           throw new AppError(409, 'This username is already taken', 'USERNAME_TAKEN');
         }
 
         // Double-check email not taken since cookie was issued
-        const existingEmail = await store.getUserByEmail(pending.email);
+        const existingEmail = await store.users.findByEmail(pending.email);
         if (existingEmail) {
           reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
           throw new AppError(409, 'An account with this email was created while you were registering. Please try logging in.', 'EMAIL_TAKEN');
@@ -1032,25 +1032,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Double-check OAuth account not taken
-        const existingOAuth = await store.findOAuthAccount(pending.provider, pending.providerAccountId);
+        const existingOAuth = await store.oauth.findByProviderAccount(pending.provider, pending.providerAccountId);
         if (existingOAuth) {
           reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
           throw new AppError(409, 'This social account is already linked. Please try logging in.', 'OAUTH_ALREADY_LINKED');
         }
 
         // --- Create the account ---
-        const newUser = await store.createUser({ username, email: pending.email });
+        const newUser = await store.users.create({ username, email: pending.email });
 
         // Auto-approve OAuth users
         if (!newUser.is_approved) {
-          await store.updateUser(newUser.id, { is_approved: true });
+          await store.users.update(newUser.id, { is_approved: true });
         }
 
         // Record TOS acceptance
-        await store.acceptTos(newUser.id);
+        await store.users.acceptTos(newUser.id);
 
         // Link OAuth account
-        await store.linkOAuthAccount(
+        await store.oauth.link(
           newUser.id,
           pending.provider,
           pending.providerAccountId,
@@ -1058,7 +1058,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         );
 
         // Audit log
-        await store.createAuditLog(
+        await store.audit.createLog(
           newUser.id,
           'oauth_register',
           JSON.stringify({ provider: pending.provider, provider_email: pending.email }),
@@ -1069,7 +1069,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Issue JWT tokens
         const accessToken = AuthService.generateAccessToken(newUser.id);
         const refreshToken = AuthService.generateRefreshToken(newUser.id);
-        await store.addRefreshToken(newUser.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        await store.auth.addRefreshToken(newUser.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clean pending-reg cookie
@@ -1154,7 +1154,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         // Fetch user with decrypted 2FA secrets (single query)
-        const user = await store.getUserById(pending.userId, true);
+        const user = await store.users.findById(pending.userId, true);
         if (!user || !user.totp_enabled) {
           throw new AppError(401, 'User not found or 2FA no longer active.', 'OAUTH_2FA_INVALID');
         }
@@ -1165,20 +1165,20 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Check restriction status (user may have been restricted between OAuth redirect and 2FA verification)
         const oauth2faRestriction = await enforceRestriction(user);
         if (oauth2faRestriction.result === 'blocked') {
-          await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${pending.provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-          throw new AppError(403, oauth2faRestriction.errorMessage!, 'ACCOUNT_RESTRICTED');
+          await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${pending.provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+          throw new AppError(403, oauth2faRestriction.errorMessage, 'ACCOUNT_RESTRICTED');
         }
 
         // --- 2FA verified, issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(user.id);
         const refreshToken = AuthService.generateRefreshToken(user.id);
-        await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clear the pending 2FA cookie
         reply.clearCookie(OAUTH_2FA_COOKIE, baseCookieOptions());
 
-        await store.createAuditLog(
+        await store.audit.createLog(
           user.id,
           'login_success',
           JSON.stringify({ method: `oauth_${pending.provider}`, '2fa': true }),
@@ -1307,25 +1307,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
       await store.passkeys.updateCounter(passkey.credential_id, verification.authenticationInfo.newCounter);
 
       // Look up the user
-      const user = await store.getUserById(passkey.user_id);
+      const user = await store.users.findById(passkey.user_id);
       if (!user) throw new AppError(401, 'Authentication failed', 'AUTH_FAILED');
       if (!user.is_approved) throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
 
       // Check moderation status (same logic as password login)
       const passkeyRestriction = await enforceRestriction(user);
       if (passkeyRestriction.result === 'blocked') {
-        await store.createAuditLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: 'passkey', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-        throw new AppError(403, passkeyRestriction.errorMessage!, 'ACCOUNT_RESTRICTED');
+        await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: 'passkey', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
+        throw new AppError(403, passkeyRestriction.errorMessage, 'ACCOUNT_RESTRICTED');
       }
 
       // Generate tokens and set cookies
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      await store.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log
-      await store.createAuditLog(
+      await store.audit.createLog(
         user.id,
         'login_success',
         JSON.stringify({ method: 'passkey', passkey_id: passkey.id }),
@@ -1363,14 +1363,14 @@ async function generateUniqueUsername(displayName: string): Promise<string> {
   if (base.length < 3) base = 'user';
 
   // Try the base name first
-  const existing = await store.getUserByUsername(base);
+  const existing = await store.users.findByUsername(base);
   if (!existing) return base;
 
   // Append random suffix
   for (let i = 0; i < 10; i++) {
     const suffix = crypto.randomInt(100, 999).toString();
     const candidate = `${base.slice(0, 17)}_${suffix}`;
-    const taken = await store.getUserByUsername(candidate);
+    const taken = await store.users.findByUsername(candidate);
     if (!taken) return candidate;
   }
 

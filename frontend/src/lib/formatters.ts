@@ -3,6 +3,11 @@
  * Prevents code duplication across components
  */
 
+/** Capitalize first letter of a string. */
+export function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 /**
  * Format a price in EUR currency
  */
@@ -196,7 +201,7 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         if (method === 'passkey') return 'Login with passkey';
         if (method.startsWith('oauth_')) {
           const provider = method.replace('oauth_', '');
-          const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+          const providerName = capitalize(provider);
           return `Login with ${providerName}`;
         }
         return 'Login with password';
@@ -237,19 +242,19 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       
       case "oauth_register": {
         const provider = s('provider', 'unknown');
-        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        const providerName = capitalize(provider);
         return `Registered via ${providerName}`;
       }
       
       case "oauth_linked": {
         const provider = s('provider', 'unknown');
-        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        const providerName = capitalize(provider);
         return `${providerName} account linked`;
       }
       
       case "oauth_unlinked": {
         const provider = s('provider', 'unknown');
-        const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+        const providerName = capitalize(provider);
         return `${providerName} account unlinked`;
       }
       

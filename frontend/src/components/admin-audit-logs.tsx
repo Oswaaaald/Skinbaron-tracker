@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,16 +18,15 @@ import {
 import { 
   Shield, 
   X,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
   ArrowRight
 } from "lucide-react"
 import { apiClient, type AuditLog } from "@/lib/api"
 import { usePageVisible } from "@/hooks/use-page-visible"
-import { LoadingState } from "@/components/ui/loading-state"
+import { LogListSkeleton } from "@/components/ui/skeletons"
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
-import { formatRelativeDate, formatEventData } from "@/lib/formatters"
+import { formatEventData } from "@/lib/formatters"
+import { useExpandableRows, LogEntryRow, LogScrollArea } from "@/components/log-entry-list"
 
 export function AdminAuditLogs() {
   const [eventType, setEventType] = useState<string>("all");
@@ -36,7 +34,7 @@ export function AdminAuditLogs() {
   const [selectedUser, setSelectedUser] = useState<{ id: number; username: string; email: string } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [limit, setLimit] = useState<number>(100);
-  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+  const { expandedIds, toggle } = useExpandableRows();
   const isVisible = usePageVisible();
 
   // Search users with debounce
@@ -102,17 +100,8 @@ export function AdminAuditLogs() {
     setShowSuggestions(false);
   };
 
-  const toggleExpanded = (logId: number) => {
-    const newExpanded = new Set(expandedLogs);
-    if (newExpanded.has(logId)) {
-      newExpanded.delete(logId);
-    } else {
-      newExpanded.add(logId);
-    }
-    setExpandedLogs(newExpanded);
-  };
-
   const initialLoading = isLoading && !data;
+  const logs = useMemo(() => data?.data ?? [], [data]);
 
   if (initialLoading) {
     return (
@@ -127,7 +116,7 @@ export function AdminAuditLogs() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LoadingState variant="inline" />
+          <LogListSkeleton withFilters />
         </CardContent>
       </Card>
     );
@@ -150,8 +139,6 @@ export function AdminAuditLogs() {
       </Card>
     );
   }
-
-  const logs = data.data || [];
 
   return (
     <Card>
@@ -275,107 +262,68 @@ export function AdminAuditLogs() {
         <Separator />
 
         {/* Logs Display */}
-        {logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No security events found
-          </p>
-        ) : (
-          <ScrollArea className="h-[600px] pr-4">
-            <div className="space-y-4">
-              {logs.map((log: AuditLog, index: number) => {
-                const config = AUDIT_EVENT_CONFIG[log.event_type] || {
-                  icon: Shield,
-                  label: log.event_type,
-                  variant: "outline" as const,
-                };
-                
-                const Icon = config.icon;
-                const isExpanded = expandedLogs.has(log.id);
-                const contextualMessage = formatEventData(log.event_type, log.event_data);
+        <LogScrollArea empty={logs.length === 0} emptyMessage="No security events found">
+          {logs.map((log: AuditLog, index: number) => {
+            const config = AUDIT_EVENT_CONFIG[log.event_type] || {
+              icon: Shield,
+              label: log.event_type,
+              variant: "outline" as const,
+            };
 
-                // For user_deleted events, extract deleted user info from event_data
-                let displayUsername = log.username;
-                let displayEmail = log.email;
-                if (log.event_type === 'user_deleted') {
-                  try {
-                    const data = JSON.parse(log.event_data || '{}') as Record<string, unknown>;
-                    displayUsername = String(data['username']) || log.username;
-                    displayEmail = String(data['email']) || log.email;
-                  } catch {}
-                }
+            const contextualMessage = formatEventData(log.event_type, log.event_data);
 
-                return (
-                  <div key={log.id}>
-                    <div 
-                      className={`flex items-start gap-4 ${(log.ip_address || log.user_agent) ? 'cursor-pointer hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors' : ''}`}
-                      onClick={(log.ip_address || log.user_agent) ? () => toggleExpanded(log.id) : undefined}
-                    >
-                      <div className="mt-0.5">
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={config.variant} className="font-medium">
-                            {config.label}
-                          </Badge>
-                          <Badge variant="secondary" className="font-semibold">
-                            {displayUsername || `User #${log.user_id}`}
-                          </Badge>
-                          {displayEmail && (
-                            <span className="text-xs text-muted-foreground">
-                              {displayEmail}
-                            </span>
-                          )}
-                          {contextualMessage && (
-                            <>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm text-foreground">
-                                {contextualMessage}
-                              </span>
-                            </>
-                          )}
-                          {log.event_type === 'user_deleted' && (
-                            <>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm text-foreground">
-                                Deleted by {log.username || `admin #${log.user_id}`}
-                              </span>
-                            </>
-                          )}
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {formatRelativeDate(log.created_at, 'fr')}
-                          </span>
-                          {(log.ip_address || log.user_agent) && (
-                            <div className="h-6 px-2 ml-2 flex items-center">
-                              {isExpanded ? (
-                                <ChevronUp className="h-3 w-3" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3" />
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {isExpanded && (
-                          <div className="flex flex-col gap-1 pt-1 text-xs text-muted-foreground/60">
-                            {log.ip_address && (
-                              <span className="font-mono">IP: {log.ip_address}</span>
-                            )}
-                            {log.user_agent && (
-                              <span className="font-mono break-all">
-                                {log.user_agent}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {index < logs.length - 1 && <Separator className="mt-4" />}
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        )}
+            // For user_deleted events, extract deleted user info from event_data
+            let displayUsername = log.username;
+            let displayEmail = log.email;
+            if (log.event_type === 'user_deleted') {
+              try {
+                const data = JSON.parse(log.event_data || '{}') as Record<string, unknown>;
+                displayUsername = String(data['username']) || log.username;
+                displayEmail = String(data['email']) || log.email;
+              } catch {}
+            }
+
+            return (
+              <LogEntryRow
+                key={log.id}
+                icon={config.icon}
+                badgeLabel={config.label}
+                badgeVariant={config.variant}
+                date={log.created_at}
+                ipAddress={log.ip_address}
+                userAgent={log.user_agent}
+                expanded={expandedIds.has(log.id)}
+                onToggleExpand={() => toggle(log.id)}
+                isLast={index === logs.length - 1}
+              >
+                <Badge variant="secondary" className="font-semibold">
+                  {displayUsername || `User #${log.user_id}`}
+                </Badge>
+                {displayEmail && (
+                  <span className="text-xs text-muted-foreground">
+                    {displayEmail}
+                  </span>
+                )}
+                {contextualMessage && (
+                  <>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-sm text-foreground">
+                      {contextualMessage}
+                    </span>
+                  </>
+                )}
+                {log.event_type === 'user_deleted' && (
+                  <>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-sm text-foreground">
+                      Deleted by {log.username || `admin #${log.user_id}`}
+                    </span>
+                  </>
+                )}
+              </LogEntryRow>
+            );
+          })}
+        </LogScrollArea>
       </CardContent>
     </Card>
   );

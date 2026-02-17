@@ -27,130 +27,52 @@ const adminNavItems = [
   { href: "/admin", label: "Admin", icon: Shield },
 ]
 
-export function DashboardNav() {
+function useIsActive() {
   const pathname = usePathname()
-  const { user } = useAuth()
-  
-  const isActive = (href: string) => {
+  return (href: string) => {
     if (href === "/") return pathname === "/"
     if (href === "/admin") return pathname === "/admin"
     return pathname.startsWith(href)
   }
+}
 
-  const NavLinks = () => (
-    <>
-      {navItems.map((item) => {
-        const Icon = item.icon
-        const active = isActive(item.href)
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150",
-              active
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {item.label}
-          </Link>
-        )
-      })}
-      
-      {user?.is_admin && (
-        <>
-          <div className="w-px h-5 bg-border mx-1" />
-          {adminNavItems.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </>
-      )}
-    </>
-  )
+/** Shared navigation links rendered for both desktop and mobile layouts. */
+function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+  const { user } = useAuth()
+  const isActive = useIsActive()
+
+  const linkCls = (active: boolean) =>
+    cn(
+      "flex items-center text-sm font-medium rounded-md transition-all duration-150",
+      mobile ? "gap-2.5 px-3 py-2.5 rounded-lg" : "gap-1.5 px-3 py-1.5",
+      active
+        ? "bg-primary text-primary-foreground shadow-sm"
+        : "text-muted-foreground hover:text-foreground hover:bg-accent",
+      mobile && "w-full",
+    )
+
+  const iconCls = mobile ? "h-4 w-4" : "h-3.5 w-3.5"
 
   return (
     <>
-      {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center gap-0.5">
-        <NavLinks />
-      </nav>
-    </>
-  )
-}
-
-export function MobileNavTrigger() {
-  const pathname = usePathname()
-  const { user } = useAuth()
-  const [open, setOpen] = useState(false)
-  
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/"
-    if (href === "/admin") return pathname === "/admin"
-    return pathname.startsWith(href)
-  }
-
-  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
-    <>
       {navItems.map((item) => {
         const Icon = item.icon
-        const active = isActive(item.href)
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => mobile && setOpen(false)}
-            className={cn(
-              "flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150",
-              active
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent",
-              mobile && "w-full"
-            )}
-          >
-            <Icon className="h-4 w-4" />
+          <Link key={item.href} href={item.href} onClick={onNavigate} className={linkCls(isActive(item.href))}>
+            <Icon className={iconCls} />
             {item.label}
           </Link>
         )
       })}
-      
+
       {user?.is_admin && (
         <>
           <div className={cn("bg-border", mobile ? "h-px w-full my-2" : "w-px h-5 mx-1")} />
           {adminNavItems.map((item) => {
             const Icon = item.icon
-            const active = isActive(item.href)
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => mobile && setOpen(false)}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                  mobile && "w-full"
-                )}
-              >
-                <Icon className="h-4 w-4" />
+              <Link key={item.href} href={item.href} onClick={onNavigate} className={linkCls(isActive(item.href))}>
+                <Icon className={iconCls} />
                 {item.label}
               </Link>
             )
@@ -159,6 +81,18 @@ export function MobileNavTrigger() {
       )}
     </>
   )
+}
+
+export function DashboardNav() {
+  return (
+    <nav className="hidden md:flex items-center gap-0.5">
+      <NavLinks />
+    </nav>
+  )
+}
+
+export function MobileNavTrigger() {
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="md:hidden">
@@ -172,7 +106,7 @@ export function MobileNavTrigger() {
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <SheetDescription className="sr-only">Navigate through the application</SheetDescription>
           <nav className="flex flex-col gap-1 mt-8">
-            <NavLinks mobile />
+            <NavLinks mobile onNavigate={() => setOpen(false)} />
           </nav>
         </SheetContent>
       </Sheet>

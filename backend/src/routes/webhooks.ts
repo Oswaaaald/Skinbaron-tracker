@@ -104,7 +104,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         throw new AppError(400, urlValidation.error || 'Invalid webhook URL', 'INVALID_WEBHOOK_URL');
       }
       
-      const webhook = await store.createUserWebhook(getAuthUser(request).id, webhookData);
+      const webhook = await store.webhooks.create(getAuthUser(request).id, webhookData);
       
       // Don't return encrypted URL in response
       const { webhook_url_encrypted: _, ...safeWebhook } = webhook;
@@ -161,7 +161,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const { decrypt } = validateWithZod(WebhookQuerySchema, request.query);
-      const webhooks = await store.getUserWebhooksByUserId(getAuthUser(request).id, decrypt);
+      const webhooks = await store.webhooks.findByUserId(getAuthUser(request).id, decrypt);
       
       // Remove encrypted field from response
       const safeWebhooks = webhooks.map(webhook => {
@@ -238,7 +238,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       const updates = validateWithZod(CreateUserWebhookSchema.partial(), request.body);
       
       // Check if webhook exists and user owns it
-      const existingWebhook = await store.getUserWebhookById(id);
+      const existingWebhook = await store.webhooks.findById(id);
       if (!existingWebhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
@@ -255,7 +255,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         }
       }
       
-      const webhook = await store.updateUserWebhook(id, getAuthUser(request).id, updates);
+      const webhook = await store.webhooks.update(id, getAuthUser(request).id, updates);
       
       if (!webhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
@@ -310,7 +310,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(WebhookParamsSchema, request.params);
       
       // Check if webhook exists and user owns it
-      const existingWebhook = await store.getUserWebhookById(id);
+      const existingWebhook = await store.webhooks.findById(id);
       if (!existingWebhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
       }
@@ -319,7 +319,7 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
       }
       
-      const deleted = await store.deleteUserWebhook(id, getAuthUser(request).id);
+      const deleted = await store.webhooks.delete(id, getAuthUser(request).id);
       
       if (!deleted) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
@@ -374,21 +374,21 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       
       if (!webhook_ids || webhook_ids.length === 0) {
         // Enable all webhooks for this user
-        const allWebhooks = await store.getUserWebhooks(userId);
+        const allWebhooks = await store.webhooks.findByUserId(userId);
         const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id);
-        updated = await store.enableWebhooksBatch(allIds, userId);
+        updated = await store.webhooks.enableBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks (single batch query)
         try {
-          await store.validateWebhookOwnership(webhook_ids, userId);
+          await store.webhooks.validateOwnership(webhook_ids, userId);
         } catch (e: unknown) {
-          const err = e as { type: string; id: number };
-          if (err.type === 'not_found') throw new AppError(404, `Webhook ${err.id} not found`, 'WEBHOOK_NOT_FOUND');
-          if (err.type === 'access_denied') throw new AppError(403, 'You can only enable your own webhooks', 'ACCESS_DENIED');
+          const msg = e instanceof Error ? e.message : '';
+          if (msg.includes('not found')) throw new AppError(404, msg, 'WEBHOOK_NOT_FOUND');
+          if (msg.includes('Access denied')) throw new AppError(403, 'You can only enable your own webhooks', 'ACCESS_DENIED');
           throw e;
         }
         // Enable specific webhooks (optimized batch operation)
-        updated = await store.enableWebhooksBatch(webhook_ids, userId);
+        updated = await store.webhooks.enableBatch(webhook_ids, userId);
       }
 
       return reply.status(200).send({
@@ -441,21 +441,21 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       
       if (!webhook_ids || webhook_ids.length === 0) {
         // Disable all webhooks for this user
-        const allWebhooks = await store.getUserWebhooks(userId);
+        const allWebhooks = await store.webhooks.findByUserId(userId);
         const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id);
-        updated = await store.disableWebhooksBatch(allIds, userId);
+        updated = await store.webhooks.disableBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks (single batch query)
         try {
-          await store.validateWebhookOwnership(webhook_ids, userId);
+          await store.webhooks.validateOwnership(webhook_ids, userId);
         } catch (e: unknown) {
-          const err = e as { type: string; id: number };
-          if (err.type === 'not_found') throw new AppError(404, `Webhook ${err.id} not found`, 'WEBHOOK_NOT_FOUND');
-          if (err.type === 'access_denied') throw new AppError(403, 'You can only disable your own webhooks', 'ACCESS_DENIED');
+          const msg = e instanceof Error ? e.message : '';
+          if (msg.includes('not found')) throw new AppError(404, msg, 'WEBHOOK_NOT_FOUND');
+          if (msg.includes('Access denied')) throw new AppError(403, 'You can only disable your own webhooks', 'ACCESS_DENIED');
           throw e;
         }
         // Disable specific webhooks (optimized batch operation)
-        updated = await store.disableWebhooksBatch(webhook_ids, userId);
+        updated = await store.webhooks.disableBatch(webhook_ids, userId);
       }
 
       return reply.status(200).send({
@@ -516,21 +516,21 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
           throw new AppError(400, 'Set confirm_all to true to delete all webhooks', 'CONFIRMATION_REQUIRED');
         }
         
-        const allWebhooks = await store.getUserWebhooks(userId);
+        const allWebhooks = await store.webhooks.findByUserId(userId);
         const allIds = allWebhooks.map(w => w.id);
-        deleted = await store.deleteWebhooksBatch(allIds, userId);
+        deleted = await store.webhooks.deleteBatch(allIds, userId);
       } else {
         // Validate ownership of all webhooks (single batch query)
         try {
-          await store.validateWebhookOwnership(webhook_ids, userId);
+          await store.webhooks.validateOwnership(webhook_ids, userId);
         } catch (e: unknown) {
-          const err = e as { type: string; id: number };
-          if (err.type === 'not_found') throw new AppError(404, `Webhook ${err.id} not found`, 'WEBHOOK_NOT_FOUND');
-          if (err.type === 'access_denied') throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
+          const msg = e instanceof Error ? e.message : '';
+          if (msg.includes('not found')) throw new AppError(404, msg, 'WEBHOOK_NOT_FOUND');
+          if (msg.includes('Access denied')) throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
           throw e;
         }
         // Delete specific webhooks (optimized batch operation)
-        deleted = await store.deleteWebhooksBatch(webhook_ids, userId);
+        deleted = await store.webhooks.deleteBatch(webhook_ids, userId);
       }
 
       return reply.status(200).send({

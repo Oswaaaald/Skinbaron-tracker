@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,9 +23,9 @@ import {
 } from "lucide-react"
 import { apiClient, type AdminActionLog } from "@/lib/api"
 import { usePageVisible } from "@/hooks/use-page-visible"
-import { LoadingState } from "@/components/ui/loading-state"
+import { LogListSkeleton } from "@/components/ui/skeletons"
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_ACTION_TYPES, ADMIN_ACTION_CONFIG } from "@/lib/constants"
-import { formatRelativeDate } from "@/lib/formatters"
+import { LogEntryRow, LogScrollArea } from "@/components/log-entry-list"
 
 export function AdminActionLogs() {
   const [actionType, setActionType] = useState<string>("all")
@@ -102,6 +101,7 @@ export function AdminActionLogs() {
   }
 
   const initialLoading = isLoading && !data
+  const logs = useMemo(() => data?.data ?? [], [data])
 
   if (initialLoading) {
     return (
@@ -116,7 +116,7 @@ export function AdminActionLogs() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LoadingState variant="inline" />
+          <LogListSkeleton withFilters />
         </CardContent>
       </Card>
     )
@@ -139,8 +139,6 @@ export function AdminActionLogs() {
       </Card>
     )
   }
-
-  const logs = data.data || []
 
   return (
     <Card>
@@ -264,70 +262,53 @@ export function AdminActionLogs() {
         <Separator />
 
         {/* Logs Display */}
-        {logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No admin actions found
-          </p>
-        ) : (
-          <ScrollArea className="h-[600px] pr-4">
-            <div className="space-y-4">
-              {logs.map((log: AdminActionLog, index: number) => {
-                const config = ADMIN_ACTION_CONFIG[log.action] || {
-                  icon: Shield,
-                  label: log.action,
-                  variant: "outline" as const,
+        <LogScrollArea empty={logs.length === 0} emptyMessage="No admin actions found">
+          {logs.map((log: AdminActionLog, index: number) => {
+            const config = ADMIN_ACTION_CONFIG[log.action] || {
+              icon: Shield,
+              label: log.action,
+              variant: "outline" as const,
+            }
+
+            return (
+              <LogEntryRow
+                key={log.id}
+                icon={config.icon}
+                badgeLabel={config.label}
+                badgeVariant={config.variant}
+                date={log.created_at}
+                isLast={index === logs.length - 1}
+                belowContent={
+                  log.details ? (
+                    <p className="text-sm text-muted-foreground">
+                      {log.details}
+                    </p>
+                  ) : undefined
                 }
-
-                const Icon = config.icon
-
-                return (
-                  <div key={log.id}>
-                    <div className="flex items-start gap-4">
-                      <div className="mt-0.5">
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={config.variant} className="font-medium">
-                            {config.label}
-                          </Badge>
-                          <Badge variant="secondary" className="font-semibold">
-                            {log.admin_username || `Admin #${log.admin_user_id}`}
-                          </Badge>
-                          {log.target_username && (
-                            <>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              <Badge variant="outline">
-                                {log.target_username}
-                              </Badge>
-                            </>
-                          )}
-                          {log.target_user_id && !log.target_username && (
-                            <>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              <Badge variant="outline">
-                                User #{log.target_user_id}
-                              </Badge>
-                            </>
-                          )}
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {formatRelativeDate(log.created_at, 'fr')}
-                          </span>
-                        </div>
-                        {log.details && (
-                          <p className="text-sm text-muted-foreground">
-                            {log.details}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {index < logs.length - 1 && <Separator className="mt-4" />}
-                  </div>
-                )
-              })}
-            </div>
-          </ScrollArea>
-        )}
+              >
+                <Badge variant="secondary" className="font-semibold">
+                  {log.admin_username || `Admin #${log.admin_user_id}`}
+                </Badge>
+                {log.target_username && (
+                  <>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <Badge variant="outline">
+                      {log.target_username}
+                    </Badge>
+                  </>
+                )}
+                {log.target_user_id && !log.target_username && (
+                  <>
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <Badge variant="outline">
+                      User #{log.target_user_id}
+                    </Badge>
+                  </>
+                )}
+              </LogEntryRow>
+            )
+          })}
+        </LogScrollArea>
       </CardContent>
     </Card>
   )

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { LoadingState } from '@/components/ui/loading-state'
+import { WebhooksTableSkeleton } from '@/components/ui/skeletons'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -242,12 +242,12 @@ export function WebhooksTable() {
     setDeleteConfirmOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (webhookToDelete?.id) {
       deleteWebhookMutation.mutate(webhookToDelete.id)
     }
     setWebhookToDelete(null)
-  }
+  }, [webhookToDelete, deleteWebhookMutation])
 
   const handleSelectAll = () => {
     if (!webhooks) return
@@ -282,15 +282,15 @@ export function WebhooksTable() {
     setBatchAction('delete')
   }
 
-  const confirmBatchDelete = () => {
+  const confirmBatchDelete = useCallback(() => {
     const webhookIds = selectedWebhooks.size > 0 ? Array.from(selectedWebhooks) : undefined
     const confirmAll = selectedWebhooks.size === 0
     batchDeleteMutation.mutate({ webhookIds, confirmAll })
     setSelectedWebhooks(new Set())
-  }
+  }, [selectedWebhooks, batchDeleteMutation])
 
   if (isLoading) {
-    return <LoadingState variant="section" />
+    return <WebhooksTableSkeleton />
   }
 
   const hasWebhooks = webhooks && webhooks.length > 0

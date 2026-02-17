@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
 import { AppError } from '../lib/errors.js';
-import { appConfig } from '../lib/config.js';
+import { appConfig, RECOVERY_CODE_COUNT, RECOVERY_CODE_BYTES } from '../lib/config.js';
 import {
   Enable2FASchema,
   Disable2FASchema,
@@ -122,7 +122,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
@@ -240,14 +240,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const updates = validateWithZod(UpdateProfileSchema, request.body);
 
       // Get current user to check admin status
-      const currentUser = await store.getUserById(userId);
+      const currentUser = await store.users.findById(userId);
       if (!currentUser) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Check if username is already taken by another user
       if (updates.username) {
-        const existingUser = await store.getUserByUsername(updates.username);
+        const existingUser = await store.users.findByUsername(updates.username);
         if (existingUser && existingUser.id !== userId) {
           throw new AppError(400, 'Username already taken', 'USERNAME_TAKEN');
         }
@@ -255,7 +255,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Non-admin users can only change their email to one of their linked OAuth provider emails
       if (updates.email && !currentUser.is_admin) {
-        const oauthAccounts = await store.getOAuthAccountsByUserId(userId);
+        const oauthAccounts = await store.oauth.findByUserId(userId);
         const oauthEmails = oauthAccounts.map(a => a.provider_email).filter(Boolean);
         if (!oauthEmails.includes(updates.email)) {
           throw new AppError(403, 'You can only change your email to one of your linked OAuth provider emails', 'PERMISSION_DENIED');
@@ -264,24 +264,24 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Check if email is already taken by another user
       if (updates.email) {
-        const existingUser = await store.getUserByEmail(updates.email);
+        const existingUser = await store.users.findByEmail(updates.email);
         if (existingUser && existingUser.id !== userId) {
           throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
 
         // Also check if email is used as an OAuth provider email by another user
-        const oauthWithEmail = await store.findOAuthAccountByEmail(updates.email, userId);
+        const oauthWithEmail = await store.oauth.findByProviderEmail(updates.email, userId);
         if (oauthWithEmail) {
           throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
         }
       }
 
       // Update user profile
-      await store.updateUser(userId, updates);
+      await store.users.update(userId, updates);
       
       // Audit log for profile update - create separate logs for email and username changes
       if (updates.email) {
-        await store.createAuditLog(
+        await store.audit.createLog(
           userId,
           'email_changed',
           JSON.stringify({ new_email: updates.email }),
@@ -291,7 +291,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
       
       if (updates.username) {
-        await store.createAuditLog(
+        await store.audit.createLog(
           userId,
           'username_changed',
           JSON.stringify({ new_username: updates.username }),
@@ -301,7 +301,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
       
       // Get updated user data
-      const updatedUser = await store.getUserById(userId);
+      const updatedUser = await store.users.findById(userId);
       if (!updatedUser) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -359,7 +359,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const passwordData = validateWithZod(PasswordChangeSchema, request.body);
 
       // Get user
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -371,7 +371,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const isValidPassword = await AuthService.verifyPassword(passwordData.current_password, user.password_hash);
       if (!isValidPassword) {
         // Audit log for failed password change attempt
-        await store.createAuditLog(
+        await store.audit.createLog(
           userId,
           'password_change_failed',
           JSON.stringify({ reason: 'invalid_current_password' }),
@@ -384,7 +384,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Check if new password is same as current password
       const isSamePassword = await AuthService.verifyPassword(passwordData.new_password, user.password_hash);
       if (isSamePassword) {
-        await store.createAuditLog(
+        await store.audit.createLog(
           userId,
           'password_change_failed',
           JSON.stringify({ reason: 'same_password' }),
@@ -398,11 +398,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const newPasswordHash = await AuthService.hashPassword(passwordData.new_password);
 
       // Update password
-      await store.updateUser(userId, { password_hash: newPasswordHash });
+      await store.users.update(userId, { password_hash: newPasswordHash });
 
       // Invalidate all existing sessions (revoke all refresh tokens)
       // This forces re-login on all devices after a password change
-      await store.revokeAllRefreshTokensForUser(userId);
+      await store.auth.revokeAllForUser(userId);
 
       // Blacklist the current access token so it cannot be reused
       const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
@@ -410,12 +410,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
         const tokenPayload = AuthService.verifyToken(accessToken, 'access');
         if (tokenPayload?.jti) {
           const exp = tokenPayload.exp ? tokenPayload.exp * 1000 : Date.now();
-          await store.blacklistAccessToken(tokenPayload.jti, userId, exp, 'password_change');
+          await store.auth.blacklistAccessToken(tokenPayload.jti, userId, exp, 'password_change');
         }
       }
 
       // Audit log for successful password change
-      await store.createAuditLog(
+      await store.audit.createLog(
         userId,
         'password_changed',
         JSON.stringify({ success: true }),
@@ -465,7 +465,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const passwordData = validateWithZod(SetPasswordSchema, request.body);
 
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -477,10 +477,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       // Hash and set the new password
       const newPasswordHash = await AuthService.hashPassword(passwordData.new_password);
-      await store.updateUser(userId, { password_hash: newPasswordHash });
+      await store.users.update(userId, { password_hash: newPasswordHash });
 
       // Audit log
-      await store.createAuditLog(
+      await store.audit.createLog(
         userId,
         'password_changed',
         JSON.stringify({ method: 'set_initial_password' }),
@@ -529,7 +529,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
 
       const file = await request.file();
@@ -552,10 +552,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Update database
-      await store.updateUser(userId, { avatar_filename: filename });
+      await store.users.update(userId, { avatar_filename: filename });
 
       // Audit log
-      await store.createAuditLog(userId, 'avatar_uploaded', JSON.stringify({ filename }), getClientIp(request), request.headers['user-agent']);
+      await store.audit.createLog(userId, 'avatar_uploaded', JSON.stringify({ filename }), getClientIp(request), request.headers['user-agent']);
 
       const avatarUrl = AuthService.getAvatarUrl({ ...user, avatar_filename: filename }, appConfig.NEXT_PUBLIC_API_URL);
 
@@ -595,16 +595,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
 
       if (user.avatar_filename) {
         await deleteAvatarFile(user.avatar_filename);
       }
 
-      await store.updateUser(userId, { avatar_filename: null });
+      await store.users.update(userId, { avatar_filename: null });
 
-      await store.createAuditLog(userId, 'avatar_removed', JSON.stringify({ had_custom: !!user.avatar_filename }), getClientIp(request), request.headers['user-agent']);
+      await store.audit.createLog(userId, 'avatar_removed', JSON.stringify({ had_custom: !!user.avatar_filename }), getClientIp(request), request.headers['user-agent']);
 
       const avatarUrl = AuthService.getAvatarUrl({ ...user, avatar_filename: null }, appConfig.NEXT_PUBLIC_API_URL);
 
@@ -654,12 +654,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { use_gravatar } = validateWithZod(AvatarSettingsSchema, request.body);
 
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
 
-      await store.updateUser(userId, { use_gravatar });
+      await store.users.update(userId, { use_gravatar });
 
-      await store.createAuditLog(userId, 'gravatar_toggled', JSON.stringify({ use_gravatar }), getClientIp(request), request.headers['user-agent']);
+      await store.audit.createLog(userId, 'gravatar_toggled', JSON.stringify({ use_gravatar }), getClientIp(request), request.headers['user-agent']);
 
       const avatarUrl = AuthService.getAvatarUrl({ ...user, use_gravatar }, appConfig.NEXT_PUBLIC_API_URL);
 
@@ -687,18 +687,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
       // Collect all user data (no limits — full GDPR export)
-      const rules = await store.getRulesByUserId(userId);
-      const webhooks = await store.getUserWebhooksByUserId(userId, false); // Don't decrypt URLs
-      const alerts = await store.getAlertsByUserId(userId, 0, 0); // limit=0 → all alerts
-      const auditLogs = await store.getAuditLogsByUserId(userId, 0); // limit=0 → all logs
-      const oauthAccounts = await store.getOAuthAccountsByUserId(userId);
+      const rules = await store.rules.findByUserId(userId);
+      const webhooks = await store.webhooks.findByUserId(userId, false); // Don't decrypt URLs
+      const alerts = await store.alerts.findByUserId(userId, 0, 0); // limit=0 → all alerts
+      const auditLogs = await store.audit.getLogsByUserId(userId, 0); // limit=0 → all logs
+      const oauthAccounts = await store.oauth.findByUserId(userId);
       const passkeys = await store.passkeys.findByUserId(userId);
       const sanctionsHistory = await store.getSanctionsByUserId(userId, 0); // limit=0 → all sanctions
 
@@ -796,7 +796,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       };
 
       // Log the export action
-      await store.createAuditLog(userId, 'data_export', undefined, getClientIp(request), request.headers['user-agent']);
+      await store.audit.createLog(userId, 'data_export', undefined, getClientIp(request), request.headers['user-agent']);
 
       return reply.status(200).send({
         success: true,
@@ -840,7 +840,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { password, totp_code } = validateWithZod(DeleteAccountSchema, request.body);
 
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -867,7 +867,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         if (!totp_code) {
           throw new AppError(400, '2FA code is required to delete your account', 'TOTP_REQUIRED');
         }
-        const userWith2FA = await store.getUserById(userId, true);
+        const userWith2FA = await store.users.findById(userId, true);
         if (userWith2FA) {
           const otp = new OTP({ strategy: 'totp' });
           let isValid = false;
@@ -883,7 +883,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // OAuth-only users without 2FA can delete without extra verification (confirmed on frontend)
 
       // Log self-deletion in admin_actions (survives CASCADE delete on user)
-      await store.logAdminAction(
+      await store.audit.logAdminAction(
         userId,
         'account_self_deleted',
         userId,
@@ -896,7 +896,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
-      await store.deleteUser(userId);
+      await store.users.delete(userId);
 
       // Clear auth cookies so the browser doesn't retain stale tokens
       clearAuthCookies(reply);
@@ -940,7 +940,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
@@ -1043,20 +1043,20 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Code is valid — now consume (delete) the pending secret
       await store.challenges.consume(`2fa_secret:${userId}`);
 
-      // Generate 10 recovery codes
-      const recoveryCodes = Array.from({ length: 10 }, () => 
-        crypto.randomBytes(4).toString('hex').toUpperCase()
+      // Generate recovery codes
+      const recoveryCodes = Array.from({ length: RECOVERY_CODE_COUNT }, () => 
+        crypto.randomBytes(RECOVERY_CODE_BYTES).toString('hex').toUpperCase()
       );
 
       // Encrypt and save to database
-      await store.updateUser(userId, {
+      await store.users.update(userId, {
         totp_secret_encrypted: encryptData(secret),
         totp_enabled: true,
         recovery_codes_encrypted: encryptData(JSON.stringify(recoveryCodes)),
       });
 
       // Audit log
-      await store.createAuditLog(
+      await store.audit.createLog(
         userId,
         '2fa_enabled',
         JSON.stringify({ method: '2fa_enabled' }),
@@ -1109,7 +1109,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { password, totp_code } = validateWithZod(Disable2FASchema, request.body);
 
-      const user = await store.getUserById(userId, true);
+      const user = await store.users.findById(userId, true);
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
@@ -1143,14 +1143,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Disable 2FA
-      await store.updateUser(userId, {
+      await store.users.update(userId, {
         totp_secret_encrypted: null,
         totp_enabled: false,
         recovery_codes_encrypted: null,
       });
 
       // Audit log
-      await store.createAuditLog(
+      await store.audit.createLog(
         userId,
         '2fa_disabled',
         JSON.stringify({ method: '2fa_disabled' }),
@@ -1193,7 +1193,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
 
       if (!user) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
@@ -1259,7 +1259,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const user = await store.getUserById(userId);
+      const user = await store.users.findById(userId);
       if (!user) throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
 
       const existingKeys = await store.passkeys.findByUserId(userId);
@@ -1359,7 +1359,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         name: name || detectedName,
       });
 
-      await store.createAuditLog(
+      await store.audit.createLog(
         userId,
         'passkey_registered',
         JSON.stringify({ passkey_id: passkey.id, name: passkey.name, device_type: credentialDeviceType, aaguid }),
@@ -1440,7 +1440,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const deleted = await store.passkeys.delete(passkeyId, userId);
       if (!deleted) throw new AppError(404, 'Passkey not found', 'NOT_FOUND');
 
-      await store.createAuditLog(
+      await store.audit.createLog(
         userId,
         'passkey_deleted',
         JSON.stringify({ passkey_id: passkeyId }),
@@ -1496,7 +1496,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { limit } = validateWithZod(UserAuditQuerySchema, request.query);
 
-      const logs = await store.getAuditLogsByUserId(userId, limit);
+      const logs = await store.audit.getLogsByUserId(userId, limit);
 
       return reply.status(200).send({
         success: true,
@@ -1541,7 +1541,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   }, async (request, reply) => {
     try {
       const userId = getAuthUser(request).id;
-      const accounts = await store.getOAuthAccountsByUserId(userId);
+      const accounts = await store.oauth.findByUserId(userId);
       return reply.status(200).send({ success: true, data: accounts });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Get OAuth accounts');
@@ -1577,7 +1577,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     try {
       const user = getAuthUser(request);
       const { provider } = validateWithZod(OAuthUnlinkParamsSchema, request.params);
-      const accounts = await store.getOAuthAccountsByUserId(user.id);
+      const accounts = await store.oauth.findByUserId(user.id);
 
       const target = accounts.find(a => a.provider === provider);
       if (!target) {
@@ -1585,7 +1585,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // Prevent unlinking the last login method
-      const fullUser = await store.getUserById(user.id);
+      const fullUser = await store.users.findById(user.id);
       const hasPassword = !!fullUser?.password_hash;
       if (!hasPassword && accounts.length <= 1) {
         throw new AppError(
@@ -1595,9 +1595,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
         );
       }
 
-      await store.unlinkOAuthAccount(user.id, provider);
+      await store.oauth.unlink(user.id, provider);
 
-      await store.createAuditLog(
+      await store.audit.createLog(
         user.id,
         'oauth_unlinked',
         JSON.stringify({ provider }),
