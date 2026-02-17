@@ -248,4 +248,4 @@ Both application containers run with:
 
 ## License
 
-[MIT](LICENSE) — Copyright © 2024–2026 Oswaaaald
+[MIT](LICENSE) — Copyright © 2025–2026 Oswaaaald
