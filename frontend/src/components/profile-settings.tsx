@@ -558,7 +558,7 @@ export function ProfileSettings() {
       <TwoFactorSetup open={twoFactorDialog} onOpenChange={setTwoFactorDialog} />
 
       <Dialog open={disableTwoFactorDialog} onOpenChange={setDisableTwoFactorDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Disable Two-Factor Authentication?</DialogTitle>
             <DialogDescription>{user?.has_password ? 'Enter your password to confirm disabling 2FA' : 'Enter a 2FA code from your authenticator app to confirm'}</DialogDescription>
@@ -583,7 +583,7 @@ export function ProfileSettings() {
       </Dialog>
 
       <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>This will permanently delete your account and all associated data.</DialogDescription>

@@ -221,7 +221,7 @@ export function PasskeyManager() {
 
       {/* Rename Dialog */}
       <Dialog open={renameDialog} onOpenChange={(open) => { if (!open) { setRenameDialog(false); setRenameTarget(null); setRenameName('') } }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Rename Passkey</DialogTitle>
             <DialogDescription>Give this passkey a memorable name</DialogDescription>
