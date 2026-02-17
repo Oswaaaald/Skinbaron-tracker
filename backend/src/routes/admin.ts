@@ -621,7 +621,16 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Ban email for permanent restrictions if requested
       if (restriction_type === 'permanent' && ban_email) {
+        // Ban primary email
         await store.banEmail(user.email, reason, adminId);
+
+        // Ban all OAuth provider emails
+        const oauthAccounts = await store.getOAuthAccountsByUserId(id);
+        for (const acc of oauthAccounts) {
+          if (acc.provider_email && acc.provider_email !== user.email) {
+            await store.banEmail(acc.provider_email, reason, adminId);
+          }
+        }
       }
 
       const durationLabel = restriction_type === 'permanent'

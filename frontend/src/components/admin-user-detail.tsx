@@ -608,7 +608,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                               onChange={e => setBanEmail(e.target.checked)}
                               className="rounded"
                             />
-                            Also ban email ({detail.email}) to prevent re-registration
+                            Also ban email ({detail.email}) and linked OAuth emails to prevent re-registration
                           </label>
                         )}
 
