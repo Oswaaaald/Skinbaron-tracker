@@ -43,6 +43,13 @@
       "when": 1771365600000,
       "tag": "0005_avatar_support",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771372800000,
+      "tag": "0006_user_moderation",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Trash2, User, Users, Wrench } from 'lucide-react'
+import { Activity, AlertCircle, ArrowUpDown, Ban, ChevronLeft, ChevronRight, History, Search, Shield, ShieldOff, Snowflake, Trash2, User, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -39,6 +39,8 @@ interface AdminUser {
   email: string
   is_admin: boolean
   is_super_admin: boolean
+  is_frozen: boolean
+  is_banned: boolean
   created_at: string
   avatar_url: string | null
   stats: UserStats
@@ -550,19 +552,33 @@ export function AdminPanel() {
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    {user.is_super_admin ? (
-                      <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                        <Shield className="h-3 w-3" />
-                        Super Admin
-                      </Badge>
-                    ) : user.is_admin ? (
-                      <Badge variant="default" className="gap-1">
-                        <Shield className="h-3 w-3" />
-                        Admin
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">User</Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {user.is_super_admin ? (
+                        <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                          <Shield className="h-3 w-3" />
+                          Super Admin
+                        </Badge>
+                      ) : user.is_admin ? (
+                        <Badge variant="default" className="gap-1">
+                          <Shield className="h-3 w-3" />
+                          Admin
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">User</Badge>
+                      )}
+                      {user.is_banned && (
+                        <Badge variant="destructive" className="gap-1">
+                          <Ban className="h-3 w-3" />
+                          Banned
+                        </Badge>
+                      )}
+                      {user.is_frozen && !user.is_banned && (
+                        <Badge variant="secondary" className="gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                          <Snowflake className="h-3 w-3" />
+                          Frozen
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{user.stats.rules_count}</TableCell>
                   <TableCell>{user.stats.alerts_count}</TableCell>

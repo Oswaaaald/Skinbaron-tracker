@@ -224,6 +224,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(409, 'An account with this email already exists', 'USER_EXISTS');
       }
 
+      // Check if email is banned
+      if (await store.isEmailBanned(userData.email)) {
+        throw new AppError(403, 'This email address is not allowed', 'EMAIL_BANNED');
+      }
+
       // Check if username is taken
       const existingUsername = await store.getUserByUsername(userData.username);
       if (existingUsername) {
@@ -375,6 +380,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
         throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
       }
 
+      // Check moderation status
+      if (user.is_banned) {
+        throw new AppError(403, 'Your account has been permanently banned', 'ACCOUNT_BANNED');
+      }
+      if (user.is_frozen) {
+        throw new AppError(403, 'Your account has been temporarily suspended', 'ACCOUNT_FROZEN');
+      }
+
       // Check if 2FA is enabled
       if (user.totp_enabled) {
         const { totp_code } = request.body as { totp_code?: string };
@@ -483,6 +496,20 @@ export default async function authRoutes(fastify: FastifyInstance) {
           jti: payload.jti 
         }, 'Refresh token expired, revoked, or replaced');
         throw new AppError(401, 'Refresh token expired or revoked', 'REFRESH_TOKEN_EXPIRED');
+      }
+
+      // Check moderation status before refreshing
+      const refreshUser = await store.getUserById(payload.userId);
+      if (!refreshUser) {
+        throw new AppError(401, 'User account not found', 'USER_NOT_FOUND');
+      }
+      if (refreshUser.is_banned) {
+        await store.revokeAllRefreshTokensForUser(payload.userId);
+        throw new AppError(403, 'Your account has been permanently banned', 'ACCOUNT_BANNED');
+      }
+      if (refreshUser.is_frozen) {
+        await store.revokeAllRefreshTokensForUser(payload.userId);
+        throw new AppError(403, 'Your account has been temporarily suspended', 'ACCOUNT_FROZEN');
       }
 
       // Rotate refresh token
@@ -1054,6 +1081,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
         if (existingEmail) {
           reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
           throw new AppError(409, 'An account with this email was created while you were registering. Please try logging in.', 'EMAIL_TAKEN');
+        }
+
+        // Check if email is banned
+        if (await store.isEmailBanned(pending.email)) {
+          reply.clearCookie(OAUTH_PENDING_REG_COOKIE, pendingRegCookieOptions);
+          throw new AppError(403, 'This email address is not allowed', 'EMAIL_BANNED');
         }
 
         // Double-check OAuth account not taken

@@ -17,6 +17,12 @@ export const users = pgTable('users', {
   is_admin: boolean('is_admin').default(false).notNull(),
   is_super_admin: boolean('is_super_admin').default(false).notNull(),
   is_approved: boolean('is_approved').default(false).notNull(),
+  is_frozen: boolean('is_frozen').default(false).notNull(),
+  frozen_at: timestamp('frozen_at', { withTimezone: true }),
+  frozen_reason: text('frozen_reason'),
+  is_banned: boolean('is_banned').default(false).notNull(),
+  banned_at: timestamp('banned_at', { withTimezone: true }),
+  ban_reason: text('ban_reason'),
   totp_enabled: boolean('totp_enabled').default(false).notNull(),
   totp_secret_encrypted: text('totp_secret_encrypted'),
   recovery_codes_encrypted: text('recovery_codes_encrypted'),
@@ -92,6 +98,16 @@ export const ruleWebhooks = pgTable('rule_webhooks', {
 }, (table) => [
   primaryKey({ columns: [table.rule_id, table.webhook_id] }),
   index('idx_rule_webhooks_webhook').on(table.webhook_id),
+]);
+
+export const bannedEmails = pgTable('banned_emails', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  reason: text('reason'),
+  banned_by_admin_id: integer('banned_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('idx_banned_emails_email').on(table.email),
 ]);
 
 export const auditLog = pgTable('audit_log', {

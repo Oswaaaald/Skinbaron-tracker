@@ -163,6 +163,12 @@ export interface AdminUserDetail {
   is_admin: boolean;
   is_super_admin: boolean;
   is_approved: boolean;
+  is_frozen: boolean;
+  frozen_at: string | null;
+  frozen_reason: string | null;
+  is_banned: boolean;
+  banned_at: string | null;
+  ban_reason: string | null;
   totp_enabled: boolean;
   tos_accepted_at: string | null;
   created_at: string;
@@ -793,6 +799,18 @@ class ApiClient {
 
   async adminDeleteUserAvatar(userId: number): Promise<ApiResponse<{ avatar_url: string | null }>> {
     return this.delete(`/api/admin/users/${userId}/avatar`);
+  }
+
+  async adminFreezeUser(userId: number, is_frozen: boolean, reason?: string): Promise<ApiResponse<{ is_frozen: boolean }>> {
+    return this.patch(`/api/admin/users/${userId}/freeze`, { is_frozen, reason });
+  }
+
+  async adminBanUser(userId: number, is_banned: boolean, reason?: string, ban_email?: boolean): Promise<ApiResponse<{ is_banned: boolean }>> {
+    return this.patch(`/api/admin/users/${userId}/ban`, { is_banned, reason, ban_email });
+  }
+
+  async adminChangeUsername(userId: number, username: string): Promise<ApiResponse<{ username: string }>> {
+    return this.patch(`/api/admin/users/${userId}/username`, { username });
   }
 }
 

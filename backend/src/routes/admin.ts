@@ -64,6 +64,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
                   email: { type: 'string' },
                   is_admin: { type: 'boolean' },
                   is_super_admin: { type: 'boolean' },
+                  is_frozen: { type: 'boolean' },
+                  is_banned: { type: 'boolean' },
                   created_at: { type: 'string' },
                   avatar_url: { type: ['string', 'null'] },
                   stats: {
@@ -118,6 +120,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         email: user.email,
         is_admin: user.is_admin || false,
         is_super_admin: user.is_super_admin || false,
+        is_frozen: user.is_frozen || false,
+        is_banned: user.is_banned || false,
         created_at: user.created_at,
         avatar_url: AuthService.getAvatarUrl(user, appConfig.NEXT_PUBLIC_API_URL),
         stats: user.stats,
@@ -184,6 +188,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           is_admin: user.is_admin || false,
           is_super_admin: user.is_super_admin || false,
           is_approved: user.is_approved || false,
+          is_frozen: user.is_frozen || false,
+          frozen_at: user.frozen_at,
+          frozen_reason: user.frozen_reason,
+          is_banned: user.is_banned || false,
+          banned_at: user.banned_at,
+          ban_reason: user.ban_reason,
           totp_enabled: user.totp_enabled || false,
           tos_accepted_at: user.tos_accepted_at,
           created_at: user.created_at,
@@ -510,6 +520,196 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Toggle admin status');
+    }
+  });
+
+  // ==================== Moderation ====================
+
+  /**
+   * PATCH /api/admin/users/:id/freeze - Freeze/unfreeze a user account
+   * Frozen users cannot log in or make API requests until unfrozen.
+   */
+  fastify.patch('/users/:id/freeze', {
+    config: { rateLimit: adminWriteRateLimit },
+    schema: {
+      description: 'Freeze or unfreeze a user account (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
+      body: {
+        type: 'object',
+        required: ['is_frozen'],
+        properties: {
+          is_frozen: { type: 'boolean' },
+          reason: { type: 'string', maxLength: 500 },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const { is_frozen, reason } = request.body as { is_frozen: boolean; reason?: string };
+      const adminId = getAuthUser(request).id;
+
+      if (id === adminId) throw Errors.forbidden('You cannot freeze your own account');
+
+      const user = await store.getUserById(id);
+      if (!user) throw Errors.notFound('User');
+      if (user.is_super_admin) throw Errors.forbidden('Cannot moderate a super administrator');
+      if (user.is_admin) {
+        const currentAdmin = await store.getUserById(adminId);
+        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can freeze admins');
+      }
+
+      await store.updateUser(id, {
+        is_frozen,
+        frozen_at: is_frozen ? new Date() : null,
+        frozen_reason: is_frozen ? (reason || null) : null,
+      });
+
+      // Invalidate cache + revoke sessions if freezing
+      invalidateUserCache(id);
+      if (is_frozen) {
+        await store.revokeAllRefreshTokensForUser(id);
+      }
+
+      const action = is_frozen ? 'freeze_user' : 'unfreeze_user';
+      await store.logAdminAction(adminId, action, id, `${is_frozen ? 'Froze' : 'Unfroze'} ${user.username}${reason ? ` — ${reason}` : ''}`);
+      await store.createAuditLog(id, is_frozen ? 'account_frozen' : 'account_unfrozen', JSON.stringify({ admin_id: adminId, reason: reason || null }), getClientIp(request), request.headers['user-agent']);
+
+      return reply.status(200).send({
+        success: true,
+        message: `${user.username} has been ${is_frozen ? 'frozen' : 'unfrozen'}`,
+        data: { is_frozen },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Freeze user');
+    }
+  });
+
+  /**
+   * PATCH /api/admin/users/:id/ban - Ban/unban a user account
+   * Banned users cannot log in. Optionally bans their email(s) to prevent re-registration.
+   */
+  fastify.patch('/users/:id/ban', {
+    config: { rateLimit: adminWriteRateLimit },
+    schema: {
+      description: 'Ban or unban a user account (admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
+      body: {
+        type: 'object',
+        required: ['is_banned'],
+        properties: {
+          is_banned: { type: 'boolean' },
+          reason: { type: 'string', maxLength: 500 },
+          ban_email: { type: 'boolean', description: 'Also ban the user email to prevent re-registration' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const { is_banned, reason, ban_email } = request.body as { is_banned: boolean; reason?: string; ban_email?: boolean };
+      const adminId = getAuthUser(request).id;
+
+      if (id === adminId) throw Errors.forbidden('You cannot ban your own account');
+
+      const user = await store.getUserById(id);
+      if (!user) throw Errors.notFound('User');
+      if (user.is_super_admin) throw Errors.forbidden('Cannot moderate a super administrator');
+      if (user.is_admin) {
+        const currentAdmin = await store.getUserById(adminId);
+        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can ban admins');
+      }
+
+      await store.updateUser(id, {
+        is_banned,
+        banned_at: is_banned ? new Date() : null,
+        ban_reason: is_banned ? (reason || null) : null,
+        // Unfreeze if banning (ban supersedes freeze)
+        ...(is_banned ? { is_frozen: false, frozen_at: null, frozen_reason: null } : {}),
+      });
+
+      // Invalidate cache + revoke sessions if banning
+      invalidateUserCache(id);
+      if (is_banned) {
+        await store.revokeAllRefreshTokensForUser(id);
+        // Optionally ban email
+        if (ban_email) {
+          await store.banEmail(user.email, reason || 'Account banned', adminId);
+        }
+      } else {
+        // Unban: also remove email from banned list
+        await store.unbanEmail(user.email);
+      }
+
+      const action = is_banned ? 'ban_user' : 'unban_user';
+      await store.logAdminAction(adminId, action, id, `${is_banned ? 'Banned' : 'Unbanned'} ${user.username}${reason ? ` — ${reason}` : ''}${ban_email ? ' (email banned)' : ''}`);
+      await store.createAuditLog(id, is_banned ? 'account_banned' : 'account_unbanned', JSON.stringify({ admin_id: adminId, reason: reason || null, email_banned: ban_email || false }), getClientIp(request), request.headers['user-agent']);
+
+      return reply.status(200).send({
+        success: true,
+        message: `${user.username} has been ${is_banned ? 'banned' : 'unbanned'}`,
+        data: { is_banned },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Ban user');
+    }
+  });
+
+  /**
+   * PATCH /api/admin/users/:id/username - Change a user's username (admin moderation)
+   */
+  fastify.patch('/users/:id/username', {
+    config: { rateLimit: adminWriteRateLimit },
+    schema: {
+      description: 'Change a user username (admin moderation)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
+      body: {
+        type: 'object',
+        required: ['username'],
+        properties: {
+          username: { type: 'string', minLength: 3, maxLength: 32, pattern: '^[a-zA-Z0-9_]+$' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params as { id: number };
+      const { username } = request.body as { username: string };
+      const adminId = getAuthUser(request).id;
+
+      const user = await store.getUserById(id);
+      if (!user) throw Errors.notFound('User');
+
+      if (user.username === username) {
+        throw Errors.badRequest('New username is the same as the current one');
+      }
+
+      // Check uniqueness
+      const existing = await store.getUserByUsername(username);
+      if (existing) {
+        throw Errors.conflict('This username is already taken');
+      }
+
+      const oldUsername = user.username;
+      await store.updateUser(id, { username });
+      invalidateUserCache(id);
+
+      await store.logAdminAction(adminId, 'change_username', id, `Changed username from "${oldUsername}" to "${username}"`);
+      await store.createAuditLog(id, 'username_changed', JSON.stringify({ old_username: oldUsername, new_username: username, changed_by_admin: adminId }), getClientIp(request), request.headers['user-agent']);
+
+      return reply.status(200).send({
+        success: true,
+        message: `Username changed from "${oldUsername}" to "${username}"`,
+        data: { username },
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Change username');
     }
   });
 

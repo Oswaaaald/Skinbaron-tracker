@@ -125,6 +125,14 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
     throw new AppError(403, 'Your account is awaiting admin approval', 'PENDING_APPROVAL');
   }
 
+  if (user.is_banned) {
+    throw new AppError(403, 'Your account has been permanently banned', 'ACCOUNT_BANNED');
+  }
+
+  if (user.is_frozen) {
+    throw new AppError(403, 'Your account has been temporarily suspended', 'ACCOUNT_FROZEN');
+  }
+
   // Attach user to request (type-safe)
   attachUser(request, user);
 }

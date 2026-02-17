@@ -272,6 +272,25 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       case "gravatar_toggled":
         return data['use_gravatar'] ? "Gravatar fallback enabled" : "Gravatar fallback disabled";
       
+      case "account_frozen":
+        return data['reason'] ? `Account frozen: ${String(data['reason'])}` : "Account frozen by admin";
+      
+      case "account_unfrozen":
+        return "Account unfrozen by admin";
+      
+      case "account_banned":
+        return data['reason'] 
+          ? `Account banned: ${String(data['reason'])}${data['email_banned'] ? ' (email also banned)' : ''}`
+          : `Account banned by admin${data['email_banned'] ? ' (email also banned)' : ''}`;
+      
+      case "account_unbanned":
+        return "Account unbanned by admin";
+      
+      case "username_changed":
+        return data['changed_by_admin']
+          ? `Username changed by admin: "${String(data['old_username'])}" → "${String(data['new_username'])}"`
+          : `New username: ${String(data['new_username'])}`;
+      
       case "user_deleted":
         return "";
       

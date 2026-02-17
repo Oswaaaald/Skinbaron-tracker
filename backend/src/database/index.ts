@@ -9,6 +9,8 @@ import { AuditRepository } from './repositories/audit.repository.js';
 import { OAuthRepository } from './repositories/oauth.repository.js';
 import { PasskeysRepository } from './repositories/passkeys.repository.js';
 import type { User, Rule, Alert, UserWebhook, CreateAlert, CreateRule, RefreshTokenRecord, AuditLog, OAuthAccount } from './schema.js';
+import { bannedEmails } from './schema.js';
+import { eq } from 'drizzle-orm';
 
 class Store {
   public users: UsersRepository;
@@ -83,6 +85,31 @@ class Store {
 
   async searchUsers(query: string) {
     return this.users.searchUsers(query);
+  }
+
+  // ==================== Banned emails ====================
+
+  async isEmailBanned(email: string): Promise<boolean> {
+    const [result] = await db.select({ id: bannedEmails.id })
+      .from(bannedEmails)
+      .where(eq(bannedEmails.email, email.toLowerCase().trim()))
+      .limit(1);
+    return !!result;
+  }
+
+  async banEmail(email: string, reason: string | null, adminId: number): Promise<void> {
+    await db.insert(bannedEmails).values({
+      email: email.toLowerCase().trim(),
+      reason,
+      banned_by_admin_id: adminId,
+    }).onConflictDoNothing();
+  }
+
+  async unbanEmail(email: string): Promise<boolean> {
+    const result = await db.delete(bannedEmails)
+      .where(eq(bannedEmails.email, email.toLowerCase().trim()))
+      .returning({ id: bannedEmails.id });
+    return result.length > 0;
   }
 
   // ==================== Rule operations ====================

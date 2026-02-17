@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Shield, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle, Camera, Trash2 } from 'lucide-react'
+import { Shield, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle, Camera, Trash2, Snowflake, Ban, Pencil, Check, X } from 'lucide-react'
 import { apiClient, type AdminUserDetail } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { extractErrorMessage } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import Image from 'next/image'
 import type { ReactNode } from 'react'
 
@@ -42,6 +43,12 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [removingAvatar, setRemovingAvatar] = useState(false)
+  const [freezeReason, setFreezeReason] = useState('')
+  const [banReason, setBanReason] = useState('')
+  const [banEmail, setBanEmail] = useState(true)
+  const [moderating, setModerating] = useState<string | null>(null)
+  const [editingUsername, setEditingUsername] = useState(false)
+  const [newUsername, setNewUsername] = useState('')
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin-user-detail', userId],
@@ -71,6 +78,69 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
       toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed to remove avatar'), variant: 'destructive' })
     } finally {
       setRemovingAvatar(false)
+    }
+  }
+
+  const invalidateDetail = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-user-detail', userId] })
+    void queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+  }
+
+  const handleFreeze = async (freeze: boolean) => {
+    if (!userId) return
+    setModerating('freeze')
+    try {
+      const res = await apiClient.adminFreezeUser(userId, freeze, freezeReason || undefined)
+      if (res.success) {
+        toast({ title: freeze ? '🧊 User frozen' : '✅ User unfrozen', description: res.message })
+        setFreezeReason('')
+        invalidateDetail()
+      } else {
+        toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed'), variant: 'destructive' })
+    } finally {
+      setModerating(null)
+    }
+  }
+
+  const handleBan = async (ban: boolean) => {
+    if (!userId) return
+    setModerating('ban')
+    try {
+      const res = await apiClient.adminBanUser(userId, ban, banReason || undefined, ban ? banEmail : undefined)
+      if (res.success) {
+        toast({ title: ban ? '🔨 User banned' : '✅ User unbanned', description: res.message })
+        setBanReason('')
+        invalidateDetail()
+      } else {
+        toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed'), variant: 'destructive' })
+    } finally {
+      setModerating(null)
+    }
+  }
+
+  const handleChangeUsername = async () => {
+    if (!userId || !newUsername.trim()) return
+    setModerating('username')
+    try {
+      const res = await apiClient.adminChangeUsername(userId, newUsername.trim())
+      if (res.success) {
+        toast({ title: '✅ Username changed', description: res.message })
+        setEditingUsername(false)
+        setNewUsername('')
+        invalidateDetail()
+      } else {
+        toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed'), variant: 'destructive' })
+    } finally {
+      setModerating(null)
     }
   }
 
@@ -130,7 +200,35 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Username</span>
-                    <p className="font-medium">{detail.username}</p>
+                    <div className="flex items-center gap-1.5">
+                      {editingUsername ? (
+                        <>
+                          <Input
+                            value={newUsername}
+                            onChange={e => setNewUsername(e.target.value)}
+                            className="h-7 text-sm w-28"
+                            placeholder={detail.username}
+                            maxLength={32}
+                            onKeyDown={e => { if (e.key === 'Enter') void handleChangeUsername(); if (e.key === 'Escape') { setEditingUsername(false); setNewUsername('') } }}
+                          />
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleChangeUsername()} disabled={moderating === 'username' || !newUsername.trim()}>
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(false); setNewUsername('') }}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium">{detail.username}</p>
+                          {!detail.is_super_admin && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(true); setNewUsername(detail.username) }}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Email</span>
@@ -159,10 +257,22 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                   </div>
                   <div>
                     <span className="text-muted-foreground">Status</span>
-                    <div className="mt-0.5">
-                      <Badge variant={detail.is_approved ? 'default' : 'secondary'}>
-                        {detail.is_approved ? 'Approved' : 'Pending'}
-                      </Badge>
+                    <div className="mt-0.5 flex flex-wrap gap-1">
+                      {detail.is_banned ? (
+                        <Badge variant="destructive" className="gap-1">
+                          <Ban className="h-3 w-3" />
+                          Banned
+                        </Badge>
+                      ) : detail.is_frozen ? (
+                        <Badge variant="secondary" className="gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                          <Snowflake className="h-3 w-3" />
+                          Frozen
+                        </Badge>
+                      ) : (
+                        <Badge variant={detail.is_approved ? 'default' : 'secondary'}>
+                          {detail.is_approved ? 'Approved' : 'Pending'}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -180,6 +290,100 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                 </div>
               </CardContent>
             </Card>
+
+            {/* Moderation */}
+            {!detail.is_super_admin && (
+              <Card className="border-amber-500/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <Shield className="h-4 w-4" />
+                    Moderation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Freeze */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Snowflake className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium">Freeze account</span>
+                      </div>
+                      {detail.is_frozen ? (
+                        <Button size="sm" variant="outline" onClick={() => void handleFreeze(false)} disabled={moderating !== null || detail.is_banned}>
+                          {moderating === 'freeze' ? <LoadingSpinner size="sm" inline /> : 'Unfreeze'}
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="secondary" onClick={() => void handleFreeze(true)} disabled={moderating !== null || detail.is_banned} className="gap-1">
+                          {moderating === 'freeze' ? <LoadingSpinner size="sm" inline /> : <><Snowflake className="h-3 w-3" /> Freeze</>}
+                        </Button>
+                      )}
+                    </div>
+                    {detail.is_frozen && detail.frozen_reason && (
+                      <p className="text-xs text-muted-foreground bg-blue-500/10 rounded px-2 py-1">
+                        Reason: {detail.frozen_reason}
+                        {detail.frozen_at && <span className="ml-2 opacity-60">({formatDate(detail.frozen_at)})</span>}
+                      </p>
+                    )}
+                    {!detail.is_frozen && !detail.is_banned && (
+                      <Input
+                        value={freezeReason}
+                        onChange={e => setFreezeReason(e.target.value)}
+                        placeholder="Reason (optional)"
+                        className="h-7 text-xs"
+                        maxLength={500}
+                      />
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Ban */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Ban className="h-4 w-4 text-red-500" />
+                        <span className="text-sm font-medium">Ban account</span>
+                      </div>
+                      {detail.is_banned ? (
+                        <Button size="sm" variant="outline" onClick={() => void handleBan(false)} disabled={moderating !== null}>
+                          {moderating === 'ban' ? <LoadingSpinner size="sm" inline /> : 'Unban'}
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="destructive" onClick={() => void handleBan(true)} disabled={moderating !== null} className="gap-1">
+                          {moderating === 'ban' ? <LoadingSpinner size="sm" inline /> : <><Ban className="h-3 w-3" /> Ban</>}
+                        </Button>
+                      )}
+                    </div>
+                    {detail.is_banned && detail.ban_reason && (
+                      <p className="text-xs text-muted-foreground bg-red-500/10 rounded px-2 py-1">
+                        Reason: {detail.ban_reason}
+                        {detail.banned_at && <span className="ml-2 opacity-60">({formatDate(detail.banned_at)})</span>}
+                      </p>
+                    )}
+                    {!detail.is_banned && (
+                      <div className="space-y-2">
+                        <Input
+                          value={banReason}
+                          onChange={e => setBanReason(e.target.value)}
+                          placeholder="Reason (optional)"
+                          className="h-7 text-xs"
+                          maxLength={500}
+                        />
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={banEmail}
+                            onChange={e => setBanEmail(e.target.checked)}
+                            className="rounded"
+                          />
+                          Also ban email ({detail.email}) to prevent re-registration
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Security */}
             <Card>
