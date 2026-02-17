@@ -290,6 +290,14 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return `Account unrestricted ${adminName}${reason}`;
       }
       
+      case "sanction_deleted": {
+        const adminName = data['deleted_by_admin_username'] ? `by ${String(data['deleted_by_admin_username'])}` : 'by admin';
+        const sanctionAction = String(data['action'] || 'unknown');
+        const rType = data['restriction_type'] ? ` (${String(data['restriction_type'])})` : '';
+        const reason = data['reason'] ? ` — reason: ${String(data['reason'])}` : '';
+        return `${sanctionAction}${rType} sanction removed ${adminName}${reason}`;
+      }
+      
       case "username_changed":
         return data['changed_by_admin']
           ? `Username changed by admin: "${String(data['old_username'])}" → "${String(data['new_username'])}"`

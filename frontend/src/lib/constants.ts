@@ -38,6 +38,7 @@ import {
   Fingerprint,
   Camera,
   Ban,
+  Trash2,
   type LucideIcon
 } from "lucide-react"
 
@@ -73,6 +74,7 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   gravatar_toggled: { icon: Camera, label: "Gravatar Setting Changed", variant: "outline" },
   account_restricted: { icon: Ban, label: "Account Restricted", variant: "destructive" },
   account_unrestricted: { icon: Ban, label: "Account Unrestricted", variant: "default" },
+  sanction_deleted: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },
 } as const;
 
 /** Event type options for filter dropdowns */
@@ -104,6 +106,7 @@ export const AUDIT_EVENT_TYPES = [
   { value: "gravatar_toggled", label: "Gravatar Setting Changed" },
   { value: "account_restricted", label: "Account Restricted" },
   { value: "account_unrestricted", label: "Account Unrestricted" },
+  { value: "sanction_deleted", label: "Sanction Deleted" },
 ] as const;
 
 // ==================== QUERY KEYS ====================
