@@ -64,7 +64,6 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   user_promoted: { icon: Shield, label: "Promoted to Admin", variant: "default" },
   user_demoted: { icon: ShieldOff, label: "Admin Privileges Revoked", variant: "secondary" },
   user_deleted: { icon: ShieldAlert, label: "Account Deleted", variant: "destructive" },
-  account_self_deleted: { icon: ShieldAlert, label: "Self-Deleted Account", variant: "destructive" },
   data_export: { icon: Download, label: "Data Export", variant: "outline" },
   oauth_register: { icon: UserPlus, label: "OAuth Registration", variant: "default" },
   oauth_linked: { icon: Link2, label: "Account Linked", variant: "default" },
@@ -104,6 +103,7 @@ export const ADMIN_ACTION_CONFIG: Record<string, {
   reset_passkeys: { icon: RotateCcw, label: "Passkeys Reset", variant: "destructive" },
   reset_sessions: { icon: LogOut, label: "Sessions Revoked", variant: "destructive" },
   force_scheduler: { icon: AlertCircle, label: "Scheduler Forced", variant: "outline" },
+  account_self_deleted: { icon: ShieldAlert, label: "Self-Deleted Account", variant: "destructive" },
 } as const;
 
 /** Action type options for admin logs filter dropdown */
@@ -123,6 +123,7 @@ export const ADMIN_ACTION_TYPES = [
   { value: "reset_passkeys", label: "Passkeys Reset" },
   { value: "reset_sessions", label: "Sessions Revoked" },
   { value: "force_scheduler", label: "Scheduler Forced" },
+  { value: "account_self_deleted", label: "Account Self-Deleted" },
 ] as const;
 
 /** Event type options for filter dropdowns */
@@ -142,7 +143,6 @@ export const AUDIT_EVENT_TYPES = [
   { value: "user_promoted", label: "User Promoted" },
   { value: "user_demoted", label: "User Demoted" },
   { value: "user_deleted", label: "User Deleted" },
-  { value: "account_self_deleted", label: "Account Self-Deleted" },
   { value: "data_export", label: "Data Export" },
   { value: "oauth_register", label: "OAuth Registration" },
   { value: "oauth_linked", label: "Account Linked" },

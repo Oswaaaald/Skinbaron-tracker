@@ -275,6 +275,9 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       
       case "passkey_deleted":
         return `Passkey removed`;
+
+      case "data_export":
+        return "Personal data exported (GDPR)";
       
       case "avatar_uploaded":
         return "Custom avatar uploaded";

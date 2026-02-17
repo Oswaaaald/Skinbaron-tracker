@@ -350,19 +350,22 @@ async function registerPlugins() {
     const { AppError } = await import('./lib/errors.js');
     const { handleRouteError } = await import('./lib/validation-handler.js');
 
-    // Rate limit on OAuth browser-navigation routes → redirect instead of JSON 429
+    // OAuth browser-navigation routes must ALWAYS redirect — never return JSON
+    // Covers: rate limit (429), schema validation (400), AppError, unexpected crashes
     if (
-      (error as { statusCode?: number }).statusCode === 429 &&
       request.method === 'GET' &&
-      request.url.startsWith('/api/auth/oauth/')
+      request.url.startsWith('/api/auth/oauth/') &&
+      !request.url.endsWith('/providers') // exclude the JSON-only providers endpoint
     ) {
-      // Clear state cookie if present (mirrors fail/failLink in the callback route)
       reply.clearCookie(OAUTH_STATE_COOKIE, baseCookieOptions());
-      // Logged-in user → link flow (same detection as the /oauth/:provider initiation route)
       const isLinkFlow = !!request.cookies?.[ACCESS_COOKIE];
+      const reason = (error as { statusCode?: number }).statusCode === 429
+        ? 'rate_limited'
+        : 'oauth_server_error';
       const target = isLinkFlow
-        ? `${appConfig.CORS_ORIGIN}/settings?link_error=rate_limited`
-        : `${appConfig.CORS_ORIGIN}/login?error=rate_limited`;
+        ? `${appConfig.CORS_ORIGIN}/settings?link_error=${reason}`
+        : `${appConfig.CORS_ORIGIN}/login?error=${reason}`;
+      request.log.error({ err: error, url: request.url }, 'OAuth browser route error — redirecting');
       return reply.redirect(target);
     }
 
