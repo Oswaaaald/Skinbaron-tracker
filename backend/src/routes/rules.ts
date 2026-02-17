@@ -444,15 +444,14 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           .map(r => r.id);
         updated = await store.enableRulesBatch(allIds, userId);
       } else {
-        // Validate ownership of all rules
-        for (const ruleId of rule_ids) {
-          const rule = await store.getRuleById(ruleId);
-          if (!rule) {
-            throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
-          }
-          if (rule.user_id !== userId) {
-            throw new AppError(403, 'You can only enable your own rules', 'ACCESS_DENIED');
-          }
+        // Validate ownership of all rules (single batch query)
+        try {
+          await store.validateRuleOwnership(rule_ids, userId);
+        } catch (e: unknown) {
+          const err = e as { type: string; id: number };
+          if (err.type === 'not_found') throw new AppError(404, `Rule ${err.id} not found`, 'RULE_NOT_FOUND');
+          if (err.type === 'access_denied') throw new AppError(403, 'You can only enable your own rules', 'ACCESS_DENIED');
+          throw e;
         }
         // Enable specific rules (optimized batch operation)
         updated = await store.enableRulesBatch(rule_ids, userId);
@@ -514,15 +513,14 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           .map(r => r.id);
         updated = await store.disableRulesBatch(allIds, userId);
       } else {
-        // Validate ownership of all rules
-        for (const ruleId of rule_ids) {
-          const rule = await store.getRuleById(ruleId);
-          if (!rule) {
-            throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
-          }
-          if (rule.user_id !== userId) {
-            throw new AppError(403, 'You can only disable your own rules', 'ACCESS_DENIED');
-          }
+        // Validate ownership of all rules (single batch query)
+        try {
+          await store.validateRuleOwnership(rule_ids, userId);
+        } catch (e: unknown) {
+          const err = e as { type: string; id: number };
+          if (err.type === 'not_found') throw new AppError(404, `Rule ${err.id} not found`, 'RULE_NOT_FOUND');
+          if (err.type === 'access_denied') throw new AppError(403, 'You can only disable your own rules', 'ACCESS_DENIED');
+          throw e;
         }
         // Disable specific rules (optimized batch operation)
         updated = await store.disableRulesBatch(rule_ids, userId);
@@ -592,15 +590,14 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
           .map(r => r.id);
         deleted = await store.deleteRulesBatch(allIds, userId);
       } else {
-        // Validate ownership of all rules
-        for (const ruleId of rule_ids) {
-          const rule = await store.getRuleById(ruleId);
-          if (!rule) {
-            throw new AppError(404, `Rule ${ruleId} not found`, 'RULE_NOT_FOUND');
-          }
-          if (rule.user_id !== userId) {
-            throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
-          }
+        // Validate ownership of all rules (single batch query)
+        try {
+          await store.validateRuleOwnership(rule_ids, userId);
+        } catch (e: unknown) {
+          const err = e as { type: string; id: number };
+          if (err.type === 'not_found') throw new AppError(404, `Rule ${err.id} not found`, 'RULE_NOT_FOUND');
+          if (err.type === 'access_denied') throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
+          throw e;
         }
         // Delete specific rules (optimized batch operation)
         deleted = await store.deleteRulesBatch(rule_ids, userId);

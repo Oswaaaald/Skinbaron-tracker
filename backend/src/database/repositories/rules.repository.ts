@@ -147,4 +147,21 @@ export class RulesRepository {
       .where(eq(rules.user_id, userId));
     return result?.value ?? 0;
   }
+
+  /**
+   * Validate that all given rule IDs exist and belong to the user.
+   * Throws descriptive info if any are missing or not owned.
+   */
+  async validateOwnership(ruleIds: number[], userId: number): Promise<void> {
+    if (ruleIds.length === 0) return;
+    const rows = await this.db.select({ id: rules.id, user_id: rules.user_id })
+      .from(rules)
+      .where(inArray(rules.id, ruleIds));
+    const found = new Map(rows.map(r => [r.id, r.user_id]));
+    for (const id of ruleIds) {
+      const ownerId = found.get(id);
+      if (ownerId === undefined) throw { type: 'not_found' as const, id };
+      if (ownerId !== userId) throw { type: 'access_denied' as const, id };
+    }
+  }
 }

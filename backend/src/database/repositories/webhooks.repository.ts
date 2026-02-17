@@ -124,4 +124,21 @@ export class WebhooksRepository {
 
     return result.map(w => this.withDecryptedUrl(w));
   }
+
+  /**
+   * Validate that all given webhook IDs exist and belong to the user.
+   * Throws descriptive info if any are missing or not owned.
+   */
+  async validateOwnership(webhookIds: number[], userId: number): Promise<void> {
+    if (webhookIds.length === 0) return;
+    const rows = await this.db.select({ id: userWebhooks.id, user_id: userWebhooks.user_id })
+      .from(userWebhooks)
+      .where(inArray(userWebhooks.id, webhookIds));
+    const found = new Map(rows.map(r => [r.id, r.user_id]));
+    for (const id of webhookIds) {
+      const ownerId = found.get(id);
+      if (ownerId === undefined) throw { type: 'not_found' as const, id };
+      if (ownerId !== userId) throw { type: 'access_denied' as const, id };
+    }
+  }
 }

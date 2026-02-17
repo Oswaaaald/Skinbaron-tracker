@@ -378,15 +378,14 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         const allIds = allWebhooks.filter(w => !w.is_active).map(w => w.id);
         updated = await store.enableWebhooksBatch(allIds, userId);
       } else {
-        // Validate ownership of all webhooks
-        for (const webhookId of webhook_ids) {
-          const webhook = await store.getUserWebhookById(webhookId);
-          if (!webhook) {
-            throw new AppError(404, `Webhook ${webhookId} not found`, 'WEBHOOK_NOT_FOUND');
-          }
-          if (webhook.user_id !== userId) {
-            throw new AppError(403, 'You can only enable your own webhooks', 'ACCESS_DENIED');
-          }
+        // Validate ownership of all webhooks (single batch query)
+        try {
+          await store.validateWebhookOwnership(webhook_ids, userId);
+        } catch (e: unknown) {
+          const err = e as { type: string; id: number };
+          if (err.type === 'not_found') throw new AppError(404, `Webhook ${err.id} not found`, 'WEBHOOK_NOT_FOUND');
+          if (err.type === 'access_denied') throw new AppError(403, 'You can only enable your own webhooks', 'ACCESS_DENIED');
+          throw e;
         }
         // Enable specific webhooks (optimized batch operation)
         updated = await store.enableWebhooksBatch(webhook_ids, userId);
@@ -446,15 +445,14 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         const allIds = allWebhooks.filter(w => w.is_active).map(w => w.id);
         updated = await store.disableWebhooksBatch(allIds, userId);
       } else {
-        // Validate ownership of all webhooks
-        for (const webhookId of webhook_ids) {
-          const webhook = await store.getUserWebhookById(webhookId);
-          if (!webhook) {
-            throw new AppError(404, `Webhook ${webhookId} not found`, 'WEBHOOK_NOT_FOUND');
-          }
-          if (webhook.user_id !== userId) {
-            throw new AppError(403, 'You can only disable your own webhooks', 'ACCESS_DENIED');
-          }
+        // Validate ownership of all webhooks (single batch query)
+        try {
+          await store.validateWebhookOwnership(webhook_ids, userId);
+        } catch (e: unknown) {
+          const err = e as { type: string; id: number };
+          if (err.type === 'not_found') throw new AppError(404, `Webhook ${err.id} not found`, 'WEBHOOK_NOT_FOUND');
+          if (err.type === 'access_denied') throw new AppError(403, 'You can only disable your own webhooks', 'ACCESS_DENIED');
+          throw e;
         }
         // Disable specific webhooks (optimized batch operation)
         updated = await store.disableWebhooksBatch(webhook_ids, userId);
@@ -522,15 +520,14 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
         const allIds = allWebhooks.map(w => w.id);
         deleted = await store.deleteWebhooksBatch(allIds, userId);
       } else {
-        // Validate ownership of all webhooks
-        for (const webhookId of webhook_ids) {
-          const webhook = await store.getUserWebhookById(webhookId);
-          if (!webhook) {
-            throw new AppError(404, `Webhook ${webhookId} not found`, 'WEBHOOK_NOT_FOUND');
-          }
-          if (webhook.user_id !== userId) {
-            throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
-          }
+        // Validate ownership of all webhooks (single batch query)
+        try {
+          await store.validateWebhookOwnership(webhook_ids, userId);
+        } catch (e: unknown) {
+          const err = e as { type: string; id: number };
+          if (err.type === 'not_found') throw new AppError(404, `Webhook ${err.id} not found`, 'WEBHOOK_NOT_FOUND');
+          if (err.type === 'access_denied') throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
+          throw e;
         }
         // Delete specific webhooks (optimized batch operation)
         deleted = await store.deleteWebhooksBatch(webhook_ids, userId);

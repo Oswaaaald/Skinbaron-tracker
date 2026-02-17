@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { passkeys } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
 import type { Passkey } from '../schema.js';
@@ -60,9 +60,9 @@ export class PasskeysRepository {
   }
 
   async countByUserId(userId: number): Promise<number> {
-    const rows = await this.db.select({ id: passkeys.id })
+    const [row] = await this.db.select({ value: count() })
       .from(passkeys)
       .where(eq(passkeys.user_id, userId));
-    return rows.length;
+    return row?.value ?? 0;
   }
 }

@@ -56,7 +56,7 @@ export class NotificationService {
   }
 
   /**
-   * Send notification to Discord webhook
+   * Send notification to Discord webhook with retry + exponential backoff
    */
   async sendNotification(
     webhookUrl: string, 
@@ -72,28 +72,65 @@ export class NotificationService {
       // Validate payload
       const validatedPayload = DiscordWebhookPayloadSchema.parse(payload);
 
-      // AbortController for timeout (10 seconds)
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const maxRetries = 3;
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(validatedPayload),
-        signal: controller.signal,
-      });
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        // AbortController for timeout (10 seconds)
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
 
-      clearTimeout(timeout);
+        try {
+          const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(validatedPayload),
+            signal: controller.signal,
+          });
 
-      if (response.ok) {
-        return true;
-      } else {
-        const errorBody = await response.text().catch(() => 'Unable to read response body');
-        this.logger.error({ status: response.status, errorBody }, '[Notifier] Discord webhook failed');
-        return false;
+          clearTimeout(timeout);
+
+          if (response.ok) {
+            return true;
+          }
+
+          // Rate limited — respect Retry-After header
+          if (response.status === 429 && attempt < maxRetries) {
+            const retryAfter = Number(response.headers.get('Retry-After') || '0');
+            const backoffMs = Math.max(retryAfter * 1000, 1000 * 2 ** attempt);
+            this.logger.warn({ attempt, retryAfter, backoffMs }, '[Notifier] Rate limited, retrying');
+            await new Promise((r) => setTimeout(r, backoffMs));
+            continue;
+          }
+
+          // Server error — retry with backoff
+          if (response.status >= 500 && attempt < maxRetries) {
+            const backoffMs = 1000 * 2 ** attempt;
+            this.logger.warn({ attempt, status: response.status, backoffMs }, '[Notifier] Server error, retrying');
+            await new Promise((r) => setTimeout(r, backoffMs));
+            continue;
+          }
+
+          const errorBody = await response.text().catch(() => 'Unable to read response body');
+          this.logger.error({ status: response.status, errorBody }, '[Notifier] Discord webhook failed');
+          return false;
+        } catch (error) {
+          clearTimeout(timeout);
+
+          // Network / abort error — retry with backoff
+          if (attempt < maxRetries) {
+            const backoffMs = 1000 * 2 ** attempt;
+            this.logger.warn({ attempt, error: error instanceof Error ? error.message : error, backoffMs }, '[Notifier] Network error, retrying');
+            await new Promise((r) => setTimeout(r, backoffMs));
+            continue;
+          }
+
+          throw error;
+        }
       }
+
+      return false;
     } catch (error) {
       this.logger.error({ error: error instanceof Error ? error.message : error }, '[Notifier] Discord webhook error');
       return false;

@@ -190,6 +190,10 @@ class Store {
     return this.rules.deleteBatch(ruleIds, userId);
   }
 
+  async validateRuleOwnership(ruleIds: number[], userId: number): Promise<void> {
+    return this.rules.validateOwnership(ruleIds, userId);
+  }
+
   // ==================== Alert operations ====================
 
   async getAlertsByUserId(userId: number, limit: number = 0, offset: number = 0, options?: {
@@ -264,6 +268,10 @@ class Store {
 
   async deleteWebhooksBatch(ids: number[], userId: number): Promise<number> {
     return this.webhooks.deleteBatch(ids, userId);
+  }
+
+  async validateWebhookOwnership(webhookIds: number[], userId: number): Promise<void> {
+    return this.webhooks.validateOwnership(webhookIds, userId);
   }
 
   async getRuleWebhooksForNotification(ruleId: number): Promise<UserWebhook[]> {
