@@ -86,6 +86,7 @@ export const AdminUsersQuerySchema = z.object({
   sort_dir: z.enum(['asc', 'desc']).default('desc'),
   search: z.string().max(200).optional(),
   role: z.enum(['admin', 'user', 'all']).default('all'),
+  status: z.enum(['all', 'sanctioned', 'active']).default('all'),
 });
 
 /** PATCH /admin/users/:id/admin body */

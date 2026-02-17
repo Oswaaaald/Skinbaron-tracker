@@ -75,11 +75,12 @@ export function AdminPanel() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [searchInput, setSearchInput] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   const debouncedSearch = useDebounce(searchInput, 400)
 
   // Fetch users (paginated)
   const { data: usersResponse, isLoading: usersLoading, isFetching: usersFetching } = useQuery({
-    queryKey: [QUERY_KEYS.ADMIN_USERS, page, sortBy, sortDir, debouncedSearch, roleFilter],
+    queryKey: [QUERY_KEYS.ADMIN_USERS, page, sortBy, sortDir, debouncedSearch, roleFilter, statusFilter],
     queryFn: async () => {
       const res = await apiClient.getAdminUsers({
         limit: ADMIN_USERS_PAGE_SIZE,
@@ -88,6 +89,7 @@ export function AdminPanel() {
         sort_dir: sortDir,
         search: debouncedSearch || undefined,
         role: roleFilter,
+        status: statusFilter,
       })
       if (!res.success) throw new Error(res.message || 'Failed to load users')
       return { users: (res.data ?? []) as AdminUser[], pagination: res.pagination }
@@ -365,6 +367,16 @@ export function AdminPanel() {
                 <SelectItem value="all">All roles</SelectItem>
                 <SelectItem value="admin">Admins</SelectItem>
                 <SelectItem value="user">Users</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0) }}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="sanctioned"><span className="flex items-center gap-1.5"><Ban className="h-3.5 w-3.5 text-destructive" />Sanctioned</span></SelectItem>
+                <SelectItem value="active">Active only</SelectItem>
               </SelectContent>
             </Select>
           </div>

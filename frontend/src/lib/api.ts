@@ -805,6 +805,7 @@ class ApiClient {
     sort_dir?: 'asc' | 'desc';
     search?: string;
     role?: string;
+    status?: string;
   }): Promise<PaginatedResponse<unknown>> {
     const query = new URLSearchParams();
     if (params?.limit) query.append('limit', params.limit.toString());
@@ -813,6 +814,7 @@ class ApiClient {
     if (params?.sort_dir) query.append('sort_dir', params.sort_dir);
     if (params?.search) query.append('search', params.search);
     if (params?.role && params.role !== 'all') query.append('role', params.role);
+    if (params?.status && params.status !== 'all') query.append('status', params.status);
     const qs = query.toString();
     return this.get(`/api/admin/users${qs ? `?${qs}` : ''}`) as Promise<PaginatedResponse<unknown>>;
   }

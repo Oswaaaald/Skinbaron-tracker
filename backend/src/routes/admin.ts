@@ -120,6 +120,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         sortDir: query.sort_dir,
         search: query.search,
         role: query.role,
+        status: query.status,
       });
 
       const result = usersWithStats.map(user => ({

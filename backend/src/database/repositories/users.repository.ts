@@ -103,13 +103,17 @@ export class UsersRepository {
     sortDir?: 'asc' | 'desc';
     search?: string;
     role?: 'admin' | 'user' | 'all';
+    status?: 'all' | 'sanctioned' | 'active';
   }): Promise<{ data: Array<typeof users.$inferSelect & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }>; total: number }> {
-    const { limit, offset, sortBy = 'created_at', sortDir = 'desc', search, role = 'all' } = options;
+    const { limit, offset, sortBy = 'created_at', sortDir = 'desc', search, role = 'all', status = 'all' } = options;
 
     // Build conditions
     const conditions = [eq(users.is_approved, true)];
     if (role === 'admin') conditions.push(eq(users.is_admin, true));
     else if (role === 'user') conditions.push(eq(users.is_admin, false));
+
+    if (status === 'sanctioned') conditions.push(eq(users.is_restricted, true));
+    else if (status === 'active') conditions.push(eq(users.is_restricted, false));
 
     if (search) {
       const escaped = search.replace(/[%_\\]/g, '\\$&');
