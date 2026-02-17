@@ -552,7 +552,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
       body: {
         type: 'object',
-        required: ['restriction_type'],
+        required: ['restriction_type', 'reason'],
         properties: {
           restriction_type: { type: 'string', enum: ['temporary', 'permanent'] },
           reason: { type: 'string', minLength: 1, maxLength: 500 },

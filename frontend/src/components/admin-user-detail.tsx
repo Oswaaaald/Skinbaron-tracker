@@ -503,58 +503,6 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
             {/* RIGHT COLUMN — Actions & History */}
             <div className="space-y-4">
-              {/* Sanctions History (Casier) */}
-              {!detail.is_super_admin && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <ScrollText className="h-4 w-4" />
-                      Sanctions History
-                      {detail.sanctions.length > 0 && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">{detail.sanctions.length}</Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {detail.sanctions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">No sanctions recorded</p>
-                    ) : (
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                        {detail.sanctions.map((s: Sanction) => (
-                          <div key={s.id} className={`rounded-md border px-3 py-2 text-xs space-y-1 ${s.action === 'restrict' ? 'border-red-500/20 bg-red-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium flex items-center gap-1.5">
-                                {s.action === 'restrict' ? (
-                                  <Ban className="h-3 w-3 text-red-500" />
-                                ) : (
-                                  <Check className="h-3 w-3 text-green-500" />
-                                )}
-                                {s.action === 'restrict' ? 'Restricted' : 'Unrestricted'}
-                                {s.restriction_type && s.action === 'restrict' && (
-                                  <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
-                                    {s.restriction_type === 'permanent' ? 'Permanent' : `${formatDuration(s.duration_hours ?? 0)}`}
-                                  </Badge>
-                                )}
-                              </span>
-                              <span className="text-muted-foreground">{formatDate(s.created_at)}</span>
-                            </div>
-                            <p className="text-muted-foreground">
-                              By <span className="font-medium text-foreground">{s.admin_username}</span>
-                            </p>
-                            {s.reason && (
-                              <p className="text-muted-foreground italic">&quot;{s.reason}&quot;</p>
-                            )}
-                            {s.expires_at && s.action === 'restrict' && (
-                              <p className="text-muted-foreground">Expires: {formatDate(s.expires_at)}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Moderation — Restrict / Unrestrict */}
               {!detail.is_super_admin && !isCurrentUser && (
                 <Card className="border-amber-500/30">
@@ -665,7 +613,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                         )}
 
                         <div className="space-y-2">
-                          <Label className="text-xs font-medium">Reason</Label>
+                          <Label className="text-xs font-medium">Reason *</Label>
                           <Input
                             value={restrictReason}
                             onChange={e => setRestrictReason(e.target.value)}
@@ -679,7 +627,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                           size="sm"
                           variant="destructive"
                           onClick={() => setConfirmRestrict(true)}
-                          disabled={moderating !== null}
+                          disabled={moderating !== null || !restrictReason.trim()}
                           className="w-full gap-1.5"
                         >
                           {moderating === 'restrict' ? (
@@ -691,6 +639,58 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                             </>
                           )}
                         </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Sanctions History (Casier) */}
+              {!detail.is_super_admin && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <ScrollText className="h-4 w-4" />
+                      Sanctions History
+                      {detail.sanctions.length > 0 && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5">{detail.sanctions.length}</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {detail.sanctions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">No sanctions recorded</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {detail.sanctions.map((s: Sanction) => (
+                          <div key={s.id} className={`rounded-md border px-3 py-2 text-xs space-y-1 ${s.action === 'restrict' ? 'border-red-500/20 bg-red-500/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium flex items-center gap-1.5">
+                                {s.action === 'restrict' ? (
+                                  <Ban className="h-3 w-3 text-red-500" />
+                                ) : (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                )}
+                                {s.action === 'restrict' ? 'Restricted' : 'Unrestricted'}
+                                {s.restriction_type && s.action === 'restrict' && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
+                                    {s.restriction_type === 'permanent' ? 'Permanent' : `${formatDuration(s.duration_hours ?? 0)}`}
+                                  </Badge>
+                                )}
+                              </span>
+                              <span className="text-muted-foreground">{formatDate(s.created_at)}</span>
+                            </div>
+                            <p className="text-muted-foreground">
+                              By <span className="font-medium text-foreground">{s.admin_username}</span>
+                            </p>
+                            {s.reason && (
+                              <p className="text-muted-foreground italic">&quot;{s.reason}&quot;</p>
+                            )}
+                            {s.expires_at && s.action === 'restrict' && (
+                              <p className="text-muted-foreground">Expires: {formatDate(s.expires_at)}</p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </CardContent>
