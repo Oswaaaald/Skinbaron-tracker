@@ -88,6 +88,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   const [confirmUnrestrict, setConfirmUnrestrict] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmToggleAdmin, setConfirmToggleAdmin] = useState<'grant' | 'revoke' | null>(null)
+  const [confirmDeleteSanction, setConfirmDeleteSanction] = useState<number | null>(null)
 
   // Loading states
   const [moderating, setModerating] = useState<string | null>(null)
@@ -234,6 +235,24 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     } finally {
       setModerating(null)
       setConfirmToggleAdmin(null)
+    }
+  }
+
+  const handleDeleteSanction = async (sanctionId: number) => {
+    setModerating('delete-sanction')
+    try {
+      const res = await apiClient.adminDeleteSanction(sanctionId)
+      if (res.success) {
+        toast({ title: '✅ Sanction deleted', description: 'Sanction has been removed from history' })
+        invalidateAll()
+      } else {
+        toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed'), variant: 'destructive' })
+    } finally {
+      setModerating(null)
+      setConfirmDeleteSanction(null)
     }
   }
 
@@ -689,6 +708,20 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                             {s.expires_at && s.action === 'restrict' && (
                               <p className="text-muted-foreground">Expires: {formatDate(s.expires_at)}</p>
                             )}
+                            {currentUser?.is_super_admin && (
+                              <div className="flex justify-end pt-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                                  onClick={() => setConfirmDeleteSanction(s.id)}
+                                  disabled={moderating !== null}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -867,6 +900,40 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             disabled={moderating === 'admin'}
           >
             {moderating === 'admin' ? 'Updating...' : 'Confirm'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirm Delete Sanction */}
+    <AlertDialog open={confirmDeleteSanction !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteSanction(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Sanction</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this sanction from the history?
+            {(() => {
+              const s = detail?.sanctions.find(s => s.id === confirmDeleteSanction)
+              if (!s) return null
+              const isActive = s.action === 'restrict' && detail?.is_restricted && detail.sanctions.filter(x => x.action === 'restrict')[0]?.id === s.id
+              return (
+                <>
+                  <br /><br />
+                  {isActive && <><strong>This is the currently active restriction — the user will be unrestricted.</strong><br /><br /></>}
+                  This action cannot be undone.
+                </>
+              )
+            })()}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={moderating === 'delete-sanction'}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); if (confirmDeleteSanction) void handleDeleteSanction(confirmDeleteSanction) }}
+            disabled={moderating === 'delete-sanction'}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {moderating === 'delete-sanction' ? 'Deleting...' : 'Delete Sanction'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

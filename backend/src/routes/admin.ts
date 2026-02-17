@@ -735,6 +735,73 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * DELETE /api/admin/sanctions/:sanctionId - Delete a sanction from history (super admin only)
+   * If the sanction is the currently active restriction, also unrestricts the user.
+   */
+  fastify.delete('/sanctions/:sanctionId', {
+    config: { rateLimit: adminWriteRateLimit },
+    schema: {
+      description: 'Delete a sanction from history (super admin only). Unrestricts user if sanction is active.',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: { type: 'object', required: ['sanctionId'], properties: { sanctionId: { type: 'integer', minimum: 1 } } },
+    },
+  }, async (request, reply) => {
+    try {
+      const { sanctionId } = request.params as { sanctionId: number };
+      const adminId = getAuthUser(request).id;
+
+      // Super admin only
+      const admin = await store.getUserById(adminId);
+      if (!admin?.is_super_admin) throw Errors.forbidden('Only super admins can delete sanctions');
+
+      const sanction = await store.getSanctionById(sanctionId);
+      if (!sanction) throw Errors.notFound('Sanction');
+
+      const user = await store.getUserById(sanction.user_id);
+      if (!user) throw Errors.notFound('User');
+
+      // If this is the most recent "restrict" sanction and user is currently restricted, unrestrict them
+      if (sanction.action === 'restrict' && user.is_restricted) {
+        // Check if this is the sanction that caused the current restriction
+        // (most recent restrict sanction for this user)
+        const allSanctions = await store.getSanctionsByUserId(sanction.user_id);
+        const latestRestrict = allSanctions.find(s => s.action === 'restrict');
+        if (latestRestrict && latestRestrict.id === sanction.id) {
+          await store.updateUser(sanction.user_id, {
+            is_restricted: false,
+            restriction_type: null,
+            restriction_reason: null,
+            restriction_expires_at: null,
+            restricted_at: null,
+            restricted_by_admin_id: null,
+          });
+          invalidateUserCache(sanction.user_id);
+        }
+      }
+
+      await store.deleteSanction(sanctionId);
+
+      await store.logAdminAction(adminId, 'delete_sanction', sanction.user_id, `Deleted sanction #${sanctionId} (${sanction.action}) for ${user.username}`);
+      await store.createAuditLog(sanction.user_id, 'sanction_deleted', JSON.stringify({
+        sanction_id: sanctionId,
+        action: sanction.action,
+        restriction_type: sanction.restriction_type,
+        reason: sanction.reason,
+        deleted_by_admin_id: adminId,
+        deleted_by_admin_username: admin.username,
+      }), getClientIp(request), request.headers['user-agent']);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Sanction deleted',
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Delete sanction');
+    }
+  });
+
+  /**
    * PATCH /api/admin/users/:id/username - Change a user's username (admin moderation)
    */
   fastify.patch('/users/:id/username', {

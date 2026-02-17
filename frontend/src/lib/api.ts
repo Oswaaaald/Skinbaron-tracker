@@ -820,6 +820,10 @@ class ApiClient {
     return this.patch(`/api/admin/users/${userId}/unrestrict`, { reason });
   }
 
+  async adminDeleteSanction(sanctionId: number): Promise<ApiResponse<unknown>> {
+    return this.delete(`/api/admin/sanctions/${sanctionId}`);
+  }
+
   async adminChangeUsername(userId: number, username: string): Promise<ApiResponse<{ username: string }>> {
     return this.patch(`/api/admin/users/${userId}/username`, { username });
   }

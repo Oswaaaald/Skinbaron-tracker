@@ -143,6 +143,15 @@ class Store {
       .limit(limit);
   }
 
+  async getSanctionById(sanctionId: number): Promise<typeof sanctions.$inferSelect | null> {
+    const rows = await db.select().from(sanctions).where(eq(sanctions.id, sanctionId)).limit(1);
+    return rows[0] ?? null;
+  }
+
+  async deleteSanction(sanctionId: number): Promise<void> {
+    await db.delete(sanctions).where(eq(sanctions.id, sanctionId));
+  }
+
   // ==================== Rule operations ====================
 
   async getRuleById(id: number): Promise<Rule | null> {
