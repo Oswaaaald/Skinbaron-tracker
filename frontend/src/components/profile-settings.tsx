@@ -70,6 +70,41 @@ export function ProfileSettings() {
   const [avatarDeleting, setAvatarDeleting] = useState(false)
   const [gravatarToggling, setGravatarToggling] = useState(false)
 
+  // Tab state — default to 'oauth' when returning from OAuth link flow
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'profile'
+    const params = new URLSearchParams(window.location.search)
+    return (params.has('linked') || params.has('link_error')) ? 'oauth' : 'profile'
+  })
+
+  // Show toast for OAuth link result on first mount (runs in parent so it fires immediately)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const linked = params.get('linked')
+    const linkError = params.get('link_error')
+    if (linked) {
+      const label = PROVIDER_META[linked]?.label ?? linked
+      toast({ title: '✅ Account linked', description: `${label} account has been linked successfully.` })
+    }
+    if (linkError) {
+      const errorMessages: Record<string, string> = {
+        already_linked_other: 'This social account is already linked to another user.',
+        account_not_found: 'Your account was not found. Please log in again.',
+        rate_limited: 'Too many attempts. Please try again in a moment.',
+        server_error: 'An unexpected error occurred. Please try again.',
+      }
+      toast({ variant: 'destructive', title: '❌ Link failed', description: errorMessages[linkError] || 'Could not link account.' })
+    }
+    if (linked || linkError) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('linked')
+      url.searchParams.delete('link_error')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (user) {
       setUsername(user.username)
@@ -324,7 +359,7 @@ export function ProfileSettings() {
       </div>
 
       {/* Tabbed Settings */}
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full flex">
           <TabsTrigger value="profile" className="flex items-center gap-1.5"><User className="h-4 w-4" /><span className="hidden sm:inline">Profile</span></TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Security</span></TabsTrigger>
@@ -616,37 +651,10 @@ export function ProfileSettings() {
 
 // ==================== Linked OAuth Accounts ====================
 
-const LINK_ERROR_MESSAGES: Record<string, string> = {
-  already_linked_other: 'This social account is already linked to another user.',
-  account_not_found: 'Your account was not found. Please log in again.',
-  rate_limited: 'Too many attempts. Please try again in a moment.',
-  server_error: 'An unexpected error occurred. Please try again.',
-}
-
 function LinkedAccounts() {
   const { toast } = useToast()
   const [unlinking, setUnlinking] = useState<string | null>(null)
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    const linked = params.get('linked')
-    const linkError = params.get('link_error')
-    if (linked) {
-      const label = PROVIDER_META[linked]?.label ?? linked
-      toast({ title: '✅ Account linked', description: `${label} account has been linked successfully.` })
-    }
-    if (linkError) {
-      toast({ variant: 'destructive', title: '❌ Link failed', description: LINK_ERROR_MESSAGES[linkError] || 'Could not link account.' })
-    }
-    if (linked || linkError) {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('linked')
-      url.searchParams.delete('link_error')
-      window.history.replaceState({}, '', url.pathname + url.search)
-    }
-  }, [toast])
 
   const { data: enabledProviders } = useQuery({
     queryKey: ['oauth-providers'],
