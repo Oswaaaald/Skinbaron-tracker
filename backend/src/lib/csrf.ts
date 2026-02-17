@@ -51,10 +51,11 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
   // Skip CSRF for Swagger UI requests (already behind authentication).
   // Check Origin header (reliably sent by browsers for non-GET same-origin fetch)
   // and Referer as fallback.
-  const origin = request.headers['origin'] || '';
-  const referer = request.headers['referer'] || '';
-  const originStr = Array.isArray(origin) ? origin[0] ?? '' : origin;
-  const refererStr = Array.isArray(referer) ? referer[0] ?? '' : referer;
+  const headers = request.headers as Record<string, string | string[] | undefined>;
+  const originRaw = headers['origin'];
+  const refererRaw = headers['referer'];
+  const originStr = Array.isArray(originRaw) ? originRaw[0] ?? '' : (originRaw ?? '');
+  const refererStr = Array.isArray(refererRaw) ? refererRaw[0] ?? '' : (refererRaw ?? '');
   const apiBase = appConfig.NEXT_PUBLIC_API_URL;
   if (originStr === apiBase || (refererStr.startsWith(apiBase) && refererStr.includes('/docs'))) {
     return;

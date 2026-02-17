@@ -918,7 +918,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           const otp = new OTP({ strategy: 'totp' });
           let isValid = false;
           try {
-            const result = await otp.verify({ token: totp_code, secret: userWith2FA.totp_secret!, epochTolerance: 1 });
+            const result = await otp.verify({ token: totp_code, secret: userWith2FA.totp_secret ?? '', epochTolerance: 1 });
             isValid = result.valid;
           } catch { /* invalid */ }
           if (!isValid) {
@@ -1282,7 +1282,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
           name: k.name,
           device_type: k.device_type,
           backed_up: k.backed_up,
-          transports: k.transports ? JSON.parse(k.transports) : [],
+          transports: k.transports ? JSON.parse(k.transports) as string[] : [],
           created_at: k.created_at,
           last_used_at: k.last_used_at,
         })),

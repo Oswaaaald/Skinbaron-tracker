@@ -77,6 +77,26 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   sanction_deleted: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },
 } as const;
 
+// ==================== ADMIN ACTION LOG CONFIGURATION ====================
+
+/** Action type configuration for admin logs display */
+export const ADMIN_ACTION_CONFIG: Record<string, {
+  icon: LucideIcon;
+  label: string;
+  variant: "default" | "secondary" | "destructive" | "outline";
+}> = {
+  approve_user: { icon: ShieldCheck, label: "User Approved", variant: "default" },
+  reject_user: { icon: ShieldAlert, label: "User Rejected", variant: "destructive" },
+  delete_user: { icon: Trash2, label: "User Deleted", variant: "destructive" },
+  grant_admin: { icon: Shield, label: "Admin Granted", variant: "default" },
+  revoke_admin: { icon: ShieldOff, label: "Admin Revoked", variant: "secondary" },
+  restrict_user: { icon: Ban, label: "User Restricted", variant: "destructive" },
+  unrestrict_user: { icon: Ban, label: "User Unrestricted", variant: "default" },
+  delete_sanction: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },
+  change_username: { icon: User, label: "Username Changed", variant: "outline" },
+  force_scheduler: { icon: AlertCircle, label: "Scheduler Forced", variant: "outline" },
+} as const;
+
 /** Event type options for filter dropdowns */
 export const AUDIT_EVENT_TYPES = [
   { value: "all", label: "All Events" },
@@ -142,6 +162,7 @@ export const QUERY_KEYS = {
   ADMIN_PENDING: 'admin-pending',
   ADMIN_STATS: 'admin-stats',
   ADMIN_AUDIT_LOGS: 'admin-audit-logs',
+  ADMIN_LOGS: 'admin-logs',
   SEARCH_USERS: 'search-users',
   
 } as const;

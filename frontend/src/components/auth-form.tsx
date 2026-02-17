@@ -89,8 +89,8 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             setOauthPendingData(res.data)
             setFormData(prev => ({
               ...prev,
-              username: res.data!.suggested_username,
-              email: res.data!.email,
+              username: res.data?.suggested_username ?? '',
+              email: res.data?.email ?? '',
               tosAccepted: false,
             }))
           } else {

@@ -97,7 +97,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     queryKey: ['admin-user-detail', userId],
     queryFn: async () => {
       const res = apiClient.ensureSuccess(
-        await apiClient.getAdminUserDetail(userId!),
+        await apiClient.getAdminUserDetail(userId ?? 0),
         'Failed to load user detail'
       )
       return res.data as AdminUserDetail
@@ -731,7 +731,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
               )}
 
               {/* Admin Actions */}
-              {!detail.is_super_admin && !isCurrentUser && (
+              {!detail.is_super_admin && !isCurrentUser && currentUser?.is_super_admin && (
                 <Card className="border-red-500/20">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-600 dark:text-red-400">
@@ -787,8 +787,8 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                         size="sm"
                         variant="destructive"
                         onClick={() => setConfirmDelete(true)}
-                        disabled={moderating !== null || !!isCurrentUser || (detail.is_admin && !currentUser?.is_super_admin)}
-                        title={isCurrentUser ? 'Cannot delete your own account' : undefined}
+                        disabled={moderating !== null || !!isCurrentUser || !currentUser?.is_super_admin}
+                        title={isCurrentUser ? 'Cannot delete your own account' : !currentUser?.is_super_admin ? 'Only super admins can delete users' : undefined}
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                         Delete

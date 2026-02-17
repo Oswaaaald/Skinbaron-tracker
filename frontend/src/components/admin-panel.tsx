@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Activity, AlertCircle, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, History, Search, Shield, User, Users, Wrench } from 'lucide-react'
+import Image from 'next/image'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -20,6 +21,7 @@ import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminAuditLogs } from '@/components/admin-audit-logs'
+import { AdminActionLogs } from '@/components/admin-action-logs'
 import { AdminUserDetailDialog } from '@/components/admin-user-detail'
 import { SystemStats } from '@/components/system-stats'
 import { usePageVisible } from '@/hooks/use-page-visible'
@@ -326,7 +328,10 @@ export function AdminPanel() {
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="w-full flex">
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Users</span></TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Audit Logs</span></TabsTrigger>
+          {currentUser?.is_super_admin && (
+            <TabsTrigger value="admin-logs" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Admin Logs</span></TabsTrigger>
+          )}
           {currentUser?.is_super_admin && (
             <TabsTrigger value="tools" className="flex items-center gap-1.5"><Wrench className="h-4 w-4" /><span className="hidden sm:inline">Tools</span></TabsTrigger>
           )}
@@ -413,10 +418,13 @@ export function AdminPanel() {
                       onClick={() => setDetailUserId(user.id)}
                     >
                       {user.avatar_url ? (
-                        <img
+                        <Image
                           src={user.avatar_url}
                           alt=""
+                          width={28}
+                          height={28}
                           className="h-7 w-7 rounded-full object-cover shrink-0"
+                          unoptimized
                         />
                       ) : (
                         <span className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -497,6 +505,13 @@ export function AdminPanel() {
         <TabsContent value="logs" className="space-y-4 mt-4">
           {currentUser?.is_admin && <AdminAuditLogs />}
         </TabsContent>
+
+        {/* Admin Logs Tab (Super Admin only) */}
+        {currentUser?.is_super_admin && (
+          <TabsContent value="admin-logs" className="space-y-4 mt-4">
+            <AdminActionLogs />
+          </TabsContent>
+        )}
 
         {/* System Tab */}
         <TabsContent value="system" className="space-y-4 mt-4">

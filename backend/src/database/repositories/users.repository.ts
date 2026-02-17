@@ -114,10 +114,11 @@ export class UsersRepository {
     if (search) {
       const escaped = search.replace(/[%_\\]/g, '\\$&');
       const pattern = `%${escaped}%`;
-      conditions.push(or(ilike(users.username, pattern), ilike(users.email, pattern))!);
+      const orCondition = or(ilike(users.username, pattern), ilike(users.email, pattern));
+      if (orCondition) conditions.push(orCondition);
     }
 
-    const whereClause = conditions.length === 1 ? conditions[0]! : and(...conditions)!;
+    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
 
     // Count total
     const [countResult] = await this.db.select({ value: count() })

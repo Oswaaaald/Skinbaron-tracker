@@ -16,6 +16,7 @@ import {
   UnrestrictUserSchema,
   AdminUsernameSchema,
   AdminAuditQuerySchema,
+  AdminLogsQuerySchema,
   AdminUserAuditParamsSchema,
   AdminUserAuditQuerySchema,
   AdminSearchQuerySchema,
@@ -355,13 +356,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         throw Errors.forbidden('Pending users must be approved or rejected before they can be managed');
       }
 
-      // Only super admins can delete admins
-      if (user.is_admin) {
-        const currentAdmin = await store.getUserById(adminId);
-        if (!currentAdmin?.is_super_admin) {
-          throw Errors.forbidden('Only super administrators can delete other administrators');
-        }
+      // Only super admins can delete users
+      const currentAdmin = await store.getUserById(adminId);
+      if (!currentAdmin?.is_super_admin) {
+        throw Errors.forbidden('Only super administrators can delete users');
+      }
 
+      // Cannot delete other super admins
+      if (user.is_admin) {
         const adminCount = await store.users.countAdmins();
         
         if (adminCount <= 1) {
@@ -395,6 +397,18 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Invalidate user cache so the auth middleware immediately rejects requests
       invalidateUserCache(id);
+
+      // Clean up banned emails if the user was permanently restricted
+      if (user.is_restricted && user.restriction_type === 'permanent') {
+        await store.unbanEmail(user.email);
+
+        const oauthAccounts = await store.getOAuthAccountsByUserId(id);
+        for (const acc of oauthAccounts) {
+          if (acc.provider_email && acc.provider_email !== user.email) {
+            await store.unbanEmail(acc.provider_email);
+          }
+        }
+      }
 
       // Clean up avatar file from disk before deleting user
       if (user.avatar_filename) {
@@ -481,12 +495,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         throw Errors.forbidden('Cannot change admin status for a pending user');
       }
 
-      // Only super admins can grant or revoke admin status to/from admins
-      if (user.is_admin || is_admin) {
-        const currentAdmin = await store.getUserById(adminId);
-        if (!currentAdmin?.is_super_admin) {
-          throw Errors.forbidden('Only super administrators can manage admin privileges');
-        }
+      // Only super admins can grant or revoke admin status
+      const currentAdmin = await store.getUserById(adminId);
+      if (!currentAdmin?.is_super_admin) {
+        throw Errors.forbidden('Only super administrators can manage admin privileges');
       }
 
       // Prevent modifying admin status of super admins (would create inconsistent state)
@@ -631,7 +643,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       const durationLabel = restriction_type === 'permanent'
         ? 'permanently'
-        : `for ${duration_hours}h (until ${expiresAt!.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })})`;
+        : `for ${duration_hours}h (until ${expiresAt?.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })})`;
 
       await store.logAdminAction(adminId, 'restrict_user', id, `Restricted ${user.username} ${durationLabel} — ${reason}`);
       await store.createAuditLog(id, 'account_restricted', JSON.stringify({
@@ -707,9 +719,17 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       invalidateUserCache(id);
 
-      // Unban email if it was permanently restricted
+      // Unban email(s) if it was permanently restricted
       if (wasType === 'permanent') {
         await store.unbanEmail(user.email);
+
+        // Also unban all OAuth provider emails
+        const oauthAccounts = await store.getOAuthAccountsByUserId(id);
+        for (const acc of oauthAccounts) {
+          if (acc.provider_email && acc.provider_email !== user.email) {
+            await store.unbanEmail(acc.provider_email);
+          }
+        }
       }
 
       await store.logAdminAction(adminId, 'unrestrict_user', id, `Unrestricted ${user.username} — ${reason}`);
@@ -773,6 +793,18 @@ export default async function adminRoutes(fastify: FastifyInstance) {
             restricted_by_admin_id: null,
           });
           invalidateUserCache(sanction.user_id);
+
+          // Unban email(s) if it was a permanent restriction
+          if (sanction.restriction_type === 'permanent') {
+            await store.unbanEmail(user.email);
+
+            const oauthAccounts = await store.getOAuthAccountsByUserId(sanction.user_id);
+            for (const acc of oauthAccounts) {
+              if (acc.provider_email && acc.provider_email !== user.email) {
+                await store.unbanEmail(acc.provider_email);
+              }
+            }
+          }
         }
       }
 
@@ -1233,6 +1265,66 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Get audit logs');
+    }
+  });
+
+  /**
+   * GET /api/admin/admin-logs - Get admin action logs (super admin only)
+   */
+  fastify.get('/admin-logs', {
+    schema: {
+      description: 'Get admin action logs (super admin only)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'integer', minimum: 1, default: 100, maximum: 1000 },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  admin_user_id: { type: 'number' },
+                  admin_username: { type: 'string', nullable: true },
+                  action: { type: 'string' },
+                  target_user_id: { type: 'number', nullable: true },
+                  target_username: { type: 'string', nullable: true },
+                  details: { type: 'string', nullable: true },
+                  created_at: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      // Super admin only
+      const adminId = getAuthUser(request).id;
+      const admin = await store.getUserById(adminId);
+      if (!admin?.is_super_admin) {
+        throw Errors.forbidden('Only super administrators can view admin logs');
+      }
+
+      const { limit } = validateWithZod(AdminLogsQuerySchema, request.query);
+      const logs = await store.audit.getAdminLogs(limit);
+
+      return reply.status(200).send({
+        success: true,
+        data: logs,
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Get admin logs');
     }
   });
 

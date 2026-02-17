@@ -165,6 +165,17 @@ export interface Sanction {
   created_at: string;
 }
 
+export interface AdminActionLog {
+  id: number;
+  admin_user_id: number;
+  admin_username: string | null;
+  action: string;
+  target_user_id: number | null;
+  target_username: string | null;
+  details: string | null;
+  created_at: string;
+}
+
 export interface AdminUserDetail {
   id: number;
   username: string;
@@ -805,7 +816,7 @@ class ApiClient {
   }
 
   async getAdminUserDetail(userId: number): Promise<ApiResponse<AdminUserDetail>> {
-    return this.get(`/api/admin/users/${userId}`) as Promise<ApiResponse<AdminUserDetail>>;
+    return this.get<AdminUserDetail>(`/api/admin/users/${userId}`);
   }
 
   async adminDeleteUserAvatar(userId: number): Promise<ApiResponse<{ avatar_url: string | null }>> {
@@ -826,6 +837,12 @@ class ApiClient {
 
   async adminChangeUsername(userId: number, username: string): Promise<ApiResponse<{ username: string }>> {
     return this.patch(`/api/admin/users/${userId}/username`, { username });
+  }
+
+  async getAdminLogs(params?: { limit?: number }): Promise<ApiResponse<AdminActionLog[]>> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.append('limit', params.limit.toString());
+    return this.get(`/api/admin/admin-logs?${query.toString()}`);
   }
 }
 

@@ -124,6 +124,11 @@ export const AdminAuditQuerySchema = z.object({
   user_id: z.coerce.number().int().positive().optional(),
 });
 
+/** GET /admin/admin-logs querystring (superadmin only) */
+export const AdminLogsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+});
+
 /** GET /admin/audit-logs/:userId params + querystring */
 export const AdminUserAuditParamsSchema = z.object({
   userId: z.coerce.number().int().positive(),

@@ -182,11 +182,16 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
   if (!eventDataJson) return "";
 
   try {
-    const data = JSON.parse(eventDataJson) as Record<string, unknown>;
+    const raw = JSON.parse(eventDataJson) as Record<string, unknown>;
+    // Helper to safely extract string values from parsed JSON
+    const s = (key: string, fallback = ''): string => {
+      const v = raw[key];
+      return typeof v === 'string' ? v : (typeof v === 'number' ? String(v) : fallback);
+    };
 
     switch (eventType) {
       case "login_success": {
-        const method = String(data['method'] || '');
+        const method = s('method');
         if (method === '2fa') return 'Login with 2FA';
         if (method === 'passkey') return 'Login with passkey';
         if (method.startsWith('oauth_')) {
@@ -198,12 +203,12 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       }
       
       case "login_failed":
-        if (data['reason'] === "unknown_email") return "Failed: unknown email";
-        if (data['reason'] === "invalid_password") return "Failed: invalid password";
-        if (data['reason'] === "invalid_2fa_code") return "Failed: invalid 2FA code";
-        if (data['reason'] === "invalid_2fa_backup_code") return "Failed: invalid 2FA backup code";
-        if (data['reason'] === "account_restricted") return "Failed: account restricted";
-        return `Failed: ${String(data['reason'])}`;
+        if (raw['reason'] === "unknown_email") return "Failed: unknown email";
+        if (raw['reason'] === "invalid_password") return "Failed: invalid password";
+        if (raw['reason'] === "invalid_2fa_code") return "Failed: invalid 2FA code";
+        if (raw['reason'] === "invalid_2fa_backup_code") return "Failed: invalid 2FA backup code";
+        if (raw['reason'] === "account_restricted") return "Failed: account restricted";
+        return `Failed: ${s('reason')}`;
       
       case "2fa_enabled":
         return "Two-factor authentication enabled";
@@ -212,52 +217,54 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return "Two-factor authentication disabled";
       
       case "2fa_recovery_code_used":
-        return `Recovery code used (${String(data['remaining_codes'])} remaining)`;
+        return `Recovery code used (${s('remaining_codes')} remaining)`;
       
       case "email_changed":
-        return `New email: ${String(data['new_email'])}`;
+        return `New email: ${s('new_email')}`;
       
       case "username_changed":
-        return `New username: ${String(data['new_username'])}`;
+        return raw['changed_by_admin']
+          ? `Username changed by admin: "${s('old_username')}" → "${s('new_username')}"`
+          : `New username: ${s('new_username')}`;
       
       case "password_changed":
-        return data['method'] === 'set_initial_password' ? 'Initial password set' : 'Password successfully changed';
+        return raw['method'] === 'set_initial_password' ? 'Initial password set' : 'Password successfully changed';
       
       case "password_change_failed":
-        if (data['reason'] === "invalid_current_password") return "Failed: invalid current password";
-        if (data['reason'] === "same_password") return "Failed: same password";
-        return `Failed: ${String(data['reason'])}`;
+        if (raw['reason'] === "invalid_current_password") return "Failed: invalid current password";
+        if (raw['reason'] === "same_password") return "Failed: same password";
+        return `Failed: ${s('reason')}`;
       
       case "oauth_register": {
-        const provider = String(data['provider'] || 'unknown');
+        const provider = s('provider', 'unknown');
         const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
         return `Registered via ${providerName}`;
       }
       
       case "oauth_linked": {
-        const provider = String(data['provider'] || 'unknown');
+        const provider = s('provider', 'unknown');
         const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
         return `${providerName} account linked`;
       }
       
       case "oauth_unlinked": {
-        const provider = String(data['provider'] || 'unknown');
+        const provider = s('provider', 'unknown');
         const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
         return `${providerName} account unlinked`;
       }
       
       case "user_approved":
-        return `Approved by ${String(data['admin_username']) || `admin #${String(data['approved_by_admin_id'])}`}`;
+        return `Approved by ${s('admin_username') || `admin #${s('approved_by_admin_id')}`}`;
       
       case "user_promoted":
-        return `Promoted to admin by ${String(data['admin_username']) || `#${String(data['admin_id'])}`}`;
+        return `Promoted to admin by ${s('admin_username') || `#${s('admin_id')}`}`;
       
       case "user_demoted":
-        return `Demoted by ${String(data['admin_username']) || `admin #${String(data['admin_id'])}`}`;
+        return `Demoted by ${s('admin_username') || `admin #${s('admin_id')}`}`;
       
       case "passkey_registered": {
-        const pkName = String(data['name'] || 'Passkey');
-        const pkType = data['device_type'] === 'singleDevice' ? ' (hardware key)' : data['device_type'] === 'multiDevice' ? ' (synced)' : '';
+        const pkName = s('name', 'Passkey');
+        const pkType = raw['device_type'] === 'singleDevice' ? ' (hardware key)' : raw['device_type'] === 'multiDevice' ? ' (synced)' : '';
         return `Passkey "${pkName}" registered${pkType}`;
       }
       
@@ -268,33 +275,33 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return "Custom avatar uploaded";
       
       case "avatar_removed":
-        return data['removed_by_admin'] ? "Avatar removed by admin" : "Custom avatar removed";
+        return raw['removed_by_admin'] ? "Avatar removed by admin" : "Custom avatar removed";
       
       case "gravatar_toggled":
-        return data['use_gravatar'] ? "Gravatar fallback enabled" : "Gravatar fallback disabled";
+        return raw['use_gravatar'] ? "Gravatar fallback enabled" : "Gravatar fallback disabled";
       
       case "account_restricted": {
-        const adminName = data['admin_username'] ? `by ${String(data['admin_username'])}` : 'by admin';
-        const rType = String(data['restriction_type'] || '');
-        const reason = data['reason'] ? `: ${String(data['reason'])}` : '';
+        const adminName = raw['admin_username'] ? `by ${s('admin_username')}` : 'by admin';
+        const rType = s('restriction_type');
+        const reason = raw['reason'] ? `: ${s('reason')}` : '';
         if (rType === 'permanent') {
           return `Account permanently restricted ${adminName}${reason}`;
         }
-        const duration = data['duration_hours'] ? ` for ${String(data['duration_hours'])}h` : '';
+        const duration = raw['duration_hours'] ? ` for ${s('duration_hours')}h` : '';
         return `Account temporarily restricted${duration} ${adminName}${reason}`;
       }
       
       case "account_unrestricted": {
-        const adminName = data['admin_username'] ? `by ${String(data['admin_username'])}` : 'by admin';
-        const reason = data['reason'] ? `: ${String(data['reason'])}` : '';
+        const adminName = raw['admin_username'] ? `by ${s('admin_username')}` : 'by admin';
+        const reason = raw['reason'] ? `: ${s('reason')}` : '';
         return `Account unrestricted ${adminName}${reason}`;
       }
       
       case "sanction_deleted": {
-        const adminName = data['deleted_by_admin_username'] ? `by ${String(data['deleted_by_admin_username'])}` : 'by admin';
-        const reason = data['reason'] ? `: ${String(data['reason'])}` : '';
-        const action = String(data['action'] || '');
-        const rType = String(data['restriction_type'] || '');
+        const adminName = raw['deleted_by_admin_username'] ? `by ${s('deleted_by_admin_username')}` : 'by admin';
+        const reason = raw['reason'] ? `: ${s('reason')}` : '';
+        const action = s('action');
+        const rType = s('restriction_type');
         if (action === 'restrict') {
           const typeLabel = rType === 'permanent' ? 'Permanent' : 'Temporary';
           return `${typeLabel} restriction removed ${adminName}${reason}`;
@@ -302,16 +309,11 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return `Unrestriction removed ${adminName}${reason}`;
       }
       
-      case "username_changed":
-        return data['changed_by_admin']
-          ? `Username changed by admin: "${String(data['old_username'])}" → "${String(data['new_username'])}"`
-          : `New username: ${String(data['new_username'])}`;
-      
       case "user_deleted":
         return "";
       
       case "logout":
-        return data['reason'] === "user_logout" ? "User logout" : "Logged out";
+        return raw['reason'] === "user_logout" ? "User logout" : "Logged out";
       
       default:
         return eventDataJson;
