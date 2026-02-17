@@ -1,10 +1,12 @@
 'use client'
 
-import { AuthForm } from "@/components/auth-form"
+import { lazy, Suspense } from 'react'
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useEffect } from "react"
 import { LoadingState } from "@/components/ui/loading-state"
+
+const AuthForm = lazy(() => import('@/components/auth-form').then(m => ({ default: m.AuthForm })))
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -21,9 +23,11 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthForm 
-      mode="register" 
-      onToggleMode={() => router.push('/login')} 
-    />
+    <Suspense fallback={<LoadingState variant="page" />}>
+      <AuthForm 
+        mode="register" 
+        onToggleMode={() => router.push('/login')} 
+      />
+    </Suspense>
   )
 }
