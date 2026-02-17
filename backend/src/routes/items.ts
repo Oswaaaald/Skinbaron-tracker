@@ -47,7 +47,7 @@ export default async function itemsRoutes(fastify: FastifyInstance) {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  classId: { type: 'string' },
+                  imageUrl: { type: 'string', nullable: true },
                 },
               },
             },
