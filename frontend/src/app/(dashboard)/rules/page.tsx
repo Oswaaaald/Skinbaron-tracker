@@ -28,7 +28,7 @@ export default function RulesPage() {
           Create Rule
         </Button>
       </div>
-      <RulesTable />
+      <RulesTable onCreateRule={() => setIsRuleDialogOpen(true)} />
       
       <RuleDialog
         open={isRuleDialogOpen}

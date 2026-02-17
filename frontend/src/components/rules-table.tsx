@@ -33,8 +33,9 @@ import { useApiMutation } from "@/hooks/use-api-mutation"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { QUERY_KEYS } from "@/lib/constants"
+import { Plus } from "lucide-react"
 
-export function RulesTable() {
+export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -316,6 +317,12 @@ export function RulesTable() {
           <CardDescription>
             Create your first rule to start monitoring SkinBaron for CS2 skins.
           </CardDescription>
+          {onCreateRule && (
+            <Button onClick={onCreateRule} className="mt-4">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Rule
+            </Button>
+          )}
         </CardHeader>
       </Card>
     )
