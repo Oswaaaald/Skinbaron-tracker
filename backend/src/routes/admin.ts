@@ -15,6 +15,7 @@ import {
   RestrictUserSchema,
   UnrestrictUserSchema,
   AdminUsernameSchema,
+  AdminResetSchema,
   AdminAuditQuerySchema,
   AdminLogsQuerySchema,
   AdminUserAuditParamsSchema,
@@ -883,6 +884,92 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Change username');
+    }
+  });
+
+  /**
+   * POST /api/admin/users/:id/reset - Reset specific user data (admin only)
+   * Supports: 2fa (TOTP + recovery codes), passkeys, sessions (refresh tokens + access token blacklist)
+   * GDPR: All resets are logged in both admin actions and user audit trail.
+   */
+  fastify.post('/users/:id/reset', {
+    config: { rateLimit: adminWriteRateLimit },
+    schema: {
+      description: 'Reset specific user data (2FA, passkeys, or sessions)',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: { type: 'object', required: ['id'], properties: { id: { type: 'integer', minimum: 1 } } },
+      body: {
+        type: 'object',
+        required: ['target'],
+        properties: {
+          target: { type: 'string', enum: ['2fa', 'passkeys', 'sessions'] },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { id } = validateWithZod(AdminUserParamsSchema, request.params);
+      const { target } = validateWithZod(AdminResetSchema, request.body);
+      const adminId = getAuthUser(request).id;
+
+      const user = await store.users.findById(id);
+      if (!user) throw Errors.notFound('User');
+
+      if (user.is_super_admin) {
+        throw Errors.forbidden('Cannot reset data for super administrators');
+      }
+
+      const admin = await store.users.findById(adminId);
+      const adminUsername = admin?.username || 'Unknown';
+      let description: string;
+
+      switch (target) {
+        case '2fa': {
+          if (!user.totp_enabled) {
+            throw Errors.badRequest('User does not have 2FA enabled');
+          }
+          await store.users.update(id, {
+            totp_enabled: false,
+            totp_secret_encrypted: null,
+            recovery_codes_encrypted: null,
+          });
+          description = `Reset 2FA (TOTP + recovery codes) for ${user.username}`;
+          break;
+        }
+        case 'passkeys': {
+          const count = await store.passkeys.countByUserId(id);
+          if (count === 0) {
+            throw Errors.badRequest('User has no passkeys');
+          }
+          const deleted = await store.passkeys.deleteAllByUserId(id);
+          description = `Removed all passkeys (${deleted}) for ${user.username}`;
+          break;
+        }
+        case 'sessions': {
+          await store.auth.revokeAllForUser(id);
+          description = `Revoked all sessions for ${user.username}`;
+          break;
+        }
+      }
+
+      invalidateUserCache(id);
+
+      await store.audit.logAdminAction(adminId, `reset_${target}`, id, description);
+      await store.audit.createLog(
+        id,
+        `${target}_reset_by_admin`,
+        JSON.stringify({ admin_id: adminId, admin_username: adminUsername, target }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: description,
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Admin reset user data');
     }
   });
 

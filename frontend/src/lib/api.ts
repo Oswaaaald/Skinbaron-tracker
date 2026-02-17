@@ -843,6 +843,10 @@ class ApiClient {
     return this.patch(`/api/admin/users/${userId}/username`, { username });
   }
 
+  async adminResetUserData(userId: number, target: '2fa' | 'passkeys' | 'sessions'): Promise<ApiResponse<unknown>> {
+    return this.post(`/api/admin/users/${userId}/reset`, { target });
+  }
+
   async getAdminLogs(params?: { limit?: number; action?: string; admin_id?: number }): Promise<ApiResponse<AdminActionLog[]>> {
     const query = new URLSearchParams();
     if (params?.limit) query.append('limit', params.limit.toString());

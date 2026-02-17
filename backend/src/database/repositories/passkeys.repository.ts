@@ -65,4 +65,11 @@ export class PasskeysRepository {
       .where(eq(passkeys.user_id, userId));
     return row?.value ?? 0;
   }
+
+  async deleteAllByUserId(userId: number): Promise<number> {
+    const result = await this.db.delete(passkeys)
+      .where(eq(passkeys.user_id, userId))
+      .returning({ id: passkeys.id });
+    return result.length;
+  }
 }

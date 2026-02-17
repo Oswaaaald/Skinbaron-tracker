@@ -118,6 +118,11 @@ export const AdminUsernameSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
 });
 
+/** POST /admin/users/:id/reset body */
+export const AdminResetSchema = z.object({
+  target: z.enum(['2fa', 'passkeys', 'sessions']),
+});
+
 /** GET /admin/audit-logs querystring */
 export const AdminAuditQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(1000).default(100),

@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { UserDetailSkeleton } from '@/components/ui/skeletons'
 import { Label } from '@/components/ui/label'
-import { Shield, ShieldOff, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle, Camera, Trash2, Ban, Pencil, Check, X, FileWarning, ScrollText } from 'lucide-react'
+import { Shield, ShieldOff, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle, Camera, Trash2, Ban, Pencil, Check, X, FileWarning, ScrollText, RotateCcw, LogOut } from 'lucide-react'
 import { apiClient, type AdminUserDetail, type Sanction } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { extractErrorMessage } from '@/lib/utils'
@@ -84,6 +84,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmToggleAdmin, setConfirmToggleAdmin] = useState<'grant' | 'revoke' | null>(null)
   const [confirmDeleteSanction, setConfirmDeleteSanction] = useState<number | null>(null)
+  const [confirmReset, setConfirmReset] = useState<'2fa' | 'passkeys' | 'sessions' | null>(null)
 
   // Loading states
   const [moderating, setModerating] = useState<string | null>(null)
@@ -230,6 +231,26 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     } finally {
       setModerating(null)
       setConfirmToggleAdmin(null)
+    }
+  }
+
+  const handleReset = async (target: '2fa' | 'passkeys' | 'sessions') => {
+    if (!userId) return
+    setModerating(`reset-${target}`)
+    try {
+      const res = await apiClient.adminResetUserData(userId, target)
+      if (res.success) {
+        const labels = { '2fa': '2FA', passkeys: 'Passkeys', sessions: 'Sessions' } as const
+        toast({ title: `✅ ${labels[target]} reset`, description: res.message || `${labels[target]} have been reset successfully` })
+        invalidateAll()
+      } else {
+        toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: '❌ Failed', description: extractErrorMessage(error, 'Failed'), variant: 'destructive' })
+    } finally {
+      setModerating(null)
+      setConfirmReset(null)
     }
   }
 
@@ -416,9 +437,23 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                       <Key className="h-3.5 w-3.5" />
                       Two-Factor Auth (TOTP)
                     </span>
-                    <Badge variant={detail.totp_enabled ? 'default' : 'outline'}>
-                      {detail.totp_enabled ? '✅ Enabled' : '❌ Disabled'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={detail.totp_enabled ? 'default' : 'outline'}>
+                        {detail.totp_enabled ? '✅ Enabled' : '❌ Disabled'}
+                      </Badge>
+                      {detail.totp_enabled && !detail.is_super_admin && !isCurrentUser && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                          onClick={() => setConfirmReset('2fa')}
+                          disabled={moderating !== null}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Reset
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <Separator />
@@ -429,7 +464,21 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                         <Fingerprint className="h-3.5 w-3.5" />
                         Passkeys
                       </span>
-                      <Badge variant="secondary">{detail.passkeys.length}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{detail.passkeys.length}</Badge>
+                        {detail.passkeys.length > 0 && !detail.is_super_admin && !isCurrentUser && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                            onClick={() => setConfirmReset('passkeys')}
+                            disabled={moderating !== null}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Remove all
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     {detail.passkeys.length > 0 ? (
                       <div className="space-y-1.5">
@@ -768,6 +817,28 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
                     <Separator />
 
+                    {/* Revoke Sessions */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Revoke all sessions</p>
+                        <p className="text-xs text-muted-foreground">
+                          Force logout from all devices
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setConfirmReset('sessions')}
+                        disabled={moderating !== null}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <LogOut className="h-3.5 w-3.5 mr-1.5" />
+                        Revoke
+                      </Button>
+                    </div>
+
+                    <Separator />
+
                     {/* Delete Account */}
                     <div className="flex items-center justify-between">
                       <div>
@@ -893,6 +964,40 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             disabled={moderating === 'admin'}
           >
             {moderating === 'admin' ? 'Updating...' : 'Confirm'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Confirm Reset */}
+    <AlertDialog open={confirmReset !== null} onOpenChange={(open) => { if (!open) setConfirmReset(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {confirmReset === '2fa' && 'Reset Two-Factor Authentication'}
+            {confirmReset === 'passkeys' && 'Remove All Passkeys'}
+            {confirmReset === 'sessions' && 'Revoke All Sessions'}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {confirmReset === '2fa' && (
+              <>Are you sure you want to reset 2FA for <strong>{detail?.username}</strong>? This will disable TOTP and delete all recovery codes. The user will need to set up 2FA again.</>
+            )}
+            {confirmReset === 'passkeys' && (
+              <>Are you sure you want to remove all passkeys ({detail?.passkeys.length}) for <strong>{detail?.username}</strong>? The user will lose all passwordless login methods.</>
+            )}
+            {confirmReset === 'sessions' && (
+              <>Are you sure you want to revoke all sessions for <strong>{detail?.username}</strong>? The user will be immediately logged out from all devices.</>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={moderating?.startsWith('reset-')}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); if (confirmReset) void handleReset(confirmReset) }}
+            disabled={moderating?.startsWith('reset-')}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {moderating?.startsWith('reset-') ? 'Processing...' : 'Confirm'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
