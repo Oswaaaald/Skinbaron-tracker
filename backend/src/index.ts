@@ -1,3 +1,8 @@
+import { initSentry, captureException, flushSentry } from './lib/sentry.js';
+
+// Initialize Sentry BEFORE anything else
+initSentry();
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -97,6 +102,9 @@ const gracefulShutdown = async (signal: string) => {
     
     // Close Fastify
     await fastify.close();
+
+    // Flush pending Sentry events
+    await flushSentry();
     
     fastify.log.info('Graceful shutdown completed');
     process.exit(0);
@@ -112,11 +120,13 @@ process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 // Error handlers
 process.on('uncaughtException', (error) => {
+  captureException(error, { context: 'uncaughtException' });
   fastify.log.fatal({ error }, 'Uncaught Exception');
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
+  captureException(reason, { context: 'unhandledRejection', promise: String(promise) });
   fastify.log.fatal({ promise, reason }, 'Unhandled Rejection');
   process.exit(1);
 });
@@ -377,7 +387,8 @@ async function registerPlugins() {
       return handleRouteError(error, request, reply, 'Global handler');
     }
     
-    // Let other errors fall through to default handler
+    // Capture unexpected errors in Sentry before falling through
+    captureException(error, { url: request.url, method: request.method });
     throw error;
   });
 
