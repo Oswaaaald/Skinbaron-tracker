@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { LoadingState } from '@/components/ui/loading-state'
 import { Eye, EyeOff, Mail, Lock, User, Shield, Fingerprint } from 'lucide-react'
 import Link from 'next/link'
 
@@ -32,6 +33,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const [oauthPendingData, setOauthPendingData] = useState<{ email: string; suggested_username: string; provider: string } | null>(null)
   const [totpCode, setTotpCode] = useState('')
   const [oauthProviders, setOAuthProviders] = useState<string[]>([])
+  const [oauthReady, setOauthReady] = useState(false)
   
   const [formData, setFormData] = useState({
     username: '',
@@ -51,6 +53,8 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
         }
       } catch {
         // OAuth not available — hide buttons silently
+      } finally {
+        setOauthReady(true)
       }
     })()
   }, [])
@@ -417,6 +421,10 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   }
 
   const isLogin = mode === 'login'
+
+  if (!oauthReady) {
+    return <LoadingState variant="page" />
+  }
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative" style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}>
