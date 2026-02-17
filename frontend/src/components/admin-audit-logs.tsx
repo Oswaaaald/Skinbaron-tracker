@@ -262,7 +262,7 @@ export function AdminAuditLogs() {
             <div className="flex items-end gap-2">
               <Button onClick={() => void refetch()} variant="outline" className="flex-1" disabled={isFetching}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh results
+              Refresh
               </Button>
               <Button onClick={handleClearFilters} variant="outline" className="flex-1">
                 <X className="h-4 w-4 mr-2" />
