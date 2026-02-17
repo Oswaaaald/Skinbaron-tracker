@@ -214,9 +214,9 @@ export function AlertsGrid() {
 
   if (allAlerts.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No Alerts Found</CardTitle>
+      <Card className="border-dashed">
+        <CardHeader className="items-center text-center py-10">
+          <CardTitle className="text-base">No Alerts Found</CardTitle>
           <CardDescription>
             No alerts have been triggered yet. Create some rules to start monitoring!
           </CardDescription>
