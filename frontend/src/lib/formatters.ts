@@ -292,10 +292,14 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       
       case "sanction_deleted": {
         const adminName = data['deleted_by_admin_username'] ? `by ${String(data['deleted_by_admin_username'])}` : 'by admin';
-        const sanctionAction = String(data['action'] || 'unknown');
-        const rType = data['restriction_type'] ? ` (${String(data['restriction_type'])})` : '';
-        const reason = data['reason'] ? ` — reason: ${String(data['reason'])}` : '';
-        return `${sanctionAction}${rType} sanction removed ${adminName}${reason}`;
+        const reason = data['reason'] ? `: ${String(data['reason'])}` : '';
+        const action = String(data['action'] || '');
+        const rType = String(data['restriction_type'] || '');
+        if (action === 'restrict') {
+          const typeLabel = rType === 'permanent' ? 'Permanent' : 'Temporary';
+          return `${typeLabel} restriction removed ${adminName}${reason}`;
+        }
+        return `Unrestriction removed ${adminName}${reason}`;
       }
       
       case "username_changed":
