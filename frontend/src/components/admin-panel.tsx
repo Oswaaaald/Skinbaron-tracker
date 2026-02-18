@@ -68,6 +68,7 @@ export function AdminPanel() {
   const [schedulerConfirmOpen, setSchedulerConfirmOpen] = useState(false)
   const [sentryConfirmOpen, setSentryConfirmOpen] = useState(false)
   const [detailUserId, setDetailUserId] = useState<number | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const isVisible = usePageVisible()
   const { syncStats } = useSyncStats()
 
@@ -459,7 +460,7 @@ export function AdminPanel() {
                     <button
                       type="button"
                       className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2"
-                      onClick={() => setDetailUserId(user.id)}
+                      onClick={() => { setDetailUserId(user.id); setDetailOpen(true) }}
                     >
                       {user.avatar_url ? (
                         <Image
@@ -660,8 +661,11 @@ export function AdminPanel() {
       {/* User Detail Dialog (GDPR-audited) */}
       <AdminUserDetailDialog
         userId={detailUserId}
-        open={detailUserId !== null}
-        onOpenChange={(open) => { if (!open) setDetailUserId(null) }}
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open)
+          if (!open) setTimeout(() => setDetailUserId(null), 200)
+        }}
       />
     </div>
   )
