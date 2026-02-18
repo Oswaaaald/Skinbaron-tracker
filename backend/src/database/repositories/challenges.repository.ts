@@ -1,6 +1,7 @@
 import { eq, lt } from 'drizzle-orm';
 import { pendingChallenges } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
+import { encryptData, decryptData } from '../utils/encryption.js';
 
 export class ChallengesRepository {
   constructor(private db: AppDatabase) {}
@@ -11,11 +12,12 @@ export class ChallengesRepository {
    */
   async store(key: string, type: string, value: string, ttlMs: number): Promise<void> {
     const expiresAt = new Date(Date.now() + ttlMs);
+    const encryptedValue = encryptData(value);
     await this.db.insert(pendingChallenges)
-      .values({ key, type, value, expires_at: expiresAt })
+      .values({ key, type, value: encryptedValue, expires_at: expiresAt })
       .onConflictDoUpdate({
         target: pendingChallenges.key,
-        set: { type, value, expires_at: expiresAt },
+        set: { type, value: encryptedValue, expires_at: expiresAt },
       });
   }
 
@@ -32,7 +34,7 @@ export class ChallengesRepository {
       if (row) await this.delete(key);
       return null;
     }
-    return row.value;
+    return decryptData(row.value);
   }
 
   /**
@@ -44,7 +46,7 @@ export class ChallengesRepository {
       .where(eq(pendingChallenges.key, key))
       .returning({ value: pendingChallenges.value, expires_at: pendingChallenges.expires_at });
     if (!row || row.expires_at < new Date()) return null;
-    return row.value;
+    return decryptData(row.value);
   }
 
   /**
