@@ -65,6 +65,7 @@ export function AdminPanel() {
     action: 'approve',
   })
   const [schedulerConfirmOpen, setSchedulerConfirmOpen] = useState(false)
+  const [sentryConfirmOpen, setSentryConfirmOpen] = useState(false)
   const [detailUserId, setDetailUserId] = useState<number | null>(null)
   const isVisible = usePageVisible()
   const { syncStats } = useSyncStats()
@@ -245,6 +246,10 @@ export function AdminPanel() {
   const confirmScheduler = useCallback(() => {
     forceSchedulerMutation.mutate()
   }, [forceSchedulerMutation])
+
+  const confirmSentryTest = useCallback(() => {
+    testSentryMutation.mutate()
+  }, [testSentryMutation])
 
   if (usersLoading) {
     return <AdminPanelSkeleton />
@@ -591,7 +596,7 @@ export function AdminPanel() {
               </CardHeader>
               <CardContent>
                 <Button
-                  onClick={() => testSentryMutation.mutate()}
+                  onClick={() => setSentryConfirmOpen(true)}
                   disabled={testSentryMutation.isPending}
                   variant="outline"
                 >
@@ -636,6 +641,17 @@ export function AdminPanel() {
         confirmText="Run Now"
         variant="default"
         onConfirm={confirmScheduler}
+      />
+
+      {/* Sentry Test Confirmation Dialog */}
+      <ConfirmDialog
+        open={sentryConfirmOpen}
+        onOpenChange={setSentryConfirmOpen}
+        title="Test Sentry"
+        description="Send a test error to Sentry? This will appear as a new issue in your Sentry dashboard."
+        confirmText="Send Test"
+        variant="default"
+        onConfirm={confirmSentryTest}
       />
 
       {/* User Detail Dialog (GDPR-audited) */}
