@@ -55,17 +55,9 @@ export default withSentryConfig(nextConfig, {
   // Suppress source map upload warnings when no auth token is set
   silent: !process.env['SENTRY_AUTH_TOKEN'],
 
-  // Automatically tree-shake Sentry logger statements
-  disableLogger: true,
-
   // Don't widen the scope of uploaded source maps
   widenClientFileUpload: false,
 
   // Tunnel Sentry events through a Next.js route to avoid ad-blockers
   tunnelRoute: '/monitoring',
-
-  // Disable automatic instrumentation for page loads (we handle it ourselves)
-  autoInstrumentServerFunctions: false,
-  autoInstrumentMiddleware: false,
-  autoInstrumentAppDirectory: true,
 });
