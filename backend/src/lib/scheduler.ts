@@ -379,15 +379,24 @@ export class AlertScheduler {
     const existingPairs = await store.alerts.findSaleIdPricesByRuleId(ruleId);
     const existingMap = new Map(existingPairs.map(p => [p.sale_id, p.price]));
 
-    // ── Delete stale alerts — items no longer available on SkinBaron ──
-    // Only when API returned the full result set (no pagination cutoff risk)
+    // ── Delete stale alerts ──
+    // Two cases:
+    //   1. Item sold/removed from SkinBaron (only when we have full result set)
+    //   2. Item still on SkinBaron but no longer matches rule criteria
+    //      (e.g. max_price lowered from 10€ to 7€ → remove alerts at 9€)
+    const filteredSaleIds = new Set(items.map(item => item.saleId));
     let obsoleteRemoved = 0;
-    if (!hitPageLimit && existingPairs.length > 0) {
-      const obsoleteSaleIds = existingPairs
-        .filter(p => !allApiSaleIds.has(p.sale_id))
-        .map(p => p.sale_id);
-      if (obsoleteSaleIds.length > 0) {
-        obsoleteRemoved = await store.alerts.deleteBySaleIdsForRule(obsoleteSaleIds, ruleId);
+    if (existingPairs.length > 0) {
+      const staleSaleIds = existingPairs.filter(p => {
+        if (!hitPageLimit) {
+          // Full result set: remove if item is gone OR no longer matches rule
+          return !filteredSaleIds.has(p.sale_id);
+        }
+        // Paginated: only remove items we SAW in the API but that didn't pass the filter
+        return allApiSaleIds.has(p.sale_id) && !filteredSaleIds.has(p.sale_id);
+      }).map(p => p.sale_id);
+      if (staleSaleIds.length > 0) {
+        obsoleteRemoved = await store.alerts.deleteBySaleIdsForRule(staleSaleIds, ruleId);
       }
     }
 
