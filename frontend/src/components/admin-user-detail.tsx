@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -84,6 +84,13 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   const [confirmToggleAdmin, setConfirmToggleAdmin] = useState<'grant' | 'revoke' | null>(null)
   const [confirmDeleteSanction, setConfirmDeleteSanction] = useState<number | null>(null)
   const [confirmReset, setConfirmReset] = useState<'2fa' | 'passkeys' | 'sessions' | null>(null)
+  // Keep last non-null values so dialog text stays stable during close animation
+  const lastToggleAdmin = useRef<'grant' | 'revoke'>('grant')
+  const lastReset = useRef<'2fa' | 'passkeys' | 'sessions'>('2fa')
+  const lastDeleteSanction = useRef<number>(0)
+  if (confirmToggleAdmin) lastToggleAdmin.current = confirmToggleAdmin
+  if (confirmReset) lastReset.current = confirmReset
+  if (confirmDeleteSanction) lastDeleteSanction.current = confirmDeleteSanction
 
   // Loading states
   const [moderating, setModerating] = useState<string | null>(null)
@@ -951,9 +958,9 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     <Dialog open={confirmToggleAdmin !== null} onOpenChange={(open) => { if (!open) setConfirmToggleAdmin(null) }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{confirmToggleAdmin === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}</DialogTitle>
+          <DialogTitle>{lastToggleAdmin.current === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to {confirmToggleAdmin === 'grant' ? 'grant admin privileges to' : 'revoke admin privileges from'} <strong>{detail?.username}</strong>?
+            Are you sure you want to {lastToggleAdmin.current === 'grant' ? 'grant admin privileges to' : 'revoke admin privileges from'} <strong>{detail?.username}</strong>?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -973,18 +980,18 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {confirmReset === '2fa' && 'Reset Two-Factor Authentication'}
-            {confirmReset === 'passkeys' && 'Remove All Passkeys'}
-            {confirmReset === 'sessions' && 'Revoke All Sessions'}
+            {lastReset.current === '2fa' && 'Reset Two-Factor Authentication'}
+            {lastReset.current === 'passkeys' && 'Remove All Passkeys'}
+            {lastReset.current === 'sessions' && 'Revoke All Sessions'}
           </DialogTitle>
           <DialogDescription>
-            {confirmReset === '2fa' && (
+            {lastReset.current === '2fa' && (
               <>Are you sure you want to reset 2FA for <strong>{detail?.username}</strong>? This will disable TOTP and delete all recovery codes. The user will need to set up 2FA again.</>
             )}
-            {confirmReset === 'passkeys' && (
+            {lastReset.current === 'passkeys' && (
               <>Are you sure you want to remove all passkeys ({detail?.passkeys.length}) for <strong>{detail?.username}</strong>? The user will lose all passwordless login methods.</>
             )}
-            {confirmReset === 'sessions' && (
+            {lastReset.current === 'sessions' && (
               <>Are you sure you want to revoke all sessions for <strong>{detail?.username}</strong>? The user will be immediately logged out from all devices.</>
             )}
           </DialogDescription>
@@ -1010,7 +1017,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
           <DialogDescription>
             Are you sure you want to delete this sanction from the history?
             {(() => {
-              const s = detail?.sanctions.find(s => s.id === confirmDeleteSanction)
+              const s = detail?.sanctions.find(s => s.id === lastDeleteSanction.current)
               if (!s) return null
               const isActive = s.action === 'restrict' && detail?.is_restricted && detail.sanctions.filter(x => x.action === 'restrict')[0]?.id === s.id
               return (

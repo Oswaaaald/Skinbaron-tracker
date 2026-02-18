@@ -666,6 +666,13 @@ function LinkedAccounts() {
   const [unlinking, setUnlinking] = useState<string | null>(null)
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
   const [confirmLink, setConfirmLink] = useState<string | null>(null)
+  // Keep last non-null value so dialog text stays stable during close animation
+  const lastUnlinkProvider = useRef<string>('')
+  const lastLinkProvider = useRef<string>('')
+  if (confirmUnlink) lastUnlinkProvider.current = confirmUnlink
+  if (confirmLink) lastLinkProvider.current = confirmLink
+  const unlinkLabel = PROVIDER_META[lastUnlinkProvider.current]?.label ?? lastUnlinkProvider.current
+  const linkLabel = PROVIDER_META[lastLinkProvider.current]?.label ?? lastLinkProvider.current
 
   const { data: enabledProviders } = useQuery({
     queryKey: ['oauth-providers'],
@@ -728,7 +735,7 @@ function LinkedAccounts() {
         open={!!confirmUnlink}
         onOpenChange={(open) => { if (!open) setConfirmUnlink(null) }}
         title="Unlink account?"
-        description={`Are you sure you want to unlink your ${PROVIDER_META[confirmUnlink ?? '']?.label ?? confirmUnlink} account? You can always re-link it later.`}
+        description={`Are you sure you want to unlink your ${unlinkLabel} account? You can always re-link it later.`}
         confirmText="Unlink"
         variant="destructive"
         onConfirm={() => { if (confirmUnlink) void handleUnlink(confirmUnlink) }}
@@ -736,8 +743,8 @@ function LinkedAccounts() {
       <ConfirmDialog
         open={!!confirmLink}
         onOpenChange={(open) => { if (!open) setConfirmLink(null) }}
-        title={`Link ${PROVIDER_META[confirmLink ?? '']?.label ?? confirmLink} account?`}
-        description={`You will be redirected to ${PROVIDER_META[confirmLink ?? '']?.label ?? confirmLink} to authorize your account. You can unlink it at any time.`}
+        title={`Link ${linkLabel} account?`}
+        description={`You will be redirected to ${linkLabel} to authorize your account. You can unlink it at any time.`}
         confirmText="Continue"
         onConfirm={() => { if (confirmLink) handleLink(confirmLink) }}
       />

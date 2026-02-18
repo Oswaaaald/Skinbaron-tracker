@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -53,6 +53,8 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null)
+  const lastWebhookToDeleteName = useRef('')
+  if (webhookToDelete?.name) lastWebhookToDeleteName.current = webhookToDelete.name
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null)
   const [formData, setFormData] = useState<WebhookFormData>(initialFormData)
   const [error, setError] = useState('')
@@ -427,7 +429,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title="Delete Webhook"
-        description={`Are you sure you want to delete "${webhookToDelete?.name}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${lastWebhookToDeleteName.current}"? This action cannot be undone.`}
         confirmText="Delete"
         variant="destructive"
         onConfirm={confirmDelete}

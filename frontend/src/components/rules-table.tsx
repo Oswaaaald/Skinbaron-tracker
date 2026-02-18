@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   Table,
@@ -40,6 +40,8 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [ruleToDelete, setRuleToDelete] = useState<Rule | null>(null)
+  const lastRuleToDeleteName = useRef('')
+  if (ruleToDelete?.search_item) lastRuleToDeleteName.current = ruleToDelete.search_item
   const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set())
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
   const { isReady, isAuthenticated } = useAuth()
@@ -535,7 +537,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title="Delete Rule"
-        description={`Are you sure you want to delete the rule for "${ruleToDelete?.search_item}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete the rule for "${lastRuleToDeleteName.current}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"
