@@ -158,6 +158,14 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
     form.setValue('webhook_ids', selectedWebhooks)
   }, [selectedWebhooks, form])
 
+  // Pre-select all webhooks when creating a new rule (once webhooks are loaded)
+  useEffect(() => {
+    if (open && !rule && webhooks.length > 0 && selectedWebhooks.length === 0) {
+      const allIds = webhooks.map(w => w.id).filter((id): id is number => id != null)
+      setSelectedWebhooks(allIds)
+    }
+  }, [open, rule, webhooks, selectedWebhooks.length])
+
   const createRuleMutation = useApiMutation(
     (data: CreateRuleData) => apiClient.createRule(data),
     {
