@@ -139,7 +139,8 @@ export function AdminPanel() {
           title: "✅ User approved",
           description: "User account has been approved and activated",
         })
-        setpendingUserDialog({ open: false, userId: null, action: 'approve' })
+        setpendingUserDialog(prev => ({ ...prev, open: false }))
+        setTimeout(() => setpendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
       },
       onError: (error: unknown) => {
         toast({
@@ -161,7 +162,8 @@ export function AdminPanel() {
           title: "✅ User rejected",
           description: "User registration has been rejected",
         })
-        setpendingUserDialog({ open: false, userId: null, action: 'reject' })
+        setpendingUserDialog(prev => ({ ...prev, open: false }))
+        setTimeout(() => setpendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
       },
       onError: (error: unknown) => {
         toast({

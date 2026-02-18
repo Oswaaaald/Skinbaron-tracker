@@ -128,8 +128,7 @@ export function PasskeyManager() {
         toast({ title: '✅ Passkey renamed', description: `Passkey renamed to "${renameName.trim()}"` })
         invalidate()
         setRenameDialog(false)
-        setRenameTarget(null)
-        setRenameName('')
+        setTimeout(() => { setRenameTarget(null); setRenameName('') }, 200)
       } else {
         toast({ variant: 'destructive', title: '❌ Rename failed', description: res.message || 'Could not rename passkey' })
       }
@@ -221,7 +220,12 @@ export function PasskeyManager() {
       </Button>
 
       {/* Rename Dialog */}
-      <Dialog open={renameDialog} onOpenChange={(open) => { if (!open) { setRenameDialog(false); setRenameTarget(null); setRenameName('') } }}>
+      <Dialog open={renameDialog} onOpenChange={(open) => {
+        if (!open) {
+          setRenameDialog(false)
+          setTimeout(() => { setRenameTarget(null); setRenameName('') }, 200)
+        }
+      }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Rename Passkey</DialogTitle>
@@ -241,7 +245,7 @@ export function PasskeyManager() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setRenameDialog(false); setRenameTarget(null); setRenameName('') }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setRenameDialog(false); setTimeout(() => { setRenameTarget(null); setRenameName('') }, 200) }}>Cancel</Button>
             <Button onClick={() => void handleRename()} disabled={renaming || !renameName.trim()}>
               {renaming ? <><LoadingSpinner size="sm" inline /> <span className="ml-2">Saving...</span></> : 'Save'}
             </Button>

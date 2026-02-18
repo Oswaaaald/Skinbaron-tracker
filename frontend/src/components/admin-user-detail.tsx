@@ -165,9 +165,6 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
       })
       if (res.success) {
         toast({ title: '🚫 User restricted', description: res.message })
-        setRestrictReason('')
-        setDurationHours(24)
-        setRestrictionType('temporary')
         invalidateAll()
       } else {
         toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
@@ -177,6 +174,12 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     } finally {
       setModerating(null)
       setConfirmRestrict(false)
+      // Delay form reset until after close animation
+      setTimeout(() => {
+        setRestrictReason('')
+        setDurationHours(24)
+        setRestrictionType('temporary')
+      }, 200)
     }
   }
 
@@ -187,7 +190,6 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
       const res = await apiClient.adminUnrestrictUser(userId, unrestrictReason.trim())
       if (res.success) {
         toast({ title: '✅ User unrestricted', description: res.message })
-        setUnrestrictReason('')
         invalidateAll()
       } else {
         toast({ title: '❌ Failed', description: res.message || 'Failed', variant: 'destructive' })
@@ -197,6 +199,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     } finally {
       setModerating(null)
       setConfirmUnrestrict(false)
+      setTimeout(() => setUnrestrictReason(''), 200)
     }
   }
 

@@ -60,6 +60,8 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   const [error, setError] = useState('')
   const [selectedWebhooks, setSelectedWebhooks] = useState<Set<number>>(new Set())
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
+  const lastBatchSize = useRef(0)
+  if (selectedWebhooks.size > 0) lastBatchSize.current = selectedWebhooks.size
 
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
@@ -98,7 +100,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
       successMessage: 'Webhook created successfully',
       onSuccess: () => {
         setIsDialogOpen(false)
-        resetForm()
+        setTimeout(() => resetForm(), 200)
         void syncStats()
       },
       onError: (error: Error) => {
@@ -119,7 +121,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
       successMessage: 'Webhook updated successfully',
       onSuccess: () => {
         setIsDialogOpen(false)
-        resetForm()
+        setTimeout(() => resetForm(), 200)
         void syncStats()
       },
       onError: (error: Error) => {
@@ -441,8 +443,8 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
         onOpenChange={(open) => !open && setBatchAction(null)}
         title="Delete Webhooks"
         description={
-          selectedWebhooks.size > 0
-            ? `Are you sure you want to delete ${selectedWebhooks.size} selected webhook(s)? This action cannot be undone.`
+          lastBatchSize.current > 0
+            ? `Are you sure you want to delete ${lastBatchSize.current} selected webhook(s)? This action cannot be undone.`
             : `Are you sure you want to delete ALL ${webhooks?.length || 0} webhooks? This action cannot be undone and will permanently delete all your webhook configurations.`
         }
         confirmText="Delete"

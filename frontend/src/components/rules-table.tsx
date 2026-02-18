@@ -44,6 +44,8 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   if (ruleToDelete?.search_item) lastRuleToDeleteName.current = ruleToDelete.search_item
   const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set())
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
+  const lastBatchSize = useRef(0)
+  if (selectedRules.size > 0) lastBatchSize.current = selectedRules.size
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
@@ -527,7 +529,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
         open={isEditDialogOpen}
         onOpenChange={(open: boolean) => {
           setIsEditDialogOpen(open)
-          if (!open) setEditingRule(null)
+          if (!open) setTimeout(() => setEditingRule(null), 200)
         }}
         rule={editingRule}
       />
@@ -550,8 +552,8 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
         onOpenChange={(open) => !open && setBatchAction(null)}
         title="Delete Rules"
         description={
-          selectedRules.size > 0
-            ? `Are you sure you want to delete ${selectedRules.size} selected rule(s)? This action cannot be undone.`
+          lastBatchSize.current > 0
+            ? `Are you sure you want to delete ${lastBatchSize.current} selected rule(s)? This action cannot be undone.`
             : `Are you sure you want to delete ALL ${rules.length} rules? This action cannot be undone and will permanently delete all your monitoring rules.`
         }
         confirmText="Delete"

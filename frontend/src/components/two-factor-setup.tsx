@@ -107,11 +107,14 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
 
   const handleComplete = () => {
     onOpenChange(false)
-    setStep('qr')
-    setVerificationCode('')
-    setSecret('')
-    setRecoveryCodes([])
-    setError('')
+    // Delay reset until after close animation
+    setTimeout(() => {
+      setStep('qr')
+      setVerificationCode('')
+      setSecret('')
+      setRecoveryCodes([])
+      setError('')
+    }, 200)
   }
 
   const copySecret = () => {
