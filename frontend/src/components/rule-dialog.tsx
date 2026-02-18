@@ -131,28 +131,33 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
       const maxWearPct = rule.max_wear !== undefined && rule.max_wear !== null ? wearToPercentage(rule.max_wear) : undefined
       setMinWearDisplay(minWearPct !== undefined ? minWearPct.toString() : '')
       setMaxWearDisplay(maxWearPct !== undefined ? maxWearPct.toString() : '')
+      return undefined
     } else if (!open) {
-      // Reset form when dialog closes (for next creation)
-      form.reset({
-        search_item: "",
-        min_price: undefined,
-        max_price: undefined,
-        min_wear: undefined,
-        max_wear: undefined,
-        stattrak_filter: 'all',
-        souvenir_filter: 'all',
-        sticker_filter: 'all' as const,
-        webhook_ids: [],
-        enabled: true,
-      })
-      setSelectedWebhooks([])
-      hasPreselectedWebhooks.current = false
-      // Reset display values
-      setMinPriceDisplay('')
-      setMaxPriceDisplay('')
-      setMinWearDisplay('')
-      setMaxWearDisplay('')
+      // Delay reset until after the close animation finishes (~200ms)
+      const timeout = setTimeout(() => {
+        form.reset({
+          search_item: "",
+          min_price: undefined,
+          max_price: undefined,
+          min_wear: undefined,
+          max_wear: undefined,
+          stattrak_filter: 'all',
+          souvenir_filter: 'all',
+          sticker_filter: 'all' as const,
+          webhook_ids: [],
+          enabled: true,
+        })
+        setSelectedWebhooks([])
+        hasPreselectedWebhooks.current = false
+        // Reset display values
+        setMinPriceDisplay('')
+        setMaxPriceDisplay('')
+        setMinWearDisplay('')
+        setMaxWearDisplay('')
+      }, 200)
+      return () => clearTimeout(timeout)
     }
+    return undefined
   }, [open, rule, form])
 
   // Update form when selectedWebhooks changes
