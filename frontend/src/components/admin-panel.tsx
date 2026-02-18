@@ -54,6 +54,7 @@ interface GlobalStats {
   total_rules: number
   total_alerts: number
   total_webhooks: number
+  sentryEnabled: boolean
 }
 
 export function AdminPanel() {
@@ -586,6 +587,7 @@ export function AdminPanel() {
               </CardContent>
             </Card>
 
+            {statsData?.sentryEnabled && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -607,6 +609,7 @@ export function AdminPanel() {
                 </p>
               </CardContent>
             </Card>
+            )}
           </TabsContent>
         )}
       </Tabs>

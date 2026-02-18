@@ -6,7 +6,7 @@ import { validateWithZod, handleRouteError } from '../lib/validation-handler.js'
 import { Errors } from '../lib/errors.js';
 import { AuthService } from '../lib/auth.js';
 import { appConfig } from '../lib/config.js';
-import { captureException } from '../lib/sentry.js';
+import { captureException, verifySentryConnection } from '../lib/sentry.js';
 import { deleteAvatarFile } from '../lib/avatar.js';
 import {
   AdminUserParamsSchema,
@@ -1044,7 +1044,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       return reply.status(200).send({
         success: true,
-        data: stats,
+        data: {
+          ...stats,
+          sentryEnabled: !!appConfig.SENTRY_DSN,
+        },
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Get global stats');
@@ -1531,11 +1534,22 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           properties: {
             success: { type: 'boolean' },
             message: { type: 'string' },
+            verified: { type: 'boolean' },
           },
         },
       },
     },
   }, async (request, reply) => {
+    if (!appConfig.SENTRY_DSN) {
+      throw Errors.badRequest('Sentry is not configured — set SENTRY_DSN to enable');
+    }
+
+    // Verify DSN connectivity before sending the test error
+    const verification = await verifySentryConnection();
+    if (!verification.ok) {
+      throw Errors.badRequest(verification.reason ?? 'Sentry DSN verification failed');
+    }
+
     const testError = new Error('Sentry test error — triggered by admin');
     captureException(testError, { triggeredBy: getAuthUser(request).id });
 
@@ -1549,6 +1563,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return reply.status(200).send({
       success: true,
       message: 'Test error sent to Sentry',
+      verified: true,
     });
   });
 }
