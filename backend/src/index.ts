@@ -586,94 +586,8 @@ function setupCsrfEndpoint() {
   });
 }
 
-/**
- * Sentry → Discord webhook relay.
- * Receives Sentry alert webhooks (custom integration), transforms the payload
- * into a Discord embed, and forwards it to the configured DISCORD_WEBHOOK.
- */
-function setupSentryWebhookRelay() {
-  if (!appConfig.SENTRY_WEBHOOK_SECRET || !appConfig.DISCORD_WEBHOOK) {
-    return; // Not configured — skip silently
-  }
 
-  fastify.post('/api/webhooks/sentry', {
-    logLevel: 'warn',
-    schema: {
-      description: 'Sentry webhook relay to Discord (internal)',
-      tags: ['System'],
-      hide: true,
-    },
-  }, async (request, reply) => {
-    // Authenticate with secret token in Authorization header
-    const authHeader = request.headers.authorization ?? '';
-    const token = authHeader.replace(/^Bearer\s+/i, '');
-    if (!token || token !== appConfig.SENTRY_WEBHOOK_SECRET) {
-      return reply.status(401).send({ success: false, error: 'Unauthorized' });
-    }
 
-    try {
-      const payload = request.body as Record<string, unknown>;
-      const action = (payload['action'] as string) ?? 'unknown';
-      const data = (payload['data'] as Record<string, unknown>) ?? {};
-      const issue = (data['issue'] as Record<string, unknown>) ?? (data['event'] as Record<string, unknown>) ?? {};
-
-      const title = (issue['title'] as string) ?? 'Unknown error';
-      const culprit = (issue['culprit'] as string) ?? '';
-      const issueUrl = (issue['web_url'] as string) ?? (issue['url'] as string) ?? '';
-      const level = (issue['level'] as string) ?? 'error';
-      const project = ((issue['project'] as Record<string, unknown>) ?? {})['name'] as string ?? 'unknown';
-
-      // Color based on level
-      const colors: Record<string, number> = {
-        fatal: 0xff0000,
-        error: 0xe74c3c,
-        warning: 0xf39c12,
-        info: 0x3498db,
-      };
-      const color = colors[level] ?? 0xe74c3c;
-
-      const embed = {
-        title: `🚨 [${level.toUpperCase()}] ${title}`.slice(0, 256),
-        description: culprit ? `\`${culprit}\`` : undefined,
-        url: issueUrl || undefined,
-        color,
-        fields: [
-          { name: 'Project', value: project, inline: true },
-          { name: 'Action', value: action, inline: true },
-        ],
-        timestamp: new Date().toISOString(),
-        footer: { text: 'Sentry' },
-      };
-
-      const discordPayload = {
-        username: '🛡️ Sentry',
-        avatar_url: 'https://sentry-brand.storage.googleapis.com/sentry-glyph-black.png',
-        embeds: [embed],
-      };
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      const res = await fetch(appConfig.DISCORD_WEBHOOK!, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(discordPayload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        fastify.log.warn({ status: res.status }, '[Sentry Relay] Discord webhook failed');
-      }
-
-      return reply.status(200).send({ success: true });
-    } catch (error) {
-      fastify.log.error({ error }, '[Sentry Relay] Failed to process Sentry webhook');
-      return reply.status(500).send({ success: false, error: 'Internal error' });
-    }
-  });
-}
 
 // Register API routes
 async function registerRoutes() {
@@ -769,7 +683,6 @@ async function initializeApp() {
     setupHealthCheck();
     setupSystemStatus();
     setupCsrfEndpoint();
-    setupSentryWebhookRelay();
     
     // Register CSRF protection middleware globally
     fastify.addHook('preHandler', csrfProtection);
