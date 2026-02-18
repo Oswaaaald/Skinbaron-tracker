@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -45,7 +45,11 @@ const initialFormData: WebhookFormData = {
   is_active: true,
 }
 
-export function WebhooksTable() {
+export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialogChange }: {
+  onCreateWebhook?: () => void
+  createDialogOpen?: boolean
+  onCreateDialogChange?: (open: boolean) => void
+}) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null)
@@ -58,6 +62,17 @@ export function WebhooksTable() {
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
+
+  // Sync external dialog trigger from page-level button
+  useEffect(() => {
+    if (createDialogOpen && !isDialogOpen) {
+      resetForm()
+      setIsDialogOpen(true)
+    }
+    if (!createDialogOpen && isDialogOpen && !editingWebhook) {
+      setIsDialogOpen(false)
+    }
+  }, [createDialogOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
@@ -198,6 +213,7 @@ export function WebhooksTable() {
       resetForm()
     }
     setIsDialogOpen(true)
+    onCreateDialogChange?.(true)
   }
 
   const handleToggleActive = (webhook: Webhook) => {
@@ -298,7 +314,10 @@ export function WebhooksTable() {
   const renderDialogs = () => (
     <>
       {/* Webhook Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open)
+        if (!open) onCreateDialogChange?.(false)
+      }}>
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
@@ -434,50 +453,27 @@ export function WebhooksTable() {
   if (!hasWebhooks) {
     return (
       <>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage your encrypted webhook endpoints for notifications
-              </p>
-            </div>
-            <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
-              Add Webhook
-            </Button>
-          </div>
-          <Card className="border-dashed">
-            <CardHeader className="items-center text-center py-10">
-              <CardTitle className="text-base">No Webhooks Found</CardTitle>
-              <CardDescription>
-                Create your first webhook to receive Discord notifications when alerts are triggered.
-              </CardDescription>
-              <Button onClick={() => handleOpenDialog()} className="mt-4">
+        <Card className="border-dashed">
+          <CardHeader className="items-center text-center py-10">
+            <CardTitle className="text-base">No Webhooks Found</CardTitle>
+            <CardDescription>
+              Create your first webhook to receive Discord notifications when alerts are triggered.
+            </CardDescription>
+            {onCreateWebhook && (
+              <Button onClick={onCreateWebhook} className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Webhook
               </Button>
-            </CardHeader>
-          </Card>
-        </div>
+            )}
+          </CardHeader>
+        </Card>
         {renderDialogs()}
       </>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your encrypted webhook endpoints for notifications
-          </p>
-        </div>
-        <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
-          Add Webhook
-        </Button>
-      </div>
-
+    <>
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -611,6 +607,6 @@ export function WebhooksTable() {
         </div>
       </Card>
       {renderDialogs()}
-    </div>
+    </>
   )
 }
