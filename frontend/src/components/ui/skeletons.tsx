@@ -28,14 +28,7 @@ export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; column
 export function RulesTableSkeleton() {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <Skeleton className="h-9 w-28" />
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <TableSkeleton rows={5} columns={5} />
       </CardContent>
     </Card>
@@ -46,14 +39,7 @@ export function RulesTableSkeleton() {
 export function WebhooksTableSkeleton() {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-4 w-56" />
-        </div>
-        <Skeleton className="h-9 w-32" />
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <TableSkeleton rows={4} columns={4} />
       </CardContent>
     </Card>
