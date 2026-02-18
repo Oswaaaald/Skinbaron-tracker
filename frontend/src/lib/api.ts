@@ -692,6 +692,11 @@ class ApiClient {
     return this.post(`/api/admin/scheduler/force-run`);
   }
 
+  // Test Sentry integration (super admin only)
+  async testSentry(): Promise<ApiResponse<{ message: string }>> {
+    return this.post(`/api/admin/test-sentry`);
+  }
+
   // Get user's own audit logs
   async getUserAuditLogs(limit: number = 100): Promise<ApiResponse<AuditLog[]>> {
     return this.get(`/api/user/audit-logs?limit=${limit}`);

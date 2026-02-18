@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, Ban, ChevronLeft, ChevronRight, Clock, History, Search, Shield, User, Users, Wrench } from 'lucide-react'
+import { Activity, AlertCircle, ArrowUpDown, Ban, Bug, ChevronLeft, ChevronRight, Clock, History, Search, Shield, User, Users, Wrench } from 'lucide-react'
 import Image from 'next/image'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
@@ -211,6 +211,32 @@ export function AdminPanel() {
   const usersData = usersResponse?.users
   const totalUsers = usersResponse?.pagination?.total ?? 0
   const totalPages = Math.ceil(totalUsers / ADMIN_USERS_PAGE_SIZE)
+
+  // Test Sentry mutation (super admin only)
+  const testSentryMutation = useApiMutation(
+    async () => {
+      const response = await apiClient.testSentry()
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to test Sentry')
+      }
+      return response
+    },
+    {
+      onSuccess: () => {
+        toast({
+          title: '✅ Sentry test sent',
+          description: 'Check your Sentry dashboard for the test error.',
+        })
+      },
+      onError: (error) => {
+        toast({
+          variant: 'destructive',
+          title: '❌ Sentry test failed',
+          description: extractErrorMessage(error),
+        })
+      },
+    }
+  )
 
   const handleForceScheduler = () => {
     setSchedulerConfirmOpen(true)
@@ -551,6 +577,28 @@ export function AdminPanel() {
                 </Button>
                 <p className="text-sm text-muted-foreground mt-2">
                   Bypass the cron schedule and run the scheduler immediately
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bug className="h-5 w-5 text-orange-500" />
+                  Test Sentry
+                </CardTitle>
+                <CardDescription>Verify that Sentry error tracking is working</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => testSentryMutation.mutate()}
+                  disabled={testSentryMutation.isPending}
+                  variant="outline"
+                >
+                  {testSentryMutation.isPending ? 'Sending...' : 'Send Test Error'}
+                </Button>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Sends a fake error to Sentry — check your dashboard to confirm it arrives
                 </p>
               </CardContent>
             </Card>

@@ -6,6 +6,7 @@ import { validateWithZod, handleRouteError } from '../lib/validation-handler.js'
 import { Errors } from '../lib/errors.js';
 import { AuthService } from '../lib/auth.js';
 import { appConfig } from '../lib/config.js';
+import { captureException } from '../lib/sentry.js';
 import { deleteAvatarFile } from '../lib/avatar.js';
 import {
   AdminUserParamsSchema,
@@ -1510,5 +1511,44 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     } catch (error) {
       return handleRouteError(error, request, reply, 'Search users');
     }
+  });
+
+  /**
+   * POST /api/admin/test-sentry - Trigger a test error for Sentry verification (super admin only)
+   */
+  fastify.post('/test-sentry', {
+    config: {
+      rateLimit: adminWriteRateLimit,
+    },
+    preHandler: [fastify.requireSuperAdmin],
+    schema: {
+      description: 'Trigger a test error that is captured by Sentry - Super Admin only',
+      tags: ['Admin'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const testError = new Error('Sentry test error — triggered by admin');
+    captureException(testError, { triggeredBy: getAuthUser(request).id });
+
+    await store.audit.logAdminAction(
+      getAuthUser(request).id,
+      'test_sentry',
+      null,
+      'Triggered a Sentry test error',
+    );
+
+    return reply.status(200).send({
+      success: true,
+      message: 'Test error sent to Sentry',
+    });
   });
 }
