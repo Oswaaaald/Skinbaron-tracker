@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -68,6 +68,7 @@ interface RuleDialogProps {
 export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
+  const hasPreselectedWebhooks = useRef(false)
   useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
@@ -145,6 +146,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         enabled: true,
       })
       setSelectedWebhooks([])
+      hasPreselectedWebhooks.current = false
       // Reset display values
       setMinPriceDisplay('')
       setMaxPriceDisplay('')
@@ -160,11 +162,12 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
 
   // Pre-select all webhooks when creating a new rule (once webhooks are loaded)
   useEffect(() => {
-    if (open && !rule && webhooks.length > 0 && selectedWebhooks.length === 0) {
+    if (open && !rule && webhooks.length > 0 && !hasPreselectedWebhooks.current) {
       const allIds = webhooks.map(w => w.id).filter((id): id is number => id != null)
       setSelectedWebhooks(allIds)
+      hasPreselectedWebhooks.current = true
     }
-  }, [open, rule, webhooks, selectedWebhooks.length])
+  }, [open, rule, webhooks])
 
   const createRuleMutation = useApiMutation(
     (data: CreateRuleData) => apiClient.createRule(data),
