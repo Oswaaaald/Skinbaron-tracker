@@ -78,6 +78,11 @@ function loadConfig() {
       if (parsed.ENCRYPTION_KEY === parsed.JWT_SECRET) {
         throw new Error('ENCRYPTION_KEY must not equal JWT_SECRET in production');
       }
+      // Enforce distinct JWT signing keys for access vs refresh tokens
+      const secrets = [parsed.JWT_SECRET, parsed.JWT_ACCESS_SECRET, parsed.JWT_REFRESH_SECRET].filter(Boolean);
+      if (new Set(secrets).size < secrets.length) {
+        throw new Error('JWT_SECRET, JWT_ACCESS_SECRET, and JWT_REFRESH_SECRET must all be distinct in production');
+      }
     }
 
     const config = {
