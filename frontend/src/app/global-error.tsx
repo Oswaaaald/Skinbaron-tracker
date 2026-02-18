@@ -11,7 +11,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    Sentry.captureException(error)
+    if (process.env['NEXT_PUBLIC_SENTRY_DSN']) Sentry.captureException(error)
   }, [error])
 
   return (
