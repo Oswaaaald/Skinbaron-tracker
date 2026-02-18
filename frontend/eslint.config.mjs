@@ -1,8 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import tseslint from "@typescript-eslint/eslint-plugin";
-import tsparser from "@typescript-eslint/parser";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import tseslint from "@typescript-eslint/eslint-plugin";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -10,15 +9,9 @@ const eslintConfig = defineConfig([
   {
     files: ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
     languageOptions: {
-      parser: tsparser,
       parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: "module",
         project: "./tsconfig.json",
       },
-    },
-    plugins: {
-      "@typescript-eslint": tseslint,
     },
     rules: {
       // TypeScript recommended rules with type checking

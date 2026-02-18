@@ -125,9 +125,9 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  captureException(reason, { context: 'unhandledRejection', promise: String(promise) });
-  fastify.log.fatal({ promise, reason }, 'Unhandled Rejection');
+process.on('unhandledRejection', (reason) => {
+  captureException(reason, { context: 'unhandledRejection' });
+  fastify.log.fatal({ reason }, 'Unhandled Rejection');
   process.exit(1);
 });
 
