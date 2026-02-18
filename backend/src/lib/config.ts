@@ -63,7 +63,7 @@ const ConfigSchema = z.object({
   WEBAUTHN_RP_ORIGIN: z.string().optional(),
 
   // Sentry error tracking (optional — disabled if not set)
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: z.string().url().optional().or(z.literal('')),
 });
 
 // Parse and validate configuration
