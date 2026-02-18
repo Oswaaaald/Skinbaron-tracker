@@ -103,6 +103,7 @@ export const ADMIN_ACTION_CONFIG: Record<string, {
   reset_passkeys: { icon: RotateCcw, label: "Passkeys Reset", variant: "destructive" },
   reset_sessions: { icon: LogOut, label: "Sessions Revoked", variant: "destructive" },
   force_scheduler: { icon: AlertCircle, label: "Scheduler Forced", variant: "outline" },
+  test_sentry: { icon: AlertCircle, label: "Sentry Tested", variant: "outline" },
   account_self_deleted: { icon: ShieldAlert, label: "Self-Deleted Account", variant: "destructive" },
 } as const;
 
@@ -123,6 +124,7 @@ export const ADMIN_ACTION_TYPES = [
   { value: "reset_passkeys", label: "Passkeys Reset" },
   { value: "reset_sessions", label: "Sessions Revoked" },
   { value: "force_scheduler", label: "Scheduler Forced" },
+  { value: "test_sentry", label: "Sentry Tested" },
   { value: "account_self_deleted", label: "Account Self-Deleted" },
 ] as const;
 

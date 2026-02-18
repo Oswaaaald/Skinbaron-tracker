@@ -1540,30 +1540,34 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       },
     },
   }, async (request, reply) => {
-    if (!appConfig.SENTRY_DSN) {
-      throw Errors.badRequest('Sentry is not configured — set SENTRY_DSN to enable');
+    try {
+      if (!appConfig.SENTRY_DSN) {
+        throw Errors.badRequest('Sentry is not configured — set SENTRY_DSN to enable');
+      }
+
+      // Verify DSN connectivity before sending the test error
+      const verification = await verifySentryConnection();
+      if (!verification.ok) {
+        throw Errors.badRequest(verification.reason ?? 'Sentry DSN verification failed');
+      }
+
+      const testError = new Error('Sentry test error — triggered by admin');
+      captureException(testError, { triggeredBy: getAuthUser(request).id });
+
+      await store.audit.logAdminAction(
+        getAuthUser(request).id,
+        'test_sentry',
+        null,
+        'Triggered a Sentry test error',
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Test error sent to Sentry',
+        verified: true,
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Test Sentry');
     }
-
-    // Verify DSN connectivity before sending the test error
-    const verification = await verifySentryConnection();
-    if (!verification.ok) {
-      throw Errors.badRequest(verification.reason ?? 'Sentry DSN verification failed');
-    }
-
-    const testError = new Error('Sentry test error — triggered by admin');
-    captureException(testError, { triggeredBy: getAuthUser(request).id });
-
-    await store.audit.logAdminAction(
-      getAuthUser(request).id,
-      'test_sentry',
-      null,
-      'Triggered a Sentry test error',
-    );
-
-    return reply.status(200).send({
-      success: true,
-      message: 'Test error sent to Sentry',
-      verified: true,
-    });
   });
 }
