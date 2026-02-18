@@ -159,12 +159,6 @@ function LandingPage() {
 }
 
 function AlertsContent() {
-  const { isReady } = useAuth()
-
-  if (!isReady) {
-    return <LoadingState variant="card" />
-  }
-
   return (
     <div className="space-y-4">
       <div>
