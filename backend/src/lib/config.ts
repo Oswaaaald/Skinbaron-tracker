@@ -64,6 +64,7 @@ const ConfigSchema = z.object({
 
   // Sentry error tracking (optional — disabled if not set)
   SENTRY_DSN: z.string().url().optional(),
+  SENTRY_WEBHOOK_SECRET: z.string().min(16).optional(),
 });
 
 // Parse and validate configuration
