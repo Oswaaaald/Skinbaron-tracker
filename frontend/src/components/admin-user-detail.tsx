@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -875,110 +874,110 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     </Dialog>
 
     {/* Confirm Restrict */}
-    <AlertDialog open={confirmRestrict} onOpenChange={setConfirmRestrict}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Confirm Restriction</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={confirmRestrict} onOpenChange={setConfirmRestrict}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Confirm Restriction</DialogTitle>
+          <DialogDescription>
             You are about to {restrictionType === 'permanent' ? 'permanently' : `temporarily (${formatDuration(durationHours)})`} restrict <strong>{detail?.username}</strong>.
             {restrictReason && <><br />Reason: &quot;{restrictReason}&quot;</>}
             {restrictionType === 'permanent' && banEmail && <><br />Email <strong>{detail?.email}</strong> will also be banned.</>}
             <br /><br />
             The user will be immediately logged out and unable to access the platform.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={moderating === 'restrict'}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => { e.preventDefault(); void handleRestrict() }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={moderating === 'restrict'} onClick={() => setConfirmRestrict(false)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={() => void handleRestrict()}
             disabled={moderating === 'restrict'}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {moderating === 'restrict' ? 'Restricting...' : 'Confirm Restriction'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Confirm Unrestrict */}
-    <AlertDialog open={confirmUnrestrict} onOpenChange={setConfirmUnrestrict}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Confirm Unrestriction</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={confirmUnrestrict} onOpenChange={setConfirmUnrestrict}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Confirm Unrestriction</DialogTitle>
+          <DialogDescription>
             You are about to remove the restriction on <strong>{detail?.username}</strong>.
             <br />Reason: &quot;{unrestrictReason}&quot;
             <br /><br />
             The user will be able to log in and use the platform again.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={moderating === 'unrestrict'}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => { e.preventDefault(); void handleUnrestrict() }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={moderating === 'unrestrict'} onClick={() => setConfirmUnrestrict(false)}>Cancel</Button>
+          <Button
+            onClick={() => void handleUnrestrict()}
             disabled={moderating === 'unrestrict'}
           >
             {moderating === 'unrestrict' ? 'Unrestricting...' : 'Confirm Unrestriction'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Confirm Delete */}
-    <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete User Account</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Delete User Account</DialogTitle>
+          <DialogDescription>
             Are you sure you want to permanently delete <strong>{detail?.username}</strong>?
             <br /><br />
             This will permanently remove their account and all associated data (rules, alerts, webhooks). This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={moderating === 'delete'}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => { e.preventDefault(); void handleDeleteUser() }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={moderating === 'delete'} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={() => void handleDeleteUser()}
             disabled={moderating === 'delete'}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {moderating === 'delete' ? 'Deleting...' : 'Delete User'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Confirm Toggle Admin */}
-    <AlertDialog open={confirmToggleAdmin !== null} onOpenChange={(open) => { if (!open) setConfirmToggleAdmin(null) }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{confirmToggleAdmin === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={confirmToggleAdmin !== null} onOpenChange={(open) => { if (!open) setConfirmToggleAdmin(null) }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{confirmToggleAdmin === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}</DialogTitle>
+          <DialogDescription>
             Are you sure you want to {confirmToggleAdmin === 'grant' ? 'grant admin privileges to' : 'revoke admin privileges from'} <strong>{detail?.username}</strong>?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={moderating === 'admin'}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => { e.preventDefault(); void handleToggleAdmin(confirmToggleAdmin === 'grant') }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={moderating === 'admin'} onClick={() => setConfirmToggleAdmin(null)}>Cancel</Button>
+          <Button
+            onClick={() => void handleToggleAdmin(confirmToggleAdmin === 'grant')}
             disabled={moderating === 'admin'}
           >
             {moderating === 'admin' ? 'Updating...' : 'Confirm'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Confirm Reset */}
-    <AlertDialog open={confirmReset !== null} onOpenChange={(open) => { if (!open) setConfirmReset(null) }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
+    <Dialog open={confirmReset !== null} onOpenChange={(open) => { if (!open) setConfirmReset(null) }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
             {confirmReset === '2fa' && 'Reset Two-Factor Authentication'}
             {confirmReset === 'passkeys' && 'Remove All Passkeys'}
             {confirmReset === 'sessions' && 'Revoke All Sessions'}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
+          </DialogTitle>
+          <DialogDescription>
             {confirmReset === '2fa' && (
               <>Are you sure you want to reset 2FA for <strong>{detail?.username}</strong>? This will disable TOTP and delete all recovery codes. The user will need to set up 2FA again.</>
             )}
@@ -988,27 +987,27 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             {confirmReset === 'sessions' && (
               <>Are you sure you want to revoke all sessions for <strong>{detail?.username}</strong>? The user will be immediately logged out from all devices.</>
             )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={moderating?.startsWith('reset-')}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => { e.preventDefault(); if (confirmReset) void handleReset(confirmReset) }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={moderating?.startsWith('reset-')} onClick={() => setConfirmReset(null)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={() => { if (confirmReset) void handleReset(confirmReset) }}
             disabled={moderating?.startsWith('reset-')}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {moderating?.startsWith('reset-') ? 'Processing...' : 'Confirm'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Confirm Delete Sanction */}
-    <AlertDialog open={confirmDeleteSanction !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteSanction(null) }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete Sanction</AlertDialogTitle>
-          <AlertDialogDescription>
+    <Dialog open={confirmDeleteSanction !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteSanction(null) }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Delete Sanction</DialogTitle>
+          <DialogDescription>
             Are you sure you want to delete this sanction from the history?
             {(() => {
               const s = detail?.sanctions.find(s => s.id === confirmDeleteSanction)
@@ -1022,20 +1021,20 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                 </>
               )
             })()}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={moderating === 'delete-sanction'}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => { e.preventDefault(); if (confirmDeleteSanction) void handleDeleteSanction(confirmDeleteSanction) }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={moderating === 'delete-sanction'} onClick={() => setConfirmDeleteSanction(null)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={() => { if (confirmDeleteSanction) void handleDeleteSanction(confirmDeleteSanction) }}
             disabled={moderating === 'delete-sanction'}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {moderating === 'delete-sanction' ? 'Deleting...' : 'Delete Sanction'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   )
 }

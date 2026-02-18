@@ -63,6 +63,7 @@ export function ProfileSettings() {
   const [twoFactorDialog, setTwoFactorDialog] = useState(false)
   const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
   const [twoFactorPassword, setTwoFactorPassword] = useState('')
+  const [exportDialog, setExportDialog] = useState(false)
 
   // Avatar state
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -562,27 +563,7 @@ export function ProfileSettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.</p>
-              <Button variant="outline" onClick={() => {
-                void (async () => {
-                  try {
-                    const response = await apiClient.get('/api/user/data-export')
-                    if (response.success && response.data) {
-                      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = `skinbaron-tracker-export-${new Date().toISOString().split('T')[0]}.json`
-                      document.body.appendChild(a)
-                      a.click()
-                      document.body.removeChild(a)
-                      setTimeout(() => URL.revokeObjectURL(url), 1000)
-                      toast({ title: '✅ Data exported', description: 'Your data has been downloaded' })
-                    }
-                  } catch (error) {
-                    toast({ variant: 'destructive', title: '❌ Export failed', description: extractErrorMessage(error, 'Failed to export data') })
-                  }
-                })()
-              }}>
+              <Button variant="outline" onClick={() => setExportDialog(true)}>
                 <Download className="h-4 w-4 mr-2" /> Export My Data
               </Button>
             </CardContent>
@@ -592,6 +573,35 @@ export function ProfileSettings() {
 
       {/* Dialogs */}
       <TwoFactorSetup open={twoFactorDialog} onOpenChange={setTwoFactorDialog} />
+
+      <ConfirmDialog
+        open={exportDialog}
+        onOpenChange={setExportDialog}
+        title="Export My Data"
+        description="This will download all your personal data (profile, rules, webhooks, alerts, audit logs) as a JSON file."
+        confirmText="Export"
+        onConfirm={() => {
+          void (async () => {
+            try {
+              const response = await apiClient.get('/api/user/data-export')
+              if (response.success && response.data) {
+                const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `skinbaron-tracker-export-${new Date().toISOString().split('T')[0]}.json`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                setTimeout(() => URL.revokeObjectURL(url), 1000)
+                toast({ title: '✅ Data exported', description: 'Your data has been downloaded' })
+              }
+            } catch (error) {
+              toast({ variant: 'destructive', title: '❌ Export failed', description: extractErrorMessage(error, 'Failed to export data') })
+            }
+          })()
+        }}
+      />
 
       <Dialog open={disableTwoFactorDialog} onOpenChange={setDisableTwoFactorDialog}>
         <DialogContent className="sm:max-w-lg">
@@ -655,6 +665,7 @@ function LinkedAccounts() {
   const { toast } = useToast()
   const [unlinking, setUnlinking] = useState<string | null>(null)
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
+  const [confirmLink, setConfirmLink] = useState<string | null>(null)
 
   const { data: enabledProviders } = useQuery({
     queryKey: ['oauth-providers'],
@@ -708,7 +719,7 @@ function LinkedAccounts() {
               </div>
               {isLinked
                 ? <Button variant="outline" size="sm" disabled={unlinking === provider} onClick={() => setConfirmUnlink(provider)}>{unlinking === provider ? <LoadingSpinner size="sm" inline /> : 'Unlink'}</Button>
-                : <Button variant="outline" size="sm" onClick={() => handleLink(provider)}>Link</Button>}
+                : <Button variant="outline" size="sm" onClick={() => setConfirmLink(provider)}>Link</Button>}
             </div>
           )
         })}
@@ -721,6 +732,14 @@ function LinkedAccounts() {
         confirmText="Unlink"
         variant="destructive"
         onConfirm={() => { if (confirmUnlink) void handleUnlink(confirmUnlink) }}
+      />
+      <ConfirmDialog
+        open={!!confirmLink}
+        onOpenChange={(open) => { if (!open) setConfirmLink(null) }}
+        title={`Link ${PROVIDER_META[confirmLink ?? '']?.label ?? confirmLink} account?`}
+        description={`You will be redirected to ${PROVIDER_META[confirmLink ?? '']?.label ?? confirmLink} to authorize your account. You can unlink it at any time.`}
+        confirmText="Continue"
+        onConfirm={() => { if (confirmLink) handleLink(confirmLink) }}
       />
     </Card>
   )
