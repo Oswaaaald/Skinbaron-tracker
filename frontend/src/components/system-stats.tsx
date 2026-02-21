@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { SystemStatsSkeleton } from "@/components/ui/skeletons"
 import { formatUptime, formatSystemDate } from "@/lib/formatters"
-import { QUERY_KEYS, POLL_INTERVAL, SLOW_POLL_INTERVAL } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL } from "@/lib/constants"
 
 export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean; prefetched?: ApiResponse<SystemStatsType> | null }) {
   const { isReady, isAuthenticated } = useAuth()
@@ -30,17 +30,6 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
     staleTime: SLOW_POLL_INTERVAL,
     refetchInterval: shouldFetch ? SLOW_POLL_INTERVAL : false,
     refetchOnWindowFocus: enabled,
-  })
-
-  // Alerts statistics - used for real-time updates
-  useQuery({
-    queryKey: [QUERY_KEYS.ALERT_STATS],
-    queryFn: async () => apiClient.ensureSuccess(await apiClient.getAlertStats(), 'Failed to load alert stats'),
-    enabled: enabled && isReady && isAuthenticated && isVisible,
-    staleTime: POLL_INTERVAL,
-    refetchInterval: enabled && isVisible ? POLL_INTERVAL : false,
-    refetchOnWindowFocus: enabled,
-    notifyOnChangeProps: ['data', 'error'],
   })
 
 

@@ -409,17 +409,7 @@ async function registerPlugins() {
 async function buildSystemSnapshot() {
   const scheduler: AlertScheduler = getScheduler();
 
-  // Check database health - actually query it
-  let dbHealth = 'unhealthy';
-  try {
-    const isHealthy = await checkDatabaseHealth();
-    dbHealth = isHealthy ? 'healthy' : 'unhealthy';
-  } catch (error) {
-    fastify.log.error({ error }, 'Database health check failed');
-    dbHealth = 'unhealthy';
-  }
-
-  // Scheduler health and stats
+  // Scheduler health and stats (synchronous / in-memory — always fast)
   let schedulerHealth = 'unhealthy';
   let simplifiedScheduler: Record<string, string | number | boolean | null> = {};
   try {
@@ -441,17 +431,21 @@ async function buildSystemSnapshot() {
     schedulerHealth = 'unhealthy';
   }
 
-  // SkinBaron API health - force a fresh test, ignore cache
-  let skinbaronHealth = 'unhealthy';
-  try {
-    const skinbaronClient = getSkinBaronClient();
-    // Force a fresh connection test by calling testConnection directly
-    const isConnected = await skinbaronClient.testConnection();
-    skinbaronHealth = isConnected ? 'healthy' : 'unhealthy';
-  } catch (error) {
-    fastify.log.error({ error }, 'SkinBaron API health check failed');
-    skinbaronHealth = 'unhealthy';
-  }
+  // Run DB + SkinBaron health checks in parallel (both are I/O-bound)
+  const [dbHealth, skinbaronHealth] = await Promise.all([
+    checkDatabaseHealth()
+      .then(ok => ok ? 'healthy' : 'unhealthy')
+      .catch(error => {
+        fastify.log.error({ error }, 'Database health check failed');
+        return 'unhealthy';
+      }),
+    getSkinBaronClient().testConnection()
+      .then(ok => ok ? 'healthy' : 'unhealthy')
+      .catch(error => {
+        fastify.log.error({ error }, 'SkinBaron API health check failed');
+        return 'unhealthy';
+      }),
+  ]);
 
   const services = {
     database: dbHealth,
@@ -536,7 +530,7 @@ function setupSystemStatus() {
   }, async (request, reply) => {
     try {
       const snapshot = await buildSystemSnapshot();
-      fastify.log.info({ snapshot }, 'System status snapshot');
+      fastify.log.debug({ snapshot }, 'System status snapshot');
       return reply.status(200).send({
         success: true,
         data: {
