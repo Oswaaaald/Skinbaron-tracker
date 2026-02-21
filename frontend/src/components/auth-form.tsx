@@ -830,6 +830,22 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                     Back to Login
                   </Button>
                 )}
+
+                {oauthPending2FA && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setOauthPending2FA(false)
+                      setTotpCode('')
+                      setError('')
+                    }}
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                )}
               </>
             )}
           </form>
