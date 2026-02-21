@@ -834,7 +834,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 {oauthPending2FA && (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     className="w-full"
                     onClick={() => {
                       setOauthPending2FA(false)
