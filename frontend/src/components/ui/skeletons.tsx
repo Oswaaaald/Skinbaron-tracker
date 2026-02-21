@@ -46,41 +46,15 @@ export function WebhooksTableSkeleton() {
   )
 }
 
-/** Skeleton for the alerts card grid. */
+/** Skeleton for the alerts page (neutral – works for both empty and populated states). */
 export function AlertsGridSkeleton() {
   return (
-    <div className="space-y-4">
-      {/* Filter bar */}
-      <Card>
-        <CardContent className="pt-4 pb-4">
-          <div className="flex gap-3 flex-wrap">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-32" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      {/* Alert cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="pt-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-12 w-12 rounded" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-20" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardHeader className="items-center text-center py-10">
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="h-4 w-72 mt-2" />
+      </CardHeader>
+    </Card>
   )
 }
 
