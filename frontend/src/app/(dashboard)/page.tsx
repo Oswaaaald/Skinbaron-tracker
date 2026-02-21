@@ -2,7 +2,7 @@
 
 import { AlertsGrid } from "@/components/alerts-grid"
 import { useAuth } from "@/contexts/auth-context"
-import { AlertsGridSkeleton } from "@/components/ui/skeletons"
+import { LoadingState } from "@/components/ui/loading-state"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -177,7 +177,7 @@ export default function HomePage() {
   
   // Show loading state while checking authentication
   if (isLoading || !isReady) {
-    return <AlertsGridSkeleton />
+    return <LoadingState variant="page" />
   }
   
   if (!isAuthenticated) {
