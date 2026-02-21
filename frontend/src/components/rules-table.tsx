@@ -412,7 +412,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
                       aria-label={`Select rule ${rule.search_item}`}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium max-w-[200px] truncate">
                     {rule.search_item}
                   </TableCell>
                   <TableCell>

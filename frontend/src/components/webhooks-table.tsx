@@ -552,7 +552,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
                       aria-label={`Select webhook ${webhook.name}`}
                     />
                   </TableCell>
-                  <TableCell className="font-medium">{webhook.name}</TableCell>
+                  <TableCell className="font-medium max-w-[200px] truncate">{webhook.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
                       {webhook.notification_style === 'detailed' ? 'Detailed' : 'Compact'}

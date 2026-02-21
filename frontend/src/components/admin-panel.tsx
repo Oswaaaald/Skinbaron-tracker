@@ -284,8 +284,8 @@ export function AdminPanel() {
               <TableBody>
                 {pendingUsersData.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.username}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="font-medium max-w-[160px] truncate">{user.username}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{user.email}</TableCell>
                     <TableCell>{new Date(user.created_at).toLocaleDateString('fr-FR')}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -458,17 +458,17 @@ export function AdminPanel() {
                 ) : null}
                 {usersData?.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium max-w-[200px]">
                     <button
                       type="button"
-                      className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2"
+                      className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2 min-w-0"
                       onClick={() => { setDetailUserId(user.id); setDetailOpen(true) }}
                     >
                       <UserAvatar src={user.avatar_url} alt={user.username} size={28} />
-                      {user.username}
+                      <span className="truncate">{user.username}</span>
                     </button>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{user.email}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {user.is_super_admin ? (
