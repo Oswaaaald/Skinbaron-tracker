@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ProfileSkeleton } from '@/components/ui/skeletons'
+import { ProfileSkeleton, LinkedAccountsSkeleton } from '@/components/ui/skeletons'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
@@ -674,7 +674,7 @@ function LinkedAccounts() {
   const unlinkLabel = PROVIDER_META[lastUnlinkProvider.current]?.label ?? lastUnlinkProvider.current
   const linkLabel = PROVIDER_META[lastLinkProvider.current]?.label ?? lastLinkProvider.current
 
-  const { data: enabledProviders } = useQuery({
+  const { data: enabledProviders, isLoading: isLoadingProviders } = useQuery({
     queryKey: ['oauth-providers'],
     queryFn: async () => { const res = await apiClient.getOAuthProviders(); return res.success ? (res.data?.providers ?? []) : [] },
     staleTime: 5 * 60 * 1000,
@@ -700,6 +700,7 @@ function LinkedAccounts() {
 
   const linkedProviders = useMemo(() => new Set((accounts ?? []).map(a => a.provider)), [accounts])
 
+  if (isLoadingProviders) return <LinkedAccountsSkeleton />
   if (!enabledProviders || enabledProviders.length === 0) return null
 
   return (
