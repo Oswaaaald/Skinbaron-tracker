@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { QUERY_KEYS } from '@/lib/constants'
 import { useAuth } from '@/contexts/auth-context'
 import { PROVIDER_ICONS } from '@/lib/oauth-icons'
-import Image from 'next/image'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 interface AdminUserDetailDialogProps {
   userId: number | null
@@ -315,15 +315,13 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                 <CardContent className="space-y-3">
                   {/* Avatar */}
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full overflow-hidden ring-2 ring-border bg-muted flex items-center justify-center shrink-0">
-                      {detail.avatar_url ? (
-                        <Image src={detail.avatar_url} alt={detail.username} width={64} height={64} className="h-full w-full object-cover" unoptimized />
-                      ) : (
-                        <span className="text-xl font-semibold text-muted-foreground">
-                          {detail.username.slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={detail.avatar_url}
+                      alt={detail.username}
+                      fallback={detail.username.slice(0, 2).toUpperCase()}
+                      size={64}
+                      className="ring-2 ring-border"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-base truncate">{detail.username}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">

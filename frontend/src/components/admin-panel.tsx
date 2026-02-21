@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, Ban, Bug, ChevronLeft, ChevronRight, Clock, History, Search, Shield, User, Users, Wrench } from 'lucide-react'
-import Image from 'next/image'
+import { Activity, AlertCircle, ArrowUpDown, Ban, Bug, ChevronLeft, ChevronRight, Clock, History, Search, Shield, Users, Wrench } from 'lucide-react'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { apiClient } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { AdminPanelSkeleton } from '@/components/ui/skeletons'
@@ -464,20 +464,7 @@ export function AdminPanel() {
                       className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2"
                       onClick={() => { setDetailUserId(user.id); setDetailOpen(true) }}
                     >
-                      {user.avatar_url ? (
-                        <Image
-                          src={user.avatar_url}
-                          alt=""
-                          width={28}
-                          height={28}
-                          className="h-7 w-7 rounded-full object-cover shrink-0"
-                          unoptimized
-                        />
-                      ) : (
-                        <span className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <User className="h-3.5 w-3.5 text-muted-foreground" />
-                        </span>
-                      )}
+                      <UserAvatar src={user.avatar_url} alt={user.username} size={28} />
                       {user.username}
                     </button>
                   </TableCell>
