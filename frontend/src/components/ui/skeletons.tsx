@@ -293,3 +293,46 @@ export function UserDetailSkeleton() {
     </div>
   )
 }
+
+/** Skeleton for the login / register auth form. */
+export function AuthFormSkeleton() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4" style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}>
+      <Card className="w-full max-w-md border-border/50 shadow-lg">
+        <CardHeader className="space-y-1.5 text-center pb-2">
+          <Skeleton className="h-7 w-40 mx-auto" />
+          <Skeleton className="h-4 w-64 mx-auto" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Email field */}
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+          {/* Password field */}
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+          {/* Submit button */}
+          <Skeleton className="h-10 w-full rounded-md" />
+          {/* Divider */}
+          <div className="flex items-center gap-3 py-1">
+            <Separator className="flex-1" />
+            <Skeleton className="h-3 w-20" />
+            <Separator className="flex-1" />
+          </div>
+          {/* OAuth buttons */}
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-10 w-full rounded-md" />
+            <Skeleton className="h-10 w-full rounded-md" />
+          </div>
+          {/* Toggle mode link */}
+          <div className="flex justify-center pt-2">
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

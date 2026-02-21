@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { LoadingState } from '@/components/ui/loading-state'
+import { AuthFormSkeleton } from '@/components/ui/skeletons'
 import { Eye, EyeOff, Mail, Lock, User, Shield, Fingerprint } from 'lucide-react'
 import Link from 'next/link'
 
@@ -427,7 +427,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const isLogin = mode === 'login'
 
   if (!oauthReady) {
-    return <LoadingState variant="page" />
+    return <AuthFormSkeleton />
   }
 
   return (
