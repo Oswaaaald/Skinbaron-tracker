@@ -1,5 +1,5 @@
-import { LoadingState } from "@/components/ui/loading-state"
+import { AuthFormSkeleton } from "@/components/ui/skeletons"
 
 export default function RegisterLoading() {
-  return <LoadingState variant="page" />
+  return <AuthFormSkeleton />
 }

@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button"
 import { RulesTable } from "@/components/rules-table"
 import { RuleDialog } from "@/components/rule-dialog"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingState } from "@/components/ui/loading-state"
+import { RulesTableSkeleton } from "@/components/ui/skeletons"
 
 export default function RulesPage() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return <LoadingState variant="page" />
+    return <RulesTableSkeleton />
   }
 
   return (

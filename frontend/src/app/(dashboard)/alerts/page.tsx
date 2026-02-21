@@ -2,13 +2,13 @@
 
 import { AlertsGrid } from "@/components/alerts-grid"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingState } from "@/components/ui/loading-state"
+import { AlertsGridSkeleton } from "@/components/ui/skeletons"
 
 export default function AlertsPage() {
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return <LoadingState variant="page" />
+    return <AlertsGridSkeleton />
   }
 
   return (

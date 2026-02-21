@@ -4,14 +4,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { WebhooksTable } from "@/components/webhooks-table"
 import { useAuth } from "@/contexts/auth-context"
-import { LoadingState } from "@/components/ui/loading-state"
+import { WebhooksTableSkeleton } from "@/components/ui/skeletons"
 
 export default function WebhooksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return <LoadingState variant="page" />
+    return <WebhooksTableSkeleton />
   }
 
   return (

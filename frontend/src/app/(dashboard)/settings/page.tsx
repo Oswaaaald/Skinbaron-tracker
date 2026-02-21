@@ -2,13 +2,13 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import { ProfileSettings } from "@/components/profile-settings"
-import { LoadingState } from "@/components/ui/loading-state"
+import { ProfileSkeleton } from "@/components/ui/skeletons"
 
 export default function SettingsPage() {
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return <LoadingState variant="page" />
+    return <ProfileSkeleton />
   }
 
   return (

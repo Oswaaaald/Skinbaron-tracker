@@ -2,13 +2,13 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import { AdminPanel } from "@/components/admin-panel"
-import { LoadingState } from "@/components/ui/loading-state"
+import { AdminPanelSkeleton } from "@/components/ui/skeletons"
 
 export default function AdminPage() {
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return <LoadingState variant="page" />
+    return <AdminPanelSkeleton />
   }
 
   return (

@@ -2,13 +2,13 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import { SystemStats } from "@/components/system-stats"
-import { LoadingState } from "@/components/ui/loading-state"
+import { SystemStatsSkeleton } from "@/components/ui/skeletons"
 
 export default function AdminSystemPage() {
   const { isReady } = useAuth()
 
   if (!isReady) {
-    return <LoadingState variant="page" />
+    return <SystemStatsSkeleton />
   }
 
   return (
