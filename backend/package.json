@@ -68,6 +68,8 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
-    "esbuild": ">=0.25.0"
+    "esbuild": ">=0.25.0",
+    "minimatch": ">=10.2.1",
+    "ajv": ">=6.14.0"
   }
 }
