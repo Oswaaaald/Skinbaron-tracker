@@ -29,7 +29,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 
 /**
  * Shared 2FA verification logic used by both password login and OAuth 2FA.

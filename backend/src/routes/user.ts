@@ -25,7 +25,7 @@ import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/types';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { resolvePasskeyName } from '../lib/passkey-aaguids.js';
 
 // TTL constants for pending challenges (stored in PostgreSQL)
