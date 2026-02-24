@@ -16,16 +16,36 @@ export function generateCsrfToken(): string {
 /**
  * Set CSRF token cookie — uses the same domain as auth cookies
  * so both travel together in cross-subdomain deployments.
+ *
+ * Also clears any stale host-only cookie (no domain attribute) that may
+ * linger from before the COOKIE_DOMAIN setting was introduced.  Without
+ * this, the browser sends two sb_csrf cookies and the server reads the
+ * wrong one, causing "Invalid CSRF token" errors.
  */
 export function setCsrfCookie(reply: FastifyReply, token: string, isProduction: boolean): void {
-  reply.setCookie(CSRF_COOKIE, token, {
+  const cookieOpts = {
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction ? 'none' as const : 'lax' as const,
     secure: isProduction,
     path: '/',
-    domain: appConfig.COOKIE_DOMAIN || undefined,
     maxAge: 60 * 60 * 24, // 24 hours
+  };
+
+  // Set the canonical cookie (with domain when configured)
+  reply.setCookie(CSRF_COOKIE, token, {
+    ...cookieOpts,
+    domain: appConfig.COOKIE_DOMAIN || undefined,
   });
+
+  // Expire the host-only variant so the browser doesn't send duplicates
+  if (appConfig.COOKIE_DOMAIN) {
+    reply.setCookie(CSRF_COOKIE, '', {
+      ...cookieOpts,
+      domain: undefined,
+      maxAge: 0,
+      expires: new Date(0),
+    });
+  }
 }
 
 /**
