@@ -91,10 +91,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
 
   // Create webhook mutation
   const createWebhookMutation = useApiMutation(
-    (data: WebhookFormData) => apiClient.createWebhook(data).then(result => {
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    }),
+    (data: WebhookFormData) => apiClient.createWebhook(data),
     {
       invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhook created successfully',
@@ -112,10 +109,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   // Update webhook mutation
   const updateWebhookMutation = useApiMutation(
     ({ id, data }: { id: number; data: Partial<WebhookFormData> }) => 
-      apiClient.updateWebhook(id, data).then(result => {
-        if (!result.success) throw new Error(result.error)
-        return result.data
-      }),
+      apiClient.updateWebhook(id, data),
     {
       invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhook updated successfully',
@@ -133,10 +127,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   // Toggle active mutation (lightweight, no dialog)
   const toggleActiveMutation = useApiMutation(
     ({ id, is_active }: { id: number; is_active: boolean }) =>
-      apiClient.updateWebhook(id, { is_active }).then(result => {
-        if (!result.success) throw new Error(result.error)
-        return result.data
-      }),
+      apiClient.updateWebhook(id, { is_active }),
     {
       invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       onSuccess: (_, { is_active }) => {
@@ -153,10 +144,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
 
   // Delete webhook mutation
   const deleteWebhookMutation = useApiMutation(
-    (id: number) => apiClient.deleteWebhook(id).then(result => {
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    }),
+    (id: number) => apiClient.deleteWebhook(id),
     {
       invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
       successMessage: 'Webhook deleted successfully',

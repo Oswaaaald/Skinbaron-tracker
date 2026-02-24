@@ -22,7 +22,7 @@ export class ApiError extends Error {
 // Types matching backend schemas
 export interface Rule {
   id?: number;
-  user_id?: string;
+  user_id?: number;
   search_item: string;
   min_price?: number;
   max_price?: number;
@@ -61,7 +61,7 @@ export interface Alert {
   souvenir: boolean;
   has_stickers: boolean;
   skin_url: string;
-  sent_at?: string;
+  sent_at: string;
 }
 
 export interface Webhook {
@@ -94,6 +94,8 @@ export type UserProfile = {
   avatar_url?: string;
   is_admin?: boolean;
   is_super_admin?: boolean;
+  use_gravatar?: boolean;
+  has_password?: boolean;
 };
 
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {
@@ -571,8 +573,8 @@ class ApiClient {
   } = {}): Promise<PaginatedResponse<Alert>> {
     const searchParams = new URLSearchParams();
     
-    if (params.limit) searchParams.append('limit', params.limit.toString());
-    if (params.offset) searchParams.append('offset', params.offset.toString());
+    if (params.limit !== undefined) searchParams.append('limit', params.limit.toString());
+    if (params.offset !== undefined) searchParams.append('offset', params.offset.toString());
     if (params.rule_id) searchParams.append('rule_id', params.rule_id.toString());
     if (params.item_name) searchParams.append('item_name', params.item_name);
     if (params.sort_by) searchParams.append('sort_by', params.sort_by);

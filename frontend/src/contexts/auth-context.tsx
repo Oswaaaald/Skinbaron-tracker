@@ -208,6 +208,9 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       const data = await apiClient.register(username, email, password)
 
       if (data.success) {
+        // Backend sends tokens via HttpOnly cookies, not in JSON response.
+        // When admin approval is required, data.data has no token — show pending message.
+        // When auto-approved, cookies are already set — just refresh user state.
         if (data.data && !data.data.token) {
           return {
             success: true,
@@ -215,17 +218,15 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
           }
         }
 
-        if (data.data && data.data.token) {
-          const { token_expires_at: _exp, token: _token, ...userData } = data.data
-          setUser(userData as User)
-          setAccessExpiry(_exp ?? null)
-          setIsReady(true)
-          // Mark that we have a session for future page loads
+        // Auto-approved: cookies are set, fetch user profile
+        const me = await apiClient.getUserProfile({ allowRefresh: true })
+        if (me.success && me.data) {
+          setUser(me.data)
           if (typeof window !== 'undefined') {
             localStorage.setItem('has_session', 'true')
           }
-          return { success: true }
         }
+        return { success: true }
       }
 
       return {

@@ -102,27 +102,10 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
 
   const toggleRuleMutation = useApiMutation(
     ({ rule, enabled }: { rule: Rule; enabled: boolean }) => {
-      // Ensure rule.id exists
       if (!rule.id) {
         throw new Error('Rule ID is required');
       }
-      
-      // Note: webhook_ids can now be empty - rules without webhooks are allowed
-      
-      // Send complete rule data with updated enabled status, ensuring all fields are properly set
-      const updateData = {
-        search_item: rule.search_item,
-        min_price: rule.min_price ?? undefined,
-        max_price: rule.max_price ?? undefined,
-        min_wear: rule.min_wear ?? undefined,
-        max_wear: rule.max_wear ?? undefined,
-        stattrak_filter: rule.stattrak_filter ?? 'all',
-        souvenir_filter: rule.souvenir_filter ?? 'all',
-        sticker_filter: rule.sticker_filter ?? 'all',
-        webhook_ids: rule.webhook_ids,
-        enabled: enabled,
-      };
-      return apiClient.updateRule(rule.id, updateData);
+      return apiClient.updateRule(rule.id, { enabled });
     },
     {
       invalidateKeys: [[QUERY_KEYS.RULES], [QUERY_KEYS.ADMIN_STATS]],

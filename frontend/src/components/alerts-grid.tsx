@@ -1,8 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useCallback, useMemo } from "react"
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { useState, useMemo } from "react"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,9 +11,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react"
 import { apiClient } from "@/lib/api"
-import { logger } from "@/lib/logger"
 import { extractErrorMessage } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
+import { useApiMutation } from "@/hooks/use-api-mutation"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { formatPrice, formatShortDate } from "@/lib/formatters"
@@ -58,43 +57,20 @@ export function AlertsGrid() {
   const [wearFilter, setWearFilter] = useState<string>('all')
   const [stickerFilter, setStickerFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'date' | 'price_asc' | 'price_desc' | 'wear_asc' | 'wear_desc'>('price_asc')
-  const [isClearingAll, setIsClearingAll] = useState(false)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
-  const { toast } = useToast()
-  const queryClient = useQueryClient()
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
 
-  const handleClearAllAlerts = useCallback(() => {
-    setClearConfirmOpen(true)
-  }, [])
-
-  const confirmClear = useCallback(async () => {
-    if (isClearingAll) return
-    
-    setIsClearingAll(true)
-    try {
-      const response = await apiClient.clearAllAlerts()
-      if (response.success) {
-        void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ALERTS] })
-        void syncStats()
-        toast({
-          title: "✅ Alerts cleared",
-          description: response.data?.message || 'All alerts cleared successfully',
-        })
-      }
-    } catch (error) {
-      logger.error('Failed to clear all alerts:', error)
-      toast({
-        variant: "destructive",
-        title: "❌ Failed to clear alerts",
-        description: extractErrorMessage(error, "An error occurred while clearing alerts"),
-      })
-    } finally {
-      setIsClearingAll(false)
+  const clearAllMutation = useApiMutation(
+    () => apiClient.clearAllAlerts(),
+    {
+      invalidateKeys: [[QUERY_KEYS.ALERTS]],
+      successMessage: 'All alerts cleared successfully',
+      errorMessage: 'Failed to clear alerts',
+      onSuccess: () => { void syncStats() },
     }
-  }, [isClearingAll, queryClient, syncStats, toast])
+  )
 
   // Fetch ALL alerts without pagination (client-side filtering/sorting)
   const { data: alertsResponse, isLoading, error } = useQuery({
@@ -375,11 +351,11 @@ export function AlertsGrid() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleClearAllAlerts}
-                disabled={isClearingAll}
+                onClick={() => setClearConfirmOpen(true)}
+                disabled={clearAllMutation.isPending}
                 className="h-9 w-full text-xs"
               >
-                {isClearingAll ? (
+                {clearAllMutation.isPending ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-1.5" inline />
                     Clearing...
@@ -530,7 +506,7 @@ export function AlertsGrid() {
         description="This will permanently delete all your alerts. This action cannot be undone."
         confirmText="Delete All"
         variant="destructive"
-        onConfirm={() => void confirmClear()}
+        onConfirm={() => clearAllMutation.mutate()}
       />
     </div>
   )
