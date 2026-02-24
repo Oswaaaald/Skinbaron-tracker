@@ -40,9 +40,7 @@ function buildCsp(nonce: string): string {
     "default-src 'self'",
     // 'nonce-…'   — only scripts bearing this nonce may execute (inline)
     // 'strict-dynamic' — scripts loaded *by* a nonced script are also trusted
-    //                     ('self' is ignored by modern browsers when this is set,
-    //                      but kept for backwards-compat with older ones)
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`,
+    `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`,
     "style-src 'self' 'unsafe-inline'",
     `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
     `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,

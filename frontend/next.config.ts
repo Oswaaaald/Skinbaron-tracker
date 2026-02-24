@@ -4,6 +4,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployments
   output: 'standalone',
+
+  // Disable browser source maps in production (security + avoids broken .map references)
+  productionBrowserSourceMaps: false,
   
   // Compiler optimizations
   compiler: {
@@ -70,6 +73,11 @@ export default withSentryConfig(nextConfig, {
 
   // Don't widen the scope of uploaded source maps
   widenClientFileUpload: false,
+
+  // Delete source maps after upload to Sentry (don't ship to browser)
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
 
   // Tunnel Sentry events through a Next.js route to avoid ad-blockers
   tunnelRoute: '/monitoring',
