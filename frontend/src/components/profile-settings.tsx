@@ -384,7 +384,7 @@ export function ProfileSettings() {
                 <div className="relative group shrink-0">
                   <div className="h-20 w-20 rounded-full overflow-hidden ring-2 ring-border bg-muted flex items-center justify-center">
                     {user?.avatar_url ? (
-                      <Image src={user.avatar_url} alt="" width={80} height={80} className="h-full w-full object-cover" unoptimized />
+                      <Image src={user.avatar_url} alt="" width={80} height={80} sizes="80px" className="h-full w-full object-cover" />
                     ) : (
                       <span className="text-2xl font-semibold text-muted-foreground">
                         {(user?.username || '?').slice(0, 2).toUpperCase()}

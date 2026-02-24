@@ -607,7 +607,7 @@ async function registerRoutes() {
     }
     return reply
       .header('Content-Type', 'image/webp')
-      .header('Cache-Control', 'public, max-age=86400, immutable')
+      .header('Cache-Control', 'public, max-age=2592000, immutable')
       .header('X-Content-Type-Options', 'nosniff')
       .header('Cross-Origin-Resource-Policy', 'cross-origin')
       .header('Content-Security-Policy', "default-src 'none'; img-src 'self'")

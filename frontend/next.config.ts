@@ -16,9 +16,7 @@ const nextConfig: NextConfig = {
     } : false,
   },
   
-  // Optimize for modern browsers (ES2020+)
-  // Note: Next.js 16 standalone mode includes some polyfills by default
-  // This is not fully controllable without custom webpack config
+  // Optimize for modern browsers — browserslist in package.json targets chrome/edge/firefox 111+, safari 16.4+
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },

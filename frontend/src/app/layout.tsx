@@ -39,10 +39,6 @@ export default async function RootLayout({
   // Skip SSR session check - cookies are cross-subdomain and client will handle auth
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="dns-prefetch" href="https://steamcommunity-a.akamaihd.net" />
-        <link rel="preconnect" href="https://steamcommunity-a.akamaihd.net" crossOrigin="anonymous" />
-      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"

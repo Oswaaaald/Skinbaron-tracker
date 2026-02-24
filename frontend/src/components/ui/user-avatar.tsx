@@ -50,11 +50,11 @@ export function UserAvatar({ src, alt = '', fallback, size = 28, className }: Us
         alt={alt}
         width={size}
         height={size}
+        sizes={`${size}px`}
         className={cn(
           'h-full w-full object-cover transition-opacity duration-200',
           loaded ? 'opacity-100' : 'opacity-0',
         )}
-        unoptimized
         onLoad={() => setLoaded(true)}
       />
     </span>
