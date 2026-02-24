@@ -170,14 +170,15 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Manual Entry Key</Label>
+                  <Label htmlFor="manual-entry-key">Manual Entry Key</Label>
                   <div className="flex gap-2">
-                    <Input value={secret} readOnly className="font-mono text-sm" />
+                    <Input id="manual-entry-key" value={secret} readOnly className="font-mono text-sm" />
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       onClick={copySecret}
+                      aria-label="Copy secret key"
                     >
                       {copiedSecret ? (
                         <CheckCircle className="h-4 w-4 text-primary" />

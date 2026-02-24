@@ -373,10 +373,11 @@ export function AdminPanel() {
                 value={searchInput}
                 onChange={(e) => { setSearchInput(e.target.value); setPage(0) }}
                 className="pl-8"
+                aria-label="Search users by username or email"
               />
             </div>
             <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(0) }}>
-              <SelectTrigger className="w-full sm:w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]" aria-label="Filter by role">
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
@@ -386,7 +387,7 @@ export function AdminPanel() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0) }}>
-              <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filter by status">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -445,7 +446,7 @@ export function AdminPanel() {
                       className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2 min-w-0"
                       onClick={() => { setDetailUserId(user.id); setDetailOpen(true) }}
                     >
-                      <UserAvatar src={user.avatar_url} alt={user.username} size={28} />
+                      <UserAvatar src={user.avatar_url} alt="" size={28} />
                       <span className="truncate">{user.username}</span>
                     </button>
                   </TableCell>

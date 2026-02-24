@@ -306,7 +306,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                   <div className="flex items-center gap-4">
                     <UserAvatar
                       src={detail.avatar_url}
-                      alt={detail.username}
+                      alt=""
                       fallback={detail.username.slice(0, 2).toUpperCase()}
                       size={64}
                       className="ring-2 ring-border"
@@ -337,12 +337,13 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                               className="h-7 text-sm w-28"
                               placeholder={detail.username}
                               maxLength={32}
+                              aria-label="New username"
                               onKeyDown={e => { if (e.key === 'Enter') void handleChangeUsername(); if (e.key === 'Escape') { setEditingUsername(false); setNewUsername('') } }}
                             />
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleChangeUsername()} disabled={moderating === 'username' || !newUsername.trim()}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleChangeUsername()} disabled={moderating === 'username' || !newUsername.trim()} aria-label="Confirm username change">
                               <Check className="h-3 w-3" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(false); setNewUsername('') }}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(false); setNewUsername('') }} aria-label="Cancel username edit">
                               <X className="h-3 w-3" />
                             </Button>
                           </>
@@ -350,7 +351,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                           <>
                             <p className="font-medium">{detail.username}</p>
                             {!detail.is_super_admin && (
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(true); setNewUsername(detail.username) }}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(true); setNewUsername(detail.username) }} aria-label="Edit username">
                                 <Pencil className="h-3 w-3" />
                               </Button>
                             )}

@@ -551,6 +551,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
                             checked={selectedWebhooks.includes(webhook.id as number)}
                             onChange={() => handleWebhookToggle(webhook.id as number)}
                             className="h-4 w-4"
+                            aria-label={`Select webhook ${webhook.name}`}
                           />
                           <span className="flex-1 text-sm">{webhook.name}</span>
                           <span className="text-xs text-muted-foreground">

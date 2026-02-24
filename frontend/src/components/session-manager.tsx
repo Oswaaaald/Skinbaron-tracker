@@ -242,6 +242,7 @@ function SessionRow({ session, onRevoke }: { session: Session; onRevoke?: () => 
           className="shrink-0 text-muted-foreground hover:text-destructive"
           onClick={onRevoke}
           title={session.is_current ? 'Log out' : 'Revoke session'}
+          aria-label={session.is_current ? 'Log out' : 'Revoke session'}
         >
           {session.is_current ? <LogOut className="h-4 w-4" /> : <X className="h-4 w-4" />}
         </Button>

@@ -359,7 +359,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
                     setFormData({ ...formData, notification_style: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="notification_style">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

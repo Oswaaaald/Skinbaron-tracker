@@ -384,7 +384,7 @@ export function ProfileSettings() {
                 <div className="relative group shrink-0">
                   <div className="h-20 w-20 rounded-full overflow-hidden ring-2 ring-border bg-muted flex items-center justify-center">
                     {user?.avatar_url ? (
-                      <Image src={user.avatar_url} alt={user.username} width={80} height={80} className="h-full w-full object-cover" unoptimized />
+                      <Image src={user.avatar_url} alt="" width={80} height={80} className="h-full w-full object-cover" unoptimized />
                     ) : (
                       <span className="text-2xl font-semibold text-muted-foreground">
                         {(user?.username || '?').slice(0, 2).toUpperCase()}
@@ -453,7 +453,7 @@ export function ProfileSettings() {
                   ) : availableEmails.length > 1 ? (
                     <>
                       <Select value={email} onValueChange={setEmail}>
-                        <SelectTrigger className="w-full"><SelectValue placeholder="Select email" /></SelectTrigger>
+                        <SelectTrigger className="w-full" aria-label="Select email"><SelectValue placeholder="Select email" /></SelectTrigger>
                         <SelectContent>{availableEmails.map(e => (<SelectItem key={e} value={e}>{e}</SelectItem>))}</SelectContent>
                       </Select>
                       <p className="text-sm text-muted-foreground">You can choose from your linked OAuth provider emails</p>
@@ -642,8 +642,8 @@ export function ProfileSettings() {
           <div className="space-y-4">
             <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription><strong>Warning:</strong> You will lose access to:<ul className="list-disc list-inside mt-2"><li>{stats?.rules_count || 0} active rules</li><li>{stats?.alerts_count || 0} alert history</li><li>{stats?.webhooks_count || 0} webhook configurations</li></ul></AlertDescription></Alert>
             <div className="space-y-2">
-              <Label>Type your username to confirm: <strong>{user?.username}</strong></Label>
-              <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder={user?.username} />
+              <Label htmlFor="delete-confirm">Type your username to confirm: <strong>{user?.username}</strong></Label>
+              <Input id="delete-confirm" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder={user?.username} />
             </div>
             {(user?.has_password || twoFactorStatus?.enabled) && (
               <div className="space-y-2">

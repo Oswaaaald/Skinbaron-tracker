@@ -188,10 +188,10 @@ export function PasskeyManager() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0 ml-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setRenameTarget(pk); setRenameName(pk.name); setRenameDialog(true) }}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setRenameTarget(pk); setRenameName(pk.name); setRenameDialog(true) }} aria-label="Rename passkey">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(pk)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(pk)} aria-label="Delete passkey">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
