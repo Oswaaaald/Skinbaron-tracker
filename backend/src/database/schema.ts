@@ -161,6 +161,7 @@ export const refreshTokens = pgTable('refresh_tokens', {
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   token_hash: text('token_hash').notNull().unique(),
   token_jti: text('token_jti').notNull().unique(),
+  access_token_jti: text('access_token_jti'),
   expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
   revoked_at: timestamp('revoked_at', { withTimezone: true }),
   replaced_by_jti: text('replaced_by_jti'),

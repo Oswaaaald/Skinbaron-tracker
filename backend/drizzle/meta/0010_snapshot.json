@@ -1,6 +1,6 @@
 {
-  "id": "c5f0b26d-6212-4dea-a463-c032ea0ba7ee",
-  "prevId": "00930b5e-7494-4a5f-85fd-3ba4741ff5cb",
+  "id": "362b9943-8e0d-4797-ad33-84bd652d0f1b",
+  "prevId": "c5f0b26d-6212-4dea-a463-c032ea0ba7ee",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1061,6 +1061,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "access_token_jti": {
+          "name": "access_token_jti",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "expires_at": {
           "name": "expires_at",

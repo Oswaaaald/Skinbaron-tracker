@@ -1,0 +1,1 @@
+ALTER TABLE "refresh_tokens" ADD COLUMN "access_token_jti" text;

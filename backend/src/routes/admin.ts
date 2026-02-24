@@ -403,8 +403,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         request.headers['user-agent']
       );
 
-      // Revoke all refresh tokens so the user cannot obtain new access tokens
-      await store.auth.revokeAllForUser(id);
+      // Revoke all refresh tokens + blacklist access tokens for immediate invalidation
+      const revokedJtis = await store.auth.revokeAllForUser(id);
+      const accessExpiry = Date.now() + 15 * 60 * 1000;
+      await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, id, accessExpiry, 'account_deleted')));
 
       // Invalidate user cache so the auth middleware immediately rejects requests
       invalidateUserCache(id);
@@ -636,9 +638,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         expires_at: expiresAt,
       });
 
-      // Invalidate cache + revoke sessions
+      // Invalidate cache + revoke sessions + blacklist access tokens
       invalidateUserCache(id);
-      await store.auth.revokeAllForUser(id);
+      const revokedJtis = await store.auth.revokeAllForUser(id);
+      const accessExpiry = Date.now() + 15 * 60 * 1000;
+      await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, id, accessExpiry, 'account_restricted')));
 
       // Ban email for permanent restrictions if requested
       if (restriction_type === 'permanent' && ban_email) {
@@ -983,7 +987,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           break;
         }
         case 'sessions': {
-          await store.auth.revokeAllForUser(id);
+          const revokedJtis = await store.auth.revokeAllForUser(id);
+          const accessExpiry = Date.now() + 15 * 60 * 1000;
+          await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, id, accessExpiry, 'sessions_reset_by_admin')));
           description = `Revoked all sessions for ${user.username}`;
           break;
         }

@@ -402,11 +402,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Update password
       await store.users.update(userId, { password_hash: newPasswordHash });
 
-      // Invalidate all existing sessions (revoke all refresh tokens)
+      // Invalidate all existing sessions (revoke all refresh tokens + blacklist their access tokens)
       // This forces re-login on all devices after a password change
-      await store.auth.revokeAllForUser(userId);
+      const revokedJtis = await store.auth.revokeAllForUser(userId);
+      const accessExpiry = Date.now() + 15 * 60 * 1000;
+      await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, userId, accessExpiry, 'password_change')));
 
-      // Blacklist the current access token so it cannot be reused
+      // Also blacklist the current request's access token (belt-and-suspenders)
       const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
       if (accessToken) {
         const tokenPayload = AuthService.verifyToken(accessToken, 'access');
@@ -922,12 +924,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const targetSession = sessions.find(s => s.id === sessionId);
       const isCurrentSession = targetSession && currentJti && targetSession.token_jti === currentJti;
 
-      const revoked = await store.auth.revokeSessionById(sessionId, userId);
+      const { revoked, accessTokenJti } = await store.auth.revokeSessionById(sessionId, userId);
       if (!revoked) {
         throw new AppError(404, 'Session not found or already revoked', 'SESSION_NOT_FOUND');
       }
 
-      // If revoking the current session, blacklist access token and clear cookies
+      // Blacklist the access token associated with the revoked session
+      if (accessTokenJti) {
+        // Access tokens expire in 10 min, use a safe upper bound
+        const accessExpiry = Date.now() + 15 * 60 * 1000;
+        await store.auth.blacklistAccessToken(accessTokenJti, userId, accessExpiry, 'session_revoked');
+      }
+
+      // If revoking the current session, also blacklist current access token and clear cookies
       let loggedOut = false;
       if (isCurrentSession) {
         const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
@@ -998,10 +1007,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       if (currentJti) {
-        await store.auth.revokeAllOtherSessions(userId, currentJti);
+        const revokedAccessJtis = await store.auth.revokeAllOtherSessions(userId, currentJti);
+        // Blacklist all access tokens from revoked sessions
+        const accessExpiry = Date.now() + 15 * 60 * 1000;
+        await Promise.all(
+          revokedAccessJtis.map(jti =>
+            store.auth.blacklistAccessToken(jti, userId, accessExpiry, 'other_sessions_revoked')
+          )
+        );
       } else {
-        // Can't identify current session, revoke all
-        await store.auth.revokeAllForUser(userId);
+        // Can't identify current session, revoke all + blacklist access tokens
+        const revokedJtis = await store.auth.revokeAllForUser(userId);
+        const accessExpiry = Date.now() + 15 * 60 * 1000;
+        await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, userId, accessExpiry, 'all_sessions_revoked')));
       }
 
       await store.audit.createLog(

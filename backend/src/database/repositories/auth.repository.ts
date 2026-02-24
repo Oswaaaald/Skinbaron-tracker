@@ -1,4 +1,4 @@
-import { eq, and, or, lt, sql, isNotNull } from 'drizzle-orm';
+import { eq, and, lt, sql } from 'drizzle-orm';
 import { refreshTokens, accessTokenBlacklist } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
 import type { RefreshTokenRecord } from '../schema.js';
@@ -7,12 +7,13 @@ import { hashToken } from '../utils/encryption.js';
 export class AuthRepository {
   constructor(private db: AppDatabase) {}
 
-  async addRefreshToken(userId: number, rawToken: string, jti: string, expiresAt: number, ipAddress?: string, userAgent?: string): Promise<void> {
+  async addRefreshToken(userId: number, rawToken: string, jti: string, expiresAt: number, ipAddress?: string, userAgent?: string, accessTokenJti?: string): Promise<void> {
     const tokenHash = hashToken(rawToken);
     await this.db.insert(refreshTokens).values({
       user_id: userId,
       token_hash: tokenHash,
       token_jti: jti,
+      access_token_jti: accessTokenJti ?? null,
       expires_at: new Date(expiresAt),
       ip_address: ipAddress ?? null,
       user_agent: userAgent ?? null,
@@ -35,13 +36,15 @@ export class AuthRepository {
       .where(eq(refreshTokens.token_hash, tokenHash));
   }
 
-  async revokeAllForUser(userId: number): Promise<void> {
-    await this.db.update(refreshTokens)
+  async revokeAllForUser(userId: number): Promise<string[]> {
+    const result = await this.db.update(refreshTokens)
       .set({ revoked_at: new Date() })
       .where(and(
         eq(refreshTokens.user_id, userId),
         sql`${refreshTokens.revoked_at} IS NULL`
-      ));
+      ))
+      .returning({ access_token_jti: refreshTokens.access_token_jti });
+    return result.map(r => r.access_token_jti).filter((jti): jti is string => jti !== null);
   }
 
   async getActiveSessionsForUser(userId: number): Promise<Pick<RefreshTokenRecord, 'id' | 'token_jti' | 'ip_address' | 'user_agent' | 'created_at' | 'expires_at'>[]> {
@@ -62,7 +65,7 @@ export class AuthRepository {
       .orderBy(sql`${refreshTokens.created_at} DESC`);
   }
 
-  async revokeSessionById(sessionId: number, userId: number): Promise<boolean> {
+  async revokeSessionById(sessionId: number, userId: number): Promise<{ revoked: boolean; accessTokenJti: string | null }> {
     const result = await this.db.update(refreshTokens)
       .set({ revoked_at: new Date() })
       .where(and(
@@ -70,26 +73,28 @@ export class AuthRepository {
         eq(refreshTokens.user_id, userId),
         sql`${refreshTokens.revoked_at} IS NULL`
       ))
-      .returning({ id: refreshTokens.id });
-    return result.length > 0;
+      .returning({ id: refreshTokens.id, access_token_jti: refreshTokens.access_token_jti });
+    if (result.length === 0) return { revoked: false, accessTokenJti: null };
+    return { revoked: true, accessTokenJti: result[0]!.access_token_jti };
   }
 
-  async revokeAllOtherSessions(userId: number, currentJti: string): Promise<void> {
-    await this.db.update(refreshTokens)
+  async revokeAllOtherSessions(userId: number, currentJti: string): Promise<string[]> {
+    const result = await this.db.update(refreshTokens)
       .set({ revoked_at: new Date() })
       .where(and(
         eq(refreshTokens.user_id, userId),
         sql`${refreshTokens.revoked_at} IS NULL`,
         sql`${refreshTokens.token_jti} != ${currentJti}`
-      ));
+      ))
+      .returning({ access_token_jti: refreshTokens.access_token_jti });
+    return result.map(r => r.access_token_jti).filter((jti): jti is string => jti !== null);
   }
 
   async cleanupRefreshTokens(): Promise<void> {
+    // Only delete expired tokens. Revoked-but-not-expired tokens are kept
+    // so that the replaced_by_jti chain remains intact for token reuse detection.
     await this.db.delete(refreshTokens).where(
-      or(
-        isNotNull(refreshTokens.revoked_at),
-        lt(refreshTokens.expires_at, sql`NOW()`)
-      )
+      lt(refreshTokens.expires_at, sql`NOW()`)
     );
   }
 
