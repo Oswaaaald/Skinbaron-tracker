@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ZodError, ZodSchema } from 'zod';
 import { AppError } from './errors.js';
+import { captureException } from './sentry.js';
 
 /**
  * Unified Zod validation wrapper
@@ -57,9 +58,9 @@ export function handleRouteError(
     });
   }
   
-  // Handle generic Error instances
+  // Handle generic Error instances (unexpected 500s → report to Sentry)
   if (error instanceof Error) {
-    // Don't expose internal error messages in production
+    captureException(error, { context, url: request.url, method: request.method });
     const isProduction = process.env['NODE_ENV'] === 'production';
     return reply.status(500).send({
       success: false,
@@ -68,6 +69,7 @@ export function handleRouteError(
   }
   
   // Fallback for unknown error types
+  captureException(error, { context, url: request.url, method: request.method });
   return reply.status(500).send({
     success: false,
     error: 'An unexpected error occurred',

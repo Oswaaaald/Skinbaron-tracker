@@ -285,6 +285,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           use_gravatar: user.use_gravatar,
           is_admin: user.is_admin,
           is_super_admin: user.is_super_admin,
+          has_password: !!user.password_hash,
         },
       });
 
@@ -439,6 +440,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           use_gravatar: user.use_gravatar,
           is_admin: user.is_admin,
           is_super_admin: user.is_super_admin,
+          has_password: !!user.password_hash,
           requires_2fa: false,
         },
       });
@@ -1108,6 +1110,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             use_gravatar: newUser.use_gravatar,
             is_admin: newUser.is_admin,
             is_super_admin: newUser.is_super_admin,
+            has_password: !!newUser.password_hash,
           },
         });
       } catch (error) {
@@ -1220,6 +1223,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             use_gravatar: user.use_gravatar,
             is_admin: user.is_admin,
             is_super_admin: user.is_super_admin,
+            has_password: !!user.password_hash,
           },
         });
       } catch (error) {
@@ -1368,6 +1372,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           use_gravatar: user.use_gravatar,
           is_admin: user.is_admin,
           is_super_admin: user.is_super_admin,
+          has_password: !!user.password_hash,
           token_expires_at: accessToken.expiresAt,
         },
       });
