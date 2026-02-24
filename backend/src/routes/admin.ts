@@ -1154,15 +1154,19 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         throw Errors.notFound('User');
       }
 
+      const adminId = getAuthUser(request).id;
+      const admin = await store.users.findById(adminId);
+
       // Log admin action
-      await store.audit.logAdminAction(getAuthUser(request).id, 'approve_user', id, `Approved user ID ${id}`);
+      await store.audit.logAdminAction(adminId, 'approve_user', id, `Approved user ${user.username} (${user.email})`);
 
       // Create audit log
       await store.audit.createLog(
         id,
         'user_approved',
         JSON.stringify({ 
-          approved_by_admin_id: getAuthUser(request).id 
+          approved_by_admin_id: adminId,
+          admin_username: admin?.username,
         }),
         getClientIp(request),
         request.headers['user-agent']
