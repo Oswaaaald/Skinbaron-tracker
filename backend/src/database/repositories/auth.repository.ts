@@ -75,7 +75,7 @@ export class AuthRepository {
       ))
       .returning({ id: refreshTokens.id, access_token_jti: refreshTokens.access_token_jti });
     if (result.length === 0) return { revoked: false, accessTokenJti: null };
-    return { revoked: true, accessTokenJti: result[0]!.access_token_jti };
+    return { revoked: true, accessTokenJti: result[0]?.access_token_jti ?? null };
   }
 
   async revokeAllOtherSessions(userId: number, currentJti: string): Promise<string[]> {

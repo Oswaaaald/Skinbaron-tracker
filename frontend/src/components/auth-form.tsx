@@ -399,7 +399,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       // so we extract challengeKey and pass the rest to startAuthentication.
       const { challengeKey: _ck, ...publicKeyOptions } = opts
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
       const assertion = await startAuthentication({ optionsJSON: publicKeyOptions as any })
 
       const verifyRes = await apiClient.verifyPasskeyAuth(assertion, challengeKey)

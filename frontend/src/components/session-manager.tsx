@@ -70,7 +70,7 @@ export function SessionManager() {
     queryFn: async () => {
       const res = await apiClient.get<Session[]>('/api/user/sessions')
       if (!res.success) throw new Error(res.error || 'Failed to fetch sessions')
-      return res.data!
+      return res.data ?? []
     },
   })
 
