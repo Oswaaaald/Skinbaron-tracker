@@ -290,7 +290,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     setError('')
 
     try {
-      const result: { success: boolean; error?: string; requires2FA?: boolean } = mode === 'login' 
+      const result: { success: boolean; error?: string; requires2FA?: boolean; restrictionExpiresAt?: string } = mode === 'login' 
         ? await login(formData.email, formData.password)
         : await register(formData.username, formData.email, formData.password)
 
@@ -307,8 +307,17 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             description: "Your account is awaiting admin approval",
           })
         } else {
-          // Use backend error messages directly (they're already user-friendly)
-          const errorMessage = result.error || `${mode} failed`
+          // Build user-friendly error message
+          let errorMessage = result.error || `${mode} failed`
+
+          // For temporary restrictions, format expiry in user's local timezone
+          if (result.restrictionExpiresAt) {
+            const localExpiry = new Date(result.restrictionExpiresAt).toLocaleString('en-GB', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', hour12: false,
+            })
+            errorMessage = `Your account is suspended until ${localExpiry}`
+          }
           
           setError(errorMessage)
           toast({

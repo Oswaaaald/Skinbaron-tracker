@@ -20,7 +20,7 @@ export interface AuthContextType {
   isLoading: boolean
   isAuthenticated: boolean
   isReady: boolean // New flag to indicate auth state is fully initialized
-  login: (email: string, password: string, totpCode?: string) => Promise<{ success: boolean; error?: string; requires2FA?: boolean }>
+  login: (email: string, password: string, totpCode?: string) => Promise<{ success: boolean; error?: string; requires2FA?: boolean; restrictionExpiresAt?: string }>
   register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   updateUser: (userData: Partial<User>) => void
@@ -171,6 +171,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     success: boolean;
     error?: string;
     requires2FA?: boolean;
+    restrictionExpiresAt?: string;
   }> => {
     try {
       const data = await apiClient.login(email, password, totpCode)
@@ -195,6 +196,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
         success: false,
         requires2FA: false,
         error: data.message || data.error || 'Login failed',
+        restrictionExpiresAt: (data.details as { data?: { restriction_expires_at?: string } } | undefined)?.data?.restriction_expires_at,
       }
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'

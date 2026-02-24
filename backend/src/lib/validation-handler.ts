@@ -46,6 +46,7 @@ export function handleRouteError(
       success: false,
       error: error.message,
       ...(error.code && { code: error.code }),
+      ...(error.data && { data: error.data }),
     });
   }
   

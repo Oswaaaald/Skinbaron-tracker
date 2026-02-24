@@ -394,7 +394,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const loginRestriction = await enforceRestriction(user);
       if (loginRestriction.result === 'blocked') {
         await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-        throw new AppError(403, loginRestriction.errorMessage, 'ACCOUNT_RESTRICTED');
+        throw new AppError(403, loginRestriction.errorMessage, 'ACCOUNT_RESTRICTED',
+          loginRestriction.expiresAt ? { restriction_expires_at: loginRestriction.expiresAt } : undefined);
       }
 
       // Check if 2FA is enabled
@@ -527,7 +528,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
           const revokedJtis = await store.auth.revokeAllForUser(payload.userId);
           const accessExpiry = Date.now() + 15 * 60 * 1000;
           await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, payload.userId, accessExpiry, 'account_restricted')));
-          throw new AppError(403, restriction.errorMessage, 'ACCOUNT_RESTRICTED');
+          throw new AppError(403, restriction.errorMessage, 'ACCOUNT_RESTRICTED',
+            restriction.expiresAt ? { restriction_expires_at: restriction.expiresAt } : undefined);
         }
       }
 
@@ -1193,7 +1195,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         const oauth2faRestriction = await enforceRestriction(user);
         if (oauth2faRestriction.result === 'blocked') {
           await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: `oauth_${pending.provider}`, restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-          throw new AppError(403, oauth2faRestriction.errorMessage, 'ACCOUNT_RESTRICTED');
+          throw new AppError(403, oauth2faRestriction.errorMessage, 'ACCOUNT_RESTRICTED',
+            oauth2faRestriction.expiresAt ? { restriction_expires_at: oauth2faRestriction.expiresAt } : undefined);
         }
 
         // --- 2FA verified, issue JWT tokens ---
@@ -1344,7 +1347,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const passkeyRestriction = await enforceRestriction(user);
       if (passkeyRestriction.result === 'blocked') {
         await store.audit.createLog(user.id, 'login_failed', JSON.stringify({ reason: 'account_restricted', method: 'passkey', restriction_type: user.restriction_type }), getClientIp(request), request.headers['user-agent']);
-        throw new AppError(403, passkeyRestriction.errorMessage, 'ACCOUNT_RESTRICTED');
+        throw new AppError(403, passkeyRestriction.errorMessage, 'ACCOUNT_RESTRICTED',
+          passkeyRestriction.expiresAt ? { restriction_expires_at: passkeyRestriction.expiresAt } : undefined);
       }
 
       // Generate tokens and set cookies

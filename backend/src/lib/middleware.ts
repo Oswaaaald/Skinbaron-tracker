@@ -132,7 +132,8 @@ export async function authMiddleware(request: FastifyRequest): Promise<void> {
   // Check restriction status with auto-expiry for temporary restrictions
   const restriction = await enforceRestriction(user);
   if (restriction.result === 'blocked') {
-    throw new AppError(403, restriction.errorMessage, 'ACCOUNT_RESTRICTED');
+    throw new AppError(403, restriction.errorMessage, 'ACCOUNT_RESTRICTED',
+      restriction.expiresAt ? { restriction_expires_at: restriction.expiresAt } : undefined);
   }
   if (restriction.result === 'clear') {
     invalidateUserCache(user.id);
@@ -235,8 +236,8 @@ export function clearAuthCookies(reply: FastifyReply): void {
 export type RestrictionResult = 'ok' | 'clear' | 'blocked';
 
 type RestrictionOutcome =
-  | { result: 'ok' | 'clear'; errorMessage?: undefined }
-  | { result: 'blocked'; errorMessage: string };
+  | { result: 'ok' | 'clear'; errorMessage?: undefined; expiresAt?: undefined }
+  | { result: 'blocked'; errorMessage: string; expiresAt?: string };
 
 /**
  * Check if a user is restricted and either auto-clear expired temporary
@@ -244,6 +245,9 @@ type RestrictionOutcome =
  *
  * Returns a result struct so callers can decide how to respond (throw vs redirect).
  * Callers that simply want to throw can use `enforceRestrictionOrThrow`.
+ *
+ * `expiresAt` is the ISO-8601 expiry timestamp for temporary restrictions,
+ * so the frontend can format it in the user's local timezone.
  */
 export async function enforceRestriction(user: User): Promise<RestrictionOutcome> {
   if (!user.is_restricted) return { result: 'ok' };
@@ -257,18 +261,21 @@ export async function enforceRestriction(user: User): Promise<RestrictionOutcome
     return { result: 'clear' };
   }
 
-  // Build human-readable error message
+  // Permanent suspension — no expiry
   if (user.restriction_type === 'permanent') {
     return { result: 'blocked', errorMessage: 'Your account has been permanently suspended' };
   }
 
-  const expiresStr = user.restriction_expires_at
-    ? new Date(user.restriction_expires_at).toLocaleString('en-GB', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels',
-      })
-    : '';
-  return { result: 'blocked', errorMessage: `Your account is suspended until ${expiresStr}` };
+  // Temporary suspension — include ISO timestamp for client-side formatting
+  const expiresAt = user.restriction_expires_at
+    ? new Date(user.restriction_expires_at).toISOString()
+    : undefined;
+
+  return {
+    result: 'blocked',
+    errorMessage: 'Your account is temporarily suspended',
+    expiresAt,
+  };
 }
 
 /**
@@ -276,8 +283,9 @@ export async function enforceRestriction(user: User): Promise<RestrictionOutcome
  * Used by routes that return JSON errors (login, refresh, passkey auth, OAuth 2FA).
  */
 export async function enforceRestrictionOrThrow(user: User): Promise<void> {
-  const { result, errorMessage } = await enforceRestriction(user);
+  const { result, errorMessage, expiresAt } = await enforceRestriction(user);
   if (result === 'blocked') {
-    throw new AppError(403, errorMessage, 'ACCOUNT_RESTRICTED');
+    throw new AppError(403, errorMessage, 'ACCOUNT_RESTRICTED',
+      expiresAt ? { restriction_expires_at: expiresAt } : undefined);
   }
 }
