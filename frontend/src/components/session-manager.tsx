@@ -79,7 +79,6 @@ export function SessionManager() {
   const [revokeAllDialog, setRevokeAllDialog] = useState(false)
   const [revokeSessionId, setRevokeSessionId] = useState<number | null>(null)
   const [revokeCurrentDialog, setRevokeCurrentDialog] = useState(false)
-
   const { data: sessions, isLoading, error } = useQuery<Session[]>({
     queryKey: [QUERY_KEYS.SESSIONS],
     queryFn: async () => {
@@ -92,7 +91,7 @@ export function SessionManager() {
   const revokeSessionMutation = useApiMutation(
     (sessionId: number) => apiClient.delete<{ logged_out?: boolean }>(`/api/user/sessions/${sessionId}`),
     {
-      invalidateKeys: [[QUERY_KEYS.SESSIONS]],
+      invalidateKeys: [[QUERY_KEYS.SESSIONS], [QUERY_KEYS.USER_AUDIT_LOGS]],
       onSuccess: (data) => {
         setRevokeSessionId(null)
         setRevokeCurrentDialog(false)
@@ -110,13 +109,12 @@ export function SessionManager() {
   )
 
   const revokeAllMutation = useApiMutation(
-    () => apiClient.delete<{ logged_out?: boolean }>('/api/user/sessions'),
+    () => apiClient.delete('/api/user/sessions'),
     {
-      invalidateKeys: [[QUERY_KEYS.SESSIONS]],
+      invalidateKeys: [[QUERY_KEYS.SESSIONS], [QUERY_KEYS.USER_AUDIT_LOGS]],
       onSuccess: () => {
         setRevokeAllDialog(false)
-        toast({ title: '✅ All sessions revoked', description: 'You have been logged out.' })
-        void logout()
+        toast({ title: '✅ Other sessions revoked', description: 'All other sessions have been revoked.' })
       },
       onError: () => {
         toast({ variant: 'destructive', title: '❌ Failed', description: 'Failed to revoke sessions' })
@@ -176,8 +174,8 @@ export function SessionManager() {
             </div>
           )}
 
-          {/* Revoke all sessions */}
-          {sessions && sessions.length > 1 && (
+          {/* Revoke all other sessions */}
+          {otherSessions.length > 0 && (
             <div className="border-t pt-4">
               <Button
                 variant="outline"
@@ -185,7 +183,7 @@ export function SessionManager() {
                 onClick={() => setRevokeAllDialog(true)}
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Revoke all sessions
+                Revoke all other sessions
               </Button>
             </div>
           )}
@@ -214,12 +212,12 @@ export function SessionManager() {
         onConfirm={() => currentSession && revokeSessionMutation.mutate(currentSession.id)}
       />
 
-      {/* Confirm revoke all sessions */}
+      {/* Confirm revoke all other sessions */}
       <ConfirmDialog
         open={revokeAllDialog}
         onOpenChange={setRevokeAllDialog}
-        title="Revoke all sessions?"
-        description="You will be logged out from all devices including this one. You will need to log in again."
+        title="Revoke all other sessions?"
+        description="All devices except the current one will be signed out. Your current session will remain active."
         confirmText="Revoke all"
         variant="destructive"
         onConfirm={() => revokeAllMutation.mutate(undefined)}

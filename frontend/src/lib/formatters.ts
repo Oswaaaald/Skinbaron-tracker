@@ -8,6 +8,26 @@ export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Parse a user-agent string into a human-readable device description (e.g. "Chrome on macOS"). */
+function parseSessionDevice(ua: string): string {
+  let browser = 'Unknown Browser';
+  if (ua.includes('Firefox/')) browser = 'Firefox';
+  else if (ua.includes('Edg/')) browser = 'Edge';
+  else if (ua.includes('OPR/') || ua.includes('Opera/')) browser = 'Opera';
+  else if (ua.includes('Chrome/') && !ua.includes('Edg/')) browser = 'Chrome';
+  else if (ua.includes('Safari/') && !ua.includes('Chrome/')) browser = 'Safari';
+
+  let os = '';
+  if (ua.includes('Windows')) os = 'Windows';
+  else if (ua.includes('Mac OS X')) os = 'macOS';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+  else if (ua.includes('Linux')) os = 'Linux';
+  else if (ua.includes('CrOS')) os = 'ChromeOS';
+
+  return os ? `${browser} on ${os}` : browser;
+}
+
 /**
  * Format a price in EUR currency
  */
@@ -339,6 +359,18 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
 
       case "sessions_revoked":
         return "All sessions revoked by user";
+
+      case "session_revoked": {
+        const sessionUa = raw['session_user_agent'] as string | undefined;
+        if (sessionUa) {
+          const parsed = parseSessionDevice(sessionUa);
+          return `Session revoked: ${parsed}`;
+        }
+        return "Session revoked";
+      }
+
+      case "other_sessions_revoked":
+        return "All other sessions revoked";
 
       case "logout":
         return raw['reason'] === "user_logout" ? "User logout" : "Logged out";

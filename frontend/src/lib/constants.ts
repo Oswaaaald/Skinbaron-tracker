@@ -74,6 +74,8 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   avatar_removed: { icon: Camera, label: "Avatar Removed", variant: "secondary" },
   gravatar_toggled: { icon: Camera, label: "Gravatar Setting Changed", variant: "outline" },
   sessions_revoked: { icon: LogOut, label: "Sessions Revoked", variant: "secondary" },
+  session_revoked: { icon: LogOut, label: "Session Revoked", variant: "secondary" },
+  other_sessions_revoked: { icon: LogOut, label: "Other Sessions Revoked", variant: "secondary" },
   account_restricted: { icon: Ban, label: "Account Restricted", variant: "destructive" },
   account_unrestricted: { icon: Ban, label: "Account Unrestricted", variant: "default" },
   sanction_deleted: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },

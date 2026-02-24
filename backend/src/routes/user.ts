@@ -944,8 +944,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
       await store.audit.createLog(
         userId,
-        'sessions_revoked',
-        JSON.stringify({ method: 'user_self', scope: 'single', session_id: sessionId }),
+        'session_revoked',
+        JSON.stringify({ method: 'user_self', session_id: sessionId, session_user_agent: targetSession?.user_agent ?? null }),
         getClientIp(request),
         request.headers['user-agent'],
       );
@@ -961,14 +961,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
   });
 
   /**
-   * DELETE /api/user/sessions - Revoke all sessions (including current) and log out
+   * DELETE /api/user/sessions - Revoke all other sessions (keep current)
    */
   fastify.delete('/sessions', {
     config: {
       rateLimit: sensitiveOperationRateLimit,
     },
     schema: {
-      description: 'Revoke all sessions — forces logout on all devices including the current one',
+      description: 'Revoke all other sessions — keeps the current session active',
       tags: ['User'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
@@ -977,7 +977,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
           properties: {
             success: { type: 'boolean' },
             message: { type: 'string' },
-            logged_out: { type: 'boolean' },
           },
         },
       },
@@ -986,34 +985,36 @@ export default async function userRoutes(fastify: FastifyInstance) {
     try {
       const userId = getAuthUser(request).id;
 
-      // Revoke all refresh tokens
-      await store.auth.revokeAllForUser(userId);
-
-      // Blacklist the current access token
-      const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
-      if (accessToken) {
-        const tokenPayload = AuthService.verifyToken(accessToken, 'access');
-        if (tokenPayload?.jti) {
-          const exp = tokenPayload.exp ? tokenPayload.exp * 1000 : Date.now();
-          await store.auth.blacklistAccessToken(tokenPayload.jti, userId, exp, 'user_revoke_all_sessions');
+      // Get current session JTI to preserve it
+      const refreshCookie = request.cookies?.[REFRESH_COOKIE];
+      let currentJti: string | null = null;
+      if (refreshCookie) {
+        try {
+          const payload = AuthService.verifyToken(refreshCookie, 'refresh');
+          currentJti = payload?.jti ?? null;
+        } catch {
+          // Invalid token, ignore
         }
       }
 
-      // Clear cookies
-      clearAuthCookies(reply);
+      if (currentJti) {
+        await store.auth.revokeAllOtherSessions(userId, currentJti);
+      } else {
+        // Can't identify current session, revoke all
+        await store.auth.revokeAllForUser(userId);
+      }
 
       await store.audit.createLog(
         userId,
-        'sessions_revoked',
-        JSON.stringify({ method: 'user_self', scope: 'all' }),
+        'other_sessions_revoked',
+        JSON.stringify({ method: 'user_self' }),
         getClientIp(request),
         request.headers['user-agent'],
       );
 
       return reply.status(200).send({
         success: true,
-        message: 'All sessions have been revoked. You have been logged out.',
-        logged_out: true,
+        message: 'All other sessions have been revoked.',
       });
     } catch (error) {
       return handleRouteError(error, request, reply, 'Revoke sessions');
