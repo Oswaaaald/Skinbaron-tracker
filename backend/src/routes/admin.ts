@@ -572,7 +572,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   /**
    * PATCH /api/admin/users/:id/restrict - Restrict a user (temporary or permanent)
    * Restricted users cannot log in or make API requests.
-   * - temporary: user sees expiry date on login (dd/MM/yyyy, HH:mm Europe/Brussels)
+   * - temporary: user sees expiry date in their local timezone
    * - permanent: user sees "Your account has been permanently suspended"
    */
   fastify.patch('/users/:id/restrict', {
@@ -660,7 +660,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       const durationLabel = restriction_type === 'permanent'
         ? 'permanently'
-        : `for ${duration_hours}h (until ${expiresAt?.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' })})`;
+        : `for ${duration_hours}h (until ${expiresAt?.toISOString()})`;
 
       await store.audit.logAdminAction(adminId, 'restrict_user', id, `Restricted ${user.username} ${durationLabel} — ${reason}`);
       await store.audit.createLog(id, 'account_restricted', JSON.stringify({

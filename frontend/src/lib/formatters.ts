@@ -5,8 +5,8 @@
  * Convention:
  *   - Locale:   'en-GB' everywhere (DD/MM/YYYY, 24h)
  *   - Timezone: omitted → browser's local TZ (what the user expects)
- *   - DB stores: Europe/Brussels (UTC+1 / +2 DST), but display
- *                converts to the viewer's clock automatically via Date.
+ *   - DB stores: UTC internally (timestamptz), display converts to
+ *                the viewer's clock automatically via Date.
  */
 
 // ─── Shared locale constant ─────────────────────────────────────────────────

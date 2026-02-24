@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useToast, queueToast } from '@/hooks/use-toast'
 import { validateRegistration, validateLogin } from '@/lib/validation'
 import { apiClient } from '@/lib/api'
+import { formatDateTime } from '@/lib/formatters'
 import { PROVIDER_ICONS, PROVIDER_LABELS } from '@/lib/oauth-icons'
 import { startAuthentication } from '@simplewebauthn/browser'
 import { Button } from '@/components/ui/button'
@@ -312,11 +313,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
           // For temporary restrictions, format expiry in user's local timezone
           if (result.restrictionExpiresAt) {
-            const localExpiry = new Date(result.restrictionExpiresAt).toLocaleString('en-GB', {
-              day: '2-digit', month: '2-digit', year: 'numeric',
-              hour: '2-digit', minute: '2-digit', hour12: false,
-            })
-            errorMessage = `Your account is suspended until ${localExpiry}`
+            errorMessage = `Your account is suspended until ${formatDateTime(result.restrictionExpiresAt)}`
           }
           
           setError(errorMessage)
