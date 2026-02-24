@@ -1131,10 +1131,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         await deleteAvatarFile(user.avatar_filename);
       }
 
-      // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
-      await store.users.delete(userId);
-
-      // Blacklist the current access token so it cannot be reused during the remaining TTL
+      // Blacklist the current access token BEFORE deleting the user,
+      // because access_token_blacklist.user_id has a FK to users.id.
       const accessToken = AuthService.extractTokenFromHeader(request.headers.authorization ?? '') || request.cookies?.[ACCESS_COOKIE];
       if (accessToken) {
         const tokenPayload = AuthService.verifyToken(accessToken, 'access');
@@ -1143,6 +1141,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
           await store.auth.blacklistAccessToken(tokenPayload.jti, userId, exp, 'account_deleted');
         }
       }
+
+      // Delete user (CASCADE will automatically delete all associated data including refresh tokens)
+      await store.users.delete(userId);
 
       // Clear auth cookies so the browser doesn't retain stale tokens
       clearAuthCookies(reply);
