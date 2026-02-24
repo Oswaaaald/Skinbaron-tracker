@@ -44,12 +44,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. Redirect authenticated users away from login/register
-  if ((path === '/login' || path === '/register') && hasSession) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = '/';
-    return NextResponse.redirect(dashboardUrl);
-  }
+  // Note: we intentionally do NOT redirect authenticated users away from
+  // /login or /register here. The proxy only checks cookie existence, not
+  // validity — expired tokens would cause a redirect loop (proxy sends
+  // the user to /, page sees invalid token → shows landing → user clicks
+  // Sign In → proxy sends back to / → loop). The client-side auth context
+  // handles the authenticated-user redirect once it has validated the token.
 
   return NextResponse.next();
 }
