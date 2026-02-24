@@ -37,7 +37,9 @@ const nextConfig: NextConfig = {
             "default-src 'self'",
             // Next.js injects inline scripts for hydration/bootstrap — 'unsafe-inline' is
             // required until nonce-based CSP is implemented via middleware.
-            "script-src 'self' 'unsafe-inline'",
+            // 'unsafe-eval' is needed because some bundled libraries (e.g. Sentry,
+            // compiled WebAssembly polyfills) use eval() or new Function() at runtime.
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
             "style-src 'self' 'unsafe-inline'",
             `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
             `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,
