@@ -337,6 +337,9 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
         return `All sessions revoked ${adminName}`;
       }
 
+      case "sessions_revoked":
+        return "All sessions revoked by user";
+
       case "logout":
         return raw['reason'] === "user_logout" ? "User logout" : "Logged out";
       

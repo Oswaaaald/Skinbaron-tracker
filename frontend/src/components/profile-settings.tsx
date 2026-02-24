@@ -31,6 +31,7 @@ import { usePageVisible } from '@/hooks/use-page-visible'
 import { TwoFactorSetup } from '@/components/two-factor-setup'
 import { SecurityHistory } from '@/components/security-history'
 import { PasskeyManager } from '@/components/settings-passkeys'
+import { SessionManager } from '@/components/session-manager'
 import { useFormState } from '@/hooks/use-form-state'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
@@ -532,6 +533,9 @@ export function ProfileSettings() {
               <PasskeyManager />
             </CardContent>
           </Card>
+
+          {/* Active Sessions Manager */}
+          <SessionManager />
 
           {/* Delete Account */}
           <Card className="border-destructive/50">

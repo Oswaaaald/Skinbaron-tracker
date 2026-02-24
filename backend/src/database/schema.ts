@@ -164,6 +164,8 @@ export const refreshTokens = pgTable('refresh_tokens', {
   expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
   revoked_at: timestamp('revoked_at', { withTimezone: true }),
   replaced_by_jti: text('replaced_by_jti'),
+  ip_address: text('ip_address'),
+  user_agent: text('user_agent'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index('idx_refresh_tokens_expiry').on(table.expires_at),

@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { store } from '../database/index.js';
 import { AuthService, PasswordChangeSchema, SetPasswordSchema } from '../lib/auth.js';
-import { getClientIp, getAuthUser, ACCESS_COOKIE, clearAuthCookies } from '../lib/middleware.js';
+import { getClientIp, getAuthUser, ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
 import { processAndSaveAvatar, deleteAvatarFile } from '../lib/avatar.js';
 import { OTP } from 'otplib';
@@ -812,6 +812,184 @@ export default async function userRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * GET /api/user/sessions - List active sessions
+   */
+  fastify.get('/sessions', {
+    schema: {
+      description: 'List all active sessions for the current user',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  ip_address: { type: 'string', nullable: true },
+                  user_agent: { type: 'string', nullable: true },
+                  created_at: { type: 'string' },
+                  expires_at: { type: 'string' },
+                  is_current: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const sessions = await store.auth.getActiveSessionsForUser(userId);
+
+      // Identify current session by matching refresh token JTI
+      const refreshCookie = request.cookies?.[REFRESH_COOKIE];
+      let currentJti: string | null = null;
+      if (refreshCookie) {
+        try {
+          const payload = AuthService.verifyToken(refreshCookie, 'refresh');
+          currentJti = payload?.jti ?? null;
+        } catch {
+          // Invalid token, ignore
+        }
+      }
+
+      const data = sessions.map(s => ({
+        id: s.id,
+        ip_address: s.ip_address,
+        user_agent: s.user_agent,
+        created_at: s.created_at.toISOString(),
+        expires_at: s.expires_at.toISOString(),
+        is_current: s.token_jti === currentJti,
+      }));
+
+      return reply.status(200).send({ success: true, data });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'List sessions');
+    }
+  });
+
+  /**
+   * DELETE /api/user/sessions/:id - Revoke a specific session
+   */
+  fastify.delete<{ Params: { id: string } }>('/sessions/:id', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
+    schema: {
+      description: 'Revoke a specific session by ID',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      params: {
+        type: 'object',
+        properties: { id: { type: 'string', pattern: '^[0-9]+$' } },
+        required: ['id'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+      const sessionId = parseInt(request.params.id, 10);
+
+      const revoked = await store.auth.revokeSessionById(sessionId, userId);
+      if (!revoked) {
+        throw new AppError(404, 'Session not found or already revoked', 'SESSION_NOT_FOUND');
+      }
+
+      await store.audit.createLog(
+        userId,
+        'sessions_revoked',
+        JSON.stringify({ method: 'user_self', scope: 'single', session_id: sessionId }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Session revoked successfully.',
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Revoke session');
+    }
+  });
+
+  /**
+   * DELETE /api/user/sessions - Revoke all other sessions (keep current)
+   */
+  fastify.delete('/sessions', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
+    schema: {
+      description: 'Revoke all other sessions — keeps the current session active',
+      tags: ['User'],
+      security: [{ bearerAuth: [] }, { cookieAuth: [] }],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const userId = getAuthUser(request).id;
+
+      // Get current session JTI to preserve it
+      const refreshCookie = request.cookies?.[REFRESH_COOKIE];
+      let currentJti: string | null = null;
+      if (refreshCookie) {
+        try {
+          const payload = AuthService.verifyToken(refreshCookie, 'refresh');
+          currentJti = payload?.jti ?? null;
+        } catch {
+          // Invalid token, ignore
+        }
+      }
+
+      if (currentJti) {
+        await store.auth.revokeAllOtherSessions(userId, currentJti);
+      } else {
+        // Can't identify current session, revoke all
+        await store.auth.revokeAllForUser(userId);
+        clearAuthCookies(reply);
+      }
+
+      await store.audit.createLog(
+        userId,
+        'sessions_revoked',
+        JSON.stringify({ method: 'user_self', scope: 'all_others' }),
+        getClientIp(request),
+        request.headers['user-agent'],
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: 'All other sessions have been revoked.',
+      });
+    } catch (error) {
+      return handleRouteError(error, request, reply, 'Revoke sessions');
+    }
+  });
+
+  /**
    * DELETE /api/user/account - Delete current user account
    */
   fastify.delete('/account', {
@@ -1515,7 +1693,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = getAuthUser(request).id;
       const { limit } = validateWithZod(UserAuditQuerySchema, request.query);
 
-      const logs = await store.audit.getLogsByUserId(userId, limit);
+      const allLogs = await store.audit.getLogsByUserId(userId, limit);
+
+      // Filter out admin-only sanction/moderation events from user-facing logs
+      const ADMIN_ONLY_EVENTS = new Set([
+        'account_restricted',
+        'account_unrestricted',
+        'sanction_deleted',
+        '2fa_reset_by_admin',
+        'passkeys_reset_by_admin',
+        'sessions_reset_by_admin',
+      ]);
+      const logs = allLogs.filter(log => !ADMIN_ONLY_EVENTS.has(log.event_type));
 
       return reply.status(200).send({
         success: true,

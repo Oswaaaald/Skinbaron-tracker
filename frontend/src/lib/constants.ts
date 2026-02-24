@@ -73,6 +73,7 @@ export const AUDIT_EVENT_CONFIG: Record<string, {
   avatar_uploaded: { icon: Camera, label: "Avatar Uploaded", variant: "default" },
   avatar_removed: { icon: Camera, label: "Avatar Removed", variant: "secondary" },
   gravatar_toggled: { icon: Camera, label: "Gravatar Setting Changed", variant: "outline" },
+  sessions_revoked: { icon: LogOut, label: "Sessions Revoked", variant: "secondary" },
   account_restricted: { icon: Ban, label: "Account Restricted", variant: "destructive" },
   account_unrestricted: { icon: Ban, label: "Account Unrestricted", variant: "default" },
   sanction_deleted: { icon: Trash2, label: "Sanction Deleted", variant: "secondary" },
@@ -184,6 +185,7 @@ export const QUERY_KEYS = {
   TWO_FA_STATUS: '2fa-status',
   TWO_FA_SETUP: '2fa-setup',
   PASSKEYS: 'passkeys',
+  SESSIONS: 'sessions',
   
   // System
   SYSTEM_STATUS: 'system-status',

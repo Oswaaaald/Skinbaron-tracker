@@ -11,7 +11,7 @@ export default function TermsOfService() {
         </Button>
       </Link>
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Last updated: 17 Feb 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: 24 Feb 2026</p>
         <h1 className="text-3xl font-bold">Terms of Service &amp; Legal Notice</h1>
         <p className="text-muted-foreground">
           By creating an account or using SkinBaron Tracker you agree to these
@@ -63,6 +63,10 @@ export default function TermsOfService() {
           <Link className="underline" href="/privacy">Privacy Policy</Link>.
           You may export or request deletion of your data at any time.
         </p>
+        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+          <li>You can view and revoke your active sessions from the settings page.</li>
+          <li>IP addresses and user-agent strings are recorded for each session and in audit logs for security purposes.</li>
+        </ul>
       </section>
 
       <section className="space-y-2">

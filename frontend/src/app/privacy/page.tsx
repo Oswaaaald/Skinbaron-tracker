@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
         </Button>
       </Link>
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Last updated: 17 Feb 2026</p>
+        <p className="text-sm text-muted-foreground">Last updated: 24 Feb 2026</p>
         <h1 className="text-3xl font-bold">Privacy Policy</h1>
         <p className="text-muted-foreground">
           This personal, non-commercial project collects limited data to provide the alerting service and protect the platform. Below is a concise overview of what is collected, why, and how you can exercise your rights under GDPR.
@@ -21,10 +21,15 @@ export default function PrivacyPolicy() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Data collected</h2>
         <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
-          <li>Account data: username, email, password hash.</li>
+          <li>Account data: username, email, password hash, terms-of-service acceptance timestamp.</li>
           <li>
             Security data: TOTP secrets, recovery codes, passkey/WebAuthn credentials (all encrypted at rest),
-            authentication logs and IP addresses for security and anti-abuse.
+            authentication audit logs with IP addresses and user-agent strings for security and anti-abuse.
+          </li>
+          <li>
+            Session data: active session records including IP address and user-agent string,
+            used to display your active sessions and enable individual session revocation.
+            Session metadata is automatically deleted when a session expires or is revoked.
           </li>
           <li>
             OAuth data: linked provider accounts (Google, GitHub, Discord) and associated provider emails.
@@ -35,7 +40,7 @@ export default function PrivacyPolicy() {
           </li>
           <li>Notifications: webhook URLs (stored encrypted) and related metadata.</li>
           <li>Avatar data: custom uploaded avatars and Gravatar display preferences.</li>
-          <li>Moderation data: account restriction history (sanctions, reasons, durations).</li>
+          <li>Moderation data: account restriction history (sanctions, reasons, durations). Banned email addresses are retained to prevent re-registration after a permanent restriction.</li>
           <li>System logs: technical logs to monitor performance and reliability.</li>
         </ul>
       </section>
@@ -61,10 +66,16 @@ export default function PrivacyPolicy() {
       <section className="space-y-2">
         <h2 className="text-xl font-semibold">Cookies and tracking</h2>
         <p className="text-muted-foreground">
-          Only technical cookies or session storage required for authentication
-          and application functionality are used. No advertising or analytics
-          cookies are used.
+          Only strictly necessary, technical cookies are used. No advertising,
+          analytics, or third-party tracking cookies are present. The cookies
+          used are:
         </p>
+        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+          <li><strong>Authentication cookies</strong> (access token, refresh token): HttpOnly, Secure — manage your logged-in session.</li>
+          <li><strong>CSRF cookie</strong>: protects against cross-site request forgery attacks.</li>
+          <li><strong>OAuth state cookies</strong> (temporary): used during the OAuth login/registration flow and cleared immediately after.</li>
+          <li><strong>Cookie consent</strong>: remembers whether you have acknowledged the cookie banner.</li>
+        </ul>
       </section>
 
       <section className="space-y-2">
@@ -83,6 +94,8 @@ export default function PrivacyPolicy() {
           <li>Access, rectification, deletion, restriction, and portability of your personal data.</li>
           <li>Objection to processing based on legitimate interest.</li>
           <li>Withdraw consent (where applicable) without affecting prior processing.</li>
+          <li>View and revoke your active sessions at any time from the settings page.</li>
+          <li>Export all your personal data (profile, rules, webhooks, alerts, audit logs) in a machine-readable JSON format.</li>
           <li>
             Lodge a complaint with your supervisory authority (Belgian Data
             Protection Authority – Autorité de protection des données).

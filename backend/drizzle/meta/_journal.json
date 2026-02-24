@@ -64,6 +64,13 @@
       "when": 1771351260311,
       "tag": "0008_shallow_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771957071822,
+      "tag": "0010_acoustic_stick",
+      "breakpoints": true
     }
   ]
 }

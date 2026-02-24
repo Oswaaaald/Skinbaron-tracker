@@ -271,7 +271,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens (only for approved users)
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt, getClientIp(request), request.headers['user-agent']);
 
       setAuthCookies(reply, accessToken, refreshToken);
 
@@ -417,7 +417,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt, getClientIp(request), request.headers['user-agent']);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log for successful login
@@ -530,7 +530,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const newRefresh = AuthService.generateRefreshToken(payload.userId);
 
       await store.auth.revokeRefreshToken(refresh_token, newRefresh.jti);
-      await store.auth.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt);
+      await store.auth.addRefreshToken(payload.userId, newRefresh.token, newRefresh.jti, newRefresh.expiresAt, getClientIp(request), request.headers['user-agent']);
       await store.auth.cleanupRefreshTokens();
 
       setAuthCookies(reply, newAccess, newRefresh);
@@ -889,7 +889,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // --- Issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(userId);
         const refreshToken = AuthService.generateRefreshToken(userId);
-        await store.auth.addRefreshToken(userId, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        await store.auth.addRefreshToken(userId, refreshToken.token, refreshToken.jti, refreshToken.expiresAt, getClientIp(request), request.headers['user-agent']);
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clean state cookie
@@ -1086,7 +1086,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // Issue JWT tokens
         const accessToken = AuthService.generateAccessToken(newUser.id);
         const refreshToken = AuthService.generateRefreshToken(newUser.id);
-        await store.auth.addRefreshToken(newUser.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        await store.auth.addRefreshToken(newUser.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt, getClientIp(request), request.headers['user-agent']);
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clean pending-reg cookie
@@ -1190,7 +1190,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         // --- 2FA verified, issue JWT tokens ---
         const accessToken = AuthService.generateAccessToken(user.id);
         const refreshToken = AuthService.generateRefreshToken(user.id);
-        await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+        await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt, getClientIp(request), request.headers['user-agent']);
         setAuthCookies(reply, accessToken, refreshToken);
 
         // Clear the pending 2FA cookie
@@ -1340,7 +1340,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       // Generate tokens and set cookies
       const accessToken = AuthService.generateAccessToken(user.id);
       const refreshToken = AuthService.generateRefreshToken(user.id);
-      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt);
+      await store.auth.addRefreshToken(user.id, refreshToken.token, refreshToken.jti, refreshToken.expiresAt, getClientIp(request), request.headers['user-agent']);
       setAuthCookies(reply, accessToken, refreshToken);
 
       // Audit log
