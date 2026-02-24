@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Next.js middleware: path normalization + server-side auth guard.
+ * Next.js proxy (middleware): path normalization, server-side auth guard,
+ * and per-request CSP nonce generation.
  *
  * Unauthenticated visitors are redirected to /login before the page shell
  * is ever rendered, preventing HTML/JS leakage from protected routes.
@@ -11,6 +12,11 @@ import type { NextRequest } from 'next/server';
  * lightweight heuristic. The actual auth verification still happens on
  * the API side — this just prevents the bare page shell from rendering
  * for users without any session cookie.
+ *
+ * A unique nonce is generated per request and injected into the CSP header.
+ * Next.js automatically applies it to its own inline <script> tags.  The
+ * nonce is also forwarded via the `x-nonce` request header so that server
+ * components can read it (e.g. to pass to next-themes ThemeProvider).
  */
 
 const AUTH_COOKIE = 'sb_access';
@@ -21,6 +27,32 @@ const PUBLIC_PATHS = ['/login', '/register', '/privacy', '/tos'];
 function isPublicPath(pathname: string): boolean {
   if (pathname === '/') return true;
   return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/** Derive API origin once at startup for CSP connect-src / img-src */
+const apiHost = (() => {
+  try { return new URL(process.env['NEXT_PUBLIC_API_URL'] ?? '').origin; } catch { return ''; }
+})();
+
+/** Build a Content-Security-Policy header value with a per-request nonce */
+function buildCsp(nonce: string): string {
+  return [
+    "default-src 'self'",
+    // 'nonce-…'   — only scripts bearing this nonce may execute (inline)
+    // 'strict-dynamic' — scripts loaded *by* a nonced script are also trusted
+    //                     ('self' is ignored by modern browsers when this is set,
+    //                      but kept for backwards-compat with older ones)
+    // 'unsafe-eval'    — required at runtime by some bundled libs (Sentry, etc.)
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`,
+    "style-src 'self' 'unsafe-inline'",
+    `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
+    `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ');
 }
 
 export function proxy(request: NextRequest) {
@@ -51,7 +83,23 @@ export function proxy(request: NextRequest) {
   // Sign In → proxy sends back to / → loop). The client-side auth context
   // handles the authenticated-user redirect once it has validated the token.
 
-  return NextResponse.next();
+  // 3. Generate per-request CSP nonce
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const csp = buildCsp(nonce);
+
+  // Forward nonce + CSP to the server-side renderer via request headers
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  // Set CSP on the response so the browser enforces it
+  response.headers.set('Content-Security-Policy', csp);
+
+  return response;
 }
 
 export const config = {

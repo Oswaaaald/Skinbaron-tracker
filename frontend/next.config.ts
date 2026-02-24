@@ -1,12 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-// Derive API hostname for CSP connect-src
-const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? '';
-const apiHost = (() => {
-  try { return new URL(apiUrl).origin; } catch { return ''; }
-})();
-
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployments
   output: 'standalone',
@@ -26,30 +20,11 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
 
-  // Security headers
+  // Security headers (CSP is set dynamically in proxy.ts with per-request nonce)
   headers: async () => [
     {
       source: '/(.*)',
       headers: [
-        {
-          key: 'Content-Security-Policy',
-          value: [
-            "default-src 'self'",
-            // Next.js injects inline scripts for hydration/bootstrap — 'unsafe-inline' is
-            // required until nonce-based CSP is implemented via middleware.
-            // 'unsafe-eval' is needed because some bundled libraries (e.g. Sentry,
-            // compiled WebAssembly polyfills) use eval() or new Function() at runtime.
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-            "style-src 'self' 'unsafe-inline'",
-            `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
-            `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,
-            "font-src 'self'",
-            "object-src 'none'",
-            "base-uri 'self'",
-            "form-action 'self'",
-            "frame-ancestors 'none'",
-          ].join('; '),
-        },
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'X-Frame-Options', value: 'DENY' },
