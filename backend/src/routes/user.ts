@@ -817,6 +817,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
    * GET /api/user/sessions - List active sessions
    */
   fastify.get('/sessions', {
+    config: {
+      rateLimit: sensitiveOperationRateLimit,
+    },
     schema: {
       description: 'List all active sessions for the current user',
       tags: ['User'],
