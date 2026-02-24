@@ -61,6 +61,7 @@ export function ProfileSettings() {
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState('')
   const [twoFactorDialog, setTwoFactorDialog] = useState(false)
   const [disableTwoFactorDialog, setDisableTwoFactorDialog] = useState(false)
   const [twoFactorPassword, setTwoFactorPassword] = useState('')
@@ -186,7 +187,7 @@ export function ProfileSettings() {
     (data: { password?: string; totp_code?: string }) => apiClient.delete('/api/user/account', data),
     {
       onSuccess: () => { toast({ title: '✅ Account deleted', description: 'Your account has been permanently deleted' }); void logout() },
-      onError: (error: unknown) => { setError('general', extractErrorMessage(error, 'Failed to delete account')); setDeleteDialog(false); setDeleteConfirmText('') },
+      onError: (error: unknown) => { setDeleteError(extractErrorMessage(error, 'Failed to delete account')); setDeletePassword('') },
     }
   )
 
@@ -545,7 +546,7 @@ export function ProfileSettings() {
             </CardHeader>
             <CardContent className="mt-2 space-y-4">
               <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>This action cannot be undone. All your rules, alerts, and webhooks will be permanently deleted.</AlertDescription></Alert>
-              <Button variant="destructive" onClick={() => setDeleteDialog(true)}><Trash2 className="h-4 w-4 mr-2" /> Delete Account</Button>
+              <Button variant="destructive" onClick={() => { setDeleteError(''); setDeleteDialog(true) }}><Trash2 className="h-4 w-4 mr-2" /> Delete Account</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -649,10 +650,11 @@ export function ProfileSettings() {
                 <Label htmlFor="delete-password">{user?.has_password ? 'Enter your password' : 'Enter your 2FA code'}</Label>
                 <Input id="delete-password" type={user?.has_password ? 'password' : 'text'} inputMode={user?.has_password ? undefined : 'numeric'} maxLength={user?.has_password ? undefined : 8} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} placeholder={user?.has_password ? 'Enter your password' : 'Enter 2FA or recovery code'} />
               </div>
-            )}
-          </div>
+            )}            {deleteError && (
+              <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{deleteError}</AlertDescription></Alert>
+            )}          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeleteDialog(false); setDeleteConfirmText(''); setDeletePassword('') }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setDeleteDialog(false); setDeleteConfirmText(''); setDeletePassword(''); setDeleteError('') }}>Cancel</Button>
             <Button variant="destructive" onClick={handleDeleteAccount} disabled={deleteConfirmText !== user?.username || ((user?.has_password || twoFactorStatus?.enabled) && !deletePassword) || deleteAccountMutation.isPending}>
               {deleteAccountMutation.isPending ? <><LoadingSpinner size="sm" inline /><span className="ml-2">Deleting...</span></> : 'Delete My Account'}
             </Button>
