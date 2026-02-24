@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { QUERY_KEYS } from '@/lib/constants'
 import { apiClient } from '@/lib/api'
+import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -74,8 +75,10 @@ function formatDate(dateStr: string): string {
 
 export function SessionManager() {
   const { toast } = useToast()
+  const { logout } = useAuth()
   const [revokeAllDialog, setRevokeAllDialog] = useState(false)
   const [revokeSessionId, setRevokeSessionId] = useState<number | null>(null)
+  const [revokeCurrentDialog, setRevokeCurrentDialog] = useState(false)
 
   const { data: sessions, isLoading, error } = useQuery<Session[]>({
     queryKey: [QUERY_KEYS.SESSIONS],
@@ -87,12 +90,18 @@ export function SessionManager() {
   })
 
   const revokeSessionMutation = useApiMutation(
-    (sessionId: number) => apiClient.delete(`/api/user/sessions/${sessionId}`),
+    (sessionId: number) => apiClient.delete<{ logged_out?: boolean }>(`/api/user/sessions/${sessionId}`),
     {
       invalidateKeys: [[QUERY_KEYS.SESSIONS]],
-      onSuccess: () => {
-        toast({ title: '✅ Session revoked', description: 'The session has been revoked.' })
+      onSuccess: (data) => {
         setRevokeSessionId(null)
+        setRevokeCurrentDialog(false)
+        if (data?.data?.logged_out) {
+          toast({ title: '✅ Session revoked', description: 'You have been logged out.' })
+          void logout()
+        } else {
+          toast({ title: '✅ Session revoked', description: 'The session has been revoked.' })
+        }
       },
       onError: () => {
         toast({ variant: 'destructive', title: '❌ Failed', description: 'Failed to revoke session' })
@@ -101,12 +110,13 @@ export function SessionManager() {
   )
 
   const revokeAllMutation = useApiMutation(
-    () => apiClient.delete('/api/user/sessions'),
+    () => apiClient.delete<{ logged_out?: boolean }>('/api/user/sessions'),
     {
       invalidateKeys: [[QUERY_KEYS.SESSIONS]],
       onSuccess: () => {
-        toast({ title: '✅ Sessions revoked', description: 'All other sessions have been revoked.' })
         setRevokeAllDialog(false)
+        toast({ title: '✅ All sessions revoked', description: 'You have been logged out.' })
+        void logout()
       },
       onError: () => {
         toast({ variant: 'destructive', title: '❌ Failed', description: 'Failed to revoke sessions' })
@@ -145,7 +155,7 @@ export function SessionManager() {
 
           {/* Current session */}
           {currentSession && (
-            <SessionRow session={currentSession} />
+            <SessionRow session={currentSession} onRevoke={() => setRevokeCurrentDialog(true)} />
           )}
 
           {/* Other sessions */}
@@ -166,8 +176,8 @@ export function SessionManager() {
             </div>
           )}
 
-          {/* Revoke all other sessions */}
-          {otherSessions.length > 0 && (
+          {/* Revoke all sessions */}
+          {sessions && sessions.length > 1 && (
             <div className="border-t pt-4">
               <Button
                 variant="outline"
@@ -175,14 +185,14 @@ export function SessionManager() {
                 onClick={() => setRevokeAllDialog(true)}
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Revoke all other sessions
+                Revoke all sessions
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Confirm revoke single session */}
+      {/* Confirm revoke single session (non-current) */}
       <ConfirmDialog
         open={revokeSessionId !== null}
         onOpenChange={(open) => !open && setRevokeSessionId(null)}
@@ -193,12 +203,23 @@ export function SessionManager() {
         onConfirm={() => revokeSessionId !== null && revokeSessionMutation.mutate(revokeSessionId)}
       />
 
-      {/* Confirm revoke all other sessions */}
+      {/* Confirm revoke current session */}
+      <ConfirmDialog
+        open={revokeCurrentDialog}
+        onOpenChange={setRevokeCurrentDialog}
+        title="Revoke current session?"
+        description="You will be logged out of this device immediately and will need to log in again."
+        confirmText="Log out"
+        variant="destructive"
+        onConfirm={() => currentSession && revokeSessionMutation.mutate(currentSession.id)}
+      />
+
+      {/* Confirm revoke all sessions */}
       <ConfirmDialog
         open={revokeAllDialog}
         onOpenChange={setRevokeAllDialog}
-        title="Revoke all other sessions?"
-        description="All devices except the current one will be signed out. Your current session will remain active."
+        title="Revoke all sessions?"
+        description="You will be logged out from all devices including this one. You will need to log in again."
         confirmText="Revoke all"
         variant="destructive"
         onConfirm={() => revokeAllMutation.mutate(undefined)}
@@ -230,14 +251,15 @@ function SessionRow({ session, onRevoke }: { session: Session; onRevoke?: () => 
           </div>
         </div>
       </div>
-      {!session.is_current && onRevoke && (
+      {onRevoke && (
         <Button
           variant="ghost"
           size="icon"
           className="shrink-0 text-muted-foreground hover:text-destructive"
           onClick={onRevoke}
+          title={session.is_current ? 'Log out' : 'Revoke session'}
         >
-          <X className="h-4 w-4" />
+          {session.is_current ? <LogOut className="h-4 w-4" /> : <X className="h-4 w-4" />}
         </Button>
       )}
     </div>
