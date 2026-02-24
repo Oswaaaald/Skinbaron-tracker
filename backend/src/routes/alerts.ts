@@ -84,8 +84,8 @@ export default async function alertsRoutes(fastify: FastifyInstance) {
       
       // Validate rule ownership if rule_id filter is provided
       if (query.rule_id !== undefined) {
-        const rule = await store.rules.findById(query.rule_id);
-        if (!rule || rule.user_id !== getAuthUser(request).id) {
+        const rule = await store.rules.findById(query.rule_id, getAuthUser(request).id);
+        if (!rule) {
           throw new AppError(403, 'You can only access alerts for your own rules', 'ACCESS_DENIED');
         }
       }

@@ -274,13 +274,9 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(RuleParamsSchema, request.params);
       
       // Check if rule exists and user owns it
-      const existingRule = await store.rules.findById(id);
+      const existingRule = await store.rules.findById(id, getAuthUser(request).id);
       if (!existingRule) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
-      }
-
-      if (existingRule.user_id !== getAuthUser(request).id) {
-        throw new AppError(403, 'You can only update your own rules', 'ACCESS_DENIED');
       }
 
       // Validate body (user_id excluded from schema — never trust client input)
@@ -366,16 +362,12 @@ export default async function rulesRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(RuleParamsSchema, request.params);
       
       // Check if rule exists and user owns it
-      const existingRule = await store.rules.findById(id);
+      const existingRule = await store.rules.findById(id, getAuthUser(request).id);
       if (!existingRule) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');
       }
 
-      if (existingRule.user_id !== getAuthUser(request).id) {
-        throw new AppError(403, 'You can only delete your own rules', 'ACCESS_DENIED');
-      }
-
-      const deleted = await store.rules.delete(id);
+      const deleted = await store.rules.delete(id, getAuthUser(request).id);
       
       if (!deleted) {
         throw new AppError(404, 'Rule not found', 'RULE_NOT_FOUND');

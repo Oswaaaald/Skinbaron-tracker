@@ -27,8 +27,8 @@ export class RulesRepository {
     }));
   }
 
-  async findById(id: number): Promise<Rule | null> {
-    const [rule] = await this.db.select().from(rules).where(eq(rules.id, id)).limit(1);
+  async findById(id: number, userId: number): Promise<Rule | null> {
+    const [rule] = await this.db.select().from(rules).where(and(eq(rules.id, id), eq(rules.user_id, userId))).limit(1);
     if (!rule) return null;
     const [withWebhooks] = await this.attachWebhookIds([rule]);
     return withWebhooks ?? null;
@@ -110,8 +110,8 @@ export class RulesRepository {
     });
   }
 
-  async delete(id: number): Promise<boolean> {
-    const result = await this.db.delete(rules).where(eq(rules.id, id)).returning({ id: rules.id });
+  async delete(id: number, userId: number): Promise<boolean> {
+    const result = await this.db.delete(rules).where(and(eq(rules.id, id), eq(rules.user_id, userId))).returning({ id: rules.id });
     return result.length > 0;
   }
 

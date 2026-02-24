@@ -14,7 +14,8 @@ export function generateCsrfToken(): string {
 }
 
 /**
- * Set CSRF token cookie
+ * Set CSRF token cookie — uses the same domain as auth cookies
+ * so both travel together in cross-subdomain deployments.
  */
 export function setCsrfCookie(reply: FastifyReply, token: string, isProduction: boolean): void {
   reply.setCookie(CSRF_COOKIE, token, {
@@ -22,6 +23,7 @@ export function setCsrfCookie(reply: FastifyReply, token: string, isProduction: 
     sameSite: isProduction ? 'none' : 'lax',
     secure: isProduction,
     path: '/',
+    domain: appConfig.COOKIE_DOMAIN || undefined,
     maxAge: 60 * 60 * 24, // 24 hours
   });
 }
@@ -48,9 +50,9 @@ export async function csrfProtection(request: FastifyRequest): Promise<void> {
     return;
   }
 
-  // Skip CSRF for Swagger UI requests (already behind authentication).
-  // Check Origin header (reliably sent by browsers for non-GET same-origin fetch)
-  // and Referer as fallback.
+  // Skip CSRF for Swagger UI requests — Origin/Referer headers are
+  // browser-controlled and cannot be forged by JavaScript, so this
+  // bypass is safe against cross-origin CSRF attacks.
   const headers = request.headers as Record<string, string | string[] | undefined>;
   const originRaw = headers['origin'];
   const refererRaw = headers['referer'];

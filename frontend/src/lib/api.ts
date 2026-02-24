@@ -154,6 +154,48 @@ export interface PasskeyInfo {
   last_used_at: string | null;
 }
 
+/** Passkey registration options from backend (WebAuthn PublicKeyCredentialCreationOptionsJSON) */
+export interface PasskeyRegisterOptionsResponse {
+  rp: { name: string; id?: string };
+  user: { id: string; name: string; displayName: string };
+  challenge: string;
+  pubKeyCredParams: Array<{ type: string; alg: number }>;
+  timeout?: number;
+  excludeCredentials?: Array<{ id: string; type: string; transports?: string[] }>;
+  authenticatorSelection?: Record<string, unknown>;
+  attestation?: string;
+  extensions?: Record<string, unknown>;
+}
+
+/** Passkey auth options from backend (WebAuthn PublicKeyCredentialRequestOptionsJSON + challengeKey) */
+export interface PasskeyAuthOptionsResponse {
+  challengeKey: string;
+  challenge: string;
+  timeout?: number;
+  rpId?: string;
+  allowCredentials?: Array<{ id: string; type: string; transports?: string[] }>;
+  userVerification?: string;
+  extensions?: Record<string, unknown>;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string;
+  avatar_url: string | null;
+  is_admin: boolean;
+  is_super_admin: boolean;
+  is_restricted: boolean;
+  restriction_type: string | null;
+  restriction_expires_at: string | null;
+  created_at: string;
+  stats: {
+    rules_count: number;
+    alerts_count: number;
+    webhooks_count: number;
+  };
+}
+
 export interface Sanction {
   id: number;
   admin_username: string;
@@ -284,9 +326,15 @@ class ApiClient {
       const headers: Record<string, string> = {};
       if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
       
-      // Add CSRF token for mutating requests
-      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method || 'GET') && this.csrfToken) {
-        headers['x-csrf-token'] = this.csrfToken;
+      // Add CSRF token for mutating requests — lazy-init if constructor fetch failed
+      const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method || 'GET');
+      if (isMutating) {
+        if (!this.csrfToken) {
+          await this.initCsrfToken();
+        }
+        if (this.csrfToken) {
+          headers['x-csrf-token'] = this.csrfToken;
+        }
       }
 
       const response = await fetch(url, {
@@ -373,7 +421,7 @@ class ApiClient {
     }
   }
 
-  private async tryRefreshToken(): Promise<{ success: boolean; expiresAt?: number }> {
+  async tryRefreshToken(): Promise<{ success: boolean; expiresAt?: number }> {
     // If a refresh is already in progress, wait for it instead of starting a new one
     if (this.refreshPromise) {
       return this.refreshPromise;
@@ -767,7 +815,7 @@ class ApiClient {
   }
 
   /** Get registration options for a new passkey */
-  async getPasskeyRegisterOptions(): Promise<ApiResponse<unknown>> {
+  async getPasskeyRegisterOptions(): Promise<ApiResponse<PasskeyRegisterOptionsResponse>> {
     return this.post('/api/user/passkeys/register-options');
   }
 
@@ -787,7 +835,7 @@ class ApiClient {
   }
 
   /** Get passkey authentication options (no auth required) */
-  async getPasskeyAuthOptions(): Promise<ApiResponse<unknown>> {
+  async getPasskeyAuthOptions(): Promise<ApiResponse<PasskeyAuthOptionsResponse>> {
     return this.post('/api/auth/passkey/authenticate-options');
   }
 
@@ -811,7 +859,7 @@ class ApiClient {
     search?: string;
     role?: string;
     status?: string;
-  }): Promise<PaginatedResponse<unknown>> {
+  }): Promise<PaginatedResponse<AdminUser>> {
     const query = new URLSearchParams();
     if (params?.limit) query.append('limit', params.limit.toString());
     if (params?.offset) query.append('offset', params.offset.toString());
@@ -821,7 +869,7 @@ class ApiClient {
     if (params?.role && params.role !== 'all') query.append('role', params.role);
     if (params?.status && params.status !== 'all') query.append('status', params.status);
     const qs = query.toString();
-    return this.get(`/api/admin/users${qs ? `?${qs}` : ''}`) as Promise<PaginatedResponse<unknown>>;
+    return this.get(`/api/admin/users${qs ? `?${qs}` : ''}`) as Promise<PaginatedResponse<AdminUser>>;
   }
 
   async getAdminUserDetail(userId: number): Promise<ApiResponse<AdminUserDetail>> {

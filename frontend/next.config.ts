@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+// Derive API hostname for CSP connect-src
+const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? '';
+const apiHost = (() => {
+  try { return new URL(apiUrl).origin; } catch { return ''; }
+})();
+
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployments
   output: 'standalone',
@@ -19,6 +25,36 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
+
+  // Security headers
+  headers: async () => [
+    {
+      source: '/(.*)',
+      headers: [
+        {
+          key: 'Content-Security-Policy',
+          value: [
+            "default-src 'self'",
+            // Next.js injects inline scripts for hydration/bootstrap — 'unsafe-inline' is
+            // required until nonce-based CSP is implemented via middleware.
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
+            `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,
+            "font-src 'self'",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+          ].join('; '),
+        },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+      ],
+    },
+  ],
   
   // Image optimization for external sources
   images: {

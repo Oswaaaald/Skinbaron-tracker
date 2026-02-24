@@ -28,26 +28,6 @@ import { usePageVisible } from '@/hooks/use-page-visible'
 import { useSyncStats } from '@/hooks/use-sync-stats'
 import { useDebounce } from '@/hooks/use-debounce'
 
-interface UserStats {
-  rules_count: number
-  alerts_count: number
-  webhooks_count: number
-}
-
-interface AdminUser {
-  id: number
-  username: string
-  email: string
-  is_admin: boolean
-  is_super_admin: boolean
-  is_restricted: boolean
-  restriction_type: string | null
-  restriction_expires_at: string | null
-  created_at: string
-  avatar_url: string | null
-  stats: UserStats
-}
-
 interface GlobalStats {
   total_users: number
   total_admins: number
@@ -95,7 +75,7 @@ export function AdminPanel() {
         status: statusFilter,
       })
       if (!res.success) throw new Error(res.message || 'Failed to load users')
-      return { users: (res.data ?? []) as AdminUser[], pagination: res.pagination }
+      return { users: res.data ?? [], pagination: res.pagination }
     },
     staleTime: 0,
     refetchOnMount: 'always',

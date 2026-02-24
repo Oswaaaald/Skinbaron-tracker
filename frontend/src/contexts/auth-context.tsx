@@ -268,9 +268,10 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const refreshed = await apiClient.refresh()
-          if (refreshed.success && refreshed.data?.token_expires_at) {
-            setAccessExpiry(refreshed.data.token_expires_at)
+          // Use the deduplicating refresh path to avoid races with 401-triggered refreshes
+          const refreshed = await apiClient.tryRefreshToken()
+          if (refreshed.success && refreshed.expiresAt) {
+            setAccessExpiry(refreshed.expiresAt)
           } else if (!refreshed.success) {
             setUser(null)
             setAccessExpiry(null)

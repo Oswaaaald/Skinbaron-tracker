@@ -40,6 +40,9 @@ export const rules = pgTable('rules', {
   id: serial('id').primaryKey(),
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   search_item: text('search_item').notNull(),
+  // float4 (real) is used intentionally: 7 significant digits covers €0.01–€99,999.99
+  // precisely, which is adequate for CS2 skin prices. Using numeric would return strings
+  // from PostgreSQL requiring coercion throughout the codebase.
   min_price: real('min_price'),
   max_price: real('max_price'),
   min_wear: real('min_wear'),

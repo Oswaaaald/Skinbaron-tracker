@@ -22,8 +22,8 @@ export class WebhooksRepository {
     };
   }
 
-  async findById(id: number): Promise<UserWebhook | null> {
-    const [webhook] = await this.db.select().from(userWebhooks).where(eq(userWebhooks.id, id)).limit(1);
+  async findById(id: number, userId: number): Promise<UserWebhook | null> {
+    const [webhook] = await this.db.select().from(userWebhooks).where(and(eq(userWebhooks.id, id), eq(userWebhooks.user_id, userId))).limit(1);
     return webhook ?? null;
   }
 

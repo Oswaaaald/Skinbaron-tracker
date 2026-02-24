@@ -94,7 +94,7 @@ export function PasskeyManager() {
         return
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const attResp = await startRegistration({ optionsJSON: optionsRes.data as any })
 
       // Backend auto-detects the name from AAGUID (e.g. "iCloud Keychain", "Dashlane")

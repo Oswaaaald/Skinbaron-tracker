@@ -240,13 +240,9 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       const updates = validateWithZod(CreateUserWebhookSchema.partial(), request.body);
       
       // Check if webhook exists and user owns it
-      const existingWebhook = await store.webhooks.findById(id);
+      const existingWebhook = await store.webhooks.findById(id, getAuthUser(request).id);
       if (!existingWebhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
-      }
-
-      if (existingWebhook.user_id !== getAuthUser(request).id) {
-        throw new AppError(403, 'You can only update your own webhooks', 'ACCESS_DENIED');
       }
       
       // SECURITY: Validate webhook URL against SSRF attacks if URL is being updated
@@ -312,13 +308,9 @@ export default async function webhooksRoutes(fastify: FastifyInstance) {
       const { id } = validateWithZod(WebhookParamsSchema, request.params);
       
       // Check if webhook exists and user owns it
-      const existingWebhook = await store.webhooks.findById(id);
+      const existingWebhook = await store.webhooks.findById(id, getAuthUser(request).id);
       if (!existingWebhook) {
         throw new AppError(404, 'Webhook not found', 'WEBHOOK_NOT_FOUND');
-      }
-
-      if (existingWebhook.user_id !== getAuthUser(request).id) {
-        throw new AppError(403, 'You can only delete your own webhooks', 'ACCESS_DENIED');
       }
       
       const deleted = await store.webhooks.delete(id, getAuthUser(request).id);
