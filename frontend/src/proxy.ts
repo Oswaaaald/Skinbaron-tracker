@@ -42,8 +42,7 @@ function buildCsp(nonce: string): string {
     // 'strict-dynamic' — scripts loaded *by* a nonced script are also trusted
     //                     ('self' is ignored by modern browsers when this is set,
     //                      but kept for backwards-compat with older ones)
-    // 'unsafe-eval'    — required at runtime by some bundled libs (Sentry, etc.)
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
     `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
     `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,
