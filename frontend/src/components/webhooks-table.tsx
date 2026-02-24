@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Edit, Trash2, Play, Pause, Plus } from 'lucide-react'
 import { apiClient, type Webhook } from '@/lib/api'
+import { formatDateOnly } from '@/lib/formatters'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
@@ -552,7 +553,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {webhook.created_at ? new Date(webhook.created_at).toLocaleDateString('en-GB') : '-'}
+                    {webhook.created_at ? formatDateOnly(webhook.created_at) : '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

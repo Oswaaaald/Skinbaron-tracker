@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: skinbaron
       POSTGRES_USER: ${POSTGRES_USER:-skinbaron}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Brussels
+      PGTZ: Europe/Brussels
 
     volumes:
       - skinbaron_postgres_data:/var/lib/postgresql/data
@@ -37,6 +39,7 @@ services:
 
     environment:
       # REQUIRED: Must be set in deployment platform or .env
+      TZ: Europe/Brussels
       JWT_SECRET: ${JWT_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}

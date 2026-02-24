@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Activity, AlertCircle, ArrowUpDown, Ban, Bug, ChevronLeft, ChevronRight, Clock, History, Search, Shield, Users, Wrench } from 'lucide-react'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { apiClient } from '@/lib/api'
+import { formatDateOnly } from '@/lib/formatters'
 import { useAuth } from '@/contexts/auth-context'
 import { AdminPanelSkeleton } from '@/components/ui/skeletons'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -266,7 +267,7 @@ export function AdminPanel() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium max-w-[160px] truncate">{user.username}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{user.email}</TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleDateString('en-GB')}</TableCell>
+                    <TableCell>{formatDateOnly(user.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -481,11 +482,7 @@ export function AdminPanel() {
                   <TableCell>{user.stats.rules_count}</TableCell>
                   <TableCell>{user.stats.alerts_count}</TableCell>
                   <TableCell>{user.stats.webhooks_count}</TableCell>
-                  <TableCell>{new Date(user.created_at).toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric' 
-                  })}</TableCell>
+                  <TableCell>{formatDateOnly(user.created_at)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

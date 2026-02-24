@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
 import { apiClient, type Rule } from "@/lib/api"
+import { formatDateOnly } from "@/lib/formatters"
 import { RuleDialog } from "@/components/rule-dialog"
 import { formatWearPercentage } from "@/lib/wear-utils"
 import { extractErrorMessage } from "@/lib/utils"
@@ -460,7 +461,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {rule.created_at ? new Date(rule.created_at).toLocaleDateString('en-GB') : 'N/A'}
+                    {rule.created_at ? formatDateOnly(rule.created_at) : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

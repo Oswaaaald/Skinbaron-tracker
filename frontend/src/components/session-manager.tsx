@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { QUERY_KEYS } from '@/lib/constants'
 import { apiClient } from '@/lib/api'
+import { formatShortDate } from '@/lib/formatters'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
@@ -56,21 +57,6 @@ function parseUserAgent(ua: string | null): { device: string; browser: string; i
 
   const device = os ? `${browser} on ${os}` : browser
   return { device, browser, icon }
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })
 }
 
 export function SessionManager() {
@@ -245,7 +231,7 @@ function SessionRow({ session, onRevoke }: { session: Session; onRevoke?: () => 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {session.ip_address && <span>{session.ip_address}</span>}
             {session.ip_address && <span>·</span>}
-            <span>{formatDate(session.created_at)}</span>
+            <span>{formatShortDate(session.created_at)}</span>
           </div>
         </div>
       </div>

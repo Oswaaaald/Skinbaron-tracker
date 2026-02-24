@@ -1,7 +1,16 @@
 /**
  * Centralized formatting utilities
  * Prevents code duplication across components
+ * 
+ * Convention:
+ *   - Locale:   'en-GB' everywhere (DD/MM/YYYY, 24h)
+ *   - Timezone: omitted → browser's local TZ (what the user expects)
+ *   - DB stores: Europe/Brussels (UTC+1 / +2 DST), but display
+ *                converts to the viewer's clock automatically via Date.
  */
+
+// ─── Shared locale constant ─────────────────────────────────────────────────
+const LOCALE = 'en-GB' as const;
 
 /** Capitalize first letter of a string. */
 export function capitalize(s: string): string {
@@ -43,10 +52,9 @@ export function formatPrice(price: number): string {
  * Format a date with relative time and full date
  * 
  * @param dateString - ISO date string from API
- * @param locale - Locale for formatting ('en' or 'fr'), defaults to 'en'
  * @returns Formatted string like "Just now • 11 Jan 2026, 23:37"
  */
-export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en'): string {
+export function formatRelativeDate(dateString: string): string {
   // Ensure the date is treated as UTC if no timezone marker is present
   const utcDate = dateString.includes('Z') || dateString.includes('+') ? dateString : dateString.replace(' ', 'T') + 'Z';
   const date = new Date(utcDate);
@@ -55,12 +63,13 @@ export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en
 
   // Guard against negative time (clock skew between client and server)
   if (diffMs < 0) {
-    const absoluteDate = date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+    const absoluteDate = date.toLocaleDateString(LOCALE, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     });
     return `Just now • ${absoluteDate}`;
   }
@@ -70,60 +79,33 @@ export function formatRelativeDate(dateString: string, locale: 'en' | 'fr' = 'en
   const diffDays = Math.floor(diffMs / 86400000);
 
   let relative = "";
-  
-  if (locale === 'fr') {
-    if (diffMins < 1) {
-      relative = "À l'instant";
-    } else if (diffMins < 60) {
-      relative = `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
-    } else if (diffHours < 24) {
-      relative = `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
-    } else if (diffDays < 7) {
-      relative = `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-    } else {
-      relative = date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    }
 
-    const fullDate = date.toLocaleString('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    return `${relative} • ${fullDate}`;
+  if (diffMins < 1) {
+    relative = "Just now";
+  } else if (diffMins < 60) {
+    relative = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+  } else if (diffHours < 24) {
+    relative = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  } else if (diffDays < 7) {
+    relative = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   } else {
-    if (diffMins < 1) {
-      relative = "Just now";
-    } else if (diffMins < 60) {
-      relative = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    } else if (diffHours < 24) {
-      relative = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    } else if (diffDays < 7) {
-      relative = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    } else {
-      relative = date.toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    }
-
-    const fullDate = date.toLocaleString('en-US', {
-      day: '2-digit',
+    relative = date.toLocaleDateString(LOCALE, {
+      day: 'numeric',
       month: 'short',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
-
-    return `${relative} • ${fullDate}`;
   }
+
+  const fullDate = date.toLocaleString(LOCALE, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  return `${relative} • ${fullDate}`;
 }
 
 /**
@@ -147,7 +129,7 @@ export function formatShortDate(dateString?: string | null): string {
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 /**
@@ -171,12 +153,58 @@ export function formatSystemDate(dateString?: Date | string | null): string {
     date = new Date(utcDate);
   }
   
-  return date.toLocaleString('en-GB', {
+  return date.toLocaleString(LOCALE, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
+  });
+}
+
+/**
+ * Format a date+time for detail views (e.g. admin user detail, passkeys)
+ * 
+ * @param dateString - Date string from API
+ * @returns Formatted string like "24/02/2026, 14:37" or "—" if null
+ */
+export function formatDateTime(dateString?: string | null): string {
+  if (!dateString) return '—';
+  
+  const utcDate = dateString.includes('Z') || dateString.includes('+')
+    ? dateString
+    : dateString.replace(' ', 'T') + 'Z';
+  const date = new Date(utcDate);
+  
+  return date.toLocaleString(LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+/**
+ * Format a date only (no time) for tables and compact views
+ * 
+ * @param dateString - Date string from API
+ * @returns Formatted string like "24/02/2026" or "—" if null
+ */
+export function formatDateOnly(dateString?: string | null): string {
+  if (!dateString) return '—';
+  
+  const utcDate = dateString.includes('Z') || dateString.includes('+')
+    ? dateString
+    : dateString.replace(' ', 'T') + 'Z';
+  const date = new Date(utcDate);
+  
+  return date.toLocaleDateString(LOCALE, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
   });
 }
 

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { startRegistration } from '@simplewebauthn/browser'
 import { QUERY_KEYS } from '@/lib/constants'
 import { apiClient, type PasskeyInfo } from '@/lib/api'
+import { formatDateTime } from '@/lib/formatters'
 import { extractErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,12 +26,6 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle, CheckCircle, Cloud, Key, Monitor, Pencil, Plus, Trash2, Usb } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
-
-function formatDate(iso: string | null): string {
-  if (!iso) return 'Never'
-  const d = new Date(iso)
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 function DeviceIcon({ deviceType, backedUp }: { deviceType: string; backedUp: boolean }) {
   if (deviceType === 'singleDevice') return <Usb className="h-5 w-5 text-amber-500" />
@@ -187,8 +182,8 @@ export function PasskeyManager() {
                     <DeviceBadge deviceType={pk.device_type} backedUp={pk.backed_up} />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Added {formatDate(pk.created_at)}
-                    {pk.last_used_at && <> · Last used {formatDate(pk.last_used_at)}</>}
+                    Added {formatDateTime(pk.created_at)}
+                    {pk.last_used_at && <> · Last used {formatDateTime(pk.last_used_at)}</>}
                   </p>
                 </div>
               </div>

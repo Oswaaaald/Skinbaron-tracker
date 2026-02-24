@@ -12,6 +12,7 @@ import { UserDetailSkeleton } from '@/components/ui/skeletons'
 import { Label } from '@/components/ui/label'
 import { Shield, ShieldOff, Key, Link2, ShieldCheck, Fingerprint, Clock, Mail, User, AlertTriangle, Camera, Trash2, Ban, Pencil, Check, X, FileWarning, ScrollText, RotateCcw, LogOut } from 'lucide-react'
 import { apiClient, type AdminUserDetail, type Sanction } from '@/lib/api'
+import { formatDateTime } from '@/lib/formatters'
 import { useToast } from '@/hooks/use-toast'
 import { extractErrorMessage } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -36,18 +37,6 @@ const DURATION_PRESETS = [
   { label: '14d', hours: 336 },
   { label: '30d', hours: 720 },
 ] as const
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Paris',
-  })
-}
 
 function formatDuration(hours: number): string {
   if (hours < 24) return `${hours}h`
@@ -405,7 +394,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                         ) : detail.is_restricted && detail.restriction_type === 'temporary' && !isRestrictionExpired ? (
                           <Badge variant="secondary" className="gap-1 bg-orange-500/15 text-orange-600 dark:text-orange-400">
                             <Clock className="h-3 w-3" />
-                            Restricted until {formatDate(detail.restriction_expires_at)}
+                            Restricted until {formatDateTime(detail.restriction_expires_at)}
                           </Badge>
                         ) : (
                           <Badge variant={detail.is_approved ? 'default' : 'secondary'}>
@@ -416,15 +405,15 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                     </div>
                     <div>
                       <span className="text-muted-foreground">Registered</span>
-                      <p className="font-medium text-xs">{formatDate(detail.created_at)}</p>
+                      <p className="font-medium text-xs">{formatDateTime(detail.created_at)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Last Updated</span>
-                      <p className="font-medium text-xs">{formatDate(detail.updated_at)}</p>
+                      <p className="font-medium text-xs">{formatDateTime(detail.updated_at)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">ToS Accepted</span>
-                      <p className="font-medium text-xs">{detail.tos_accepted_at ? formatDate(detail.tos_accepted_at) : <span className="text-amber-500 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Not accepted</span>}</p>
+                      <p className="font-medium text-xs">{detail.tos_accepted_at ? formatDateTime(detail.tos_accepted_at) : <span className="text-amber-500 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Not accepted</span>}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -497,7 +486,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                                 {pk.device_type === 'multiDevice' ? 'Synced' : 'Device-bound'}
                               </Badge>
                               <span className="text-muted-foreground">
-                                {pk.last_used_at ? `Used ${formatDate(pk.last_used_at)}` : 'Never used'}
+                                {pk.last_used_at ? `Used ${formatDateTime(pk.last_used_at)}` : 'Never used'}
                               </span>
                             </div>
                           </div>
@@ -593,10 +582,10 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                             <p className="text-xs text-muted-foreground">Reason: {detail.restriction_reason}</p>
                           )}
                           {detail.restricted_at && (
-                            <p className="text-xs text-muted-foreground">Since: {formatDate(detail.restricted_at)}</p>
+                            <p className="text-xs text-muted-foreground">Since: {formatDateTime(detail.restricted_at)}</p>
                           )}
                           {detail.restriction_type === 'temporary' && detail.restriction_expires_at && (
-                            <p className="text-xs text-muted-foreground">Expires: {formatDate(detail.restriction_expires_at)}</p>
+                            <p className="text-xs text-muted-foreground">Expires: {formatDateTime(detail.restriction_expires_at)}</p>
                           )}
                         </div>
                         <div className="space-y-2">
@@ -746,7 +735,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                                   </Badge>
                                 )}
                               </span>
-                              <span className="text-muted-foreground">{formatDate(s.created_at)}</span>
+                              <span className="text-muted-foreground">{formatDateTime(s.created_at)}</span>
                             </div>
                             <p className="text-muted-foreground">
                               By <span className="font-medium text-foreground">{s.admin_username}</span>
@@ -755,7 +744,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                               <p className="text-muted-foreground italic">&quot;{s.reason}&quot;</p>
                             )}
                             {s.expires_at && s.action === 'restrict' && (
-                              <p className="text-muted-foreground">Expires: {formatDate(s.expires_at)}</p>
+                              <p className="text-muted-foreground">Expires: {formatDateTime(s.expires_at)}</p>
                             )}
                             {currentUser?.is_super_admin && (
                               <div className="flex justify-end pt-1">

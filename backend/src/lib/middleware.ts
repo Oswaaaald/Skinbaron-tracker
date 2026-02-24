@@ -265,7 +265,7 @@ export async function enforceRestriction(user: User): Promise<RestrictionOutcome
   const expiresStr = user.restriction_expires_at
     ? new Date(user.restriction_expires_at).toLocaleString('en-GB', {
         day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
+        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels',
       })
     : '';
   return { result: 'blocked', errorMessage: `Your account is suspended until ${expiresStr}` };

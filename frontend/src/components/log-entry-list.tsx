@@ -78,7 +78,7 @@ export const LogEntryRow = memo(function LogEntryRow({
             </Badge>
             {children}
             <span className="text-xs text-muted-foreground ml-auto">
-              {formatRelativeDate(date, "fr")}
+              {formatRelativeDate(date)}
             </span>
             {expandable && (
               <div className="h-6 px-2 ml-2 flex items-center">

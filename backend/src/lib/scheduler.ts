@@ -68,7 +68,7 @@ export class AlertScheduler {
         },
         null,
         true,
-        'Europe/Paris'
+        'Europe/Brussels'
       );
 
       this.stats.isRunning = true;
