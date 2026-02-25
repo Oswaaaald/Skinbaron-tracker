@@ -50,7 +50,7 @@ export function CookieBanner() {
       <p className="text-xs leading-relaxed text-muted-foreground mb-3">
         This site uses essential cookies only for authentication and security. No tracking or analytics.{' '}
         <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground transition-colors">
-          Learn more
+          Privacy policy
         </Link>
       </p>
       <Button size="sm" className="w-full" onClick={dismiss}>
