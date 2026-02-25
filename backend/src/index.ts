@@ -476,6 +476,18 @@ async function buildSystemSnapshot() {
   return { health, scheduler: simplifiedScheduler };
 }
 
+// robots.txt - signal crawlers not to index the API
+function setupRobotsTxt() {
+  fastify.get('/robots.txt', {
+    logLevel: 'warn',
+    schema: { hide: true },
+  }, async (_request, reply) => {
+    return reply
+      .type('text/plain')
+      .send('User-agent: *\nDisallow: /\n');
+  });
+}
+
 // Health check endpoint - lightweight, no external dependencies
 function setupHealthCheck() {
   fastify.get('/api/health', {
@@ -674,6 +686,7 @@ async function initializeApp() {
 
     // Register plugins and routes
     await registerPlugins();
+    setupRobotsTxt();
     setupHealthCheck();
     setupSystemStatus();
     setupCsrfEndpoint();

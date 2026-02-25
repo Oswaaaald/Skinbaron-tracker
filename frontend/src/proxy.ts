@@ -101,7 +101,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files, Next.js internals, and health check
-    '/((?!_next/static|_next/image|favicon.ico|monitoring|health|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // Match all paths except static files, Next.js internals, health check and robots.txt
+    '/((?!_next/static|_next/image|favicon\.ico|robots\.txt|monitoring|health|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };
