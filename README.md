@@ -111,8 +111,6 @@ The first registered user is automatically approved as **super admin**.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `DATABASE_URL` | ✅ | — | PostgreSQL connection string |
-| `POSTGRES_USER` | — | `skinbaron` | PostgreSQL user |
-| `POSTGRES_PASSWORD` | ✅ | — | PostgreSQL password |
 | `JWT_SECRET` | ✅ | — | JWT signing key (min 32 chars) |
 | `JWT_ACCESS_SECRET` | — | `JWT_SECRET` | Separate access token key |
 | `JWT_REFRESH_SECRET` | — | `JWT_SECRET` | Separate refresh token key |
