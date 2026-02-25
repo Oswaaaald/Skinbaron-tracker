@@ -17,12 +17,10 @@ export default function DashboardLayout({
   const { isAuthenticated, isLoading, isReady } = useAuth()
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
 
-  // Track if user has been authenticated at least once
-  useEffect(() => {
-    if (isAuthenticated) {
-      setHasBeenAuthenticated(true)
-    }
-  }, [isAuthenticated])
+  // Derive "has been authenticated at least once" during render (React-approved pattern)
+  if (isAuthenticated && !hasBeenAuthenticated) {
+    setHasBeenAuthenticated(true)
+  }
 
   // Flush any toasts queued before a hard navigation (e.g. post-login redirect)
   useEffect(() => {

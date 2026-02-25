@@ -1,32 +1,42 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 const COOKIE_NOTICE_KEY = 'cookie_notice_dismissed'
 
-export function CookieBanner() {
-  const [visible, setVisible] = useState(false)
+function subscribeToCookieNotice(callback: () => void) {
+  window.addEventListener('storage', callback)
+  return () => window.removeEventListener('storage', callback)
+}
 
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(COOKIE_NOTICE_KEY)) {
-        setVisible(true)
-      }
-    } catch {
-      // localStorage unavailable (private browsing, storage full)
-      setVisible(true)
-    }
-  }, [])
+function getCookieNoticeSnapshot() {
+  try {
+    return !localStorage.getItem(COOKIE_NOTICE_KEY)
+  } catch {
+    return true
+  }
+}
+
+function getCookieNoticeServerSnapshot() {
+  return false // SSR: assume dismissed to avoid hydration flash
+}
+
+export function CookieBanner() {
+  const shouldShow = useSyncExternalStore(
+    subscribeToCookieNotice,
+    getCookieNoticeSnapshot,
+    getCookieNoticeServerSnapshot,
+  )
+  const [dismissed, setDismissed] = useState(false)
+  const visible = shouldShow && !dismissed
 
   const dismiss = () => {
     try {
       localStorage.setItem(COOKIE_NOTICE_KEY, '1')
-    } catch {
-      // localStorage unavailable — dismiss is still visual
-    }
-    setVisible(false)
+    } catch { /* ignore */ }
+    setDismissed(true)
   }
 
   if (!visible) return null

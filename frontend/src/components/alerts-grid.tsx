@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -61,6 +61,16 @@ export function AlertsGrid() {
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
+
+  // Preconnect to Steam CDN for item images
+  useEffect(() => {
+    const link = document.createElement('link')
+    link.rel = 'preconnect'
+    link.href = 'https://steamcommunity-a.akamaihd.net'
+    link.crossOrigin = 'anonymous'
+    document.head.appendChild(link)
+    return () => { document.head.removeChild(link) }
+  }, [])
 
   const clearAllMutation = useApiMutation(
     () => apiClient.clearAllAlerts(),

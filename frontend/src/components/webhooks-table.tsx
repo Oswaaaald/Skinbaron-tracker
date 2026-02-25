@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -54,15 +54,19 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null)
-  const lastWebhookToDeleteName = useRef('')
-  if (webhookToDelete?.name) lastWebhookToDeleteName.current = webhookToDelete.name
+  const [deleteDialogName, setDeleteDialogName] = useState('')
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null)
   const [formData, setFormData] = useState<WebhookFormData>(initialFormData)
   const [error, setError] = useState('')
   const [selectedWebhooks, setSelectedWebhooks] = useState<Set<number>>(new Set())
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
-  const lastBatchSize = useRef(0)
-  if (selectedWebhooks.size > 0) lastBatchSize.current = selectedWebhooks.size
+  const [batchDeleteSize, setBatchDeleteSize] = useState(0)
+
+  const resetForm = () => {
+    setFormData(initialFormData)
+    setEditingWebhook(null)
+    setError('')
+  }
 
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
@@ -71,6 +75,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   // Sync external dialog trigger from page-level button
   useEffect(() => {
     if (createDialogOpen && !isDialogOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing external dialog prop
       resetForm()
       setIsDialogOpen(true)
     }
@@ -187,12 +192,6 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
     }
   )
 
-  const resetForm = () => {
-    setFormData(initialFormData)
-    setEditingWebhook(null)
-    setError('')
-  }
-
   const handleOpenDialog = (webhook?: Webhook) => {
     if (webhook) {
       setEditingWebhook(webhook)
@@ -248,6 +247,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
 
   const handleDelete = (webhook: Webhook) => {
     setWebhookToDelete(webhook)
+    setDeleteDialogName(webhook.name)
     setDeleteConfirmOpen(true)
   }
 
@@ -288,6 +288,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
   }
 
   const handleBatchDelete = () => {
+    setBatchDeleteSize(selectedWebhooks.size)
     setBatchAction('delete')
   }
 
@@ -420,7 +421,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title="Delete Webhook"
-        description={`Are you sure you want to delete "${lastWebhookToDeleteName.current}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${deleteDialogName}"? This action cannot be undone.`}
         confirmText="Delete"
         variant="destructive"
         onConfirm={confirmDelete}
@@ -432,8 +433,8 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
         onOpenChange={(open) => !open && setBatchAction(null)}
         title="Delete Webhooks"
         description={
-          lastBatchSize.current > 0
-            ? `Are you sure you want to delete ${lastBatchSize.current} selected webhook(s)? This action cannot be undone.`
+          batchDeleteSize > 0
+            ? `Are you sure you want to delete ${batchDeleteSize} selected webhook(s)? This action cannot be undone.`
             : `Are you sure you want to delete ALL ${webhooks?.length || 0} webhooks? This action cannot be undone and will permanently delete all your webhook configurations.`
         }
         confirmText="Delete"

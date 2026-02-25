@@ -123,6 +123,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
         webhook_ids: rule.webhook_ids || [],
         enabled: rule.enabled ?? true,
       })
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing form state from external rule prop on dialog open
       setSelectedWebhooks(rule.webhook_ids || [])
       // Sync display values with rounding
       setMinPriceDisplay(rule.min_price !== undefined && rule.min_price !== null ? (Math.round(rule.min_price * 100) / 100).toString() : '')
@@ -169,6 +170,7 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   useEffect(() => {
     if (open && !rule && webhooks.length > 0 && !hasPreselectedWebhooks.current) {
       const allIds = webhooks.map(w => w.id).filter((id): id is number => id != null)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- One-time preset from external webhook list
       setSelectedWebhooks(allIds)
       hasPreselectedWebhooks.current = true
     }

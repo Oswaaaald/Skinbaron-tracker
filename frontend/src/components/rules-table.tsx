@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useRef } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   Table,
@@ -41,12 +41,10 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [ruleToDelete, setRuleToDelete] = useState<Rule | null>(null)
-  const lastRuleToDeleteName = useRef('')
-  if (ruleToDelete?.search_item) lastRuleToDeleteName.current = ruleToDelete.search_item
+  const [deleteDialogName, setDeleteDialogName] = useState('')
   const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set())
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
-  const lastBatchSize = useRef(0)
-  if (selectedRules.size > 0) lastBatchSize.current = selectedRules.size
+  const [batchDeleteSize, setBatchDeleteSize] = useState(0)
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
@@ -230,6 +228,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
 
   const handleDelete = (rule: Rule) => {
     setRuleToDelete(rule)
+    setDeleteDialogName(rule.search_item)
     setDeleteConfirmOpen(true)
   }
 
@@ -269,6 +268,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   }
 
   const handleBatchDelete = () => {
+    setBatchDeleteSize(selectedRules.size)
     setBatchAction('delete')
   }
 
@@ -279,7 +279,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
     setBatchAction(null)
   }, [selectedRules, batchDeleteMutation])
 
-  const rules = useMemo(() => rulesResponse?.data || [], [rulesResponse?.data])
+  const rules = rulesResponse?.data ?? []
 
   if (isLoading) {
     return <RulesTableSkeleton />
@@ -523,7 +523,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title="Delete Rule"
-        description={`Are you sure you want to delete the rule for "${lastRuleToDeleteName.current}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete the rule for "${deleteDialogName}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         variant="destructive"
@@ -536,8 +536,8 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
         onOpenChange={(open) => !open && setBatchAction(null)}
         title="Delete Rules"
         description={
-          lastBatchSize.current > 0
-            ? `Are you sure you want to delete ${lastBatchSize.current} selected rule(s)? This action cannot be undone.`
+          batchDeleteSize > 0
+            ? `Are you sure you want to delete ${batchDeleteSize} selected rule(s)? This action cannot be undone.`
             : `Are you sure you want to delete ALL ${rules.length} rules? This action cannot be undone and will permanently delete all your monitoring rules.`
         }
         confirmText="Delete"

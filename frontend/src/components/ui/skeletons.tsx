@@ -46,15 +46,37 @@ export function WebhooksTableSkeleton() {
   )
 }
 
-/** Skeleton for the alerts page (neutral – works for both empty and populated states). */
+/** Skeleton for the alerts page — approximates the filter bar + card grid to avoid CLS. */
 export function AlertsGridSkeleton() {
   return (
-    <Card>
-      <CardHeader className="items-center text-center py-10">
-        <Skeleton className="h-5 w-36" />
-        <Skeleton className="h-4 w-72 mt-2" />
-      </CardHeader>
-    </Card>
+    <div className="space-y-4">
+      {/* Filter bar skeleton */}
+      <Card>
+        <CardContent className="p-4">
+          <Skeleton className="h-3 w-20 mb-3" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-9 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      {/* Card grid skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Card key={i} className="overflow-hidden p-0">
+            <Skeleton className="aspect-[4/3] w-full rounded-none" />
+            <div className="px-3 pb-3 pt-2.5 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-9 w-full rounded-md" />
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
 
