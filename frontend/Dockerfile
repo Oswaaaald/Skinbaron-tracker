@@ -50,6 +50,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Ensure Next.js image cache dir exists and is writable
+RUN mkdir -p /app/.next/cache/images && chown nextjs:nodejs /app/.next/cache/images
+
 USER nextjs
 
 EXPOSE 3000
