@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -83,6 +83,25 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
   // Loading states
   const [moderating, setModerating] = useState<string | null>(null)
+
+  // Reset transient UI state when switching users or closing dialog
+  useEffect(() => {
+    setEditingUsername(false)
+    setNewUsername('')
+    setRemovingAvatar(false)
+    setRestrictionType('temporary')
+    setDurationHours(24)
+    setRestrictReason('')
+    setBanEmail(true)
+    setUnrestrictReason('')
+    setConfirmRestrict(false)
+    setConfirmUnrestrict(false)
+    setConfirmDelete(false)
+    setConfirmToggleAdmin(null)
+    setConfirmDeleteSanction(null)
+    setConfirmReset(null)
+    setModerating(null)
+  }, [userId])
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['admin-user-detail', userId],

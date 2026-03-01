@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
@@ -37,7 +37,8 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedCodes, setCopiedCodes] = useState(false)
 
-  // Fetch 2FA setup
+  // Fetch 2FA setup — fetch once on open, keep for entire dialog session
+  // gcTime: 0 ensures data is cleared when dialog closes so next open gets a fresh secret
   const { data: setupData, isLoading: setupLoading } = useQuery({
     queryKey: [QUERY_KEYS.TWO_FA_SETUP],
     queryFn: async () => {
@@ -49,7 +50,9 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
       }
       throw new Error('Failed to get 2FA setup')
     },
-    enabled: open && step === 'qr',
+    enabled: open,
+    staleTime: Infinity,
+    gcTime: 0,
   })
 
   // Enable 2FA mutation
@@ -106,14 +109,16 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   }
 
   const handleComplete = () => {
+    // Bypass the block in handleOpenChange — user explicitly clicked "Done"
     onOpenChange(false)
-    // Delay reset until after close animation
     setTimeout(() => {
       setStep('qr')
       setVerificationCode('')
       setSecret('')
       setRecoveryCodes([])
       setError('')
+      setCopiedSecret(false)
+      setCopiedCodes(false)
     }, 200)
   }
 
@@ -129,9 +134,33 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     setTimeout(() => setCopiedCodes(false), 2000)
   }
 
+  // Wrap onOpenChange to reset state when dialog closes (X button, backdrop click, etc.)
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    // Block closing on recovery codes step — user MUST click "Done"
+    if (!newOpen && step === 'codes') return
+    onOpenChange(newOpen)
+    if (!newOpen) {
+      // Delay reset until after close animation
+      setTimeout(() => {
+        setStep('qr')
+        setVerificationCode('')
+        setSecret('')
+        setRecoveryCodes([])
+        setError('')
+        setCopiedSecret(false)
+        setCopiedCodes(false)
+      }, 200)
+    }
+  }, [onOpenChange, step])
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-md"
+        showCloseButton={step !== 'codes'}
+        onInteractOutside={step === 'codes' ? (e) => e.preventDefault() : undefined}
+        onEscapeKeyDown={step === 'codes' ? (e) => e.preventDefault() : undefined}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
