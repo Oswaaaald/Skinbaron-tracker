@@ -896,7 +896,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Confirm Restrict */}
     <Dialog open={confirmRestrict} onOpenChange={setConfirmRestrict}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>Confirm Restriction</DialogTitle>
           <DialogDescription>
@@ -922,7 +922,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Confirm Unrestrict */}
     <Dialog open={confirmUnrestrict} onOpenChange={setConfirmUnrestrict}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>Confirm Unrestriction</DialogTitle>
           <DialogDescription>
@@ -946,7 +946,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Confirm Delete */}
     <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>Delete User Account</DialogTitle>
           <DialogDescription>
@@ -970,7 +970,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Confirm Toggle Admin */}
     <Dialog open={confirmToggleAdmin !== null} onOpenChange={(open) => { if (!open) setConfirmToggleAdmin(null) }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>{lastToggleAdmin.current === 'grant' ? 'Grant Admin Access' : 'Revoke Admin Access'}</DialogTitle>
           <DialogDescription>
@@ -991,7 +991,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Confirm Reset */}
     <Dialog open={confirmReset !== null} onOpenChange={(open) => { if (!open) setConfirmReset(null) }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>
             {lastReset.current === '2fa' && 'Reset Two-Factor Authentication'}
@@ -1025,7 +1025,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Confirm Delete Sanction */}
     <Dialog open={confirmDeleteSanction !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteSanction(null) }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>Delete Sanction</DialogTitle>
           <DialogDescription>
@@ -1059,7 +1059,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Admin Remove Avatar Confirmation */}
     <Dialog open={confirmRemoveAvatar} onOpenChange={setConfirmRemoveAvatar}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>Remove User Avatar</DialogTitle>
           <DialogDescription>Are you sure you want to remove this user&apos;s custom avatar? They will fall back to Gravatar or initials.</DialogDescription>
@@ -1075,7 +1075,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
     {/* Admin Change Username Confirmation */}
     <Dialog open={confirmChangeUsername} onOpenChange={setConfirmChangeUsername}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}>
         <DialogHeader>
           <DialogTitle>Change Username</DialogTitle>
           <DialogDescription>
