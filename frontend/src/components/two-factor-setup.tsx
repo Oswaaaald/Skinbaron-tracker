@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,7 @@ interface TwoFactorSetupProps {
 
 export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [step, setStep] = useState<'qr' | 'verify' | 'codes'>('qr')
   const [verificationCode, setVerificationCode] = useState('')
   const [secret, setSecret] = useState('')
@@ -52,7 +53,6 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     },
     enabled: open,
     staleTime: Infinity,
-    gcTime: 0,
   })
 
   // Enable 2FA mutation
@@ -111,6 +111,7 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   const handleComplete = () => {
     // Bypass the block in handleOpenChange — user explicitly clicked "Done"
     onOpenChange(false)
+    queryClient.removeQueries({ queryKey: [QUERY_KEYS.TWO_FA_SETUP] })
     setTimeout(() => {
       setStep('qr')
       setVerificationCode('')
@@ -140,7 +141,9 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     if (!newOpen && step === 'codes') return
     onOpenChange(newOpen)
     if (!newOpen) {
-      // Delay reset until after close animation
+      // Remove cached query so next open fetches a fresh secret
+      queryClient.removeQueries({ queryKey: [QUERY_KEYS.TWO_FA_SETUP] })
+      // Delay state reset until after close animation
       setTimeout(() => {
         setStep('qr')
         setVerificationCode('')
@@ -151,14 +154,14 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
         setCopiedCodes(false)
       }, 200)
     }
-  }, [onOpenChange, step])
+  }, [onOpenChange, step, queryClient])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="sm:max-w-md"
         showCloseButton={step !== 'codes'}
-        onInteractOutside={step === 'codes' ? (e) => e.preventDefault() : undefined}
+        onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={step === 'codes' ? (e) => e.preventDefault() : undefined}
       >
         <DialogHeader>
