@@ -70,7 +70,7 @@ function LandingPage() {
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Why SkinBaron Tracker?</h2>
           <p className="text-muted-foreground max-w-lg mx-auto">Everything you need to monitor the CS2 skin market efficiently.</p>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 animate-stagger">
           <Card className="group border-border/50 bg-card/50 hover:bg-card hover:shadow-md hover:border-border transition-all duration-200">
             <CardHeader className="pb-3">
               <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary/15 transition-colors">
@@ -116,7 +116,7 @@ function LandingPage() {
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">How It Works</h2>
             <p className="text-muted-foreground max-w-lg mx-auto">Three simple steps to start tracking deals.</p>
           </div>
-          <div className="grid sm:grid-cols-3 gap-10 max-w-3xl mx-auto">
+          <div className="grid sm:grid-cols-3 gap-10 max-w-3xl mx-auto animate-stagger">
             <div className="text-center">
               <div className="bg-primary text-primary-foreground rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mx-auto mb-4">1</div>
               <h3 className="font-semibold mb-1.5">Create Rules</h3>

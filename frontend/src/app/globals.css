@@ -143,3 +143,78 @@
     @apply outline-2 outline-offset-2 outline-ring;
   }
 }
+
+/* ─── Page transition ─── */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-in {
+  animation: page-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Global micro-animations ─── */
+
+/* Cards: subtle lift on hover (transform only, keeps Tailwind shadow/border utilities intact) */
+[data-slot="card"] {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+[data-slot="card"]:hover {
+  transform: translateY(-1px);
+}
+
+/* Nav links: smooth color + background */
+nav a {
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Tables: row hover highlight */
+tr {
+  transition: background-color 0.15s ease;
+}
+
+/* Badge / chip: gentle scale on hover */
+[data-slot="badge"] {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+[data-slot="badge"]:hover {
+  transform: scale(1.03);
+}
+
+/* Stagger helper — children of .animate-stagger fade in sequentially */
+.animate-stagger > * {
+  animation: page-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.animate-stagger > *:nth-child(7) { animation-delay: 300ms; }
+.animate-stagger > *:nth-child(8) { animation-delay: 350ms; }
+.animate-stagger > *:nth-child(n+9) { animation-delay: 400ms; }
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-in,
+  .animate-stagger > * {
+    animation: none !important;
+  }
+  [data-slot="card"],
+  [data-slot="badge"],
+  nav a,
+  tr {
+    transition: none !important;
+  }
+}

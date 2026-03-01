@@ -3,6 +3,7 @@
 import { DashboardNav, MobileNavTrigger } from "@/components/dashboard-nav"
 import { UserNav } from "@/components/user-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { PageTransition } from "@/components/page-transition"
 import { useAuth } from "@/contexts/auth-context"
 import { useAlertNotifier } from "@/hooks/use-alert-notifier"
 import { flushQueuedToasts } from "@/hooks/use-toast"
@@ -91,7 +92,7 @@ export default function DashboardLayout({
       
       {/* Page content */}
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {children}
+        <PageTransition>{children}</PageTransition>
       </div>
     </div>
   )
