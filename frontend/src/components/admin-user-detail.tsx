@@ -73,6 +73,8 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   const [confirmToggleAdmin, setConfirmToggleAdmin] = useState<'grant' | 'revoke' | null>(null)
   const [confirmDeleteSanction, setConfirmDeleteSanction] = useState<number | null>(null)
   const [confirmReset, setConfirmReset] = useState<'2fa' | 'passkeys' | 'sessions' | null>(null)
+  const [confirmRemoveAvatar, setConfirmRemoveAvatar] = useState(false)
+  const [confirmChangeUsername, setConfirmChangeUsername] = useState(false)
   // Keep last non-null values so dialog text stays stable during close animation
   const lastToggleAdmin = useRef<'grant' | 'revoke'>('grant')
   const lastReset = useRef<'2fa' | 'passkeys' | 'sessions'>('2fa')
@@ -98,6 +100,8 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     setConfirmUnrestrict(false)
     setConfirmDelete(false)
     setConfirmToggleAdmin(null)
+    setConfirmRemoveAvatar(false)
+    setConfirmChangeUsername(false)
     setConfirmDeleteSanction(null)
     setConfirmReset(null)
     setModerating(null)
@@ -338,7 +342,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                       </p>
                     </div>
                     {detail.has_custom_avatar && (
-                      <Button variant="outline" size="sm" onClick={() => void handleRemoveAvatar()} disabled={removingAvatar} className="text-destructive hover:text-destructive shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => setConfirmRemoveAvatar(true)} disabled={removingAvatar} className="text-destructive hover:text-destructive shrink-0">
                         {removingAvatar ? <LoadingSpinner size="sm" inline /> : <><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Remove</>}
                       </Button>
                     )}
@@ -357,9 +361,9 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                               placeholder={detail.username}
                               maxLength={32}
                               aria-label="New username"
-                              onKeyDown={e => { if (e.key === 'Enter') void handleChangeUsername(); if (e.key === 'Escape') { setEditingUsername(false); setNewUsername('') } }}
+                              onKeyDown={e => { if (e.key === 'Enter') setConfirmChangeUsername(true); if (e.key === 'Escape') { setEditingUsername(false); setNewUsername('') } }}
                             />
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleChangeUsername()} disabled={moderating === 'username' || !newUsername.trim()} aria-label="Confirm username change">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setConfirmChangeUsername(true)} disabled={moderating === 'username' || !newUsername.trim()} aria-label="Confirm username change">
                               <Check className="h-3 w-3" />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingUsername(false); setNewUsername('') }} aria-label="Cancel username edit">
@@ -1048,6 +1052,40 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             disabled={moderating === 'delete-sanction'}
           >
             {moderating === 'delete-sanction' ? 'Deleting...' : 'Delete Sanction'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Admin Remove Avatar Confirmation */}
+    <Dialog open={confirmRemoveAvatar} onOpenChange={setConfirmRemoveAvatar}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remove User Avatar</DialogTitle>
+          <DialogDescription>Are you sure you want to remove this user&apos;s custom avatar? They will fall back to Gravatar or initials.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirmRemoveAvatar(false)}>Cancel</Button>
+          <Button variant="destructive" onClick={() => { setConfirmRemoveAvatar(false); void handleRemoveAvatar() }} disabled={removingAvatar}>
+            {removingAvatar ? 'Removing...' : 'Remove Avatar'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Admin Change Username Confirmation */}
+    <Dialog open={confirmChangeUsername} onOpenChange={setConfirmChangeUsername}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change Username</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to change this user&apos;s username{detail ? <> from <strong>{detail.username}</strong> to <strong>{newUsername}</strong></> : ''}?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirmChangeUsername(false)}>Cancel</Button>
+          <Button onClick={() => { setConfirmChangeUsername(false); void handleChangeUsername() }} disabled={moderating === 'username'}>
+            {moderating === 'username' ? 'Changing...' : 'Change Username'}
           </Button>
         </DialogFooter>
       </DialogContent>

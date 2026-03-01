@@ -72,6 +72,7 @@ export function ProfileSettings() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarDeleting, setAvatarDeleting] = useState(false)
   const [gravatarToggling, setGravatarToggling] = useState(false)
+  const [confirmAvatarDelete, setConfirmAvatarDelete] = useState(false)
 
   // Tab state — default to 'oauth' when returning from OAuth link flow
   const [activeTab, setActiveTab] = useState(() => {
@@ -407,7 +408,7 @@ export function ProfileSettings() {
                       {avatarUploading ? <><LoadingSpinner size="sm" className="mr-2" inline /> Uploading...</> : <><Upload className="h-4 w-4 mr-2" /> Upload</>}
                     </Button>
                     {user?.avatar_url && user.avatar_url.includes('/api/avatars/') && (
-                      <Button variant="outline" size="sm" onClick={() => void handleAvatarDelete()} disabled={avatarDeleting}>
+                      <Button variant="outline" size="sm" onClick={() => setConfirmAvatarDelete(true)} disabled={avatarDeleting}>
                         {avatarDeleting ? <LoadingSpinner size="sm" inline /> : <><X className="h-4 w-4 mr-2" /> Remove</>}
                       </Button>
                     )}
@@ -577,6 +578,16 @@ export function ProfileSettings() {
       </Tabs>
 
       {/* Dialogs */}
+      <ConfirmDialog
+        open={confirmAvatarDelete}
+        onOpenChange={setConfirmAvatarDelete}
+        title="Remove Avatar"
+        description="Are you sure you want to remove your custom avatar? You can always upload a new one later."
+        confirmText="Remove"
+        variant="destructive"
+        onConfirm={() => void handleAvatarDelete()}
+      />
+
       <TwoFactorSetup open={twoFactorDialog} onOpenChange={setTwoFactorDialog} />
 
       <ConfirmDialog
