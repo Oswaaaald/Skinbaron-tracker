@@ -148,16 +148,36 @@
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    filter: blur(4px);
+    transform: translateY(12px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    filter: blur(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-page-in {
-  animation: page-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Tab content transition ─── */
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+[data-slot="tabs-content"][data-state="active"] {
+  animation: tab-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ─── Global micro-animations ─── */
@@ -166,18 +186,18 @@
   /* Cards: subtle lift on hover — in @layer base so Tailwind utilities
      (e.g. transition-all) override this transition when present */
   [data-slot="card"] {
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-      box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
       border-color 0.2s ease,
       background-color 0.2s ease;
   }
   [data-slot="card"]:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
   }
 
   /* Nav links: smooth color + background */
   nav a {
-    transition: color 0.15s ease, background-color 0.15s ease;
+    transition: color 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   /* Tables: row hover highlight */
@@ -187,37 +207,68 @@
 
   /* Badge / chip: gentle scale on hover */
   [data-slot="badge"] {
-    transition: transform 0.15s ease, background-color 0.15s ease;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.15s ease;
   }
   [data-slot="badge"]:hover {
-    transform: scale(1.03);
+    transform: scale(1.04);
+  }
+
+  /* Buttons: active press feedback */
+  button:active:not(:disabled),
+  [role="button"]:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  /* Tab triggers: smooth indicator */
+  [data-slot="tabs-trigger"] {
+    transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
   }
 }
 
-/* Stagger helper — children of .animate-stagger fade in sequentially */
+/* ─── Stagger entrance ─── */
 .animate-stagger > * {
-  animation: page-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.animate-stagger > *:nth-child(2) { animation-delay: 50ms; }
-.animate-stagger > *:nth-child(3) { animation-delay: 100ms; }
-.animate-stagger > *:nth-child(4) { animation-delay: 150ms; }
-.animate-stagger > *:nth-child(5) { animation-delay: 200ms; }
-.animate-stagger > *:nth-child(6) { animation-delay: 250ms; }
-.animate-stagger > *:nth-child(7) { animation-delay: 300ms; }
-.animate-stagger > *:nth-child(8) { animation-delay: 350ms; }
-.animate-stagger > *:nth-child(n+9) { animation-delay: 400ms; }
+.animate-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.animate-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.animate-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.animate-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.animate-stagger > *:nth-child(6) { animation-delay: 300ms; }
+.animate-stagger > *:nth-child(7) { animation-delay: 360ms; }
+.animate-stagger > *:nth-child(8) { animation-delay: 420ms; }
+.animate-stagger > *:nth-child(n+9) { animation-delay: 480ms; }
+
+/* ─── Fade-in utility (for page headers, standalone elements) ─── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .animate-page-in,
-  .animate-stagger > * {
+  .animate-stagger > *,
+  .animate-fade-up,
+  [data-slot="tabs-content"][data-state="active"] {
     animation: none !important;
   }
   [data-slot="card"],
   [data-slot="badge"],
+  [data-slot="tabs-trigger"],
   nav a,
-  tr {
+  tr,
+  button,
+  [role="button"] {
     transition: none !important;
   }
 }

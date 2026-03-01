@@ -13,7 +13,7 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="animate-fade-up">
         <h2 className="text-2xl font-bold tracking-tight">Alert History</h2>
         <p className="text-muted-foreground">
           View all triggered alerts with detailed information

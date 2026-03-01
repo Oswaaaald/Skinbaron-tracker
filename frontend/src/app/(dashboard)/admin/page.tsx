@@ -13,7 +13,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="animate-fade-up">
         <h2 className="text-2xl font-bold tracking-tight">Admin Panel</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Manage users and system settings
