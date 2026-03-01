@@ -162,33 +162,36 @@
 
 /* ─── Global micro-animations ─── */
 
-/* Cards: subtle lift on hover (transform only, keeps Tailwind shadow/border utilities intact) */
-[data-slot="card"] {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.2s ease,
-    background-color 0.2s ease;
-}
-[data-slot="card"]:hover {
-  transform: translateY(-1px);
-}
+@layer base {
+  /* Cards: subtle lift on hover — in @layer base so Tailwind utilities
+     (e.g. transition-all) override this transition when present */
+  [data-slot="card"] {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+  [data-slot="card"]:hover {
+    transform: translateY(-1px);
+  }
 
-/* Nav links: smooth color + background */
-nav a {
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
+  /* Nav links: smooth color + background */
+  nav a {
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
 
-/* Tables: row hover highlight */
-tr {
-  transition: background-color 0.15s ease;
-}
+  /* Tables: row hover highlight */
+  tr {
+    transition: background-color 0.15s ease;
+  }
 
-/* Badge / chip: gentle scale on hover */
-[data-slot="badge"] {
-  transition: transform 0.15s ease, background-color 0.15s ease;
-}
-[data-slot="badge"]:hover {
-  transform: scale(1.03);
+  /* Badge / chip: gentle scale on hover */
+  [data-slot="badge"] {
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+  [data-slot="badge"]:hover {
+    transform: scale(1.03);
+  }
 }
 
 /* Stagger helper — children of .animate-stagger fade in sequentially */
