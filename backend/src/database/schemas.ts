@@ -23,7 +23,8 @@ export type {
 /**
  * Rule validation schema
  */
-export const RuleSchema = z.object({
+/** Base object schema — use this for .omit()/.pick()/.partial() */
+export const RuleBaseSchema = z.object({
   id: z.number().optional(),
   user_id: z.number(),
   search_item: z.string().min(1).max(200),
@@ -38,7 +39,10 @@ export const RuleSchema = z.object({
   enabled: z.boolean().default(true),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
-}).refine(
+});
+
+/** Full rule schema with cross-field validations (don't use .omit() on this) */
+export const RuleSchema = RuleBaseSchema.refine(
   data => data.min_price == null || data.max_price == null || data.min_price <= data.max_price,
   { message: 'Minimum price must be less than or equal to maximum price', path: ['min_price'] }
 ).refine(

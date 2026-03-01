@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { store } from '../database/index.js';
-import { RuleSchema } from '../database/schemas.js';
+import { RuleBaseSchema } from '../database/schemas.js';
 import { BatchRuleIdsSchema, BatchRuleDeleteSchema } from '../database/schemas.js';
 import { MAX_RULES_PER_USER } from '../lib/config.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
@@ -12,15 +12,26 @@ import { getAuthUser } from '../lib/middleware.js';
 /**
  * Rule request schemas
  */
-const CreateRuleRequestSchema = RuleSchema.omit({ 
+const CreateRuleRequestSchema = RuleBaseSchema.omit({ 
   id: true, 
   user_id: true,
   created_at: true, 
   updated_at: true 
-});
+}).refine(
+  data => data.min_price == null || data.max_price == null || data.min_price <= data.max_price,
+  { message: 'Minimum price must be less than or equal to maximum price', path: ['min_price'] }
+).refine(
+  data => data.min_wear == null || data.max_wear == null || data.min_wear <= data.max_wear,
+  { message: 'Minimum wear must be less than or equal to maximum wear', path: ['min_wear'] }
+);
 
-// Use partial schema for updates to allow partial modifications
-const UpdateRuleRequestSchema = CreateRuleRequestSchema.partial();
+// Use partial base schema for updates (refinements can't apply reliably to partial fields)
+const UpdateRuleRequestSchema = RuleBaseSchema.omit({
+  id: true,
+  user_id: true,
+  created_at: true,
+  updated_at: true,
+}).partial();
 
 const RuleParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
