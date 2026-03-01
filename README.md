@@ -3,7 +3,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Fastify](https://img.shields.io/badge/Fastify-5-white?logo=fastify&logoColor=black)](https://fastify.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -61,7 +61,7 @@ A self-hosted price tracker for [SkinBaron](https://skinbaron.de) CS2 skins. Cre
 |---|---|
 | **Frontend** | Next.js 16, React 19, TanStack Query 5, Tailwind CSS v4, shadcn/ui, Radix UI |
 | **Backend** | Fastify 5, Drizzle ORM 0.45, Zod v4, Pino logger |
-| **Database** | PostgreSQL 17 (14 tables, 9 migrations) |
+| **Database** | PostgreSQL 18 (15 tables, 5 enums, 12 migrations) |
 | **Auth** | JWT (jsonwebtoken), bcrypt, otplib (TOTP), @simplewebauthn/server, arctic (OAuth) |
 | **Infra** | Docker Compose, multi-stage builds, read-only containers, non-root users |
 
@@ -88,13 +88,7 @@ cp .env.example .env
 # Edit .env with your values (see Environment Variables below)
 ```
 
-### 3. Create the database volume
-
-```bash
-docker volume create skinbaron_postgres_data
-```
-
-### 4. Deploy
+### 3. Deploy
 
 ```bash
 docker compose up -d --build
@@ -137,6 +131,9 @@ The first registered user is automatically approved as **super admin**.
 | `GITHUB_CLIENT_SECRET` | — | — | GitHub OAuth secret |
 | `DISCORD_CLIENT_ID` | — | — | Discord OAuth client ID |
 | `DISCORD_CLIENT_SECRET` | — | — | Discord OAuth secret |
+| **Monitoring (optional)** | | | |
+| `SENTRY_DSN` | — | — | Sentry DSN (backend) |
+| `NEXT_PUBLIC_SENTRY_DSN` | — | — | Sentry DSN (frontend) |
 
 ---
 
@@ -147,12 +144,12 @@ The first registered user is automatically approved as **super admin**.
 ├── .env.example
 ├── backend/
 │   ├── Dockerfile              # Multi-stage Node 22 Alpine build
-│   ├── drizzle/                # SQL migrations (0000–0008)
+│   ├── drizzle/                # SQL migrations (0000–0011)
 │   ├── drizzle.config.ts
 │   └── src/
 │       ├── index.ts            # Fastify server setup
 │       ├── database/
-│       │   ├── schema.ts       # 14 tables, 4 enums
+│       │   ├── schema.ts       # 15 tables, 5 enums
 │       │   ├── connection.ts   # PostgreSQL pool + Drizzle
 │       │   ├── index.ts        # Store facade
 │       │   └── repositories/   # 9 repositories
@@ -163,15 +160,15 @@ The first registered user is automatically approved as **super admin**.
 │       │   ├── notifier.ts    # Discord webhook with retry
 │       │   ├── scheduler.ts   # Cron-based price poller
 │       │   └── ...
-│       ├── routes/             # 7 route modules (65 endpoints)
+│       ├── routes/             # 8 route modules (73 endpoints)
 │       └── types/
 └── frontend/
     ├── Dockerfile              # Multi-stage Next.js standalone build
     └── src/
         ├── app/                # Next.js App Router pages
-        ├── components/         # 21 custom + 26 UI (shadcn)
+        ├── components/         # 23 custom + 28 UI (shadcn)
         ├── contexts/           # Auth context
-        ├── hooks/              # 7 custom hooks
+        ├── hooks/              # 8 custom hooks
         └── lib/                # API client, utils, validation
 ```
 
@@ -179,17 +176,18 @@ The first registered user is automatically approved as **super admin**.
 
 ## API Overview
 
-**65 endpoints** across 7 route modules:
+**73 endpoints** across 8 route modules:
 
 | Module | Prefix | Endpoints | Auth |
 |---|---|---|---|
-| Auth | `/api/auth` | 12 | Mostly public |
-| User | `/api/user` | 22 | Authenticated |
+| Auth | `/api/auth` | 8 | Mostly public |
+| User | `/api/user` | 21 | Authenticated |
 | Rules | `/api/rules` | 7 | Authenticated |
 | Alerts | `/api/alerts` | 4 | Authenticated |
 | Webhooks | `/api/webhooks` | 7 | Authenticated |
 | Items | `/api/items` | 1 | Authenticated |
-| Admin | `/api/admin` | 18 | Admin / Super Admin |
+| Admin | `/api/admin` | 20 | Admin / Super Admin |
+| System | `/api/` (root) | 5 | Public / Mixed |
 
 Full API docs available at `/api/docs` (Swagger UI, role-filtered).
 
@@ -240,7 +238,7 @@ Both application containers run with:
 - Non-root user (UID 1001)
 - Tmpfs for `/tmp`
 - Health checks (30s interval)
-- PostgreSQL exposed only on `127.0.0.1`
+- PostgreSQL managed externally (not in compose)
 
 ---
 
