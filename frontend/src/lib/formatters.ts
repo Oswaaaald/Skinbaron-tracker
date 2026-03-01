@@ -230,7 +230,7 @@ export function formatUptime(uptimeSeconds?: number): string {
  */
 export function formatEventData(eventType: string, eventDataJson: string | null): string {
   // Events with static messages that don't need event_data
-  if (eventType === "data_export") return "Personal data exported";
+  if (eventType === "data_export") return "Personal data exported (GDPR)";
 
   if (!eventDataJson) return "";
 
@@ -323,9 +323,6 @@ export function formatEventData(eventType: string, eventDataJson: string | null)
       
       case "passkey_deleted":
         return `Passkey removed`;
-
-      case "data_export":
-        return "Personal data exported (GDPR)";
       
       case "avatar_uploaded":
         return "Custom avatar uploaded";

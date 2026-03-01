@@ -24,7 +24,8 @@ import {
 import { apiClient, type AdminActionLog } from "@/lib/api"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { LogListSkeleton } from "@/components/ui/skeletons"
-import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_ACTION_TYPES, ADMIN_ACTION_CONFIG } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL } from "@/lib/constants"
+import { ADMIN_ACTION_TYPES, ADMIN_ACTION_CONFIG } from "@/lib/audit-icons"
 import { LogEntryRow, LogScrollArea } from "@/components/log-entry-list"
 
 export function AdminActionLogs() {

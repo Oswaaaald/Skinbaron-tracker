@@ -1,6 +1,9 @@
 import { request } from 'undici';
 import { z } from 'zod';
+import pino from 'pino';
 import { appConfig, SKINBARON_API } from './config.js';
+
+const logger = pino({ level: appConfig.LOG_LEVEL, name: 'sbclient' });
 
 // SkinBaron API Response Schemas (internal)
 const SkinBaronSaleSchema = z.object({
@@ -40,8 +43,8 @@ export interface SkinBaronItem {
   currency?: string;
   quality?: string;
   rarity?: string;
-  skinUrl?: string; // URL vers l'offre SkinBaron
-  imageUrl?: string; // URL de l'image Steam de l'item
+  skinUrl?: string; // URL to the SkinBaron listing
+  imageUrl?: string; // Steam image URL for the item
 }
 
 // Search parameters
@@ -99,19 +102,14 @@ export class SkinBaronClient {
         body: JSON.stringify(requestBody),
       });
 
-      // Handle rate limiting with retry
-      if (statusCode === 429) {
-        if (retryCount < MAX_RETRIES) {
-          const delay = RETRY_DELAYS[retryCount];
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return this.makeRequest(endpoint, params, schema, retryCount + 1);
-        }
-        throw new Error(`SkinBaron API rate limit exceeded after ${MAX_RETRIES} retries`);
-      }
-
-      // Handle authentication errors (don't retry these)
+      // Non-retryable errors (caught by catch block but skipped via isAuthError)
       if (statusCode === 401 || statusCode === 403) {
         throw new Error(`SkinBaron API authentication failed: Invalid or missing API key (${statusCode})`);
+      }
+
+      // Retryable HTTP errors (caught by catch block, retried up to MAX_RETRIES)
+      if (statusCode === 429) {
+        throw new Error(`SkinBaron API rate limited (HTTP 429)`);
       }
 
       if (statusCode !== 200) {
@@ -132,6 +130,13 @@ export class SkinBaronClient {
       
       return validatedData;
     } catch (error) {
+      // Don't retry auth errors or validation errors — they won't succeed on retry
+      const isAuthError = error instanceof Error && error.message.includes('authentication failed');
+      if (retryCount < MAX_RETRIES && !(error instanceof z.ZodError) && !isAuthError) {
+        const delay = RETRY_DELAYS[retryCount];
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.makeRequest(endpoint, params, schema, retryCount + 1);
+      }
       throw error;
     }
   }
@@ -161,7 +166,7 @@ export class SkinBaronClient {
 
     // Convert sales to items format for backward compatibility
     const items: SkinBaronItem[] = (result.sales || []).map(sale => {
-      // Améliorer la détection StatTrak - toujours utiliser le nom pour plus de fiabilité
+      // Improve StatTrak detection — always use the name for reliability
       const isStatTrak = sale.market_name.includes('StatTrak™');
       const isSouvenir = sale.market_name.includes('Souvenir');
       
@@ -173,16 +178,16 @@ export class SkinBaronClient {
         itemName: sale.market_name,
         price: sale.price,
         wearValue: sale.wear,
-        statTrak: isStatTrak, // Toujours basé sur le nom pour plus de fiabilité
-        souvenir: isSouvenir, // Toujours basé sur le nom pour plus de fiabilité
+        statTrak: isStatTrak, // Always based on the name for reliability
+        souvenir: isSouvenir, // Always based on the name for reliability
         hasStickers: hasStickers, // True if item has stickers applied
         stickersData: sale.stickers, // Raw stickers data
         sellerName: sale.seller,
         currency: sale.currency || 'EUR',
         quality: sale.quality,
         rarity: sale.rarity,
-        skinUrl: sale.sbinspect || this.getSkinUrl(sale.id), // Utiliser sbinspect si disponible
-        imageUrl: sale.img, // URL de l'image Steam
+        skinUrl: sale.sbinspect || this.getSkinUrl(sale.id), // Use sbinspect if available
+        imageUrl: sale.img, // Steam image URL
       };
     });
 
@@ -200,7 +205,7 @@ export class SkinBaronClient {
   async testConnection(): Promise<boolean> {
     const now = Date.now();
     
-    // Use cached result if less than 1 minute old
+    // Use cached result if still fresh
     if (this.lastConnectionTest && 
         (now - this.lastConnectionTest.timestamp) < this.CONNECTION_TEST_CACHE_MS) {
       return this.lastConnectionTest.result;
@@ -218,7 +223,7 @@ export class SkinBaronClient {
     } catch (error) {
       // Log the specific error for debugging
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[SkinBaron] Connection test failed:', errorMessage);
+      logger.error('[SkinBaron] Connection test failed: %s', errorMessage);
       
       this.lastConnectionTest = { timestamp: now, result: false };
       return false;
@@ -226,7 +231,7 @@ export class SkinBaronClient {
   }
 
   /**
-   * Generate SkinBaron listing URL (fallback si sbinspect non disponible)
+   * Generate SkinBaron listing URL (fallback if sbinspect unavailable)
    */
   getSkinUrl(saleId: string, itemName?: string): string {
     if (itemName) {
@@ -235,43 +240,6 @@ export class SkinBaronClient {
       return `https://skinbaron.de/offers/show?offerUuid=${saleId}&productName=${encodedProductName}`;
     }
     return `https://skinbaron.de/offers/show?offerUuid=${saleId}`;
-  }
-
-    /**
-   * Check if an item matches the given search parameters
-   */
-  matchesFilters(item: SkinBaronItem, params: SearchParams): boolean {
-    if (params.statTrak !== undefined) {
-      const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
-      if (itemIsStatTrak !== params.statTrak) {
-        return false;
-      }
-    }
-
-    if (params.souvenir !== undefined) {
-      const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-      if (itemIsSouvenir !== params.souvenir) {
-        return false;
-      }
-    }
-
-    if (params.min !== undefined && params.min !== null && item.price < params.min) {
-      return false;
-    }
-
-    if (params.max !== undefined && params.max !== null && item.price > params.max) {
-      return false;
-    }
-
-    if (params.minWear !== undefined && params.minWear !== null && item.wearValue !== undefined && item.wearValue < params.minWear) {
-      return false;
-    }
-
-    if (params.maxWear !== undefined && params.maxWear !== null && item.wearValue !== undefined && item.wearValue > params.maxWear) {
-      return false;
-    }
-
-    return true;
   }
 }
 

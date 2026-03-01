@@ -22,6 +22,7 @@ const ConfigSchema = z.object({
   // Database
   DATABASE_URL: z.string().url(),
   DATABASE_SSL: z.coerce.boolean().default(false),
+  DATABASE_SSL_REJECT_UNAUTHORIZED: z.coerce.boolean().default(true),
   
   // Authentication
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),

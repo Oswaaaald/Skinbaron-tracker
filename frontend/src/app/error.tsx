@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
 
-export default function GlobalError({
+export default function ErrorPage({
   error,
   reset,
 }: {

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { DISCORD_COLORS, appConfig } from './config.js';
-import type { Rule } from '../database/schemas.js';
 import type { SkinBaronItem } from './sbclient.js';
 import pino from 'pino';
 
@@ -42,7 +41,6 @@ export type NotificationStyle = 'compact' | 'detailed';
 
 interface NotificationOptions {
   item: SkinBaronItem;
-  rule?: Rule;
   skinUrl: string;
   style?: NotificationStyle;
 }

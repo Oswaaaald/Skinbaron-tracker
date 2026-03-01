@@ -95,18 +95,21 @@ export class WebhooksRepository {
 
   async deleteBatch(ids: number[], userId: number): Promise<number> {
     if (ids.length === 0) return 0;
-    // Only delete junction entries for webhooks actually owned by this user
-    const ownedRows = await this.db.select({ id: userWebhooks.id })
-      .from(userWebhooks)
-      .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)));
-    const ownedIds = ownedRows.map(r => r.id);
-    if (ownedIds.length === 0) return 0;
-    // Clean up junction table entries for owned webhooks only
-    await this.db.delete(ruleWebhooks).where(inArray(ruleWebhooks.webhook_id, ownedIds));
-    const result = await this.db.delete(userWebhooks)
-      .where(inArray(userWebhooks.id, ownedIds))
-      .returning({ id: userWebhooks.id });
-    return result.length;
+
+    return await this.db.transaction(async (tx) => {
+      // Only delete junction entries for webhooks actually owned by this user
+      const ownedRows = await tx.select({ id: userWebhooks.id })
+        .from(userWebhooks)
+        .where(and(inArray(userWebhooks.id, ids), eq(userWebhooks.user_id, userId)));
+      const ownedIds = ownedRows.map(r => r.id);
+      if (ownedIds.length === 0) return 0;
+      // Clean up junction table entries for owned webhooks only
+      await tx.delete(ruleWebhooks).where(inArray(ruleWebhooks.webhook_id, ownedIds));
+      const result = await tx.delete(userWebhooks)
+        .where(inArray(userWebhooks.id, ownedIds))
+        .returning({ id: userWebhooks.id });
+      return result.length;
+    });
   }
 
   async count(userId: number): Promise<number> {

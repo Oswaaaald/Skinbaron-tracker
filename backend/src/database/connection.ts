@@ -11,7 +11,14 @@ const pool = new pg.Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  ssl: appConfig.DATABASE_SSL ? { rejectUnauthorized: false } : undefined,
+  ssl: appConfig.DATABASE_SSL
+    ? { rejectUnauthorized: appConfig.DATABASE_SSL_REJECT_UNAUTHORIZED }
+    : undefined,
+});
+
+// Prevent unhandled pool errors from crashing the process
+pool.on('error', (err) => {
+  console.error('[Database] Unexpected pool error:', err.message);
 });
 
 export const db = drizzle(pool, { schema });

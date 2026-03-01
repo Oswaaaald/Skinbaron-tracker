@@ -49,7 +49,7 @@ export default async function RootLayout({
         >
           <AuthProvider initialAuth={undefined}>
             <QueryProvider>
-              <div className="min-h-screen bg-background flex flex-col" style={{ minHeight: '100vh' }}>
+              <div className="min-h-screen bg-background flex flex-col">
                 <main className="flex-1">
                   {children}
                 </main>

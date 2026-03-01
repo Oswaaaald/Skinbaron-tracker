@@ -241,10 +241,9 @@ type RestrictionOutcome =
 
 /**
  * Check if a user is restricted and either auto-clear expired temporary
- * restrictions or throw/return the appropriate error.
+ * restrictions or return the appropriate error.
  *
  * Returns a result struct so callers can decide how to respond (throw vs redirect).
- * Callers that simply want to throw can use `enforceRestrictionOrThrow`.
  *
  * `expiresAt` is the ISO-8601 expiry timestamp for temporary restrictions,
  * so the frontend can format it in the user's local timezone.
@@ -276,16 +275,4 @@ export async function enforceRestriction(user: User): Promise<RestrictionOutcome
     errorMessage: 'Your account is temporarily suspended',
     expiresAt,
   };
-}
-
-/**
- * Convenience wrapper that throws AppError directly.
- * Used by routes that return JSON errors (login, refresh, passkey auth, OAuth 2FA).
- */
-export async function enforceRestrictionOrThrow(user: User): Promise<void> {
-  const { result, errorMessage, expiresAt } = await enforceRestriction(user);
-  if (result === 'blocked') {
-    throw new AppError(403, errorMessage, 'ACCOUNT_RESTRICTED',
-      expiresAt ? { restriction_expires_at: expiresAt } : undefined);
-  }
 }

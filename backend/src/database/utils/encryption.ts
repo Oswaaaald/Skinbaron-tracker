@@ -2,11 +2,14 @@ import crypto from 'crypto';
 import { appConfig } from '../../lib/config.js';
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
+const IV_LENGTH = 12; // NIST SP 800-38D recommended for AES-GCM
+const LEGACY_IV_LENGTH = 16; // Previous format, kept for backward-compatible decryption
 const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 const TAG_POSITION = SALT_LENGTH + IV_LENGTH;
 const ENCRYPTED_POSITION = TAG_POSITION + TAG_LENGTH;
+const LEGACY_TAG_POSITION = SALT_LENGTH + LEGACY_IV_LENGTH;
+const LEGACY_ENCRYPTED_POSITION = LEGACY_TAG_POSITION + TAG_LENGTH;
 
 // OWASP 2024+ recommendation: 600,000+ iterations for PBKDF2-SHA512
 const PBKDF2_ITERATIONS = 600_000;
@@ -45,7 +48,7 @@ function getKey(salt: Buffer): Buffer {
 
 /**
  * Encrypts data using AES-256-GCM
- * Format: salt(64) + iv(16) + tag(16) + encrypted_data
+ * Format: salt(64) + iv(12) + tag(16) + encrypted_data
  */
 export function encryptData(data: string): string {
   const salt = crypto.randomBytes(SALT_LENGTH);
@@ -61,21 +64,36 @@ export function encryptData(data: string): string {
 
 /**
  * Decrypts data encrypted with encryptData()
+ * Supports both current (12-byte IV) and legacy (16-byte IV) formats.
  */
 export function decryptData(encryptedData: string): string {
   const buffer = Buffer.from(encryptedData, 'base64');
 
-  const salt = buffer.subarray(0, SALT_LENGTH);
-  const iv = buffer.subarray(SALT_LENGTH, TAG_POSITION);
-  const tag = buffer.subarray(TAG_POSITION, ENCRYPTED_POSITION);
-  const encrypted = buffer.subarray(ENCRYPTED_POSITION);
+  // Try current 12-byte IV format first
+  try {
+    const salt = buffer.subarray(0, SALT_LENGTH);
+    const iv = buffer.subarray(SALT_LENGTH, TAG_POSITION);
+    const tag = buffer.subarray(TAG_POSITION, ENCRYPTED_POSITION);
+    const encrypted = buffer.subarray(ENCRYPTED_POSITION);
 
-  const key = getKey(salt);
+    const key = getKey(salt);
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  } catch {
+    // Fall back to legacy 16-byte IV format
+    const salt = buffer.subarray(0, SALT_LENGTH);
+    const iv = buffer.subarray(SALT_LENGTH, LEGACY_TAG_POSITION);
+    const tag = buffer.subarray(LEGACY_TAG_POSITION, LEGACY_ENCRYPTED_POSITION);
+    const encrypted = buffer.subarray(LEGACY_ENCRYPTED_POSITION);
 
-  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+    const key = getKey(salt);
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
+
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  }
 }
 
 /**

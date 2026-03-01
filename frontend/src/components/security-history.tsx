@@ -2,7 +2,8 @@
 
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { QUERY_KEYS, SLOW_POLL_INTERVAL, AUDIT_EVENT_CONFIG } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL } from "@/lib/constants"
+import { AUDIT_EVENT_CONFIG } from "@/lib/audit-icons"
 import { formatEventData } from "@/lib/formatters"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

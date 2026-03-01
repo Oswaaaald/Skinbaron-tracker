@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { RulesTableSkeleton } from "@/components/ui/skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { MoreHorizontal, Edit, Trash2, Play, Pause } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, Play, Pause, Plus } from "lucide-react"
 import { apiClient, type Rule } from "@/lib/api"
 import { formatDateOnly } from "@/lib/formatters"
 import { RuleDialog } from "@/components/rule-dialog"
@@ -34,7 +34,6 @@ import { useApiMutation } from "@/hooks/use-api-mutation"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { QUERY_KEYS } from "@/lib/constants"
-import { Plus } from "lucide-react"
 
 export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
   const [editingRule, setEditingRule] = useState<Rule | null>(null)

@@ -24,7 +24,8 @@ import {
 import { apiClient, type AuditLog } from "@/lib/api"
 import { usePageVisible } from "@/hooks/use-page-visible"
 import { LogListSkeleton } from "@/components/ui/skeletons"
-import { QUERY_KEYS, SLOW_POLL_INTERVAL, AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/constants"
+import { QUERY_KEYS, SLOW_POLL_INTERVAL } from "@/lib/constants"
+import { AUDIT_EVENT_TYPES, AUDIT_EVENT_CONFIG } from "@/lib/audit-icons"
 import { formatEventData } from "@/lib/formatters"
 import { useExpandableRows, LogEntryRow, LogScrollArea } from "@/components/log-entry-list"
 

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -12,6 +12,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "allowUnreachableCode": false,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
     "esModuleInterop": true,
     "exactOptionalPropertyTypes": false,
     "noPropertyAccessFromIndexSignature": true,

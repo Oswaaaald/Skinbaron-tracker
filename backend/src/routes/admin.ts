@@ -279,8 +279,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       // Protect admin targets: only super admins can modify other admins
       if (user.is_admin || user.is_super_admin) {
-        const currentAdmin = await store.users.findById(adminId);
-        if (!currentAdmin?.is_super_admin) throw Errors.forbidden('Only super admins can modify admin accounts');
+        if (!admin?.is_super_admin) throw Errors.forbidden('Only super admins can modify admin accounts');
       }
 
       if (!user.avatar_filename) {
@@ -803,7 +802,6 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       if (!user) throw Errors.notFound('User');
 
       // If this is the most recent "restrict" sanction and user is currently restricted, unrestrict them
-      // If this is the most recent "restrict" sanction and user is currently restricted, unrestrict them
       if (sanction.action === 'restrict' && user.is_restricted) {
         // Check if this is the sanction that caused the current restriction
         // (most recent restrict sanction for this user)
@@ -872,7 +870,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         additionalProperties: false,
         required: ['username'],
         properties: {
-          username: { type: 'string', minLength: 3, maxLength: 32, pattern: '^[a-zA-Z0-9_]+$' },
+          username: { type: 'string', minLength: 3, maxLength: 20, pattern: '^[a-zA-Z0-9_]+$' },
         },
       },
     },

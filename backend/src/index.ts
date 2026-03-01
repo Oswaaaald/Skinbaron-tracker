@@ -476,7 +476,7 @@ async function buildSystemSnapshot() {
   return { health, scheduler: simplifiedScheduler };
 }
 
-// robots.txt - signal crawlers not to index the API
+// robots.txt - allow frontend page indexing, block API and admin routes
 function setupRobotsTxt() {
   fastify.get('/robots.txt', {
     logLevel: 'warn',
@@ -484,7 +484,12 @@ function setupRobotsTxt() {
   }, async (_request, reply) => {
     return reply
       .type('text/plain')
-      .send('User-agent: *\nDisallow: /\n');
+      .send(
+        'User-agent: *\n' +
+        'Allow: /\n' +
+        'Disallow: /api/\n' +
+        'Disallow: /admin\n'
+      );
   });
 }
 

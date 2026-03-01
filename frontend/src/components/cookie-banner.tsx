@@ -43,7 +43,7 @@ export function CookieBanner() {
 
   return (
     <div
-      role="status"
+      role="region"
       aria-label="Cookie notice"
       className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-50 rounded-lg border border-border/60 bg-background/95 backdrop-blur-lg shadow-lg p-4"
     >

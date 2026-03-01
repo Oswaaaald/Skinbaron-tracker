@@ -36,9 +36,11 @@ import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
  * Verifies TOTP code or recovery code, handles outdated secrets, and manages
  * recovery code consumption + audit logging.
  *
+ * Exported for re-use in user.ts (re-auth on sensitive operations).
+ *
  * @returns void on success, throws AppError on failure
  */
-async function verifyTotpOrRecoveryCode(
+export async function verifyTotpOrRecoveryCode(
   user: User & { totp_secret?: string | null; recovery_codes?: string | null },
   totpCode: string,
   request: FastifyRequest,

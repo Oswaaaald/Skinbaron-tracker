@@ -8,6 +8,37 @@ import { getNotificationService, type NotificationStyle } from './notifier.js';
 import pino from 'pino';
 
 // Logger interface compatible with both pino.Logger and FastifyBaseLogger
+
+/**
+ * Apply per-rule filters (price, wear, stattrak, souvenir, sticker) to a list of items.
+ * Extracted to avoid duplicating filter logic across the scheduler.
+ */
+function filterItemsByRule(items: SkinBaronItem[], rule: Rule): SkinBaronItem[] {
+  return items.filter(item => {
+    if (rule.min_price != null && item.price < rule.min_price) return false;
+    if (rule.max_price != null && item.price > rule.max_price) return false;
+
+    if (rule.min_wear != null) {
+      if (item.wearValue !== undefined && item.wearValue < rule.min_wear) return false;
+    }
+    if (rule.max_wear != null) {
+      if (item.wearValue !== undefined && item.wearValue > rule.max_wear) return false;
+    }
+
+    const isStatTrak = item.statTrak || item.itemName.includes('StatTrak\u2122');
+    if (rule.stattrak_filter === 'only' && !isStatTrak) return false;
+    if (rule.stattrak_filter === 'exclude' && isStatTrak) return false;
+
+    const isSouvenir = item.souvenir || item.itemName.includes('Souvenir');
+    if (rule.souvenir_filter === 'only' && !isSouvenir) return false;
+    if (rule.souvenir_filter === 'exclude' && isSouvenir) return false;
+
+    if (rule.sticker_filter === 'only' && !item.hasStickers) return false;
+    if (rule.sticker_filter === 'exclude' && item.hasStickers) return false;
+
+    return true;
+  });
+}
 interface SchedulerLogger {
   info(obj: object, msg?: string): void;
   error(obj: object, msg?: string): void;
@@ -350,30 +381,7 @@ export class AlertScheduler {
     const ruleId = rule.id;
 
     // ── Per-rule local filtering on the shared item set ──
-    const items = allItems.filter(item => {
-      if (rule.min_price != null && item.price < rule.min_price) return false;
-      if (rule.max_price != null && item.price > rule.max_price) return false;
-
-      if (rule.min_wear != null) {
-        if (item.wearValue !== undefined && item.wearValue < rule.min_wear) return false;
-      }
-      if (rule.max_wear != null) {
-        if (item.wearValue !== undefined && item.wearValue > rule.max_wear) return false;
-      }
-
-      const isStatTrak = item.statTrak || item.itemName.includes('StatTrak\u2122');
-      if (rule.stattrak_filter === 'only' && !isStatTrak) return false;
-      if (rule.stattrak_filter === 'exclude' && isStatTrak) return false;
-
-      const isSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-      if (rule.souvenir_filter === 'only' && !isSouvenir) return false;
-      if (rule.souvenir_filter === 'exclude' && isSouvenir) return false;
-
-      if (rule.sticker_filter === 'only' && !item.hasStickers) return false;
-      if (rule.sticker_filter === 'exclude' && item.hasStickers) return false;
-
-      return true;
-    });
+    const items = filterItemsByRule(allItems, rule);
 
     // ── Lightweight existing alerts lookup (sale_id + price only, not full rows) ──
     const existingPairs = await store.alerts.findSaleIdPricesByRuleId(ruleId);
@@ -495,7 +503,7 @@ export class AlertScheduler {
         if (!webhook.webhook_url) continue;
         try {
           const success = await this.notificationService.sendNotification(webhook.webhook_url, {
-            item, rule, skinUrl: offerUrl,
+            item, skinUrl: offerUrl,
             style: (webhook.notification_style as NotificationStyle) || 'compact',
           });
           if (success) anySent = true;
@@ -536,59 +544,6 @@ export class AlertScheduler {
       this.stats.nextRunTime = this.cronJob.nextDate().toJSDate();
     }
     return { ...this.stats };
-  }
-
-  /**
-   * Test a specific rule without creating alerts
-   */
-  async testRule(rule: Rule): Promise<SkinBaronItem[]> {
-    const client = getSkinBaronClient();
-    
-    // Convert filter enums to boolean params for API
-    const statTrakParam = rule.stattrak_filter === 'only' ? true : 
-                         rule.stattrak_filter === 'exclude' ? false : undefined;
-    const souvenirParam = rule.souvenir_filter === 'only' ? true : 
-                         rule.souvenir_filter === 'exclude' ? false : undefined;
-    
-    const response = await client.search({
-      search_item: rule.search_item,
-      min: rule.min_price ?? undefined,
-      max: rule.max_price ?? undefined,
-      minWear: rule.min_wear ?? undefined,
-      maxWear: rule.max_wear ?? undefined,
-      statTrak: statTrakParam,
-      souvenir: souvenirParam,
-      limit: 10,
-    });
-
-    if (!response.items || response.items.length === 0) {
-      return [];
-    }
-
-    return response.items.filter((item: SkinBaronItem) => {
-      // Apply all filters including the new ones
-      const itemIsStatTrak = item.statTrak || item.itemName.includes('StatTrak™');
-      if (rule.stattrak_filter === 'only' && !itemIsStatTrak) return false;
-      if (rule.stattrak_filter === 'exclude' && itemIsStatTrak) return false;
-
-      const itemIsSouvenir = item.souvenir || item.itemName.includes('Souvenir');
-      if (rule.souvenir_filter === 'only' && !itemIsSouvenir) return false;
-      if (rule.souvenir_filter === 'exclude' && itemIsSouvenir) return false;
-
-      // Filter stickers
-      if (rule.sticker_filter === 'only' && !item.hasStickers) return false;
-      if (rule.sticker_filter === 'exclude' && item.hasStickers) return false;
-
-      return client.matchesFilters(item, {
-        search_item: rule.search_item,
-        min: rule.min_price ?? undefined,
-        max: rule.max_price ?? undefined,
-        minWear: rule.min_wear ?? undefined,
-        maxWear: rule.max_wear ?? undefined,
-        statTrak: statTrakParam,
-        souvenir: souvenirParam,
-      });
-    });
   }
 
   /**

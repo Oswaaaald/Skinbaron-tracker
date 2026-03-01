@@ -88,6 +88,5 @@ Please report vulnerabilities privately via:
 All production and development dependencies are monitored for known CVEs. npm `overrides` are used to enforce safe transitive dependency versions:
 
 - **minimatch** pinned to `>=10.2.1` — mitigates [GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26) (ReDoS via repeated wildcards), which affected `@sentry/node` and `@typescript-eslint/*`.
-- **ajv** pinned to `>=6.14.0` (resolves to 8.18.0) — mitigates [GHSA-2g4f-4pwh-qvx6](https://github.com/advisories/GHSA-2g4f-4pwh-qvx6) (ReDoS via `$data` option), which affected the legacy ajv v6.12.6 used by `eslint`.
 
 These overrides are declared in `backend/package.json` and `frontend/package.json` and applied to both `package-lock.json` files.

@@ -38,7 +38,13 @@ export const RuleSchema = z.object({
   enabled: z.boolean().default(true),
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
-});
+}).refine(
+  data => data.min_price == null || data.max_price == null || data.min_price <= data.max_price,
+  { message: 'Minimum price must be less than or equal to maximum price', path: ['min_price'] }
+).refine(
+  data => data.min_wear == null || data.max_wear == null || data.min_wear <= data.max_wear,
+  { message: 'Minimum wear must be less than or equal to maximum wear', path: ['min_wear'] }
+);
 
 /**
  * User creation schema
@@ -114,7 +120,7 @@ export const UnrestrictUserSchema = z.object({
 export const AdminUsernameSchema = z.object({
   username: z.string()
     .min(3, 'Username must be at least 3 characters')
-    .max(32, 'Username must be at most 32 characters')
+    .max(20, 'Username must be at most 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
 });
 

@@ -35,7 +35,6 @@ import {
 import { apiClient, type Rule, type CreateRuleData } from "@/lib/api"
 import { wearToPercentage, percentageToWear } from "@/lib/wear-utils"
 import { useQuery } from "@tanstack/react-query"
-import { useAuth } from "@/contexts/auth-context"
 import { useSyncStats } from "@/hooks/use-sync-stats"
 import { ItemCombobox } from "@/components/ui/item-combobox"
 import { useApiMutation } from "@/hooks/use-api-mutation"
@@ -55,7 +54,13 @@ const ruleFormSchema = z.object({
   sticker_filter: z.enum(['all', 'only', 'exclude']).default('all'),
   webhook_ids: z.array(z.number()).max(10, "Maximum 10 webhooks allowed").default([]),
   enabled: z.boolean().optional(),
-})
+}).refine(
+  data => data.min_price == null || data.max_price == null || data.min_price <= data.max_price,
+  { message: 'Minimum price must be ≤ maximum price', path: ['min_price'] }
+).refine(
+  data => data.min_wear == null || data.max_wear == null || data.min_wear <= data.max_wear,
+  { message: 'Minimum wear must be ≤ maximum wear', path: ['min_wear'] }
+)
 
 type RuleFormData = z.infer<typeof ruleFormSchema>
 
@@ -69,7 +74,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedWebhooks, setSelectedWebhooks] = useState<number[]>([])
   const hasPreselectedWebhooks = useRef(false)
-  useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
   const isEditing = !!rule

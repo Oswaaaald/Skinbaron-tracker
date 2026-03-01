@@ -46,7 +46,8 @@ export class UsersRepository {
   }
 
   async findByEmail(email: string, decrypt2FA = false): Promise<User | null> {
-    const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    const normalizedEmail = email.toLowerCase().trim();
+    const [user] = await this.db.select().from(users).where(sql`lower(${users.email}) = ${normalizedEmail}`).limit(1);
     if (!user) return null;
     return decrypt2FA ? this.withDecryptedFields(user) : user;
   }
@@ -214,7 +215,7 @@ export class UsersRepository {
   async create(userData: { username: string; email: string; password_hash?: string }): Promise<typeof users.$inferSelect> {
     const [user] = await this.db.insert(users).values({
       username: userData.username,
-      email: userData.email,
+      email: userData.email.toLowerCase().trim(),
       password_hash: userData.password_hash ?? null,
     }).returning();
     return user as typeof users.$inferSelect;
@@ -222,6 +223,9 @@ export class UsersRepository {
 
   async update(id: number, input: UserUpdate): Promise<typeof users.$inferSelect | null> {
     const { totp_secret, recovery_codes, ...rest } = input;
+
+    // Normalize email to lowercase
+    if (rest.email) rest.email = rest.email.toLowerCase().trim();
 
     const setValues: Record<string, unknown> = {
       ...rest,

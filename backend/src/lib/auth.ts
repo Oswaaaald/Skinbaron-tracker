@@ -55,6 +55,7 @@ export const SetPasswordSchema = z.object({
     .refine(strongPasswordValidator, {
       message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
     }),
+  totp_code: z.string().max(8).optional(),
 });
 
 import { appConfig } from './config.js';

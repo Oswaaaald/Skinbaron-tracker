@@ -4,6 +4,7 @@ import { AuthService, PasswordChangeSchema, SetPasswordSchema } from '../lib/aut
 import { getClientIp, getAuthUser, ACCESS_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '../lib/middleware.js';
 import { encryptData } from '../database/utils/encryption.js';
 import { processAndSaveAvatar, deleteAvatarFile } from '../lib/avatar.js';
+import { verifyTotpOrRecoveryCode } from './auth.js';
 import { OTP } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
@@ -39,6 +40,8 @@ const UpdateProfileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores')
     .optional(),
   email: z.string().email().optional(),
+  password: z.string().max(128).optional(),
+  totp_code: z.string().max(8).optional(),
 }).refine(data => data.username || data.email, {
   message: 'At least one field must be provided',
 });
@@ -212,6 +215,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
+          password: { type: 'string', maxLength: 128, description: 'Required for email change re-authentication (if user has a password)' },
+          totp_code: { type: 'string', maxLength: 8, description: 'Required for email change re-authentication (if 2FA is enabled)' },
         },
       },
       response: {
@@ -246,6 +251,30 @@ export default async function userRoutes(fastify: FastifyInstance) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
+      // Re-auth required for email changes: verify password and/or TOTP
+      if (updates.email && updates.email !== currentUser.email) {
+        // If user has a password, require it
+        if (currentUser.password_hash) {
+          if (!updates.password) {
+            throw new AppError(400, 'Password is required to change your email', 'PASSWORD_REQUIRED');
+          }
+          const isValidPassword = await AuthService.verifyPassword(updates.password, currentUser.password_hash);
+          if (!isValidPassword) {
+            throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
+          }
+        }
+        // If user has 2FA enabled, require TOTP code or recovery code
+        if (currentUser.totp_enabled) {
+          if (!updates.totp_code) {
+            throw new AppError(400, '2FA code is required to change your email', 'TOTP_REQUIRED');
+          }
+          const userWith2FA = await store.users.findById(userId, true);
+          if (userWith2FA) {
+            await verifyTotpOrRecoveryCode(userWith2FA, updates.totp_code, request, 'email_change');
+          }
+        }
+      }
+
       // Check if username is already taken by another user
       if (updates.username) {
         const existingUser = await store.users.findByUsername(updates.username);
@@ -277,8 +306,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Update user profile
-      await store.users.update(userId, updates);
+      // Update user profile (strip re-auth fields before DB update)
+      const { password: _pw, totp_code: _tc, ...profileUpdates } = updates;
+      await store.users.update(userId, profileUpdates);
       
       // Audit log for profile update - create separate logs for email and username changes
       if (updates.email) {
@@ -452,6 +482,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         additionalProperties: false,
         properties: {
           new_password: { type: 'string', minLength: 8, maxLength: 128 },
+          totp_code: { type: 'string', maxLength: 8, description: 'Required if 2FA is enabled (re-authentication)' },
         },
         required: ['new_password'],
       },
@@ -478,6 +509,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // Only allow if user has no password (OAuth-only account)
       if (user.password_hash) {
         throw new AppError(400, 'You already have a password set. Use the change password form instead.', 'PASSWORD_ALREADY_SET');
+      }
+
+      // Re-auth: require TOTP verification for OAuth-only users with 2FA enabled
+      if (user.totp_enabled) {
+        if (!passwordData.totp_code) {
+          throw new AppError(400, '2FA code is required to set a password', 'TOTP_REQUIRED');
+        }
+        const userWith2FA = await store.users.findById(userId, true);
+        if (userWith2FA) {
+          await verifyTotpOrRecoveryCode(userWith2FA, passwordData.totp_code, request, 'set_password');
+        }
       }
 
       // Hash and set the new password
@@ -1099,21 +1141,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
           throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
         }
       } else if (user.totp_enabled) {
-        // OAuth-only users with 2FA must provide TOTP code
+        // OAuth-only users with 2FA must provide TOTP code or recovery code
         if (!totp_code) {
           throw new AppError(400, '2FA code is required to delete your account', 'TOTP_REQUIRED');
         }
         const userWith2FA = await store.users.findById(userId, true);
         if (userWith2FA) {
-          const otp = new OTP({ strategy: 'totp' });
-          let isValid = false;
-          try {
-            const result = await otp.verify({ token: totp_code, secret: userWith2FA.totp_secret ?? '', epochTolerance: 1 });
-            isValid = result.valid;
-          } catch { /* invalid */ }
-          if (!isValid) {
-            throw new AppError(401, 'Invalid 2FA code', 'INVALID_2FA_CODE');
-          }
+          await verifyTotpOrRecoveryCode(userWith2FA, totp_code, request, 'account_delete');
         }
       }
       // OAuth-only users without 2FA can delete without extra verification (confirmed on frontend)
@@ -1374,21 +1408,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
           throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
         }
       } else {
-        // OAuth-only users: require TOTP code as proof of identity
+        // OAuth-only users: require TOTP code or recovery code as proof of identity
         if (!totp_code) {
           throw new AppError(400, '2FA code is required to disable two-factor authentication', 'TOTP_REQUIRED');
         }
-        const otp = new OTP({ strategy: 'totp' });
-        let isValid = false;
-        try {
-          if (user.totp_secret) {
-            const result = await otp.verify({ token: totp_code, secret: user.totp_secret, epochTolerance: 1 });
-            isValid = result.valid;
-          }
-        } catch { /* invalid */ }
-        if (!isValid) {
-          throw new AppError(401, 'Invalid 2FA code', 'INVALID_2FA_CODE');
-        }
+        await verifyTotpOrRecoveryCode(user, totp_code, request, '2fa_disable');
       }
 
       // Disable 2FA

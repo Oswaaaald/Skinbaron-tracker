@@ -41,7 +41,7 @@ interface GlobalStats {
 export function AdminPanel() {
   const { user: currentUser } = useAuth()
   const { toast } = useToast()
-  const [pendingUserDialog, setpendingUserDialog] = useState<{ open: boolean; userId: number | null; action: 'approve' | 'reject' }>({
+  const [pendingUserDialog, setPendingUserDialog] = useState<{ open: boolean; userId: number | null; action: 'approve' | 'reject' }>({
     open: false,
     userId: null,
     action: 'approve',
@@ -120,8 +120,8 @@ export function AdminPanel() {
           title: "✅ User approved",
           description: "User account has been approved and activated",
         })
-        setpendingUserDialog(prev => ({ ...prev, open: false }))
-        setTimeout(() => setpendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
+        setPendingUserDialog(prev => ({ ...prev, open: false }))
+        setTimeout(() => setPendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
       },
       onError: (error: unknown) => {
         toast({
@@ -143,8 +143,8 @@ export function AdminPanel() {
           title: "✅ User rejected",
           description: "User registration has been rejected",
         })
-        setpendingUserDialog(prev => ({ ...prev, open: false }))
-        setTimeout(() => setpendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
+        setPendingUserDialog(prev => ({ ...prev, open: false }))
+        setTimeout(() => setPendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
       },
       onError: (error: unknown) => {
         toast({
@@ -273,7 +273,7 @@ export function AdminPanel() {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => setpendingUserDialog({ open: true, userId: user.id, action: 'approve' })}
+                          onClick={() => setPendingUserDialog({ open: true, userId: user.id, action: 'approve' })}
                           disabled={approveUserMutation.isPending}
                         >
                           Approve
@@ -281,7 +281,7 @@ export function AdminPanel() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => setpendingUserDialog({ open: true, userId: user.id, action: 'reject' })}
+                          onClick={() => setPendingUserDialog({ open: true, userId: user.id, action: 'reject' })}
                           disabled={rejectUserMutation.isPending}
                         >
                           Reject
@@ -407,25 +407,25 @@ export function AdminPanel() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('username')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('username')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('username'); } }}>
                     <span className="flex items-center gap-1">Username <ArrowUpDown className="h-3 w-3" />{sortBy === 'username' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('email')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('email')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('email'); } }}>
                     <span className="flex items-center gap-1">Email <ArrowUpDown className="h-3 w-3" />{sortBy === 'email' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('role')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('role')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('role'); } }}>
                     <span className="flex items-center gap-1">Role <ArrowUpDown className="h-3 w-3" />{sortBy === 'role' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('rules')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('rules')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('rules'); } }}>
                     <span className="flex items-center gap-1">Rules <ArrowUpDown className="h-3 w-3" />{sortBy === 'rules' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('alerts')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('alerts')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('alerts'); } }}>
                     <span className="flex items-center gap-1">Alerts <ArrowUpDown className="h-3 w-3" />{sortBy === 'alerts' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('webhooks')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('webhooks')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('webhooks'); } }}>
                     <span className="flex items-center gap-1">Webhooks <ArrowUpDown className="h-3 w-3" />{sortBy === 'webhooks' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('created_at')}>
+                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('created_at')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('created_at'); } }}>
                     <span className="flex items-center gap-1">Joined <ArrowUpDown className="h-3 w-3" />{sortBy === 'created_at' && <span className="text-xs">({sortDir})</span>}</span>
                   </TableHead>
                 </TableRow>
@@ -585,7 +585,7 @@ export function AdminPanel() {
       {/* Pending User Approval/Reject Dialog */}
       <ConfirmDialog
         open={pendingUserDialog.open}
-        onOpenChange={(open) => setpendingUserDialog({ ...pendingUserDialog, open })}
+        onOpenChange={(open) => setPendingUserDialog({ ...pendingUserDialog, open })}
         title={pendingUserDialog.action === 'approve' ? 'Approve User' : 'Reject User'}
         description={pendingUserDialog.action === 'approve'
           ? 'This user will be able to log in and use the application.'

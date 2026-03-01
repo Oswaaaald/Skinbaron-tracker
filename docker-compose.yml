@@ -64,6 +64,12 @@ services:
       start_period: 10s
       retries: 3
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     networks:
       - skinbaron_network
 
@@ -104,6 +110,12 @@ services:
       timeout: 10s
       start_period: 10s
       retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
     networks:
       - skinbaron_network

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, useMemo, ReactNode, useCallback } from 'react'
 import { apiClient, ApiError } from '@/lib/api'
 import { logger } from '@/lib/logger'
 
@@ -167,7 +167,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     }
   }, [user, updateUser])
 
-  const login = async (email: string, password: string, totpCode?: string): Promise<{
+  const login = useCallback(async (email: string, password: string, totpCode?: string): Promise<{
     success: boolean;
     error?: string;
     requires2FA?: boolean;
@@ -203,9 +203,9 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       logger.error('Login error:', error)
       return { success: false, requires2FA: false, error: message }
     }
-  }
+  }, [])
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = useCallback(async (username: string, email: string, password: string) => {
     try {
       const data = await apiClient.register(username, email, password)
 
@@ -240,9 +240,9 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
       logger.error('Registration error:', error)
       return { success: false, error: message }
     }
-  }
+  }, [])
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await apiClient.logout()
     } catch {
@@ -259,7 +259,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     } catch {
       // localStorage unavailable
     }
-  }
+  }, [])
 
   // Proactively refresh shortly before access expiry using HttpOnly cookies
   useEffect(() => {
@@ -289,7 +289,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     return () => clearTimeout(timer)
   }, [user, accessExpiry])
 
-  const contextValue: AuthContextType = {
+  const contextValue = useMemo<AuthContextType>(() => ({
     user,
     isLoading,
     isAuthenticated,
@@ -298,7 +298,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     register,
     logout,
     updateUser,
-  }
+  }), [user, isLoading, isAuthenticated, isReady, login, register, logout, updateUser])
 
   return (
     <AuthContext.Provider value={contextValue}>

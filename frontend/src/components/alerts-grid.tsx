@@ -223,7 +223,7 @@ export function AlertsGrid() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
             <div className="col-span-2 sm:col-span-1">
-              <label htmlFor="item-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Item
               </label>
               <Select
@@ -247,7 +247,7 @@ export function AlertsGrid() {
               </Select>
             </div>
             <div>
-              <label htmlFor="wear-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Wear
               </label>
               <Select
@@ -272,7 +272,7 @@ export function AlertsGrid() {
               </Select>
             </div>
             <div>
-              <label htmlFor="sticker-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Stickers
               </label>
               <Select
@@ -293,7 +293,7 @@ export function AlertsGrid() {
               </Select>
             </div>
             <div>
-              <label htmlFor="stattrak-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 StatTrak™
               </label>
               <Select
@@ -314,7 +314,7 @@ export function AlertsGrid() {
           </Select>
             </div>
             <div>
-              <label htmlFor="souvenir-filter" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Souvenir
               </label>
               <Select
@@ -335,7 +335,7 @@ export function AlertsGrid() {
               </Select>
             </div>
             <div>
-              <label htmlFor="sort-by" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Sort By
               </label>
               <Select

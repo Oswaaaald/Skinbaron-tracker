@@ -13,6 +13,7 @@ import { bannedEmails, sanctions } from './schema.js';
 import { eq, desc } from 'drizzle-orm';
 
 class Store {
+  private database: AppDatabase;
   public users: UsersRepository;
   public rules: RulesRepository;
   public alerts: AlertsRepository;
@@ -24,6 +25,7 @@ class Store {
   public challenges: ChallengesRepository;
 
   constructor(database: AppDatabase) {
+    this.database = database;
     this.users = new UsersRepository(database);
     this.rules = new RulesRepository(database);
     this.alerts = new AlertsRepository(database);
@@ -38,7 +40,7 @@ class Store {
   // ==================== Banned emails ====================
 
   async isEmailBanned(email: string): Promise<boolean> {
-    const [result] = await db.select({ id: bannedEmails.id })
+    const [result] = await this.database.select({ id: bannedEmails.id })
       .from(bannedEmails)
       .where(eq(bannedEmails.email, email.toLowerCase().trim()))
       .limit(1);
@@ -46,7 +48,7 @@ class Store {
   }
 
   async banEmail(email: string, reason: string | null, adminId: number): Promise<void> {
-    await db.insert(bannedEmails).values({
+    await this.database.insert(bannedEmails).values({
       email: email.toLowerCase().trim(),
       reason,
       banned_by_admin_id: adminId,
@@ -54,7 +56,7 @@ class Store {
   }
 
   async unbanEmail(email: string): Promise<boolean> {
-    const result = await db.delete(bannedEmails)
+    const result = await this.database.delete(bannedEmails)
       .where(eq(bannedEmails.email, email.toLowerCase().trim()))
       .returning({ id: bannedEmails.id });
     return result.length > 0;
@@ -72,7 +74,7 @@ class Store {
     duration_hours?: number | null;
     expires_at?: Date | null;
   }): Promise<void> {
-    await db.insert(sanctions).values({
+    await this.database.insert(sanctions).values({
       user_id: data.user_id,
       admin_id: data.admin_id,
       admin_username: data.admin_username,
@@ -85,19 +87,19 @@ class Store {
   }
 
   async getSanctionsByUserId(userId: number, limit = 50): Promise<Array<typeof sanctions.$inferSelect>> {
-    return db.select().from(sanctions)
+    return this.database.select().from(sanctions)
       .where(eq(sanctions.user_id, userId))
       .orderBy(desc(sanctions.created_at))
       .limit(limit > 0 ? limit : 10000);
   }
 
   async getSanctionById(sanctionId: number): Promise<typeof sanctions.$inferSelect | null> {
-    const rows = await db.select().from(sanctions).where(eq(sanctions.id, sanctionId)).limit(1);
+    const rows = await this.database.select().from(sanctions).where(eq(sanctions.id, sanctionId)).limit(1);
     return rows[0] ?? null;
   }
 
   async deleteSanction(sanctionId: number): Promise<void> {
-    await db.delete(sanctions).where(eq(sanctions.id, sanctionId));
+    await this.database.delete(sanctions).where(eq(sanctions.id, sanctionId));
   }
 }
 
