@@ -186,13 +186,9 @@
   /* Cards: subtle lift on hover — in @layer base so Tailwind utilities
      (e.g. transition-all) override this transition when present */
   [data-slot="card"] {
-    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    transition: box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
       border-color 0.2s ease,
       background-color 0.2s ease;
-  }
-  [data-slot="card"]:hover {
-    transform: translateY(-2px);
   }
 
   /* Nav links: smooth color + background */
