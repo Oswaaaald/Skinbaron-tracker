@@ -199,14 +199,6 @@
     transition: background-color 0.15s ease;
   }
 
-  /* Badge / chip: gentle scale on hover */
-  [data-slot="badge"] {
-    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.15s ease;
-  }
-  [data-slot="badge"]:hover {
-    transform: scale(1.04);
-  }
-
   /* Buttons: active press feedback */
   button:active:not(:disabled),
   [role="button"]:active:not(:disabled) {
@@ -257,7 +249,6 @@
     animation: none !important;
   }
   [data-slot="card"],
-  [data-slot="badge"],
   [data-slot="tabs-trigger"],
   nav a,
   tr,
