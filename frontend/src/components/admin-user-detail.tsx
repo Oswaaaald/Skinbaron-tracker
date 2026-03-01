@@ -361,7 +361,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
                               placeholder={detail.username}
                               maxLength={32}
                               aria-label="New username"
-                              onKeyDown={e => { if (e.key === 'Enter') setConfirmChangeUsername(true); if (e.key === 'Escape') { setEditingUsername(false); setNewUsername('') } }}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); requestAnimationFrame(() => setConfirmChangeUsername(true)) } if (e.key === 'Escape') { setEditingUsername(false); setNewUsername('') } }}
                             />
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setConfirmChangeUsername(true)} disabled={moderating === 'username' || !newUsername.trim()} aria-label="Confirm username change">
                               <Check className="h-3 w-3" />
