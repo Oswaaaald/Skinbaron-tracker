@@ -455,16 +455,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   fastify.post('/refresh', {
     config: {
-      rateLimit: {
-        max: 15,
-        timeWindow: '1 minute',
-        errorResponseBuilder: () => ({
-          statusCode: 429,
-          success: false,
-          error: 'Too many refresh attempts',
-          message: 'Too many token refresh attempts. Please try again in 1 minute.',
-        }),
-      },
+      rateLimit: authRateLimitConfig,
     },
     schema: {
       description: 'Refresh access token using a valid refresh token',
@@ -510,31 +501,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const tokenRecord = await store.auth.getRefreshToken(refresh_token);
       const isExpired = tokenRecord ? tokenRecord.expires_at.getTime() <= Date.now() : true;
       if (!tokenRecord || tokenRecord.revoked_at || tokenRecord.replaced_by_jti || isExpired) {
-        // If a replaced token is reused within a short grace period (e.g. rapid page reloads),
-        // return the replacement token's access info instead of revoking all sessions.
-        // This avoids false-positive token-theft detection during Ctrl+Shift+R spam.
-        const REUSE_GRACE_MS = 30_000; // 30 seconds
-        if (tokenRecord?.replaced_by_jti && tokenRecord.revoked_at) {
-          const msSinceRevoked = Date.now() - tokenRecord.revoked_at.getTime();
-          if (msSinceRevoked < REUSE_GRACE_MS) {
-            // Recently replaced — this is a reload race, not theft
-            const replacementToken = await store.auth.getRefreshTokenByJti(tokenRecord.replaced_by_jti);
-            if (replacementToken && !replacementToken.revoked_at && replacementToken.expires_at.getTime() > Date.now()) {
-              request.log.info({ jti: payload.jti, replacedByJti: tokenRecord.replaced_by_jti, msSinceRevoked }, 'Refresh token reuse within grace period — returning existing session');
-              // Return existing access token expiry (the replacement already set new cookies on the first request)
-              return reply.status(200).send({
-                success: true,
-                data: {
-                  token_expires_at: replacementToken.access_token_jti
-                    ? Date.now() + 10 * 60 * 1000 // approximate — access token was just created
-                    : Date.now() + 10 * 60 * 1000,
-                },
-              });
-            }
-          }
-        }
-
-        // SECURITY: If a replaced token is reused outside the grace period, this is a strong signal of token theft.
+        // SECURITY: If a replaced token is reused, this is a strong signal of token theft.
         // Revoke ALL tokens for this user to neutralize the stolen token chain.
         if (tokenRecord?.replaced_by_jti) {
           request.log.error({ jti: payload.jti, userId: payload.userId }, 'Refresh token reuse detected — revoking all tokens for user');
