@@ -29,6 +29,14 @@ export class AuthRepository {
     return token ?? null;
   }
 
+  async getRefreshTokenByJti(jti: string): Promise<RefreshTokenRecord | null> {
+    const [token] = await this.db.select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.token_jti, jti))
+      .limit(1);
+    return token ?? null;
+  }
+
   async revokeRefreshToken(rawToken: string, replacedByJti: string): Promise<void> {
     const tokenHash = hashToken(rawToken);
     await this.db.update(refreshTokens)
