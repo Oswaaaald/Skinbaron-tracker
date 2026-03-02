@@ -64,8 +64,8 @@ export function formatRelativeDate(dateString: string): string {
   // Guard against negative time (clock skew between client and server)
   if (diffMs < 0) {
     const absoluteDate = date.toLocaleDateString(LOCALE, {
-      day: 'numeric',
-      month: 'short',
+      day: '2-digit',
+      month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -90,15 +90,15 @@ export function formatRelativeDate(dateString: string): string {
     relative = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   } else {
     relative = date.toLocaleDateString(LOCALE, {
-      day: 'numeric',
-      month: 'short',
+      day: '2-digit',
+      month: '2-digit',
       year: 'numeric',
     });
   }
 
   const fullDate = date.toLocaleString(LOCALE, {
     day: '2-digit',
-    month: 'short',
+    month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
