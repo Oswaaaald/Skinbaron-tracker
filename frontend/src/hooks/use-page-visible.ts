@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 
 // Lightweight page visibility hook to pause background polling when the tab is hidden
 export function usePageVisible() {
-  const [isVisible, setIsVisible] = useState(() =>
-    typeof document === 'undefined' ? true : document.visibilityState === 'visible'
-  )
+  // Always initialise as true to avoid SSR/client hydration mismatch (#418).
+  // The useEffect below will sync the real value immediately on mount.
+  const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
     const handleVisibilityChange = () => {

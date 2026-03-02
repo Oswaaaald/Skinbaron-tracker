@@ -32,7 +32,7 @@
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
-    "@sentry/node": "^10.40.0",
+    "@sentry/node": "^10.41.0",
     "@simplewebauthn/server": "^13.2.3",
     "arctic": "^3.7.0",
     "bcrypt": "^6.0.0",
@@ -67,8 +67,6 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
-    "esbuild": ">=0.25.0",
-    "minimatch": ">=10.2.1",
     "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0",
     "@esbuild-kit/core-utils": "npm:tsx@^4.21.0"
   }

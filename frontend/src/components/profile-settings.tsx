@@ -74,12 +74,17 @@ export function ProfileSettings() {
   const [gravatarToggling, setGravatarToggling] = useState(false)
   const [confirmAvatarDelete, setConfirmAvatarDelete] = useState(false)
 
-  // Tab state — default to 'oauth' when returning from OAuth link flow
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window === 'undefined') return 'profile'
+  // Tab state — default to 'profile'; switch to 'oauth' via effect to avoid hydration mismatch (#418)
+  const [activeTab, setActiveTab] = useState('profile')
+
+  // Switch to OAuth tab after mount when returning from OAuth link flow (avoids hydration mismatch)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    return (params.has('linked') || params.has('link_error')) ? 'oauth' : 'profile'
-  })
+    if (params.has('linked') || params.has('link_error')) {
+      setActiveTab('oauth')
+    }
+  }, [])
 
   // Show toast for OAuth link result on first mount (runs in parent so it fires immediately)
   useEffect(() => {

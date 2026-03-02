@@ -118,6 +118,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 15px;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -199,9 +200,9 @@
     transition: background-color 0.15s ease;
   }
 
-  /* Buttons: active press feedback */
-  button:active:not(:disabled),
-  [role="button"]:active:not(:disabled) {
+  /* Buttons: active press feedback (skip tab triggers to avoid menu shifting) */
+  button:active:not(:disabled):not([data-slot="tabs-trigger"]),
+  [role="button"]:active:not(:disabled):not([data-slot="tabs-trigger"]) {
     transform: scale(0.97);
   }
 

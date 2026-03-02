@@ -93,9 +93,11 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
             localStorage.setItem('has_session', 'true')
           }
         } else {
+          // If rate-limited (429), keep the session flag — user is still authenticated,
+          // the refresh endpoint just throttled us (e.g. rapid Ctrl+Shift+R).
+          const isRateLimited = (me as { status?: number }).status === 429
           setUser(null)
-          // Clear the flag on auth errors
-          if (typeof window !== 'undefined') {
+          if (typeof window !== 'undefined' && !isRateLimited) {
             localStorage.removeItem('has_session')
           }
         }

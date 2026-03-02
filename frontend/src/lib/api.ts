@@ -266,9 +266,12 @@ class ApiClient {
   private baseURL: string;
   private onLogout: (() => void) | null = null;
   private onRefresh: ((expiresAt: number) => void) | null = null;
-  private refreshPromise: Promise<{ success: boolean; expiresAt?: number }> | null = null;
+  private refreshPromise: Promise<{ success: boolean; expiresAt?: number; rateLimited?: boolean }> | null = null;
   private hasCalledLogout: boolean = false;
   private csrfToken: string | null = null;
+
+  /** Minimum interval (ms) between refresh attempts — survives page reloads via sessionStorage */
+  private static readonly REFRESH_COOLDOWN_MS = 10_000;
 
   constructor(baseURL: string = API_BASE_URL) {
     // Allow build-time to proceed without API_URL (SSG pages won't call API during build)
@@ -396,7 +399,16 @@ class ApiClient {
             this.hasCalledLogout = false;
             return this.request<T>(endpoint, options, false);
           }
-          // Only trigger logout callback once if refresh failed
+          // If rate-limited, don't treat this as a real auth failure — session is still valid
+          if (refreshResult.rateLimited) {
+            return {
+              success: false,
+              error: 'Rate limited — please wait a moment',
+              message: 'Rate limited — please wait a moment',
+              status: 429,
+            };
+          }
+          // Only trigger logout callback once if refresh truly failed
           if (this.onLogout && !this.hasCalledLogout) {
             this.hasCalledLogout = true;
             this.onLogout();
@@ -423,19 +435,35 @@ class ApiClient {
     }
   }
 
-  async tryRefreshToken(): Promise<{ success: boolean; expiresAt?: number }> {
+  async tryRefreshToken(): Promise<{ success: boolean; expiresAt?: number; rateLimited?: boolean }> {
     // If a refresh is already in progress, wait for it instead of starting a new one
     if (this.refreshPromise) {
       return this.refreshPromise;
+    }
+
+    // Avoid hammering the refresh endpoint on rapid page reloads (survives Ctrl+Shift+R)
+    if (typeof sessionStorage !== 'undefined') {
+      const lastRefresh = Number(sessionStorage.getItem('_last_refresh') || '0');
+      if (Date.now() - lastRefresh < ApiClient.REFRESH_COOLDOWN_MS) {
+        // We refreshed very recently — treat as rate-limited to avoid logout
+        return { success: false, rateLimited: true };
+      }
     }
 
     // Start a new refresh and store the promise
     this.refreshPromise = (async () => {
       try {
         const result = await this.refresh();
+        if (result?.success) {
+          // Record successful refresh timestamp
+          try { sessionStorage.setItem('_last_refresh', String(Date.now())); } catch { /* ignore */ }
+        }
+        // Detect rate-limit (429) — refresh endpoint returned non-success with 429
+        const isRateLimited = !result?.success && (result as { status?: number })?.status === 429;
         return {
           success: Boolean(result?.success),
           expiresAt: result?.data?.token_expires_at,
+          rateLimited: isRateLimited,
         };
       } catch (error) {
         if (process.env['NODE_ENV'] === 'development') {
