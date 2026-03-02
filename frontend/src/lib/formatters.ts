@@ -64,8 +64,8 @@ export function formatRelativeDate(dateString: string): string {
   // Guard against negative time (clock skew between client and server)
   if (diffMs < 0) {
     const absoluteDate = date.toLocaleDateString(LOCALE, {
-      day: '2-digit',
-      month: '2-digit',
+      day: 'numeric',
+      month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -90,15 +90,15 @@ export function formatRelativeDate(dateString: string): string {
     relative = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   } else {
     relative = date.toLocaleDateString(LOCALE, {
-      day: '2-digit',
-      month: '2-digit',
+      day: 'numeric',
+      month: 'long',
       year: 'numeric',
     });
   }
 
   const fullDate = date.toLocaleString(LOCALE, {
-    day: '2-digit',
-    month: '2-digit',
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -129,7 +129,7 @@ export function formatShortDate(dateString?: string | null): string {
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-  return date.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /**
@@ -154,8 +154,8 @@ export function formatSystemDate(dateString?: Date | string | null): string {
   }
   
   return date.toLocaleString(LOCALE, {
-    day: '2-digit',
-    month: '2-digit',
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -178,8 +178,8 @@ export function formatDateTime(dateString?: string | null): string {
   const date = new Date(utcDate);
   
   return date.toLocaleString(LOCALE, {
-    day: '2-digit',
-    month: '2-digit',
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -202,8 +202,8 @@ export function formatDateOnly(dateString?: string | null): string {
   const date = new Date(utcDate);
   
   return date.toLocaleDateString(LOCALE, {
-    day: '2-digit',
-    month: '2-digit',
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
   });
 }
