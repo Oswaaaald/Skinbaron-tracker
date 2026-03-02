@@ -885,7 +885,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
 
             {/* GDPR Notice (full width) */}
             <div className="md:col-span-2">
-              <p className="text-[10px] text-muted-foreground text-center">
+              <p className="text-xs text-muted-foreground text-center">
                 🔒 This data access has been logged in accordance with GDPR Art. 5(1)(f) — integrity & confidentiality.
               </p>
             </div>
