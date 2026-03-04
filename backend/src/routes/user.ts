@@ -40,8 +40,6 @@ const UpdateProfileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores')
     .optional(),
   email: z.string().email().optional(),
-  password: z.string().max(128).optional(),
-  totp_code: z.string().max(8).optional(),
 }).refine(data => data.username || data.email, {
   message: 'At least one field must be provided',
 });
@@ -251,30 +249,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Re-auth required for email changes: verify password and/or TOTP
-      if (updates.email && updates.email !== currentUser.email) {
-        // If user has a password, require it
-        if (currentUser.password_hash) {
-          if (!updates.password) {
-            throw new AppError(400, 'Password is required to change your email', 'PASSWORD_REQUIRED');
-          }
-          const isValidPassword = await AuthService.verifyPassword(updates.password, currentUser.password_hash);
-          if (!isValidPassword) {
-            throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
-          }
-        }
-        // If user has 2FA enabled, require TOTP code or recovery code
-        if (currentUser.totp_enabled) {
-          if (!updates.totp_code) {
-            throw new AppError(400, '2FA code is required to change your email', 'TOTP_REQUIRED');
-          }
-          const userWith2FA = await store.users.findById(userId, true);
-          if (userWith2FA) {
-            await verifyTotpOrRecoveryCode(userWith2FA, updates.totp_code, request, 'email_change');
-          }
-        }
-      }
-
       // Check if username is already taken by another user
       if (updates.username) {
         const existingUser = await store.users.findByUsername(updates.username);
@@ -306,9 +280,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Update user profile (strip re-auth fields before DB update)
-      const { password: _pw, totp_code: _tc, ...profileUpdates } = updates;
-      await store.users.update(userId, profileUpdates);
+      // Update user profile
+      await store.users.update(userId, updates);
       
       // Audit log for profile update - create separate logs for email and username changes
       if (updates.email) {
