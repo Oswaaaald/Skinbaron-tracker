@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useRef, useMemo, ReactNode, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { apiClient, ApiError } from '@/lib/api'
 import { logger } from '@/lib/logger'
 
@@ -43,6 +44,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   const [accessExpiry, setAccessExpiry] = useState<number | null>(initialAuth?.expiresAt ?? null)
 
   const isAuthenticated = !!user
+  const queryClient = useQueryClient()
 
   // Define updateUser early so it can be used in effects
   const updateUser = useCallback((userData: Partial<User>) => {
@@ -120,6 +122,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     apiClient.setLogoutCallback(() => {
       setUser(null)
       setAccessExpiry(null)
+      queryClient.clear()
       try { localStorage.removeItem('has_session') } catch { /* ignore */ }
     })
 
@@ -253,6 +256,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     setUser(null)
     setAccessExpiry(null)
     setIsReady(true)
+    queryClient.clear()
     // Clear session flag
     try {
       if (typeof window !== 'undefined') {
@@ -261,7 +265,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     } catch {
       // localStorage unavailable
     }
-  }, [])
+  }, [queryClient])
 
   // Proactively refresh shortly before access expiry using HttpOnly cookies
   useEffect(() => {

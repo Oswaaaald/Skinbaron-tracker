@@ -47,8 +47,8 @@ export default async function RootLayout({
           disableTransitionOnChange
           nonce={nonce}
         >
-          <AuthProvider initialAuth={undefined}>
-            <QueryProvider>
+          <QueryProvider>
+            <AuthProvider initialAuth={undefined}>
               <div className="min-h-screen bg-background flex flex-col">
                 <main className="flex-1">
                   {children}
@@ -74,8 +74,8 @@ export default async function RootLayout({
               </div>
               <Toaster />
               <CookieBanner />
-            </QueryProvider>
-          </AuthProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
