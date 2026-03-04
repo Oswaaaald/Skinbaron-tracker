@@ -5,6 +5,9 @@
  * Validates required environment variables before application startup
  */
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const REQUIRED_VARS = {
   JWT_SECRET: {
     description: 'Secret key for JWT token signing',
@@ -17,6 +20,10 @@ const REQUIRED_VARS = {
   CORS_ORIGIN: {
     description: 'Allowed CORS origin (frontend URL)',
     example: 'https://skinbaron-tracker.example.com',
+  },
+  DATABASE_URL: {
+    description: 'PostgreSQL connection URL',
+    example: 'postgresql://user:password@db:5432/skinbaron',
   },
 };
 
@@ -32,7 +39,7 @@ const OPTIONAL_VARS = {
   PORT: { default: '8080', description: 'Server port' },
   COOKIE_DOMAIN: { default: 'undefined', description: 'Cookie domain for authentication' },
   SB_API_KEY: { default: 'undefined', description: 'SkinBaron API key (required for price tracking)' },
-  DATABASE_URL: { default: undefined, description: 'PostgreSQL connection URL' },
+  TRUST_PROXY_HOPS: { default: '0', description: 'Trusted proxy hops (0 disables X-Forwarded-For trust)' },
   APP_VERSION: { default: 'dev', description: 'Application version' },
   POLL_CRON: { default: '*/5 * * * *', description: 'Cron schedule for polling' },
   RATE_LIMIT_MAX: { default: '1000', description: 'Maximum requests per window' },
@@ -84,6 +91,22 @@ if (!process.env.SB_API_KEY) {
     variable: 'SB_API_KEY',
     description: 'SkinBaron API key not set - price tracking will not work',
   });
+}
+
+// Check .env file permissions when present (secrets should not be world-readable)
+const envCandidates = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../.env'),
+];
+const envFilePath = envCandidates.find((candidate) => fs.existsSync(candidate));
+if (envFilePath) {
+  const mode = fs.statSync(envFilePath).mode & 0o777;
+  if ((mode & 0o077) !== 0) {
+    warnings.push({
+      variable: '.env permissions',
+      description: `${envFilePath} is too permissive (${mode.toString(8)}). Recommended: chmod 600`,
+    });
+  }
 }
 
 // Display results

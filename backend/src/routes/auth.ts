@@ -488,7 +488,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const refresh_token = body.refresh_token || (request.cookies?.[REFRESH_COOKIE]);
 
       if (!refresh_token) {
-        request.log.warn({ cookies: request.cookies }, 'Refresh token missing');
+        request.log.warn({
+          hasCookieHeader: Boolean(request.headers.cookie),
+          cookieNames: Object.keys(request.cookies ?? {}),
+          hasRefreshCookie: Boolean(request.cookies?.[REFRESH_COOKIE]),
+        }, 'Refresh token missing');
         throw new AppError(400, 'Refresh token required', 'REFRESH_TOKEN_MISSING');
       }
 

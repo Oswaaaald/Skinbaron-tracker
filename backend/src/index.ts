@@ -12,7 +12,7 @@ import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { appConfig, MAX_UPLOAD_SIZE } from './lib/config.js';
-import { ACCESS_COOKIE, baseCookieOptions } from './lib/middleware.js';
+import { ACCESS_COOKIE, baseCookieOptions, getClientIp } from './lib/middleware.js';
 import { OAUTH_STATE_COOKIE } from './lib/oauth.js';
 import { store } from './database/index.js';
 import { closeDatabase, checkDatabaseHealth, initializeDatabase } from './database/connection.js';
@@ -26,12 +26,14 @@ import rulesRoutes from './routes/rules.js';
 import alertsRoutes from './routes/alerts.js';
 
 // Create Fastify instance
+const trustProxyConfig = appConfig.TRUST_PROXY_HOPS > 0 ? appConfig.TRUST_PROXY_HOPS : false;
 const fastify = Fastify({
   logger: {
     level: appConfig.LOG_LEVEL,
   },
-  // Trust only the first proxy hop (e.g. nginx/Traefik directly in front of the app)
-  trustProxy: 1,
+  // Proxy trust must be explicitly configured by deployment.
+  // 0 = disabled (safe default), N = trust N proxy hops.
+  trustProxy: trustProxyConfig,
   // Custom error formatter for validation errors (makes them user-friendly)
   schemaErrorFormatter: (errors) => {
     const error = errors[0];
@@ -342,7 +344,7 @@ async function registerPlugins() {
     },
     keyGenerator: (request) => {
       // Use request.ip which respects Fastify's trustProxy setting
-      return request.ip;
+      return getClientIp(request);
     },
     errorResponseBuilder: (request, context) => ({
       statusCode: 429,
@@ -662,6 +664,7 @@ async function registerRoutes() {
 async function initializeApp() {
   try {
     fastify.log.info('🚀 Initializing SkinBaron Tracker API...');
+    fastify.log.info({ trustProxyHops: appConfig.TRUST_PROXY_HOPS }, 'Proxy trust configuration');
 
     // Initialize core services
     fastify.log.info('📊 Initializing database...');

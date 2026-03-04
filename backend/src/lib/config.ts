@@ -10,12 +10,12 @@ const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(8080),
   COOKIE_DOMAIN: z.string().optional(),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   
   // SkinBaron API
   SB_API_KEY: z.string().optional(),
   
   // Discord
-  DISCORD_WEBHOOK: z.string().url().optional().or(z.literal('')),
   DISCORD_BOT_NAME: z.string().default('🔔 SkinBaron Tracker'),
   DISCORD_BOT_AVATAR: z.string().url().default('https://skinbaron.de/favicon.png'),
   

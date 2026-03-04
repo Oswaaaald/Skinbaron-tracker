@@ -424,8 +424,28 @@ class ApiClient {
         };
       }
 
-      const parsed = data as ApiResponse<T>;
-      return { ...parsed, success: parsed?.success ?? true };
+      if (!data || typeof data !== 'object') {
+        return {
+          success: false,
+          error: 'Unexpected API response format',
+          message: 'Unexpected API response format',
+          details: data,
+          status: response.status,
+        };
+      }
+
+      const parsed = data as Partial<ApiResponse<T>>;
+      if (typeof parsed.success !== 'boolean') {
+        return {
+          success: false,
+          error: 'Invalid API response contract: missing success flag',
+          message: 'Invalid API response contract',
+          details: data,
+          status: response.status,
+        };
+      }
+
+      return { ...(parsed as ApiResponse<T>), status: parsed.status ?? response.status };
     } catch (error) {
       const message = (error as Error).message || 'Network error';
       if (process.env['NODE_ENV'] === 'development') {

@@ -130,7 +130,7 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
     apiClient.setRefreshCallback((expiresAt: number) => {
       setAccessExpiry(expiresAt)
     })
-  }, [])
+  }, [queryClient])
 
   // Keep a lightweight profile refresh on focus when authenticated
   const lastCheckRef = useRef(0)

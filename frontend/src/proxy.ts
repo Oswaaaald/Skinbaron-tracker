@@ -36,11 +36,17 @@ const apiHost = (() => {
 
 /** Build a Content-Security-Policy header value with a per-request nonce */
 function buildCsp(nonce: string): string {
+  const scriptSrc = [`'nonce-${nonce}'`, "'strict-dynamic'"];
+  // Needed for Next.js dev tooling only (source maps / HMR)
+  if (process.env['NODE_ENV'] === 'development') {
+    scriptSrc.push("'unsafe-eval'");
+  }
+
   return [
     "default-src 'self'",
     // 'nonce-…'   — only scripts bearing this nonce may execute (inline)
     // 'strict-dynamic' — scripts loaded *by* a nonced script are also trusted
-    `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`,
+    `script-src ${scriptSrc.join(' ')}`,
     "style-src 'self' 'unsafe-inline'",
     `connect-src 'self' ${apiHost} https://www.gravatar.com https://*.sentry.io`,
     `img-src 'self' data: blob: https://www.gravatar.com https://steamcommunity-a.akamaihd.net ${apiHost}`,

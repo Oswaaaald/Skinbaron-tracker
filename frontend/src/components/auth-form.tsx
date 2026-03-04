@@ -7,6 +7,7 @@ import { validateRegistration, validateLogin } from '@/lib/validation'
 import { apiClient } from '@/lib/api'
 import { formatDateTime } from '@/lib/formatters'
 import { PROVIDER_ICONS, PROVIDER_LABELS } from '@/lib/oauth-icons'
+import { useRouter } from 'next/navigation'
 import { startAuthentication } from '@simplewebauthn/browser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,7 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const { login, register } = useAuth()
+  const router = useRouter()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -212,7 +214,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             title: '\u2705 Account created',
             description: 'Your account has been created successfully',
           })
-          window.location.href = '/'
+          router.replace('/')
         } else {
           setError(result.message || 'Registration failed. Please try again.')
         }
@@ -246,7 +248,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
             title: '✅ Welcome back!',
             description: 'You have been logged in successfully',
           })
-          window.location.href = '/'
+          router.replace('/')
         } else {
           setError(result.message || 'Invalid 2FA code')
           setTotpCode('')
@@ -412,7 +414,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
           title: '✅ Welcome back!',
           description: 'Signed in with passkey',
         })
-        window.location.href = '/'
+        router.replace('/')
       } else {
         setError(verifyRes.message || 'Passkey authentication failed')
       }

@@ -26,6 +26,7 @@ services:
       # OPTIONAL: Have sensible defaults
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-8080}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
       POLL_CRON: ${POLL_CRON:-*/5 * * * *}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-1000}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60000}
