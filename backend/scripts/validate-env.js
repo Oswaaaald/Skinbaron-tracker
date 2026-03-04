@@ -5,8 +5,8 @@
  * Validates required environment variables before application startup
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const REQUIRED_VARS = {
   JWT_SECRET: {
