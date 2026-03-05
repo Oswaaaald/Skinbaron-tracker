@@ -61,11 +61,10 @@ export default function DashboardLayout({
                   ))}
                 </nav>
               </div>
-              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <Skeleton className="h-9 w-9 rounded-lg" />
-                <Skeleton className="hidden lg:block h-4 w-24" />
                 <Skeleton className="h-9 w-9 rounded-full" />
-                <Skeleton className="h-9 w-9 rounded-lg lg:hidden" />
+                <Skeleton className="h-9 w-9 rounded-lg md:hidden" />
               </div>
             </div>
           </div>
@@ -100,7 +99,7 @@ export default function DashboardLayout({
               </h1>
               <DashboardNav />
             </div>
-            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <ThemeToggle />
               <UserNav />
               <MobileNavTrigger />

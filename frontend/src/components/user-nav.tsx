@@ -20,11 +20,7 @@ export function UserNav() {
     .slice(0, 2)
 
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <div className="hidden lg:flex w-32 min-w-0 flex-col text-right leading-tight xl:w-40">
-        <span className="truncate text-xs text-muted-foreground">Signed in as</span>
-        <span className="truncate text-sm font-medium">{user.username}</span>
-      </div>
+    <div className="flex items-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

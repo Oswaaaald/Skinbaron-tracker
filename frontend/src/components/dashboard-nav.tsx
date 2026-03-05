@@ -87,7 +87,7 @@ function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
 
 export function DashboardNav() {
   return (
-    <nav className="hidden items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 lg:flex">
+    <nav className="hidden items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 md:flex">
       <NavLinks />
     </nav>
   )
@@ -97,7 +97,7 @@ export function MobileNavTrigger() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="lg:hidden">
+    <div className="md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" aria-label="Open navigation menu">
