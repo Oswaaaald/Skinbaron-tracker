@@ -73,7 +73,7 @@ export function ProfileTab({
           </CardTitle>
           <CardDescription>Upload a custom avatar or use your Gravatar</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="mt-2 space-y-4">
           <div className="flex items-center gap-6">
             <div className="relative group shrink-0">
               <div className="h-20 w-20 rounded-full overflow-hidden ring-2 ring-border bg-muted flex items-center justify-center">
@@ -155,7 +155,7 @@ export function ProfileTab({
           </CardTitle>
           <CardDescription>Update your account details</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="mt-2">
           {feedback.success && (
             <Alert className="border-primary/50 bg-primary/10 mb-4">
               <CheckCircle className="h-4 w-4 text-primary" />

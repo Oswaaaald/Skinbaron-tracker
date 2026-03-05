@@ -45,7 +45,7 @@ export function AdminPanelPendingUsers({
         </CardTitle>
         <CardDescription>New user registrations awaiting approval</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="mt-2">
         <Table>
           <TableHeader>
             <TableRow>

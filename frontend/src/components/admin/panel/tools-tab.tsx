@@ -29,7 +29,7 @@ export function AdminPanelToolsTab({
           </CardTitle>
           <CardDescription>Advanced system controls</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="mt-2">
           <Button onClick={onForceScheduler} disabled={forceSchedulerPending} variant="outline">
             {forceSchedulerPending ? 'Running...' : 'Force Scheduler Run'}
           </Button>
@@ -48,7 +48,7 @@ export function AdminPanelToolsTab({
             </CardTitle>
             <CardDescription>Verify that Sentry error tracking is working</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="mt-2">
             <Button onClick={onOpenSentryConfirm} disabled={testSentryPending} variant="outline">
               {testSentryPending ? 'Sending...' : 'Send Test Error'}
             </Button>

@@ -95,7 +95,7 @@ export function AdminPanelUsersTab({
         <CardTitle>User Management</CardTitle>
         <CardDescription>Manage users and their permissions</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="mt-2">
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

@@ -19,7 +19,7 @@ export function LogsTab({ onOpenExport }: { onOpenExport: () => void }) {
             Download all your personal data (GDPR Art. 20 — Right to data portability)
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="mt-2 space-y-4">
           <p className="text-sm text-muted-foreground">
             Export all your data (profile, rules, webhooks, alerts, audit logs) as a JSON file.
           </p>

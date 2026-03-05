@@ -122,7 +122,7 @@ export function SessionManager() {
             Manage your active sessions across devices and browsers
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="mt-2 space-y-4">
           {isLoading && (
             <div className="flex items-center justify-center py-6">
               <LoadingSpinner className="h-6 w-6" />
