@@ -112,8 +112,8 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
     if (error) setError('')
   }
 
-  const validateForm = () => {
-    const validationError = validateAuthForm(mode, formData)
+  const validateForm = async () => {
+    const validationError = await validateAuthForm(mode, formData)
     if (!validationError) return true
     setError(validationError)
     return false
@@ -196,7 +196,7 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
       return
     }
 
-    if (!validateForm()) return
+    if (!(await validateForm())) return
 
     setIsLoading(true)
     setError('')
