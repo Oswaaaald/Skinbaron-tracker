@@ -151,7 +151,7 @@ export function PasskeyManager() {
   }
 
   return (
-    <div className="mt-2 space-y-4">
+    <div className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
