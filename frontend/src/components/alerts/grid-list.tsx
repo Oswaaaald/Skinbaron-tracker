@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +9,53 @@ import { formatPrice, formatShortDate } from '@/lib/formatters'
 import type { Alert } from '@/lib/api'
 import { ALERTS_PAGE_SIZE } from '@/lib/constants'
 import { getSkinBaronUrl } from './grid-helpers'
+import { cn } from '@/lib/utils'
+
+function AlertCardImage({
+  src,
+  alt,
+  isLCP,
+}: {
+  src: string | null
+  alt: string
+  isLCP: boolean
+}) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
+
+  if (!src || status === 'error') {
+    return (
+      <div className="h-full w-full flex items-center justify-center text-slate-500 text-xs">
+        No Image
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div
+        className={cn(
+          'absolute inset-0 animate-pulse bg-slate-700/30 transition-opacity duration-300',
+          status === 'loaded' && 'opacity-0',
+        )}
+      />
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+        className={cn(
+          'object-contain p-4 transition-opacity duration-500',
+          status === 'loaded' ? 'opacity-100' : 'opacity-0',
+        )}
+        priority={isLCP}
+        fetchPriority={isLCP ? 'high' : 'low'}
+        loading={isLCP ? 'eager' : 'lazy'}
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('error')}
+      />
+    </>
+  )
+}
 
 export function AlertsGridList({
   alerts,
@@ -31,20 +79,12 @@ export function AlertsGridList({
               className="relative flex flex-col overflow-hidden border-border/70 bg-card/92 p-0 shadow-sm transition-[box-shadow,border-color] duration-200 hover:shadow-md"
             >
               <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95">
-                {alert.skin_url ? (
-                  <Image
-                    src={alert.skin_url}
-                    alt={alert.item_name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                    className="object-contain p-4"
-                    priority={isLCP}
-                    fetchPriority={isLCP ? 'high' : 'low'}
-                    loading={isLCP ? 'eager' : 'lazy'}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">No Image</div>
-                )}
+                <AlertCardImage
+                  key={`${alert.id}-${alert.skin_url ?? 'none'}`}
+                  src={alert.skin_url}
+                  alt={alert.item_name}
+                  isLCP={isLCP}
+                />
 
                 {(alert.stattrak || alert.souvenir || alert.has_stickers) && (
                   <div className="absolute top-2 left-2 flex gap-1 flex-wrap">
