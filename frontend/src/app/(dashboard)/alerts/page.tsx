@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertsGrid } from "@/components/alerts-grid"
+import { AlertsGrid } from "@/components/alerts/grid"
 import { useAuth } from "@/contexts/auth-context"
 import { AlertsGridSkeleton } from "@/components/ui/skeletons"
 

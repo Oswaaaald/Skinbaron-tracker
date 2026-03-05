@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { ProfileSettings } from "@/components/profile-settings"
+import { ProfileSettings } from "@/components/profile/settings"
 import { ProfileSkeleton } from "@/components/ui/skeletons"
 
 export default function SettingsPage() {

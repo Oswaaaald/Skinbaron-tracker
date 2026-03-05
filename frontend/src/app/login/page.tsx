@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useEffect } from "react"
 import { AuthFormSkeleton } from "@/components/ui/skeletons"
 
-const AuthForm = lazy(() => import('@/components/auth-form').then(m => ({ default: m.AuthForm })))
+const AuthForm = lazy(() => import('@/components/auth/form').then(m => ({ default: m.AuthForm })))
 
 export default function LoginPage() {
   const router = useRouter()

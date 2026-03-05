@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { RulesTable } from "@/components/rules-table"
-import { RuleDialog } from "@/components/rule-dialog"
+import { RulesTable } from "@/components/rules/table"
+import { RuleDialog } from "@/components/rules/dialog"
 import { useAuth } from "@/contexts/auth-context"
 import { RulesTableSkeleton } from "@/components/ui/skeletons"
 

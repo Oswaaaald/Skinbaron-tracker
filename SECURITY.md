@@ -1,5 +1,7 @@
 # Security Policy
 
+Last reviewed: 2026-03-05
+
 ## Supported Versions
 
 | Version | Supported |
@@ -14,8 +16,8 @@ Only the latest version deployed from the `main` branch receives security update
 If you discover a security vulnerability, **do not open a public issue**.
 
 Please report vulnerabilities privately via:
-- **Email:** [contact the repository owner via GitHub profile](https://github.com/Oswaaaald)
-- **GitHub Security Advisories:** [Report a vulnerability](https://github.com/Oswaaaald/Skinbaron-tracker/security/advisories/new)
+- **GitHub Security Advisories (preferred):** [Report a vulnerability](https://github.com/Oswaaaald/Skinbaron-tracker/security/advisories/new)
+- **Private contact fallback:** [repository owner profile](https://github.com/Oswaaaald)
 
 ### What to include
 - Description of the vulnerability
@@ -27,6 +29,8 @@ Please report vulnerabilities privately via:
 - **Acknowledgment:** within 48 hours
 - **Initial assessment:** within 7 days
 - **Fix & disclosure:** coordinated with reporter
+
+Do not include sensitive exploit details in public issues, pull requests, or discussions.
 
 ## Security Architecture
 
@@ -63,7 +67,7 @@ Please report vulnerabilities privately via:
 
 ### Infrastructure
 - **Docker hardening:** Read-only filesystems, `cap_drop: ALL`, `no-new-privileges`, non-root user (UID 1001)
-- **PostgreSQL:** Internal Docker network only (not exposed to host), optional SSL (`DATABASE_SSL`)
+- **PostgreSQL:** Managed outside this repository's compose file; deploy it on a private network and use SSL where possible (`DATABASE_SSL`)
 - **Rate limiting:** Per-IP, configurable globally and per-route (auth: 5/min, batch: 10/min, avatar: 3/5min)
 - **Graceful shutdown:** SIGTERM/SIGINT handlers drain connections and stop scheduler
 
@@ -85,8 +89,12 @@ Please report vulnerabilities privately via:
 
 ## Dependency Security
 
-All production and development dependencies are monitored for known CVEs. npm `overrides` are used to enforce safe transitive dependency versions:
+Security posture for dependencies:
 
-- **minimatch** pinned to `>=10.2.1` — mitigates [GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26) (ReDoS via repeated wildcards), which affected `@sentry/node` and `@typescript-eslint/*`.
-
-These overrides are declared in `backend/package.json` and `frontend/package.json` and applied to both `package-lock.json` files.
+- Lockfiles are committed for both apps (`backend/package-lock.json`, `frontend/package-lock.json`).
+- npm `overrides` are used when required by security or compatibility:
+  - `frontend/package.json`: `serialize-javascript >= 7.0.3`
+  - `backend/package.json`: `@esbuild-kit/*` aliases pinned to `tsx@^4.21.0`
+- Run audits before release:
+  - `cd backend && npm audit --omit=dev`
+  - `cd frontend && npm audit --omit=dev`

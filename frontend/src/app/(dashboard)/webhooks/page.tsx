@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { WebhooksTable } from "@/components/webhooks-table"
+import { WebhooksTable } from "@/components/webhooks/table"
 import { useAuth } from "@/contexts/auth-context"
 import { WebhooksTableSkeleton } from "@/components/ui/skeletons"
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { SystemStats } from "@/components/system-stats"
+import { SystemStats } from "@/components/system/stats"
 import { SystemStatsSkeleton } from "@/components/ui/skeletons"
 
 export default function AdminSystemPage() {

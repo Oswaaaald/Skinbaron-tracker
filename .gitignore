@@ -22,7 +22,7 @@ pnpm-debug.log*
 data/
 
 # Logs
-logs
+/logs/
 *.log
 *.log.*
 

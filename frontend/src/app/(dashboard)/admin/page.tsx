@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { AdminPanel } from "@/components/admin-panel"
+import { AdminPanel } from "@/components/admin/panel"
 import { AdminPanelSkeleton } from "@/components/ui/skeletons"
 
 export default function AdminPage() {

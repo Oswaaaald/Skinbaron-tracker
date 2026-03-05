@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertsGrid } from "@/components/alerts-grid"
+import { AlertsGrid } from "@/components/alerts/grid"
 import { useAuth } from "@/contexts/auth-context"
 import { LoadingState } from "@/components/ui/loading-state"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
