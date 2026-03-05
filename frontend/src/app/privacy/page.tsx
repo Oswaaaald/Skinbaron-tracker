@@ -1,127 +1,95 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { LegalPageLayout, LegalSection } from "@/components/legal/page-layout"
 
 export default function PrivacyPolicy() {
   return (
-    <div className="container mx-auto p-6 space-y-8">
-      <Link href="/">
-        <Button variant="outline" size="icon" aria-label="Go back">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      </Link>
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Last updated: 24 Feb 2026</p>
-        <h1 className="text-3xl font-bold">Privacy Policy</h1>
-        <p className="text-muted-foreground">
-          This personal, non-commercial project collects limited data to provide the alerting service and protect the platform. Below is a concise overview of what is collected, why, and how you can exercise your rights under GDPR.
-        </p>
-      </div>
-
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Data collected</h2>
-        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+    <LegalPageLayout
+      title="Privacy Policy"
+      updatedAt="24 Feb 2026"
+      subtitle="This personal, non-commercial project collects limited data to provide alerting features and platform security."
+    >
+      <LegalSection title="Data collected">
+        <ul className="list-disc space-y-1 pl-5">
           <li>Account data: username, email, password hash, terms-of-service acceptance timestamp.</li>
           <li>
-            Security data: TOTP secrets, recovery codes, passkey/WebAuthn credentials (all encrypted at rest),
+            Security data: TOTP secrets, recovery codes, passkey/WebAuthn credentials (encrypted at rest),
             authentication audit logs with IP addresses and user-agent strings for security and anti-abuse.
           </li>
           <li>
-            Session data: active session records including IP address and user-agent string,
-            used to display your active sessions and enable individual session revocation.
-            Session metadata is automatically deleted when a session expires or is revoked.
+            Session data: active session records (IP address + user-agent), used to show active sessions and
+            allow individual revocation. Session metadata is deleted when sessions expire or are revoked.
           </li>
-          <li>
-            OAuth data: linked provider accounts (Google, GitHub, Discord) and associated provider emails.
-          </li>
-          <li>
-            Alert configuration: rules, price/wear filters, StatTrak/Souvenir
-            filters, sticker preference.
-          </li>
+          <li>OAuth data: linked provider accounts (Google, GitHub, Discord) and associated provider emails.</li>
+          <li>Alert configuration: rules, price/wear filters, StatTrak/Souvenir filters, sticker preference.</li>
           <li>Notifications: webhook URLs (stored encrypted) and related metadata.</li>
           <li>Avatar data: custom uploaded avatars and Gravatar display preferences.</li>
-          <li>Moderation data: account restriction history (sanctions, reasons, durations). Banned email addresses are retained to prevent re-registration after a permanent restriction.</li>
-          <li>System logs: technical logs to monitor performance and reliability.</li>
+          <li>
+            Moderation data: account restriction history (sanctions, reasons, durations). Banned email addresses
+            may be retained to prevent re-registration after permanent restrictions.
+          </li>
+          <li>System logs: technical logs used to monitor performance and reliability.</li>
         </ul>
-      </section>
+      </LegalSection>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Purposes and legal bases</h2>
-        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+      <LegalSection title="Purposes and legal bases">
+        <ul className="list-disc space-y-1 pl-5">
           <li>Provide the alerting service and notifications (user request).</li>
           <li>Security, fraud/abuse prevention, and audit trail (legitimate interest).</li>
           <li>Account management and support (user request).</li>
         </ul>
-      </section>
+      </LegalSection>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Retention</h2>
-        <p className="text-muted-foreground">
-          Data is kept only as long as needed for the purposes above.
-          Authentication and audit logs are retained for a limited period necessary
-          for security. Alerts and rules are kept while your account is active.
+      <LegalSection title="Retention">
+        <p>
+          Data is kept only as long as needed for the purposes above. Authentication and audit logs are retained
+          for a limited period necessary for security. Alerts and rules are kept while your account is active.
         </p>
-      </section>
+      </LegalSection>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Cookies and tracking</h2>
-        <p className="text-muted-foreground">
-          Only strictly necessary, technical cookies are used. No advertising,
-          analytics, or third-party tracking cookies are present. The cookies
-          used are:
+      <LegalSection title="Cookies and tracking">
+        <p>
+          Only strictly necessary technical cookies are used. No advertising, analytics, or third-party tracking
+          cookies are present.
         </p>
-        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
-          <li><strong>Authentication cookies</strong> (access token, refresh token): HttpOnly, Secure — manage your logged-in session.</li>
+        <ul className="list-disc space-y-1 pl-5">
+          <li><strong>Authentication cookies</strong> (access token, refresh token): HttpOnly, Secure.</li>
           <li><strong>CSRF cookie</strong>: protects against cross-site request forgery attacks.</li>
-          <li><strong>OAuth state cookies</strong> (temporary): used during the OAuth login/registration flow and cleared immediately after.</li>
-          <li><strong>Cookie consent</strong>: remembers whether you have acknowledged the cookie banner.</li>
+          <li><strong>OAuth state cookies</strong> (temporary): used during OAuth flows and cleared afterward.</li>
+          <li><strong>Cookie consent</strong>: stores your acknowledgement of the cookie banner.</li>
         </ul>
-      </section>
+      </LegalSection>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Data sharing and hosting</h2>
-        <p className="text-muted-foreground">
-          Data is hosted in the European Union and not sold. Webhook payloads are
-          sent to the destinations you configure. Infrastructure providers
-          (hosting, email or notification services) act as sub-processors where
-          applicable.
+      <LegalSection title="Data sharing and hosting">
+        <p>
+          Data is hosted in the European Union and is not sold. Webhook payloads are sent to destinations you
+          configure. Infrastructure providers (hosting, email, notification services) act as sub-processors where applicable.
         </p>
-      </section>
+      </LegalSection>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Your rights (GDPR)</h2>
-        <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+      <LegalSection title="Your rights (GDPR)">
+        <ul className="list-disc space-y-1 pl-5">
           <li>Access, rectification, deletion, restriction, and portability of your personal data.</li>
           <li>Objection to processing based on legitimate interest.</li>
           <li>Withdraw consent (where applicable) without affecting prior processing.</li>
-          <li>View and revoke your active sessions at any time from the settings page.</li>
-          <li>Export all your personal data (profile, rules, webhooks, alerts, audit logs) in a machine-readable JSON format.</li>
+          <li>View and revoke active sessions at any time from the settings page.</li>
+          <li>Export your personal data in machine-readable JSON format.</li>
           <li>
-            Lodge a complaint with your supervisory authority (Belgian Data
-            Protection Authority – Autorité de protection des données).
+            Lodge a complaint with your supervisory authority (Belgian Data Protection Authority -
+            Autorite de protection des donnees).
           </li>
         </ul>
-        <p className="text-muted-foreground">
-          <strong>Note:</strong> If your account is restricted (temporarily or permanently),
-          self-service features such as data export and account deletion are
-          unavailable. To exercise your GDPR rights while restricted, contact the
-          operator at{" "}
-          <a className="underline" href="mailto:admin@oswaaaald.be">admin@oswaaaald.be</a>
-          {" "}who will process your request manually.
+        <p>
+          <strong>Note:</strong> If your account is restricted, self-service export/deletion may be unavailable.
+          You can still exercise your GDPR rights by contacting <a className="underline" href="mailto:admin@oswaaaald.be">admin@oswaaaald.be</a>.
         </p>
-      </section>
+      </LegalSection>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-semibold">Contact</h2>
-        <p className="text-muted-foreground">
-          For any privacy request (access, deletion, questions), contact the site
-          operator at{" "}
-          <a className="underline" href="mailto:admin@oswaaaald.be">
-            admin@oswaaaald.be
-          </a>
-          . This is a personal, non-commercial project operated from Belgium.
+      <LegalSection title="Contact">
+        <p>
+          For privacy requests (access, deletion, questions), contact the operator at
+          <a className="underline" href="mailto:admin@oswaaaald.be"> admin@oswaaaald.be</a>. This is a personal,
+          non-commercial project operated from Belgium.
         </p>
-      </section>
-    </div>
-  );
+      </LegalSection>
+    </LegalPageLayout>
+  )
 }

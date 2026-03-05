@@ -175,7 +175,9 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
       setError('')
       try {
         const result = await login(formData.email, formData.password, totpCode)
-        if (!result.success) {
+        if (result.success) {
+          completeSessionAndRedirect('✅ Welcome back!', 'You have been logged in successfully')
+        } else {
           setError(result.error || 'Invalid 2FA code')
           setTotpCode('')
         }
@@ -214,10 +216,10 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
           toast({ variant: 'destructive', title: '❌ Account pending', description: 'Your account is awaiting admin approval' })
         },
         onSuccessLogin: () => {
-          toast({ title: '✅ Welcome back!', description: 'You have been logged in successfully' })
+          completeSessionAndRedirect('✅ Welcome back!', 'You have been logged in successfully')
         },
         onSuccessRegister: () => {
-          toast({ title: '✅ Account created', description: 'Your account has been created successfully' })
+          completeSessionAndRedirect('✅ Account created', 'Your account has been created successfully')
         },
         onSuccessRegisterPendingApproval: () => {
           setError('Registration successful! Your account is awaiting admin approval.')

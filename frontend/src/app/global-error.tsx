@@ -16,33 +16,19 @@ export default function GlobalError({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        <div style={{
-          display: 'flex',
-          minHeight: '100vh',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
-          fontFamily: 'system-ui, sans-serif',
-        }}>
-          <div style={{ maxWidth: '24rem', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-              Something went wrong
-            </h2>
-            <p style={{ color: '#666', marginBottom: '1rem' }}>
-              An unexpected error occurred. Please try again.
+      <body className="bg-background text-foreground antialiased">
+        <div className="flex min-h-screen items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-2xl border border-border/70 bg-card/95 p-6 text-center shadow-sm">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Critical error</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">Something went wrong</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              An unexpected error occurred while rendering the app shell.
             </p>
             <button
               onClick={reset}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.375rem',
-                border: '1px solid #ccc',
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
+              className="mt-5 inline-flex h-10 items-center justify-center rounded-lg border border-border/70 px-4 text-sm font-medium hover:bg-muted/60"
             >
-              Try Again
+              Try again
             </button>
           </div>
         </div>

@@ -3,6 +3,8 @@
 import { useAuth } from "@/contexts/auth-context"
 import { ProfileSettings } from "@/components/profile/settings"
 import { ProfileSkeleton } from "@/components/ui/skeletons"
+import { PageHeader } from "@/components/page-header"
+import { Settings } from "lucide-react"
 
 export default function SettingsPage() {
   const { isReady } = useAuth()
@@ -12,13 +14,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="animate-fade-up">
-        <h2 className="text-2xl font-bold tracking-tight">Profile &amp; Settings</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your account and preferences
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={Settings}
+        eyebrow="Account"
+        title="Profile & Settings"
+        description="Manage your profile, security preferences, linked accounts, and activity history."
+      />
       <ProfileSettings />
     </div>
   )

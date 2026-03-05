@@ -6,6 +6,8 @@ import { RulesTable } from "@/components/rules/table"
 import { RuleDialog } from "@/components/rules/dialog"
 import { useAuth } from "@/contexts/auth-context"
 import { RulesTableSkeleton } from "@/components/ui/skeletons"
+import { PageHeader } from "@/components/page-header"
+import { SlidersHorizontal } from "lucide-react"
 
 export default function RulesPage() {
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false)
@@ -16,18 +18,18 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Alert Rules</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your custom skin monitoring rules
-          </p>
-        </div>
-        <Button onClick={() => setIsRuleDialogOpen(true)} className="w-full sm:w-auto">
-          Create Rule
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={SlidersHorizontal}
+        eyebrow="Dashboard"
+        title="Alert Rules"
+        description="Define, edit, and batch-manage the rule set that powers your monitoring strategy."
+        actions={
+          <Button onClick={() => setIsRuleDialogOpen(true)} className="w-full sm:w-auto">
+            Create Rule
+          </Button>
+        }
+      />
       <RulesTable onCreateRule={() => setIsRuleDialogOpen(true)} />
       
       <RuleDialog

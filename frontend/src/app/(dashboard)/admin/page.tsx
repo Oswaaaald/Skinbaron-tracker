@@ -3,6 +3,8 @@
 import { useAuth } from "@/contexts/auth-context"
 import { AdminPanel } from "@/components/admin/panel"
 import { AdminPanelSkeleton } from "@/components/ui/skeletons"
+import { PageHeader } from "@/components/page-header"
+import { Shield } from "lucide-react"
 
 export default function AdminPage() {
   const { isReady } = useAuth()
@@ -12,13 +14,13 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="animate-fade-up">
-        <h2 className="text-2xl font-bold tracking-tight">Admin Panel</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage users and system settings
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={Shield}
+        eyebrow="Administration"
+        title="Admin Panel"
+        description="User moderation, access controls, and operational tools for platform management."
+      />
       <AdminPanel />
     </div>
   )

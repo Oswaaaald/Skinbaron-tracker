@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { WebhooksTable } from "@/components/webhooks/table"
 import { useAuth } from "@/contexts/auth-context"
 import { WebhooksTableSkeleton } from "@/components/ui/skeletons"
+import { PageHeader } from "@/components/page-header"
+import { Webhook } from "lucide-react"
 
 export default function WebhooksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -15,18 +17,18 @@ export default function WebhooksPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-up">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your encrypted webhook endpoints for notifications
-          </p>
-        </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
-          Add Webhook
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={Webhook}
+        eyebrow="Dashboard"
+        title="Webhooks"
+        description="Configure delivery endpoints, notification style, and active state for outgoing alerts."
+        actions={
+          <Button onClick={() => setIsDialogOpen(true)} className="w-full sm:w-auto">
+            Add Webhook
+          </Button>
+        }
+      />
       <WebhooksTable
         onCreateWebhook={() => setIsDialogOpen(true)}
         createDialogOpen={isDialogOpen}

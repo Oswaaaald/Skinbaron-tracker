@@ -3,6 +3,8 @@
 import { AlertsGrid } from "@/components/alerts/grid"
 import { useAuth } from "@/contexts/auth-context"
 import { AlertsGridSkeleton } from "@/components/ui/skeletons"
+import { PageHeader } from "@/components/page-header"
+import { Bell } from "lucide-react"
 
 export default function AlertsPage() {
   const { isReady } = useAuth()
@@ -12,13 +14,13 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="animate-fade-up">
-        <h2 className="text-2xl font-bold tracking-tight">Alert History</h2>
-        <p className="text-muted-foreground">
-          View all triggered alerts with detailed information
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={Bell}
+        eyebrow="Dashboard"
+        title="Alert History"
+        description="All listing matches detected by your active rules, with filters and quick review actions."
+      />
       <AlertsGrid />
     </div>
   )

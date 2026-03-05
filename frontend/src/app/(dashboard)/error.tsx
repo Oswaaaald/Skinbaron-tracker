@@ -20,26 +20,29 @@ export default function DashboardError({
   }, [error])
 
   return (
-    <div className="container mx-auto p-6 flex items-center justify-center min-h-[60vh]">
-      <Card className="max-w-md w-full">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            <AlertCircle className="h-10 w-10 text-destructive" />
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6">
+      <Card className="w-full max-w-md border-border/70 bg-card/95 py-0">
+        <CardHeader className="space-y-4 border-b border-border/65 pb-5 text-center">
+          <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+          </span>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Dashboard error</p>
+            <CardTitle className="text-2xl tracking-tight">Something went wrong</CardTitle>
           </div>
-          <CardTitle>Something went wrong</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
+        <CardContent className="space-y-4 p-5">
+          <p className="text-center text-sm text-muted-foreground">
             An error occurred while loading this page. Please try again or return to the dashboard.
           </p>
-          <div className="flex justify-center gap-3">
-            <Button variant="outline" asChild>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button variant="outline" asChild className="w-full">
               <Link href="/alerts">
                 <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
                 Dashboard
               </Link>
             </Button>
-            <Button onClick={reset}>
+            <Button onClick={reset} className="w-full">
               <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               Try Again
             </Button>
