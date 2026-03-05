@@ -4,11 +4,11 @@
 # Backend Dockerfile (HARDENED)
 # ================================
 
-FROM node:22-alpine AS builder
-WORKDIR /app
+FROM node:22-alpine AS base
+RUN apk add --no-cache ca-certificates
 
-RUN apk add --no-cache ca-certificates && \
-    npm install -g npm@11.11.0
+FROM base AS builder
+WORKDIR /app
 
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
@@ -18,13 +18,12 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 # ---------- runner ----------
-FROM node:22-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache ca-certificates \
-    && addgroup --system --gid 1001 nodejs \
+RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 skinbaron \
     && mkdir -p /data/avatars \
     && chown skinbaron:nodejs /data/avatars
@@ -43,4 +42,4 @@ EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "node scripts/validate-env.js && exec node dist/index.js"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://127.0.0.1:8080/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  CMD node -e "const req=require('http').get('http://127.0.0.1:8080/api/health',res=>{let body='';res.on('data',c=>body+=c);res.on('end',()=>{try{const json=JSON.parse(body);process.exit(res.statusCode===200&&json.database==='healthy'?0:1);}catch{process.exit(1);}})});req.on('error',()=>process.exit(1));"
