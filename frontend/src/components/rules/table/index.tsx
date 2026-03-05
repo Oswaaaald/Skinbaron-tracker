@@ -158,7 +158,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
 
   if (error) {
     return (
-      <Card>
+      <Card className="border-border/70 bg-card/92">
         <CardContent className="pt-6">
           <div className="text-center text-destructive text-sm" role="alert">
             Error loading rules: {extractErrorMessage(error)}
@@ -189,7 +189,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
 
   return (
     <>
-      <Card>
+      <Card className="border-border/70 bg-card/92">
         <CardHeader className="pb-3">
           <RulesTableBatchActions
             selectedCount={selectedRules.size}

@@ -242,7 +242,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
 
   return (
     <>
-      <Card>
+      <Card className="border-border/70 bg-card/92">
         <CardHeader className="pb-3">
           <WebhooksTableBatchActions
             selectedCount={selectedWebhooks.size}

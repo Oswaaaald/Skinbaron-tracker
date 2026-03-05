@@ -194,7 +194,7 @@ export function AdminPanel() {
       <AdminPanelStatsCards statsData={statsData} />
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="w-full flex">
+        <TabsList className="h-auto w-full gap-1 p-1">
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Users</span></TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Audit Logs</span></TabsTrigger>
           {currentUser?.is_super_admin && <TabsTrigger value="admin-logs" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Admin Logs</span></TabsTrigger>}
@@ -202,7 +202,7 @@ export function AdminPanel() {
           <TabsTrigger value="system" className="flex items-center gap-1.5"><Activity className="h-4 w-4" /><span className="hidden sm:inline">System</span></TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users" className="space-y-4 mt-4">
+        <TabsContent value="users" className="mt-5 space-y-5">
           <AdminPanelUsersTab
             usersData={usersData}
             usersLoading={usersLoading}
@@ -228,22 +228,22 @@ export function AdminPanel() {
           />
         </TabsContent>
 
-        <TabsContent value="logs" className="space-y-4 mt-4">
+        <TabsContent value="logs" className="mt-5 space-y-5">
           {currentUser?.is_admin && <AdminAuditLogs />}
         </TabsContent>
 
         {currentUser?.is_super_admin && (
-          <TabsContent value="admin-logs" className="space-y-4 mt-4">
+          <TabsContent value="admin-logs" className="mt-5 space-y-5">
             <AdminActionLogs />
           </TabsContent>
         )}
 
-        <TabsContent value="system" className="space-y-4 mt-4">
+        <TabsContent value="system" className="mt-5 space-y-5">
           <SystemStats enabled={true} />
         </TabsContent>
 
         {currentUser?.is_super_admin && (
-          <TabsContent value="tools" className="space-y-4 mt-4">
+          <TabsContent value="tools" className="mt-5 space-y-5">
             <AdminPanelToolsTab
               sentryEnabled={statsData?.sentryEnabled}
               forceSchedulerPending={forceSchedulerMutation.isPending}

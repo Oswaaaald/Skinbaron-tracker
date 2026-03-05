@@ -30,7 +30,7 @@ export function UserNav() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 rounded-full p-0 overflow-hidden border border-border/70 bg-background/80 hover:border-primary/50 transition-all"
+            className="h-9 w-9 overflow-hidden rounded-full border border-border/70 bg-background/80 p-0 transition-colors hover:border-primary/45"
           >
             {user.avatar_url ? (
               <Image 

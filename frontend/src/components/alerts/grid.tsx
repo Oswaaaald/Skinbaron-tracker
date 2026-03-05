@@ -110,7 +110,7 @@ export function AlertsGrid() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <AlertsGridFilters
         filteredCount={filteredAlerts.length}
         itemNames={itemNames}

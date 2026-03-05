@@ -42,17 +42,33 @@ export function AlertsGridFilters({
   onClearAll,
 }: AlertsGridFiltersProps) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs text-muted-foreground">
+    <Card className="border-border/70 bg-card/90 py-0">
+      <CardContent className="space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-medium uppercase tracking-[0.09em] text-muted-foreground">
             {filteredCount} result{filteredCount !== 1 ? 's' : ''}
           </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearAll}
+            disabled={clearPending}
+            className="h-9 w-full text-xs sm:w-auto"
+          >
+            {clearPending ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-1.5" inline />
+                Clearing...
+              </>
+            ) : (
+              'Clear All Alerts'
+            )}
+          </Button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Item</label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Item</label>
             <Select value={itemNameFilter || 'all'} onValueChange={onItemNameFilterChange}>
               <SelectTrigger className="w-full" aria-label="Filter alerts by item">
                 <SelectValue placeholder="All items" />
@@ -69,7 +85,7 @@ export function AlertsGridFilters({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Wear</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Wear</label>
             <Select value={wearFilter} onValueChange={onWearFilterChange}>
               <SelectTrigger className="w-full" aria-label="Filter by wear condition">
                 <SelectValue placeholder="All" />
@@ -87,7 +103,7 @@ export function AlertsGridFilters({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Stickers</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Stickers</label>
             <Select value={stickerFilter} onValueChange={onStickerFilterChange}>
               <SelectTrigger className="w-full" aria-label="Filter Sticker items">
                 <SelectValue placeholder="All" />
@@ -101,7 +117,7 @@ export function AlertsGridFilters({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">StatTrak™</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">StatTrak™</label>
             <Select value={statTrakFilter} onValueChange={onStatTrakFilterChange}>
               <SelectTrigger className="w-full" aria-label="Filter StatTrak items">
                 <SelectValue placeholder="All" />
@@ -115,7 +131,7 @@ export function AlertsGridFilters({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Souvenir</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Souvenir</label>
             <Select value={souvenirFilter} onValueChange={onSouvenirFilterChange}>
               <SelectTrigger className="w-full" aria-label="Filter Souvenir items">
                 <SelectValue placeholder="All" />
@@ -129,7 +145,7 @@ export function AlertsGridFilters({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Sort By</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Sort By</label>
             <Select value={sortBy} onValueChange={(value) => onSortByChange(value as AlertSortBy)}>
               <SelectTrigger className="w-full" aria-label="Sort alerts">
                 <SelectValue placeholder="Sort by" />
@@ -142,19 +158,6 @@ export function AlertsGridFilters({
                 <SelectItem value="wear_desc">Wear (High to Low)</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-end">
-            <Button variant="outline" size="sm" onClick={onClearAll} disabled={clearPending} className="h-9 w-full text-xs">
-              {clearPending ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-1.5" inline />
-                  Clearing...
-                </>
-              ) : (
-                'Clear All Alerts'
-              )}
-            </Button>
           </div>
         </div>
       </CardContent>

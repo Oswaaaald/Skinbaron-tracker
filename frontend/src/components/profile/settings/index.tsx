@@ -198,14 +198,14 @@ export function ProfileSettings() {
       <ProfileSettingsStatsCards stats={stats} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full flex">
+        <TabsList className="h-auto w-full gap-1 p-1">
           <TabsTrigger value="profile" className="flex items-center gap-1.5"><User className="h-4 w-4" /><span className="hidden sm:inline">Profile</span></TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Security</span></TabsTrigger>
           <TabsTrigger value="oauth" className="flex items-center gap-1.5"><Link2 className="h-4 w-4" /><span className="hidden sm:inline">Accounts</span></TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile" className="space-y-4 mt-4">
+        <TabsContent value="profile" className="mt-5 space-y-5">
           <ProfileTab
             user={user}
             username={username}
@@ -226,7 +226,7 @@ export function ProfileSettings() {
           />
         </TabsContent>
 
-        <TabsContent value="security" className="space-y-4 mt-4">
+        <TabsContent value="security" className="mt-5 space-y-5">
           <SecurityTab
             user={user}
             passwordFeedback={{ success: formState.password.success, error: formState.password.error }}
@@ -246,8 +246,8 @@ export function ProfileSettings() {
           />
         </TabsContent>
 
-        <TabsContent value="oauth" className="space-y-4 mt-4"><LinkedAccounts /></TabsContent>
-        <TabsContent value="logs" className="space-y-4 mt-4"><LogsTab onOpenExport={() => setExportDialog(true)} /></TabsContent>
+        <TabsContent value="oauth" className="mt-5 space-y-5"><LinkedAccounts /></TabsContent>
+        <TabsContent value="logs" className="mt-5 space-y-5"><LogsTab onOpenExport={() => setExportDialog(true)} /></TabsContent>
       </Tabs>
 
       <ProfileSettingsDialogs

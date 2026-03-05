@@ -43,13 +43,13 @@ function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
 
   const linkCls = (active: boolean) =>
     cn(
-      "flex items-center font-medium rounded-lg transition-all duration-200",
+      "flex items-center rounded-lg font-medium transition-[color,background-color,box-shadow] duration-150",
       mobile ? "gap-2.5 px-3.5 py-2.5 text-sm" : "h-8 gap-1.5 px-3.5 text-[13px]",
       active
         ? mobile
           ? "bg-primary text-primary-foreground shadow-sm"
           : "bg-foreground text-background shadow-sm dark:bg-primary dark:text-primary-foreground"
-        : "text-muted-foreground hover:text-foreground hover:bg-accent/70",
+        : "text-muted-foreground hover:bg-accent/65 hover:text-foreground",
       mobile && "w-full",
     )
 
@@ -87,7 +87,7 @@ function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
 
 export function DashboardNav() {
   return (
-    <nav className="hidden md:flex items-center gap-1 rounded-xl border border-border/70 bg-muted/35 p-1">
+    <nav className="hidden items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 md:flex">
       <NavLinks />
     </nav>
   )

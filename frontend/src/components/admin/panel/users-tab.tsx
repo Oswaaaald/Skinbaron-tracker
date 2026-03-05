@@ -90,7 +90,7 @@ export function AdminPanelUsersTab({
   onOpenUserDetail,
 }: AdminPanelUsersTabProps) {
   return (
-    <Card>
+    <Card className="border-border/70 bg-card/92">
       <CardHeader>
         <CardTitle>User Management</CardTitle>
         <CardDescription>Manage users and their permissions</CardDescription>
@@ -195,7 +195,7 @@ export function AdminPanelUsersTab({
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {user.is_super_admin ? (
-                        <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                        <Badge variant="outline" className="gap-1 border-amber-500/45 bg-amber-500/10 text-amber-700 dark:text-amber-300">
                           <Shield className="h-3 w-3" />
                           Super Admin
                         </Badge>

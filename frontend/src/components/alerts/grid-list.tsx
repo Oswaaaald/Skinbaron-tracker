@@ -28,7 +28,7 @@ export function AlertsGridList({
           return (
             <Card
               key={alert.id}
-              className="group relative overflow-hidden bg-card shadow-sm hover:shadow-md hover:border-border transition-all duration-200 flex flex-col p-0"
+              className="relative flex flex-col overflow-hidden border-border/70 bg-card/92 p-0 shadow-sm transition-[box-shadow,border-color] duration-200 hover:shadow-md"
             >
               <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95">
                 {alert.skin_url ? (
@@ -37,7 +37,7 @@ export function AlertsGridList({
                     alt={alert.item_name}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                    className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
+                    className="object-contain p-4"
                     priority={isLCP}
                     fetchPriority={isLCP ? 'high' : 'low'}
                     loading={isLCP ? 'eager' : 'lazy'}
@@ -79,8 +79,8 @@ export function AlertsGridList({
                 )}
               </div>
 
-              <div className="flex-1 flex flex-col justify-between px-3 pb-3 pt-2.5 gap-2">
-                <CardTitle className="text-[13px] leading-snug line-clamp-2 font-medium">
+              <div className="flex flex-1 flex-col justify-between gap-2.5 px-3.5 pb-3.5 pt-3">
+                <CardTitle className="line-clamp-2 text-[13px] font-medium leading-snug">
                   {alert.item_name}
                 </CardTitle>
 

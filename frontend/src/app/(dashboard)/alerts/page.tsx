@@ -14,7 +14,7 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 md:space-y-7">
       <PageHeader
         icon={Bell}
         eyebrow="Dashboard"
