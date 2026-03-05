@@ -92,58 +92,65 @@ function LandingPage() {
       </header>
 
       <section className="border-b border-border/65 bg-muted/15">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-            <div className="space-y-7">
-              <Badge variant="outline" className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.1em]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-18">
+          <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+            <div className="space-y-6">
+              <Badge variant="outline" className="rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.12em]">
                 Open Source - EU Hosted
               </Badge>
 
-              <div className="space-y-4">
-                <h1 className="max-w-3xl text-4xl font-semibold leading-[1.04] tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+              <div className="space-y-3.5">
+                <h1 className="max-w-3xl text-4xl font-semibold leading-[1.06] tracking-[-0.03em] sm:text-5xl lg:text-[3.45rem]">
                   Monitor SkinBaron listings without interface noise.
                 </h1>
-                <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+                <p className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground sm:text-lg">
                   Build focused rules, route alerts to Discord instantly, and keep your trading workflow compact and actionable.
                 </p>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link href="/register">
-                  <Button size="lg" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto sm:min-w-40">
                     Start free
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="#features">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto sm:min-w-40">
                     See features
                   </Button>
                 </Link>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground sm:text-sm">
+              <div className="grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-3 sm:text-sm">
                 <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> 5s polling cadence</span>
                 <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> encrypted webhooks</span>
                 <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> passkeys + 2FA</span>
               </div>
             </div>
 
-            <Card className="border-border/70 bg-card/90 py-0 shadow-sm">
-              <CardHeader className="border-b border-border/65 pb-4">
-                <CardTitle className="text-lg">Live feed preview</CardTitle>
-                <CardDescription>How alerts appear in your dashboard in real time.</CardDescription>
+            <Card className="border-border/70 bg-card/95 py-0 shadow-sm">
+              <CardHeader className="border-b border-border/65 pb-3 pt-5">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base">Live feed preview</CardTitle>
+                  <Badge variant="secondary" className="rounded-md px-2 py-0.5 text-[10px] uppercase tracking-[0.08em]">
+                    Demo
+                  </Badge>
+                </div>
+                <CardDescription>How listings surface inside the alerts dashboard.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 p-4">
                 {livePreview.map((event) => (
-                  <div key={event.item} className="rounded-xl border border-border/70 bg-background/70 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="line-clamp-1 text-sm font-medium">{event.item}</p>
-                      <span className="text-xs text-muted-foreground">{event.ago}</span>
+                  <div key={event.item} className="rounded-xl border border-border/70 bg-background/70 p-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="line-clamp-1 text-sm font-medium tracking-[-0.01em]">{event.item}</p>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{event.ago}</span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold">{event.price}</span>
-                      <Badge variant="secondary" className="rounded-md px-2 py-0.5 text-[11px]">{event.rule}</Badge>
+                    <div className="mt-2.5 flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold tabular-nums">{event.price}</span>
+                      <Badge variant="secondary" className="rounded-md px-2 py-0.5 font-medium text-[10px] tracking-[0.02em]">
+                        {event.rule}
+                      </Badge>
                     </div>
                   </div>
                 ))}
