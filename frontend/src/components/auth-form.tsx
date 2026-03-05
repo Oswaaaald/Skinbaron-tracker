@@ -9,6 +9,12 @@ import { formatDateTime } from '@/lib/formatters'
 import { PROVIDER_ICONS, PROVIDER_LABELS } from '@/lib/oauth-icons'
 import { useRouter } from 'next/navigation'
 import { startAuthentication } from '@simplewebauthn/browser'
+import { OAUTH_ERROR_MESSAGES, OAUTH_PROVIDER_ORDER } from './auth-form.constants'
+import {
+  getOAuthUsernameValidationError,
+  isValidTotpOrRecoveryCode,
+  sanitizeTotpInput,
+} from './auth-form.helpers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -113,26 +119,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
     const oauthError = params.get('error')
     if (oauthError) {
-      const messages: Record<string, string> = {
-        oauth_denied: 'OAuth authorization was cancelled.',
-        oauth_missing_params: 'OAuth response was incomplete. Please try again.',
-        invalid_provider: 'Invalid OAuth provider.',
-        oauth_state_missing: 'OAuth session expired. Please try again.',
-        oauth_state_invalid: 'OAuth session was invalid. Please try again.',
-        oauth_state_mismatch: 'OAuth state mismatch. Please try again.',
-        oauth_exchange_failed: 'Failed to complete OAuth sign-in. Please try again.',
-        oauth_email_not_verified: 'Your email is not verified with this provider. Please verify it first.',
-        oauth_email_taken: 'An account with this email already exists. Please log in with your password, then link this provider from Settings.',
-        oauth_user_not_found: 'Associated account not found.',
-        oauth_already_linked_other: 'This social account is already linked to another user.',
-        pending_approval: 'Your account is awaiting admin approval.',
-        account_restricted: 'Your account has been suspended.',
-        oauth_no_account: 'No account found with this email. Please register first.',
-        rate_limited: 'Too many attempts. Please try again in a moment.',
-        docs_auth_required: 'Please log in to access the API documentation.',
-        oauth_server_error: 'An unexpected error occurred. Please try again.'
-      }
-      setError(messages[oauthError] || 'OAuth sign-in failed. Please try again.')
+      setError(OAUTH_ERROR_MESSAGES[oauthError] || 'OAuth sign-in failed. Please try again.')
       // Clean the URL
       const url = new URL(window.location.href)
       url.searchParams.delete('error')
@@ -183,16 +170,9 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
     // OAuth finalize registration
     if (oauthPendingRegistration) {
-      if (!formData.username || formData.username.trim().length < 3) {
-        setError('Username must be at least 3 characters')
-        return
-      }
-      if (formData.username.length > 20) {
-        setError('Username must be at most 20 characters')
-        return
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        setError('Username can only contain letters, numbers and underscores')
+      const oauthUsernameError = getOAuthUsernameValidationError(formData.username)
+      if (oauthUsernameError) {
+        setError(oauthUsernameError)
         return
       }
       if (!formData.tosAccepted) {
@@ -228,7 +208,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     
     // OAuth 2FA verification
     if (oauthPending2FA) {
-      if (!totpCode || (totpCode.length !== 6 && totpCode.length !== 8)) {
+      if (!isValidTotpOrRecoveryCode(totpCode)) {
         setError('Please enter a valid 6-digit code or 8-character recovery code')
         return
       }
@@ -263,7 +243,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
     // For 2FA step, only validate the code
     if (requires2FA) {
-      if (!totpCode || (totpCode.length !== 6 && totpCode.length !== 8)) {
+      if (!isValidTotpOrRecoveryCode(totpCode)) {
         setError('Please enter a valid 6-digit code or 8-character recovery code')
         return
       }
@@ -379,7 +359,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
       // Check if button should be disabled
       if (isLoading) return
       if (!requires2FA && !oauthPending2FA && !isLogin && !formData.tosAccepted) return
-      if ((requires2FA || oauthPending2FA) && totpCode.length !== 6 && totpCode.length !== 8) return
+      if ((requires2FA || oauthPending2FA) && !isValidTotpOrRecoveryCode(totpCode)) return
       
       void handleSubmit(e as unknown as React.FormEvent)
     }
@@ -546,7 +526,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                     placeholder="000000"
                     value={totpCode}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase()
+                      const value = sanitizeTotpInput(e.target.value)
                       setTotpCode(value)
                       if (error) setError('')
                     }}
@@ -766,7 +746,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                     </div>
 
                     <div className="grid gap-2">
-                      {(['google', 'github', 'discord'] as const).filter(p => oauthProviders.includes(p)).map(provider => (
+                      {OAUTH_PROVIDER_ORDER.filter((provider) => oauthProviders.includes(provider)).map(provider => (
                         <Button
                           key={provider}
                           type="button"
@@ -805,7 +785,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={isLoading || totpCode.length === 7 || totpCode.length < 6}
+                  disabled={isLoading || !isValidTotpOrRecoveryCode(totpCode)}
                 >
                   {isLoading ? (
                     <>
