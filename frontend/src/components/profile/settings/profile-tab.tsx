@@ -168,56 +168,58 @@ export function ProfileTab({
             </Alert>
           )}
 
-          <form onSubmit={onSubmitProfile} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => onUsernameChange(e.target.value)}
-                placeholder="Enter username"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              {user?.is_admin ? (
+          <form onSubmit={onSubmitProfile} className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => onEmailChange(e.target.value)}
-                  placeholder="Enter email"
+                  id="username"
+                  value={username}
+                  onChange={(e) => onUsernameChange(e.target.value)}
+                  placeholder="Enter username"
                 />
-              ) : availableEmails.length > 1 ? (
-                <>
-                  <Select value={email} onValueChange={onEmailChange}>
-                    <SelectTrigger className="w-full" aria-label="Select email">
-                      <SelectValue placeholder="Select email" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableEmails.map((entry) => (
-                        <SelectItem key={entry} value={entry}>
-                          {entry}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    You can choose from your linked OAuth provider emails
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Input id="email" type="email" value={email} disabled />
-                  <p className="text-sm text-muted-foreground">
-                    Link an OAuth account with a different email to change it
-                  </p>
-                </>
-              )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                {user?.is_admin ? (
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => onEmailChange(e.target.value)}
+                    placeholder="Enter email"
+                  />
+                ) : availableEmails.length > 1 ? (
+                  <>
+                    <Select value={email} onValueChange={onEmailChange}>
+                      <SelectTrigger className="w-full" aria-label="Select email">
+                        <SelectValue placeholder="Select email" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableEmails.map((entry) => (
+                          <SelectItem key={entry} value={entry}>
+                            {entry}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      You can choose from your linked OAuth provider emails
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Input id="email" type="email" value={email} disabled />
+                    <p className="text-sm text-muted-foreground">
+                      Link an OAuth account with a different email to change it
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <Label>Role:</Label>
               {user?.is_super_admin ? (
                 <Badge variant="default" className="gap-1 !border-transparent !bg-gradient-to-r !from-purple-600 !to-pink-600 !text-white">
@@ -230,17 +232,16 @@ export function ProfileTab({
               ) : (
                 <Badge variant="outline">User</Badge>
               )}
+              <Button type="submit" disabled={profilePending}>
+                {profilePending ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" inline /> Updating...
+                  </>
+                ) : (
+                  'Update Profile'
+                )}
+              </Button>
             </div>
-
-            <Button type="submit" disabled={profilePending}>
-              {profilePending ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" inline /> Updating...
-                </>
-              ) : (
-                'Update Profile'
-              )}
-            </Button>
           </form>
         </CardContent>
       </Card>
