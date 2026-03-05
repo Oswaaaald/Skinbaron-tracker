@@ -1,7 +1,12 @@
+'use client'
+
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 
 export default function NotFound() {
+  const router = useRouter()
+
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
       <div className="flex min-h-[62vh] items-center justify-center">
@@ -12,10 +17,10 @@ export default function NotFound() {
             The page you requested does not exist, was moved, or is currently unavailable.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button asChild className="w-full sm:w-auto">
-              <Link href="/">Go home</Link>
+            <Button className="w-full sm:w-auto" variant="outline" onClick={() => router.back()}>
+              Go back
             </Button>
-            <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Button asChild className="w-full sm:w-auto">
               <Link href="/alerts">Open dashboard</Link>
             </Button>
           </div>

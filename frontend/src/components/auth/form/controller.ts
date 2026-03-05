@@ -120,8 +120,15 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
   }
 
   const completeSessionAndRedirect = (title: string, description: string) => {
-    if (typeof window !== 'undefined') localStorage.setItem('has_session', 'true')
     queueToast({ title, description })
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('has_session', 'true')
+      // Use a hard navigation so route guards read the freshly set auth cookies.
+      window.location.replace('/alerts')
+      return
+    }
+
     router.replace('/alerts')
   }
 
