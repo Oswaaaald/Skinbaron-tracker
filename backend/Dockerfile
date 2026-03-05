@@ -5,7 +5,9 @@
 # ================================
 
 FROM node:22-alpine AS base
-RUN apk add --no-cache ca-certificates
+ARG NPM_VERSION=11.11.0
+RUN apk add --no-cache ca-certificates \
+    && npm install -g "npm@${NPM_VERSION}"
 
 FROM base AS builder
 WORKDIR /app
