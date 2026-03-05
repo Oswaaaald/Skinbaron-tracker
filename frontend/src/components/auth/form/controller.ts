@@ -122,7 +122,7 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
   const completeSessionAndRedirect = (title: string, description: string) => {
     if (typeof window !== 'undefined') localStorage.setItem('has_session', 'true')
     queueToast({ title, description })
-    router.replace('/')
+    router.replace('/alerts')
   }
 
   const handleSubmit = async (e: FormEvent) => {

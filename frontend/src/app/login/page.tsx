@@ -14,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/')
+      router.replace('/alerts')
     }
   }, [isAuthenticated, router])
 

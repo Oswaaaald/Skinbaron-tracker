@@ -14,7 +14,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/')
+      router.replace('/alerts')
     }
   }, [isAuthenticated, router])
 
