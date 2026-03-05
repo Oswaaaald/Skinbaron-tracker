@@ -65,7 +65,7 @@ export class UsersRepository {
   private buildStatsAggregates() {
     const rulesAgg = this.db.select({
       user_id: rules.user_id,
-      rules_count: sql<number>`COUNT(*)::int`,
+      rules_count: sql<number>`COUNT(*)::int`.as('rules_count'),
     })
       .from(rules)
       .groupBy(rules.user_id)
@@ -73,7 +73,7 @@ export class UsersRepository {
 
     const alertsAgg = this.db.select({
       user_id: rules.user_id,
-      alerts_count: sql<number>`COUNT(${alerts.id})::int`,
+      alerts_count: sql<number>`COUNT(${alerts.id})::int`.as('alerts_count'),
     })
       .from(alerts)
       .innerJoin(rules, eq(alerts.rule_id, rules.id))
@@ -82,7 +82,7 @@ export class UsersRepository {
 
     const webhooksAgg = this.db.select({
       user_id: userWebhooks.user_id,
-      webhooks_count: sql<number>`COUNT(*)::int`,
+      webhooks_count: sql<number>`COUNT(*)::int`.as('webhooks_count'),
     })
       .from(userWebhooks)
       .groupBy(userWebhooks.user_id)
