@@ -8,6 +8,7 @@ import { AuthErrorAlert, Divider, OAuthButtons, PasskeyButton, isTotpSubmitDisab
 import type { AuthMode, AuthFormData, OAuthPendingData } from '@/components/auth/form/types'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface AuthFormContentProps {
   mode: AuthMode
@@ -21,6 +22,7 @@ interface AuthFormContentProps {
   oauthPendingData: OAuthPendingData | null
   totpCode: string
   oauthProviders: string[]
+  oauthProvidersLoading: boolean
   formData: AuthFormData
   isLogin: boolean
   onSubmit: (e: FormEvent) => void
@@ -47,6 +49,7 @@ export function AuthFormContent({
   oauthPendingData,
   totpCode,
   oauthProviders,
+  oauthProvidersLoading,
   formData,
   isLogin,
   onSubmit,
@@ -128,16 +131,24 @@ export function AuthFormContent({
             </>
           )}
 
-          {oauthProviders.length > 0 && (
+          {(oauthProvidersLoading || oauthProviders.length > 0) && (
             <>
               <Divider label="Or continue with" />
-              <OAuthButtons
-                oauthProviders={oauthProviders}
-                isLoading={isLoading}
-                onClick={(provider) => {
-                  window.location.href = apiClient.getOAuthLoginUrl(provider, isLogin ? 'login' : 'register')
-                }}
-              />
+              {oauthProvidersLoading ? (
+                <div aria-hidden="true" className="grid gap-2">
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+              ) : (
+                <OAuthButtons
+                  oauthProviders={oauthProviders}
+                  isLoading={isLoading}
+                  onClick={(provider) => {
+                    window.location.href = apiClient.getOAuthLoginUrl(provider, isLogin ? 'login' : 'register')
+                  }}
+                />
+              )}
             </>
           )}
 

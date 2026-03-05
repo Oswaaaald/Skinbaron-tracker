@@ -47,7 +47,7 @@ export default async function RootLayout({
   // Skip SSR session check - cookies are cross-subdomain and client will handle auth
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${spaceGrotesk.variable} font-sans`}>
+      <body suppressHydrationWarning className={`${manrope.variable} ${spaceGrotesk.variable} font-sans`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

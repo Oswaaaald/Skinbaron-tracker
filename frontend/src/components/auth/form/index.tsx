@@ -31,7 +31,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     <div
       className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-background px-4 py-16"
     >
-      <div className="w-full max-w-md space-y-4">
+      <div className="w-full max-w-md space-y-4 sm:min-h-[39rem]">
         <div className="flex items-center justify-center gap-3">
           <span
             aria-hidden="true"
@@ -61,6 +61,7 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
               oauthPendingData={controller.oauthPendingData}
               totpCode={controller.totpCode}
               oauthProviders={controller.oauthProviders}
+              oauthProvidersLoading={controller.oauthProvidersLoading}
               formData={controller.formData}
               isLogin={controller.isLogin}
               onSubmit={(e) => { void controller.handleSubmit(e) }}
