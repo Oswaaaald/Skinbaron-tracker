@@ -73,6 +73,7 @@ services:
 
     networks:
       - skinbaron_network
+      - dokploy-network
 
   frontend:
     build:
@@ -120,6 +121,7 @@ services:
 
     networks:
       - skinbaron_network
+      - dokploy-network
 
 volumes:
   skinbaron_avatar_data:
@@ -127,3 +129,5 @@ volumes:
 networks:
   skinbaron_network:
     driver: bridge
+  dokploy-network:
+    external: true
