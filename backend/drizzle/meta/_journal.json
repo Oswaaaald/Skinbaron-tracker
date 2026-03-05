@@ -92,6 +92,13 @@
       "when": 1772100000000,
       "tag": "0012_check_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772200000000,
+      "tag": "0013_pending_challenges_reconcile",
+      "breakpoints": true
     }
   ]
 }
