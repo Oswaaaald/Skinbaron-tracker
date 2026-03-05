@@ -16,12 +16,14 @@ COPY packages/contracts ./packages/contracts
 WORKDIR /app/backend
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --fund=false
-RUN rm -rf node_modules/@skinbaron/contracts \
-    && mkdir -p node_modules/@skinbaron \
-    && cp -R /app/packages/contracts node_modules/@skinbaron/contracts
 
 COPY backend ./
-RUN npm run build && npm prune --omit=dev
+RUN npm run build \
+    && npm prune --omit=dev \
+    && rm -rf node_modules/@skinbaron/contracts \
+    && mkdir -p node_modules/@skinbaron \
+    && cp -R /app/packages/contracts node_modules/@skinbaron/contracts \
+    && test -f node_modules/@skinbaron/contracts/package.json
 
 # ---------- runner ----------
 FROM base AS runner
