@@ -140,7 +140,7 @@ export function AdminUserDetailLeftColumn({
               <span className="text-muted-foreground">Role</span>
               <div className="mt-0.5">
                 {detail.is_super_admin ? (
-                  <Badge className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white"><Shield className="h-3 w-3" />Super Admin</Badge>
+                  <Badge className="gap-1 !border-transparent !bg-gradient-to-r !from-purple-600 !to-pink-600 !text-white"><Shield className="h-3 w-3" />Super Admin</Badge>
                 ) : detail.is_admin ? (
                   <Badge variant="default" className="gap-1"><Shield className="h-3 w-3" />Admin</Badge>
                 ) : (

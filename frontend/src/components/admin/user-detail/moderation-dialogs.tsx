@@ -29,7 +29,7 @@ interface ModerationDialogsProps {
   setConfirmDelete: Dispatch<SetStateAction<boolean>>
   confirmDeleteSanction: number | null
   setConfirmDeleteSanction: Dispatch<SetStateAction<number | null>>
-  lastDeleteSanction: number
+  lastDeleteSanction: number | null
   onConfirmRestrict: () => void
   onConfirmUnrestrict: () => void
   onConfirmDeleteUser: () => void
@@ -58,6 +58,8 @@ export function ModerationDialogs({
   onConfirmDeleteUser,
   onConfirmDeleteSanction,
 }: ModerationDialogsProps) {
+  const sanctionToPreview = lastDeleteSanction
+
   return (
     <>
       <Dialog open={confirmRestrict} onOpenChange={setConfirmRestrict}>
@@ -127,7 +129,8 @@ export function ModerationDialogs({
             <DialogDescription>
               Are you sure you want to delete this sanction from the history?
               {(() => {
-                const sanction = detail?.sanctions.find((entry) => entry.id === lastDeleteSanction)
+                if (sanctionToPreview == null) return null
+                const sanction = detail?.sanctions.find((entry) => entry.id === sanctionToPreview)
                 if (!sanction) return null
                 const isActive = sanction.action === 'restrict' && detail?.is_restricted && detail.sanctions.filter((x) => x.action === 'restrict')[0]?.id === sanction.id
                 return (

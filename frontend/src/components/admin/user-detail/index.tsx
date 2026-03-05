@@ -37,6 +37,9 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
   const [confirmToggleAdmin, setConfirmToggleAdmin] = useState<'grant' | 'revoke' | null>(null)
   const [confirmDeleteSanction, setConfirmDeleteSanction] = useState<number | null>(null)
   const [confirmReset, setConfirmReset] = useState<'2fa' | 'passkeys' | 'sessions' | null>(null)
+  const [lastToggleAdmin, setLastToggleAdmin] = useState<'grant' | 'revoke'>('grant')
+  const [lastDeleteSanction, setLastDeleteSanction] = useState<number | null>(null)
+  const [lastReset, setLastReset] = useState<'2fa' | 'passkeys' | 'sessions'>('2fa')
   const [confirmRemoveAvatar, setConfirmRemoveAvatar] = useState(false)
   const [confirmChangeUsername, setConfirmChangeUsername] = useState(false)
 
@@ -58,6 +61,9 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
     setConfirmRemoveAvatar(false)
     setConfirmChangeUsername(false)
     setConfirmDeleteSanction(null)
+    setLastDeleteSanction(null)
+    setLastToggleAdmin('grant')
+    setLastReset('2fa')
     setConfirmReset(null)
     setModerating(null)
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -146,8 +152,14 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             onNewUsernameChange={setNewUsername}
             onConfirmChangeUsername={() => setConfirmChangeUsername(true)}
             onAskRemoveAvatar={() => setConfirmRemoveAvatar(true)}
-            onAskReset2FA={() => setConfirmReset('2fa')}
-            onAskResetPasskeys={() => setConfirmReset('passkeys')}
+            onAskReset2FA={() => {
+              setLastReset('2fa')
+              setConfirmReset('2fa')
+            }}
+            onAskResetPasskeys={() => {
+              setLastReset('passkeys')
+              setConfirmReset('passkeys')
+            }}
             onRestrictionTypeChange={setRestrictionType}
             onDurationHoursChange={setDurationHours}
             onRestrictReasonChange={setRestrictReason}
@@ -155,10 +167,19 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
             onUnrestrictReasonChange={setUnrestrictReason}
             onAskConfirmRestrict={() => setConfirmRestrict(true)}
             onAskConfirmUnrestrict={() => setConfirmUnrestrict(true)}
-            onAskToggleAdmin={setConfirmToggleAdmin}
+            onAskToggleAdmin={(action) => {
+              setLastToggleAdmin(action)
+              setConfirmToggleAdmin(action)
+            }}
             onAskDeleteUser={() => setConfirmDelete(true)}
-            onAskResetSessions={() => setConfirmReset('sessions')}
-            onAskDeleteSanction={setConfirmDeleteSanction}
+            onAskResetSessions={() => {
+              setLastReset('sessions')
+              setConfirmReset('sessions')
+            }}
+            onAskDeleteSanction={(id) => {
+              setLastDeleteSanction(id)
+              setConfirmDeleteSanction(id)
+            }}
           />
         </DialogContent>
       </Dialog>
@@ -179,7 +200,7 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
         setConfirmDelete={setConfirmDelete}
         confirmDeleteSanction={confirmDeleteSanction}
         setConfirmDeleteSanction={setConfirmDeleteSanction}
-        lastDeleteSanction={confirmDeleteSanction ?? 0}
+        lastDeleteSanction={lastDeleteSanction}
         onConfirmRestrict={() => void handleRestrict()}
         onConfirmUnrestrict={() => void handleUnrestrict()}
         onConfirmDeleteUser={() => void handleDeleteUser()}
@@ -194,10 +215,10 @@ export function AdminUserDetailDialog({ userId, open, onOpenChange }: AdminUserD
         moderating={moderating}
         confirmToggleAdmin={confirmToggleAdmin}
         setConfirmToggleAdmin={setConfirmToggleAdmin}
-        lastToggleAdmin={confirmToggleAdmin ?? 'grant'}
+        lastToggleAdmin={lastToggleAdmin}
         confirmReset={confirmReset}
         setConfirmReset={setConfirmReset}
-        lastReset={confirmReset ?? '2fa'}
+        lastReset={lastReset}
         confirmRemoveAvatar={confirmRemoveAvatar}
         setConfirmRemoveAvatar={setConfirmRemoveAvatar}
         confirmChangeUsername={confirmChangeUsername}

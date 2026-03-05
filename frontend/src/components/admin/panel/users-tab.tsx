@@ -195,7 +195,7 @@ export function AdminPanelUsersTab({
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {user.is_super_admin ? (
-                        <Badge variant="outline" className="gap-1 border-amber-500/45 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                        <Badge variant="default" className="gap-1 !border-transparent !bg-gradient-to-r !from-purple-600 !to-pink-600 !text-white">
                           <Shield className="h-3 w-3" />
                           Super Admin
                         </Badge>
