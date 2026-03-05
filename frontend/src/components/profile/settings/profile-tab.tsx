@@ -16,7 +16,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 interface UserLike {
   username?: string
   email?: string
-  avatar_url?: string
+  avatar_url?: string | null
   use_gravatar?: boolean
   is_admin?: boolean
   is_super_admin?: boolean

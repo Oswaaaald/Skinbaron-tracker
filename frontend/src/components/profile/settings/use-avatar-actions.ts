@@ -11,7 +11,7 @@ interface ToastFn {
 }
 
 interface UseAvatarActionsParams {
-  updateUser: (data: { avatar_url?: string; use_gravatar?: boolean }) => void
+  updateUser: (data: { avatar_url?: string | null; use_gravatar?: boolean }) => void
   toast: ToastFn
 }
 
@@ -60,7 +60,7 @@ export function useAvatarActions({ updateUser, toast }: UseAvatarActionsParams) 
     try {
       const response = await apiClient.delete<{ avatar_url: string | null }>('/api/user/avatar')
       if (response.success) {
-        updateUser({ avatar_url: response.data?.avatar_url ?? undefined })
+        updateUser({ avatar_url: response.data?.avatar_url ?? null })
         toast({ title: '✅ Avatar removed', description: 'Your custom avatar has been removed' })
         void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.USER_PROFILE] })
       } else {
@@ -78,7 +78,7 @@ export function useAvatarActions({ updateUser, toast }: UseAvatarActionsParams) 
     try {
       const response = await apiClient.patch<{ use_gravatar: boolean; avatar_url: string | null }>('/api/user/avatar-settings', { use_gravatar: checked })
       if (response.success && response.data) {
-        updateUser({ use_gravatar: response.data.use_gravatar, avatar_url: response.data.avatar_url ?? undefined })
+        updateUser({ use_gravatar: response.data.use_gravatar, avatar_url: response.data.avatar_url ?? null })
         toast({
           title: checked ? '✅ Gravatar enabled' : '✅ Gravatar disabled',
           description: checked ? 'Your Gravatar will be used as fallback' : 'Gravatar fallback has been disabled',

@@ -168,6 +168,7 @@ async function processRuleWithItems(
   let newAlerts = 0;
   let skippedExisting = 0;
   let priceChanges = 0;
+  const changedPriceSaleIds: string[] = [];
   const matchingItems: SkinBaronItem[] = [];
 
   for (const item of items) {
@@ -178,11 +179,15 @@ async function processRuleWithItems(
         skippedExisting++;
         continue;
       }
-      await store.alerts.deleteBySaleIdAndRuleId(item.saleId, ruleId);
+      changedPriceSaleIds.push(item.saleId);
       priceChanges++;
     }
 
     matchingItems.push(item);
+  }
+
+  if (changedPriceSaleIds.length > 0) {
+    await store.alerts.deleteBySaleIdsForRule(changedPriceSaleIds, ruleId);
   }
 
   if (matchingItems.length > 0) {
@@ -202,10 +207,10 @@ async function processRuleWithItems(
     newAlerts = insertedCount;
   }
 
-  const webhooks = await store.webhooks.getRuleWebhooksForNotification(ruleId);
-  if (webhooks.length > 0) {
-    const unnotifiedAlerts = await store.alerts.findUnnotifiedByRuleId(ruleId);
-    if (unnotifiedAlerts.length > 0) {
+  const unnotifiedAlerts = await store.alerts.findUnnotifiedByRuleId(ruleId);
+  if (unnotifiedAlerts.length > 0) {
+    const webhooks = await store.webhooks.getRuleWebhooksForNotification(ruleId);
+    if (webhooks.length > 0) {
       await sendAndMarkNotifications(unnotifiedAlerts, webhooks, rule, client, deps);
     }
   }

@@ -99,6 +99,13 @@
       "when": 1772200000000,
       "tag": "0013_pending_challenges_reconcile",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1772722000000,
+      "tag": "0014_email_normalization_and_trgm",
+      "breakpoints": true
     }
   ]
 }

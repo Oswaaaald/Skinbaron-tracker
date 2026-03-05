@@ -14,7 +14,7 @@ interface UserLike {
   id?: number
   username?: string
   email?: string
-  avatar_url?: string
+  avatar_url?: string | null
   use_gravatar?: boolean
   is_admin?: boolean
   has_password?: boolean
@@ -60,12 +60,12 @@ export function useProfileMutations({
       successMessage: 'Profile updated successfully',
       onSuccess: (response) => {
         if (response?.data) {
-          const userData = response.data as { id: number; username: string; email: string; avatar_url?: string; use_gravatar?: boolean; is_admin?: boolean }
+          const userData = response.data as { id: number; username: string; email: string; avatar_url?: string | null; use_gravatar?: boolean; is_admin?: boolean }
           updateUser({
             id: userData.id,
             username: userData.username,
             email: userData.email,
-            avatar_url: userData.avatar_url,
+            avatar_url: userData.avatar_url ?? null,
             use_gravatar: userData.use_gravatar,
             is_admin: userData.is_admin,
           })

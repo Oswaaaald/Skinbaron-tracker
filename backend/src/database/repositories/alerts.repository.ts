@@ -83,11 +83,6 @@ export class AlertsRepository {
     return result.length;
   }
 
-  async deleteBySaleIdAndRuleId(saleId: string, ruleId: number): Promise<void> {
-    await this.db.delete(alerts)
-      .where(and(eq(alerts.sale_id, saleId), eq(alerts.rule_id, ruleId)));
-  }
-
   async deleteAllByUserId(userId: number): Promise<number> {
     const result = await this.db.delete(alerts)
       .where(

@@ -47,7 +47,12 @@ export class UsersRepository {
 
   async findByEmail(email: string, decrypt2FA = false): Promise<User | null> {
     const normalizedEmail = email.toLowerCase().trim();
-    const [user] = await this.db.select().from(users).where(sql`lower(${users.email}) = ${normalizedEmail}`).limit(1);
+    // Fast path uses direct equality and can leverage the unique index on users.email.
+    let [user] = await this.db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+    // Backward-compatible fallback for legacy rows that may not be normalized yet.
+    if (!user) {
+      [user] = await this.db.select().from(users).where(sql`lower(${users.email}) = ${normalizedEmail}`).limit(1);
+    }
     if (!user) return null;
     return decrypt2FA ? this.withDecryptedFields(user) : user;
   }

@@ -70,11 +70,11 @@ export type UserProfile = {
   id: number;
   username: string;
   email: string;
-  avatar_url?: string;
-  is_admin?: boolean;
-  is_super_admin?: boolean;
-  use_gravatar?: boolean;
-  has_password?: boolean;
+  avatar_url: string | null;
+  is_admin: boolean;
+  is_super_admin: boolean;
+  use_gravatar: boolean;
+  has_password: boolean;
 };
 
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {

@@ -69,12 +69,21 @@ export function useAuthActions({ setUser, setAccessExpiry, setIsReady, queryClie
           setAccessExpiry(tokenExpiresAt)
         }
 
-        if (data.data?.id && data.data.username && data.data.email) {
+        if (
+          data.data?.id &&
+          data.data.username &&
+          data.data.email &&
+          typeof data.data.is_admin === 'boolean' &&
+          typeof data.data.is_super_admin === 'boolean' &&
+          typeof data.data.use_gravatar === 'boolean' &&
+          typeof data.data.has_password === 'boolean' &&
+          'avatar_url' in data.data
+        ) {
           setUser({
             id: data.data.id,
             username: data.data.username,
             email: data.data.email,
-            avatar_url: data.data.avatar_url,
+            avatar_url: data.data.avatar_url ?? null,
             is_admin: data.data.is_admin,
             is_super_admin: data.data.is_super_admin,
             use_gravatar: data.data.use_gravatar,

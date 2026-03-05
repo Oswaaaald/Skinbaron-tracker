@@ -162,7 +162,66 @@ function setupSystemStatus(fastify: FastifyInstance): void {
       description: 'Get system status including scheduler and health information',
       tags: ['System'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
-      // Note: No response schema to allow dynamic nested object structure
+      response: {
+        200: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['success', 'data'],
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['scheduler', 'health'],
+              properties: {
+                scheduler: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['isRunning', 'lastRunTime', 'nextRunTime', 'totalRuns', 'totalAlerts', 'errorCount', 'lastError'],
+                  properties: {
+                    isRunning: { type: 'boolean' },
+                    lastRunTime: { type: 'string', nullable: true },
+                    nextRunTime: { type: 'string', nullable: true },
+                    totalRuns: { type: 'number' },
+                    totalAlerts: { type: 'number' },
+                    errorCount: { type: 'number' },
+                    lastError: { type: 'string', nullable: true },
+                  },
+                },
+                health: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['status', 'timestamp', 'services', 'stats'],
+                  properties: {
+                    status: { type: 'string', enum: ['healthy', 'degraded'] },
+                    timestamp: { type: 'string' },
+                    services: {
+                      type: 'object',
+                      additionalProperties: false,
+                      required: ['database', 'skinbaron_api', 'scheduler'],
+                      properties: {
+                        database: { type: 'string' },
+                        skinbaron_api: { type: 'string' },
+                        scheduler: { type: 'string' },
+                      },
+                    },
+                    stats: {
+                      type: 'object',
+                      additionalProperties: false,
+                      required: ['uptime', 'memory', 'version'],
+                      properties: {
+                        uptime: { type: 'number' },
+                        memory: { type: 'object', additionalProperties: true },
+                        version: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     preHandler: [fastify.authenticate, fastify.requireAdmin],
   }, async (request, reply) => {

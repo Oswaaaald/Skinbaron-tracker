@@ -5,6 +5,7 @@ import type {
   PaginatedResponse,
   Rule,
   SystemStats,
+  UserProfile,
   Webhook,
 } from '../api-types';
 import type { ApiClientRuntime } from './shared';
@@ -43,17 +44,8 @@ export type DataApiMethods = {
   batchEnableWebhooks(webhookIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>>;
   batchDisableWebhooks(webhookIds?: number[]): Promise<ApiResponse<{ message: string; count: number }>>;
   batchDeleteWebhooks(webhookIds?: number[], confirmAll?: boolean): Promise<ApiResponse<{ message: string; count: number }>>;
-  searchItems(query: string, limit?: number): Promise<ApiResponse<Array<{ name: string; imageUrl?: string }>>>;
-  getUserProfile(options?: { allowRefresh?: boolean }): Promise<ApiResponse<{
-    id: number;
-    username: string;
-    email: string;
-    avatar_url: string;
-    use_gravatar: boolean;
-    is_admin: boolean;
-    is_super_admin: boolean;
-    has_password: boolean;
-  }>>;
+  searchItems(query: string, limit?: number, options?: { signal?: AbortSignal }): Promise<ApiResponse<Array<{ name: string; imageUrl?: string }>>>;
+  getUserProfile(options?: { allowRefresh?: boolean }): Promise<ApiResponse<UserProfile>>;
 };
 
 export function createDataApiMethods(client: ApiClientRuntime): DataApiMethods {
@@ -194,7 +186,7 @@ export function createDataApiMethods(client: ApiClientRuntime): DataApiMethods {
       });
     },
 
-    async searchItems(query: string, limit?: number): Promise<ApiResponse<Array<{
+    async searchItems(query: string, limit?: number, options?: { signal?: AbortSignal }): Promise<ApiResponse<Array<{
       name: string;
       imageUrl?: string;
     }>>> {
@@ -204,20 +196,11 @@ export function createDataApiMethods(client: ApiClientRuntime): DataApiMethods {
       return client.request<Array<{
         name: string;
         imageUrl?: string;
-      }>>(`/api/items/search?${params.toString()}`);
+      }>>(`/api/items/search?${params.toString()}`, { method: 'GET', signal: options?.signal });
     },
 
-    async getUserProfile(options?: { allowRefresh?: boolean }): Promise<ApiResponse<{
-      id: number;
-      username: string;
-      email: string;
-      avatar_url: string;
-      use_gravatar: boolean;
-      is_admin: boolean;
-      is_super_admin: boolean;
-      has_password: boolean;
-    }>> {
-      return client.request('/api/user/profile', { method: 'GET' }, options?.allowRefresh ?? true);
+    async getUserProfile(options?: { allowRefresh?: boolean }): Promise<ApiResponse<UserProfile>> {
+      return client.request<UserProfile>('/api/user/profile', { method: 'GET' }, options?.allowRefresh ?? true);
     },
   };
 }

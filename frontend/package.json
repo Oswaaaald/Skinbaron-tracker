@@ -13,6 +13,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "type-check": "tsc --noEmit",
     "dev:docker": "docker build -f frontend/Dockerfile.dev -t skinbaron-frontend-dev .. && docker run -p 3000:3000 -v $(pwd)/..:/app skinbaron-frontend-dev",
     "docker:build": "docker build -f frontend/Dockerfile -t skinbaron-frontend ..",
     "docker:run": "docker run -p 3000:3000 skinbaron-frontend"

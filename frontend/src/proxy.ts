@@ -107,7 +107,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files, Next.js internals, and health-check endpoints.
-    '/((?!api/health|_next/static|_next/image|favicon\.ico|robots\.txt|monitoring|health|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // Match all page routes except API/static/health endpoints.
+    '/((?!api(?:/|$)|_next/static|_next/image|favicon\.ico|robots\.txt|monitoring|health|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

@@ -44,11 +44,16 @@ export function ItemCombobox({
   const [suggestions, setSuggestions] = React.useState<ItemSuggestion[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const listRef = React.useRef<HTMLDivElement>(null)
+  const activeSearchRef = React.useRef(0)
   
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   // Fetch suggestions when search query changes
   React.useEffect(() => {
+    const searchId = activeSearchRef.current + 1
+    activeSearchRef.current = searchId
+    const controller = new AbortController()
+
     const fetchSuggestions = async () => {
       if (!debouncedSearch || debouncedSearch.trim().length < 2) {
         setSuggestions([])
@@ -57,21 +62,33 @@ export function ItemCombobox({
 
       setIsLoading(true)
       try {
-        const result = await apiClient.searchItems(debouncedSearch)
+        const result = await apiClient.searchItems(debouncedSearch, undefined, { signal: controller.signal })
+        if (activeSearchRef.current !== searchId) return
+
         if (result.success && result.data) {
           setSuggestions(result.data)
         } else {
           setSuggestions([])
         }
       } catch (error) {
+        if ((error as { name?: string })?.name === 'AbortError') {
+          return
+        }
+        if (activeSearchRef.current !== searchId) return
         logger.error("Failed to fetch item suggestions:", error)
         setSuggestions([])
       } finally {
-        setIsLoading(false)
+        if (activeSearchRef.current === searchId) {
+          setIsLoading(false)
+        }
       }
     }
 
     void fetchSuggestions()
+
+    return () => {
+      controller.abort()
+    }
   }, [debouncedSearch])
 
   // Update search query when value prop changes
