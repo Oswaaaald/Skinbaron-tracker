@@ -53,7 +53,7 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
             Overall system status and availability
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="mt-2 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Status</span>
             <Badge variant={health?.status === 'healthy' ? 'default' : 'destructive'}>
@@ -110,7 +110,7 @@ export function SystemStats({ enabled = true, prefetched }: { enabled?: boolean;
             Automatic scanning for new items matching your rules
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="mt-2 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Status</span>
             <Badge variant={status?.['scheduler']?.isRunning || health?.['services']?.['scheduler'] === 'running' ? 'default' : 'secondary'}>

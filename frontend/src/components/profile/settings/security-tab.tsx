@@ -69,7 +69,7 @@ export function SecurityTab({
               : 'Set a password to enable email/password login alongside your social accounts'}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="mt-2">
           {passwordFeedback.success && (
             <Alert className="border-primary/50 bg-primary/10 mb-4">
               <AlertDescription className="text-primary">{passwordFeedback.success}</AlertDescription>
@@ -135,7 +135,7 @@ export function SecurityTab({
           </CardTitle>
           <CardDescription>Use an authenticator app like Google Authenticator or Authy</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="mt-2 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Status:</span>
             {twoFactorEnabled ? (
@@ -173,7 +173,7 @@ export function SecurityTab({
           </CardTitle>
           <CardDescription>Sign in with biometrics, security keys, or device passkeys</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="mt-2">
           <PasskeyManager />
         </CardContent>
       </Card>
