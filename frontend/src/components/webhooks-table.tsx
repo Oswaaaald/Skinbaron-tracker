@@ -1,78 +1,50 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
+import { apiClient, type Webhook } from '@/lib/api'
+import { QUERY_KEYS } from '@/lib/constants'
+import { useAuth } from '@/contexts/auth-context'
+import { useSyncStats } from '@/hooks/use-sync-stats'
+import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { WebhooksTableSkeleton } from '@/components/ui/skeletons'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Edit, Trash2, Play, Pause, Plus } from 'lucide-react'
-import { apiClient, type Webhook } from '@/lib/api'
-import { formatDateOnly } from '@/lib/formatters'
-import { useAuth } from '@/contexts/auth-context'
-import { useApiMutation } from '@/hooks/use-api-mutation'
-import { useToast } from '@/hooks/use-toast'
-import { useSyncStats } from '@/hooks/use-sync-stats'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { QUERY_KEYS } from '@/lib/constants'
+import { WebhooksTableBatchActions } from '@/components/webhooks-table-batch-actions'
+import { WebhooksTableContent } from '@/components/webhooks-table-content'
+import { WebhooksTableDialogs } from '@/components/webhooks-table-dialogs'
+import { useWebhooksTableMutations } from '@/components/webhooks-table-mutations'
+import { initialWebhookFormData, type WebhookFormData } from '@/components/webhooks-table.types'
 
-interface WebhookFormData {
-  name: string
-  webhook_url: string
-  notification_style: 'compact' | 'detailed'
-  is_active: boolean
-}
-
-const initialFormData: WebhookFormData = {
-  name: '',
-  webhook_url: '',
-  notification_style: 'compact',
-  is_active: true,
-}
-
-export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialogChange }: {
+interface WebhooksTableProps {
   onCreateWebhook?: () => void
   createDialogOpen?: boolean
   onCreateDialogChange?: (open: boolean) => void
-}) {
+}
+
+export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialogChange }: WebhooksTableProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null)
   const [deleteDialogName, setDeleteDialogName] = useState('')
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null)
-  const [formData, setFormData] = useState<WebhookFormData>(initialFormData)
+  const [formData, setFormData] = useState<WebhookFormData>(initialWebhookFormData)
   const [error, setError] = useState('')
   const [selectedWebhooks, setSelectedWebhooks] = useState<Set<number>>(new Set())
   const [batchAction, setBatchAction] = useState<'enable' | 'disable' | 'delete' | null>(null)
   const [batchDeleteSize, setBatchDeleteSize] = useState(0)
 
-  const resetForm = () => {
-    setFormData(initialFormData)
-    setEditingWebhook(null)
-    setError('')
-  }
-
   const { isReady, isAuthenticated } = useAuth()
   const { syncStats } = useSyncStats()
   const { toast } = useToast()
 
-  // Sync external dialog trigger from page-level button
+  const resetForm = () => {
+    setFormData(initialWebhookFormData)
+    setEditingWebhook(null)
+    setError('')
+  }
+
   useEffect(() => {
     if (createDialogOpen && !isDialogOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing external dialog prop
@@ -84,120 +56,40 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
     }
   }, [createDialogOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch webhooks
   const { data: webhooks, isLoading } = useQuery({
     queryKey: [QUERY_KEYS.WEBHOOKS],
     queryFn: async () => {
-      const result = await apiClient.getWebhooks(false) // Don't decrypt for listing
+      const result = await apiClient.getWebhooks(false)
       if (!result.success) throw new Error(result.error)
       return result.data || []
     },
-    enabled: isReady && isAuthenticated, // Wait for auth to be ready and user to be authenticated
+    enabled: isReady && isAuthenticated,
   })
 
-  // Create webhook mutation
-  const createWebhookMutation = useApiMutation(
-    (data: WebhookFormData) => apiClient.createWebhook(data),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      successMessage: 'Webhook created successfully',
-      onSuccess: () => {
-        setIsDialogOpen(false)
-        setTimeout(() => resetForm(), 200)
-        void syncStats()
-      },
-      onError: (error: Error) => {
-        setError(error.message)
-      },
-    }
-  )
-
-  // Update webhook mutation
-  const updateWebhookMutation = useApiMutation(
-    ({ id, data }: { id: number; data: Partial<WebhookFormData> }) => 
-      apiClient.updateWebhook(id, data),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      successMessage: 'Webhook updated successfully',
-      onSuccess: () => {
-        setIsDialogOpen(false)
-        setTimeout(() => resetForm(), 200)
-        void syncStats()
-      },
-      onError: (error: Error) => {
-        setError(error.message)
-      },
-    }
-  )
-
-  // Toggle active mutation (lightweight, no dialog)
-  const toggleActiveMutation = useApiMutation(
-    ({ id, is_active }: { id: number; is_active: boolean }) =>
-      apiClient.updateWebhook(id, { is_active }),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      onSuccess: (_, { is_active }) => {
-        toast({
-          title: is_active ? '✅ Webhook enabled' : '⚠️ Webhook disabled',
-          description: is_active
-            ? 'Webhook is now active and will send notifications'
-            : 'Webhook has been paused',
-        })
-        void syncStats()
-      },
-    }
-  )
-
-  // Delete webhook mutation
-  const deleteWebhookMutation = useApiMutation(
-    (id: number) => apiClient.deleteWebhook(id),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      successMessage: 'Webhook deleted successfully',
-      errorMessage: 'Failed to delete webhook',
-      onSuccess: () => {
-        void syncStats()
-      },
-    }
-  )
-
-  const batchEnableMutation = useApiMutation(
-    (webhookIds?: number[]) => apiClient.batchEnableWebhooks(webhookIds),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      successMessage: 'Webhooks enabled successfully',
-      onSuccess: () => { setSelectedWebhooks(new Set()); void syncStats() },
-    }
-  )
-
-  const batchDisableMutation = useApiMutation(
-    (webhookIds?: number[]) => apiClient.batchDisableWebhooks(webhookIds),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      successMessage: 'Webhooks disabled successfully',
-      onSuccess: () => { setSelectedWebhooks(new Set()); void syncStats() },
-    }
-  )
-
-  const batchDeleteMutation = useApiMutation(
-    ({ webhookIds, confirmAll }: { webhookIds?: number[]; confirmAll: boolean }) => 
-      apiClient.batchDeleteWebhooks(webhookIds, confirmAll),
-    {
-      invalidateKeys: [[QUERY_KEYS.WEBHOOKS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.USER_STATS]],
-      onSuccess: () => {
-        setBatchAction(null)
-        void syncStats()
-      },
-      successMessage: 'Webhooks deleted successfully',
-    }
-  )
+  const {
+    createWebhookMutation,
+    updateWebhookMutation,
+    toggleActiveMutation,
+    deleteWebhookMutation,
+    batchEnableMutation,
+    batchDisableMutation,
+    batchDeleteMutation,
+  } = useWebhooksTableMutations({
+    syncStats,
+    toast,
+    setSelectedWebhooks,
+    setBatchAction,
+    setError,
+    closeDialog: () => setIsDialogOpen(false),
+    resetForm,
+  })
 
   const handleOpenDialog = (webhook?: Webhook) => {
     if (webhook) {
       setEditingWebhook(webhook)
       setFormData({
         name: webhook.name,
-        webhook_url: '', // Don't pre-fill encrypted URL
+        webhook_url: '',
         notification_style: webhook.notification_style || 'compact',
         is_active: webhook.is_active,
       })
@@ -216,33 +108,33 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (editingWebhook) {
-      // For updates, only name is required
       if (!formData.name) {
         setError('Name is required')
         return
       }
-      
-      // Only send fields that might have changed
+
       const updates: Partial<WebhookFormData> = {
         name: formData.name,
         notification_style: formData.notification_style,
         is_active: formData.is_active,
       }
-      // Only include URL if it's provided (for updates)
+
       if (formData.webhook_url.trim()) {
         updates.webhook_url = formData.webhook_url
       }
+
       updateWebhookMutation.mutate({ id: editingWebhook.id as number, data: updates })
-    } else {
-      // For creation, both name and URL are required
-      if (!formData.name || !formData.webhook_url) {
-        setError('Name and webhook URL are required')
-        return
-      }
-      createWebhookMutation.mutate(formData)
+      return
     }
+
+    if (!formData.name || !formData.webhook_url) {
+      setError('Name and webhook URL are required')
+      return
+    }
+
+    createWebhookMutation.mutate(formData)
   }
 
   const handleDelete = (webhook: Webhook) => {
@@ -262,9 +154,9 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
     if (!webhooks) return
     if (selectedWebhooks.size === webhooks.length) {
       setSelectedWebhooks(new Set())
-    } else {
-      setSelectedWebhooks(new Set(webhooks.map(w => w.id).filter((id): id is number => id != null)))
+      return
     }
+    setSelectedWebhooks(new Set(webhooks.map((webhook) => webhook.id).filter((id): id is number => id != null)))
   }
 
   const handleSelectWebhook = (webhookId: number) => {
@@ -303,146 +195,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
     return <WebhooksTableSkeleton />
   }
 
-  const hasWebhooks = webhooks && webhooks.length > 0
-
-  const renderDialogs = () => (
-    <>
-      {/* Webhook Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open)
-        if (!open) onCreateDialogChange?.(false)
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle>
-                {editingWebhook ? 'Edit Webhook' : 'Create New Webhook'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingWebhook 
-                  ? 'Update your webhook configuration. URLs are encrypted for security.'
-                  : 'Add a new webhook endpoint for receiving notifications. URLs are encrypted and stored securely.'
-                }
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="My Discord Webhook"
-                  maxLength={50}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="webhook_url">
-                  Webhook URL {editingWebhook ? '(optional - leave empty to keep current)' : ''}
-                </Label>
-                <Input
-                  id="webhook_url"
-                  type="url"
-                  value={formData.webhook_url}
-                  onChange={(e) => setFormData({ ...formData, webhook_url: e.target.value })}
-                  placeholder={editingWebhook ? "Leave empty to keep current URL" : "https://discord.com/api/webhooks/..."}
-                  required={!editingWebhook}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notification_style">Notification Style</Label>
-                <Select
-                  value={formData.notification_style}
-                  onValueChange={(value: 'compact' | 'detailed') =>
-                    setFormData({ ...formData, notification_style: value })
-                  }
-                >
-                  <SelectTrigger id="notification_style">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="compact">Compact</SelectItem>
-                    <SelectItem value="detailed">Detailed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-row items-center justify-between rounded-lg border p-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="is_active" className="text-sm font-medium">Enable Webhook</Label>
-                  <p className="text-[0.8rem] text-muted-foreground">
-                    Webhook will send notifications about alerts
-                  </p>
-                </div>
-                <Switch
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, is_active: checked })
-                  }
-                />
-              </div>
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={createWebhookMutation.isPending || updateWebhookMutation.isPending}
-              >
-                {(createWebhookMutation.isPending || updateWebhookMutation.isPending) && (
-                  <LoadingSpinner size="sm" inline />
-                )}
-                <span className={createWebhookMutation.isPending || updateWebhookMutation.isPending ? 'ml-2' : ''}>
-                  {editingWebhook ? 'Update' : 'Create'}
-                </span>
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        onOpenChange={setDeleteConfirmOpen}
-        title="Delete Webhook"
-        description={`Are you sure you want to delete "${deleteDialogName}"? This action cannot be undone.`}
-        confirmText="Delete"
-        variant="destructive"
-        onConfirm={confirmDelete}
-      />
-
-      {/* Batch Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={batchAction === 'delete'}
-        onOpenChange={(open) => !open && setBatchAction(null)}
-        title="Delete Webhooks"
-        description={
-          batchDeleteSize > 0
-            ? `Are you sure you want to delete ${batchDeleteSize} selected webhook(s)? This action cannot be undone.`
-            : `Are you sure you want to delete ALL ${webhooks?.length || 0} webhooks? This action cannot be undone and will permanently delete all your webhook configurations.`
-        }
-        confirmText="Delete"
-        variant="destructive"
-        onConfirm={confirmBatchDelete}
-      />
-    </>
-  )
+  const hasWebhooks = !!webhooks && webhooks.length > 0
 
   if (!hasWebhooks) {
     return (
@@ -461,7 +214,28 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
             )}
           </CardHeader>
         </Card>
-        {renderDialogs()}
+
+        <WebhooksTableDialogs
+          isDialogOpen={isDialogOpen}
+          setIsDialogOpen={setIsDialogOpen}
+          editingWebhook={editingWebhook}
+          formData={formData}
+          setFormData={setFormData}
+          error={error}
+          onCreateDialogChange={onCreateDialogChange}
+          onSubmit={handleSubmit}
+          createPending={createWebhookMutation.isPending}
+          updatePending={updateWebhookMutation.isPending}
+          deleteConfirmOpen={deleteConfirmOpen}
+          onDeleteConfirmOpenChange={setDeleteConfirmOpen}
+          deleteDialogName={deleteDialogName}
+          onConfirmDelete={confirmDelete}
+          batchDeleteOpen={batchAction === 'delete'}
+          onBatchDeleteOpenChange={(open) => !open && setBatchAction(null)}
+          batchDeleteSize={batchDeleteSize}
+          totalWebhooks={webhooks?.length || 0}
+          onConfirmBatchDelete={confirmBatchDelete}
+        />
       </>
     )
   }
@@ -470,137 +244,51 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
     <>
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
-                {selectedWebhooks.size > 0 ? `${selectedWebhooks.size} selected` : `${webhooks.length} total`}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBatchEnable}
-                disabled={batchEnableMutation.isPending}
-                className="flex-1 sm:flex-none"
-              >
-                <span className="hidden sm:inline">{selectedWebhooks.size > 0 ? 'Enable Selected' : 'Enable All'}</span>
-                <span className="sm:hidden">Enable</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBatchDisable}
-                disabled={batchDisableMutation.isPending}
-                className="flex-1 sm:flex-none"
-              >
-                <span className="hidden sm:inline">{selectedWebhooks.size > 0 ? 'Disable Selected' : 'Disable All'}</span>
-                <span className="sm:hidden">Disable</span>
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBatchDelete}
-                disabled={batchDeleteMutation.isPending}
-                className="flex-1 sm:flex-none"
-              >
-                <span className="hidden sm:inline">{selectedWebhooks.size > 0 ? 'Delete Selected' : 'Delete All'}</span>
-                <span className="sm:hidden">Delete</span>
-              </Button>
-            </div>
-          </div>
+          <WebhooksTableBatchActions
+            selectedCount={selectedWebhooks.size}
+            totalCount={webhooks.length}
+            enablePending={batchEnableMutation.isPending}
+            disablePending={batchDisableMutation.isPending}
+            deletePending={batchDeleteMutation.isPending}
+            onEnable={handleBatchEnable}
+            onDisable={handleBatchDisable}
+            onDelete={handleBatchDelete}
+          />
         </CardHeader>
         <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <input
-                  type="checkbox"
-                  checked={!!webhooks && selectedWebhooks.size === webhooks.length && webhooks.length > 0}
-                  onChange={handleSelectAll}
-                  className="cursor-pointer"
-                  aria-label="Select all webhooks"
-                />
-              </TableHead>
-              <TableHead>Name</TableHead>
-                <TableHead>Style</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {webhooks?.map((webhook) => (
-                <TableRow key={webhook.id}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={webhook.id != null && selectedWebhooks.has(webhook.id)}
-                      onChange={() => webhook.id != null && handleSelectWebhook(webhook.id)}
-                      className="cursor-pointer"
-                      aria-label={`Select webhook ${webhook.name}`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium max-w-[200px] truncate">{webhook.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {webhook.notification_style === 'detailed' ? 'Detailed' : 'Compact'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={webhook.is_active ? 'default' : 'secondary'}>
-                      {webhook.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {webhook.created_at ? formatDateOnly(webhook.created_at) : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open webhook actions menu">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleOpenDialog(webhook)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleActive(webhook)}>
-                          {webhook.is_active ? (
-                            <>
-                              <Pause className="mr-2 h-4 w-4" />
-                              Disable
-                            </>
-                          ) : (
-                            <>
-                              <Play className="mr-2 h-4 w-4" />
-                              Enable
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(webhook)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <WebhooksTableContent
+            webhooks={webhooks}
+            selectedWebhooks={selectedWebhooks}
+            onSelectAll={handleSelectAll}
+            onSelectWebhook={handleSelectWebhook}
+            onEdit={handleOpenDialog}
+            onToggleActive={handleToggleActive}
+            onDelete={handleDelete}
+          />
         </div>
       </Card>
-      {renderDialogs()}
+
+      <WebhooksTableDialogs
+        isDialogOpen={isDialogOpen}
+        setIsDialogOpen={setIsDialogOpen}
+        editingWebhook={editingWebhook}
+        formData={formData}
+        setFormData={setFormData}
+        error={error}
+        onCreateDialogChange={onCreateDialogChange}
+        onSubmit={handleSubmit}
+        createPending={createWebhookMutation.isPending}
+        updatePending={updateWebhookMutation.isPending}
+        deleteConfirmOpen={deleteConfirmOpen}
+        onDeleteConfirmOpenChange={setDeleteConfirmOpen}
+        deleteDialogName={deleteDialogName}
+        onConfirmDelete={confirmDelete}
+        batchDeleteOpen={batchAction === 'delete'}
+        onBatchDeleteOpenChange={(open) => !open && setBatchAction(null)}
+        batchDeleteSize={batchDeleteSize}
+        totalWebhooks={webhooks.length}
+        onConfirmBatchDelete={confirmBatchDelete}
+      />
     </>
   )
 }

@@ -1,41 +1,13 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useRef, useMemo, ReactNode, useCallback } from 'react'
+import { createContext, useEffect, useState, useRef, useMemo, ReactNode, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiClient, ApiError } from '@/lib/api'
 import { logger } from '@/lib/logger'
+import type { AuthContextType, InitialAuthState, User } from './auth-context.types'
+export type { AuthContextType, InitialAuthState, User } from './auth-context.types'
 
-export interface User {
-  id: number
-  username: string
-  email: string
-  avatar_url?: string
-  use_gravatar?: boolean
-  is_admin?: boolean
-  is_super_admin?: boolean
-  has_password?: boolean
-}
-
-export interface AuthContextType {
-  user: User | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  isReady: boolean // New flag to indicate auth state is fully initialized
-  login: (email: string, password: string, totpCode?: string) => Promise<{ success: boolean; error?: string; requires2FA?: boolean; restrictionExpiresAt?: string }>
-  register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  logout: () => Promise<void>
-  updateUser: (userData: Partial<User>) => void
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-type InitialAuthState = {
-  user: User
-  token: string
-  refreshToken: string | null
-  expiresAt: number | null
-  refreshExpiresAt: number | null
-}
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children, initialAuth }: { children: ReactNode; initialAuth?: InitialAuthState | null }) {
   const [user, setUser] = useState<User | null>(initialAuth?.user ?? null)
@@ -313,10 +285,4 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   )
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+export { useAuth } from './use-auth'

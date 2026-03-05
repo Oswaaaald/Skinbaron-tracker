@@ -1,46 +1,35 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, AlertCircle, ArrowUpDown, Ban, Bug, ChevronLeft, ChevronRight, Clock, History, Search, Shield, Users, Wrench } from 'lucide-react'
-import { UserAvatar } from '@/components/ui/user-avatar'
+import { Activity, History, Shield, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
-import { formatDateOnly } from '@/lib/formatters'
-import { useAuth } from '@/contexts/auth-context'
-import { AdminPanelSkeleton } from '@/components/ui/skeletons'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { useApiMutation } from '@/hooks/use-api-mutation'
-import { useToast } from '@/hooks/use-toast'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { extractErrorMessage } from '@/lib/utils'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AdminAuditLogs } from '@/components/admin-audit-logs'
-import { AdminActionLogs } from '@/components/admin-action-logs'
-import { AdminUserDetailDialog } from '@/components/admin-user-detail'
-import { SystemStats } from '@/components/system-stats'
+import { extractErrorMessage } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
+import { useApiMutation } from '@/hooks/use-api-mutation'
+import { useDebounce } from '@/hooks/use-debounce'
 import { usePageVisible } from '@/hooks/use-page-visible'
 import { useSyncStats } from '@/hooks/use-sync-stats'
-import { useDebounce } from '@/hooks/use-debounce'
-
-interface GlobalStats {
-  total_users: number
-  total_admins: number
-  total_rules: number
-  total_alerts: number
-  total_webhooks: number
-  sentryEnabled: boolean
-}
+import { useToast } from '@/hooks/use-toast'
+import { AdminPanelSkeleton } from '@/components/ui/skeletons'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminActionLogs } from '@/components/admin-action-logs'
+import { AdminAuditLogs } from '@/components/admin-audit-logs'
+import { AdminPanelDialogs } from '@/components/admin-panel-dialogs'
+import { AdminPanelPendingUsers, type PendingUser } from '@/components/admin-panel-pending-users'
+import { AdminPanelStatsCards, type GlobalStats } from '@/components/admin-panel-stats-cards'
+import { AdminPanelToolsTab } from '@/components/admin-panel-tools-tab'
+import { AdminPanelUsersTab } from '@/components/admin-panel-users-tab'
+import { AdminUserDetailDialog } from '@/components/admin-user-detail'
+import { SystemStats } from '@/components/system-stats'
 
 export function AdminPanel() {
   const { user: currentUser } = useAuth()
   const { toast } = useToast()
+  const isVisible = usePageVisible()
+  const { syncStats } = useSyncStats()
+
   const [pendingUserDialog, setPendingUserDialog] = useState<{ open: boolean; userId: number | null; action: 'approve' | 'reject' }>({
     open: false,
     userId: null,
@@ -50,19 +39,15 @@ export function AdminPanel() {
   const [sentryConfirmOpen, setSentryConfirmOpen] = useState(false)
   const [detailUserId, setDetailUserId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
-  const isVisible = usePageVisible()
-  const { syncStats } = useSyncStats()
 
-  // Pagination/sort/filter state
   const [page, setPage] = useState(0)
-  const [sortBy, setSortBy] = useState<string>('created_at')
+  const [sortBy, setSortBy] = useState('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [searchInput, setSearchInput] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const debouncedSearch = useDebounce(searchInput, 400)
 
-  // Fetch users (paginated)
   const { data: usersResponse, isLoading: usersLoading, isFetching: usersFetching } = useQuery({
     queryKey: [QUERY_KEYS.ADMIN_USERS, page, sortBy, sortDir, debouncedSearch, roleFilter, statusFilter],
     queryFn: async () => {
@@ -84,12 +69,11 @@ export function AdminPanel() {
     placeholderData: (prev) => prev,
   })
 
-  // Fetch pending users
   const { data: pendingUsersData } = useQuery({
     queryKey: [QUERY_KEYS.ADMIN_PENDING],
     queryFn: async () => {
       const response = apiClient.ensureSuccess(await apiClient.getPendingUsers(), 'Failed to load pending users')
-      return response.data
+      return response.data as PendingUser[]
     },
     staleTime: 0,
     refetchOnMount: 'always',
@@ -97,7 +81,6 @@ export function AdminPanel() {
     refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   })
 
-  // Fetch global stats
   const { data: statsData } = useQuery({
     queryKey: [QUERY_KEYS.ADMIN_STATS],
     queryFn: async () => {
@@ -110,83 +93,81 @@ export function AdminPanel() {
     refetchInterval: isVisible ? SLOW_POLL_INTERVAL : false,
   })
 
-  // Approve user mutation
   const approveUserMutation = useApiMutation(
     (userId: number) => apiClient.approveUser(userId),
     {
       invalidateKeys: [[QUERY_KEYS.ADMIN_PENDING], [QUERY_KEYS.ADMIN_USERS], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
       onSuccess: () => {
-        toast({
-          title: "✅ User approved",
-          description: "User account has been approved and activated",
-        })
-        setPendingUserDialog(prev => ({ ...prev, open: false }))
+        toast({ title: '✅ User approved', description: 'User account has been approved and activated' })
+        setPendingUserDialog((prev) => ({ ...prev, open: false }))
         setTimeout(() => setPendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
       },
       onError: (error: unknown) => {
         toast({
-          variant: "destructive",
-          title: "❌ Failed to approve user",
+          variant: 'destructive',
+          title: '❌ Failed to approve user',
           description: extractErrorMessage(error),
         })
       },
     }
   )
 
-  // Reject user mutation
   const rejectUserMutation = useApiMutation(
     (userId: number) => apiClient.rejectUser(userId),
     {
       invalidateKeys: [[QUERY_KEYS.ADMIN_PENDING], [QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ADMIN_AUDIT_LOGS]],
       onSuccess: () => {
-        toast({
-          title: "✅ User rejected",
-          description: "User registration has been rejected",
-        })
-        setPendingUserDialog(prev => ({ ...prev, open: false }))
+        toast({ title: '✅ User rejected', description: 'User registration has been rejected' })
+        setPendingUserDialog((prev) => ({ ...prev, open: false }))
         setTimeout(() => setPendingUserDialog({ open: false, userId: null, action: 'approve' }), 200)
       },
       onError: (error: unknown) => {
         toast({
-          variant: "destructive",
-          title: "❌ Failed to reject user",
+          variant: 'destructive',
+          title: '❌ Failed to reject user',
           description: extractErrorMessage(error),
         })
       },
     }
   )
 
-  // Force scheduler mutation (super admin only)
   const forceSchedulerMutation = useApiMutation(
     async () => {
       const response = await apiClient.forceSchedulerRun()
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to run scheduler')
-      }
+      if (!response.success) throw new Error(response.error || 'Failed to run scheduler')
       return response
     },
     {
       invalidateKeys: [[QUERY_KEYS.ADMIN_STATS], [QUERY_KEYS.ALERTS], [QUERY_KEYS.ALERT_STATS], [QUERY_KEYS.SYSTEM_STATUS]],
       onSuccess: () => {
-        toast({
-          title: "✅ Scheduler executed",
-          description: "Check completed. New alerts will appear shortly.",
-        })
+        toast({ title: '✅ Scheduler executed', description: 'Check completed. New alerts will appear shortly.' })
         void syncStats()
       },
       onError: (error) => {
-        toast({
-          variant: "destructive",
-          title: "❌ Scheduler failed",
-          description: extractErrorMessage(error),
-        })
+        toast({ variant: 'destructive', title: '❌ Scheduler failed', description: extractErrorMessage(error) })
+      },
+    }
+  )
+
+  const testSentryMutation = useApiMutation(
+    async () => {
+      const response = await apiClient.testSentry()
+      if (!response.success) throw new Error(response.error || 'Failed to test Sentry')
+      return response
+    },
+    {
+      onSuccess: () => {
+        toast({ title: '✅ Sentry test sent', description: 'Check your Sentry dashboard for the test error.' })
+      },
+      onError: (error) => {
+        toast({ variant: 'destructive', title: '❌ Sentry test failed', description: extractErrorMessage(error) })
       },
     }
   )
 
   const toggleSort = useCallback((column: string) => {
     if (sortBy === column) {
-      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortBy(column)
       setSortDir(column === 'created_at' ? 'desc' : 'asc')
@@ -198,434 +179,97 @@ export function AdminPanel() {
   const totalUsers = usersResponse?.pagination?.total ?? 0
   const totalPages = Math.ceil(totalUsers / ADMIN_USERS_PAGE_SIZE)
 
-  // Test Sentry mutation (super admin only)
-  const testSentryMutation = useApiMutation(
-    async () => {
-      const response = await apiClient.testSentry()
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to test Sentry')
-      }
-      return response
-    },
-    {
-      onSuccess: () => {
-        toast({
-          title: '✅ Sentry test sent',
-          description: 'Check your Sentry dashboard for the test error.',
-        })
-      },
-      onError: (error) => {
-        toast({
-          variant: 'destructive',
-          title: '❌ Sentry test failed',
-          description: extractErrorMessage(error),
-        })
-      },
-    }
-  )
-
-  const handleForceScheduler = () => {
-    setSchedulerConfirmOpen(true)
-  }
-
-  const confirmScheduler = useCallback(() => {
-    forceSchedulerMutation.mutate()
-  }, [forceSchedulerMutation])
-
-  const confirmSentryTest = useCallback(() => {
-    testSentryMutation.mutate()
-  }, [testSentryMutation])
-
-  if (usersLoading) {
-    return <AdminPanelSkeleton />
-  }
+  if (usersLoading) return <AdminPanelSkeleton />
 
   return (
     <div className="space-y-6">
-      {/* Pending Users Section */}
-      {pendingUsersData && pendingUsersData.length > 0 && (
-        <Card className="border-orange-500 border-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              Pending Approvals ({pendingUsersData.length})
-            </CardTitle>
-            <CardDescription>New user registrations awaiting approval</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Registered</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingUsersData.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium max-w-[160px] truncate">{user.username}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{user.email}</TableCell>
-                    <TableCell>{formatDateOnly(user.created_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => setPendingUserDialog({ open: true, userId: user.id, action: 'approve' })}
-                          disabled={approveUserMutation.isPending}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setPendingUserDialog({ open: true, userId: user.id, action: 'reject' })}
-                          disabled={rejectUserMutation.isPending}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      <AdminPanelPendingUsers
+        pendingUsers={pendingUsersData ?? []}
+        pendingUserDialog={pendingUserDialog}
+        setPendingUserDialog={setPendingUserDialog}
+        approvePending={approveUserMutation.isPending}
+        rejectPending={rejectUserMutation.isPending}
+      />
 
-      {/* Global Stats */}
-      <div className="grid gap-4 md:grid-cols-5 animate-stagger">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData?.total_users ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData?.total_admins ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData?.total_rules ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alerts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData?.total_alerts ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Webhooks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statsData?.total_webhooks ?? 0}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <AdminPanelStatsCards statsData={statsData} />
 
-      {/* Tabbed Navigation */}
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="w-full flex">
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" /><span className="hidden sm:inline">Users</span></TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Audit Logs</span></TabsTrigger>
-          {currentUser?.is_super_admin && (
-            <TabsTrigger value="admin-logs" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Admin Logs</span></TabsTrigger>
-          )}
-          {currentUser?.is_super_admin && (
-            <TabsTrigger value="tools" className="flex items-center gap-1.5"><Wrench className="h-4 w-4" /><span className="hidden sm:inline">Tools</span></TabsTrigger>
-          )}
+          {currentUser?.is_super_admin && <TabsTrigger value="admin-logs" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Admin Logs</span></TabsTrigger>}
+          {currentUser?.is_super_admin && <TabsTrigger value="tools" className="flex items-center gap-1.5"><Wrench className="h-4 w-4" /><span className="hidden sm:inline">Tools</span></TabsTrigger>}
           <TabsTrigger value="system" className="flex items-center gap-1.5"><Activity className="h-4 w-4" /><span className="hidden sm:inline">System</span></TabsTrigger>
         </TabsList>
 
-        {/* Users Tab */}
         <TabsContent value="users" className="space-y-4 mt-4">
-          <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>Manage users and their permissions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Search + filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by username or email..."
-                value={searchInput}
-                onChange={(e) => { setSearchInput(e.target.value); setPage(0) }}
-                className="pl-8"
-                aria-label="Search users by username or email"
-              />
-            </div>
-            <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(0) }}>
-              <SelectTrigger className="w-full sm:w-[140px]" aria-label="Filter by role">
-                <SelectValue placeholder="All roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All roles</SelectItem>
-                <SelectItem value="admin">Admins</SelectItem>
-                <SelectItem value="user">Users</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0) }}>
-              <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filter by status">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="sanctioned"><span className="flex items-center gap-1.5"><Ban className="h-3.5 w-3.5 text-destructive" />Sanctioned</span></SelectItem>
-                <SelectItem value="active">Active only</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="relative">
-            {usersFetching && !usersLoading && (
-              <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center rounded-md">
-                <LoadingSpinner size="sm" />
-              </div>
-            )}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('username')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('username'); } }}>
-                    <span className="flex items-center gap-1">Username <ArrowUpDown className="h-3 w-3" />{sortBy === 'username' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('email')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('email'); } }}>
-                    <span className="flex items-center gap-1">Email <ArrowUpDown className="h-3 w-3" />{sortBy === 'email' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('role')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('role'); } }}>
-                    <span className="flex items-center gap-1">Role <ArrowUpDown className="h-3 w-3" />{sortBy === 'role' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('rules')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('rules'); } }}>
-                    <span className="flex items-center gap-1">Rules <ArrowUpDown className="h-3 w-3" />{sortBy === 'rules' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('alerts')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('alerts'); } }}>
-                    <span className="flex items-center gap-1">Alerts <ArrowUpDown className="h-3 w-3" />{sortBy === 'alerts' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('webhooks')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('webhooks'); } }}>
-                    <span className="flex items-center gap-1">Webhooks <ArrowUpDown className="h-3 w-3" />{sortBy === 'webhooks' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                  <TableHead className="cursor-pointer select-none" role="button" tabIndex={0} onClick={() => toggleSort('created_at')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort('created_at'); } }}>
-                    <span className="flex items-center gap-1">Joined <ArrowUpDown className="h-3 w-3" />{sortBy === 'created_at' && <span className="text-xs">({sortDir})</span>}</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(!usersData || usersData.length === 0) && !usersLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      {debouncedSearch || roleFilter !== 'all' ? 'No users match your filters' : 'No users found'}
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-                {usersData?.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium max-w-[200px]">
-                    <button
-                      type="button"
-                      className="hover:underline text-left cursor-pointer text-primary flex items-center gap-2 min-w-0"
-                      onClick={() => { setDetailUserId(user.id); setDetailOpen(true) }}
-                    >
-                      <UserAvatar src={user.avatar_url} alt="" size={28} />
-                      <span className="truncate">{user.username}</span>
-                    </button>
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate">{user.email}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {user.is_super_admin ? (
-                        <Badge variant="default" className="gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                          <Shield className="h-3 w-3" />
-                          Super Admin
-                        </Badge>
-                      ) : user.is_admin ? (
-                        <Badge variant="default" className="gap-1">
-                          <Shield className="h-3 w-3" />
-                          Admin
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">User</Badge>
-                      )}
-                      {user.is_restricted && user.restriction_type === 'permanent' && (
-                        <Badge variant="destructive" className="gap-1">
-                          <Ban className="h-3 w-3" />
-                          Restricted
-                        </Badge>
-                      )}
-                      {user.is_restricted && user.restriction_type === 'temporary' && user.restriction_expires_at && new Date(user.restriction_expires_at) > new Date() && (
-                        <Badge variant="secondary" className="gap-1 bg-orange-500/15 text-orange-600 dark:text-orange-400">
-                          <Clock className="h-3 w-3" />
-                          Restricted
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{user.stats.rules_count}</TableCell>
-                  <TableCell>{user.stats.alerts_count}</TableCell>
-                  <TableCell>{user.stats.webhooks_count}</TableCell>
-                  <TableCell>{formatDateOnly(user.created_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                Showing {page * ADMIN_USERS_PAGE_SIZE + 1}–{Math.min((page + 1) * ADMIN_USERS_PAGE_SIZE, totalUsers)} of {totalUsers} users
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                </Button>
-                <span className="text-sm font-medium px-2">
-                  {page + 1} / {totalPages}
-                </span>
-                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
-          )}
-          </CardContent>
-          </Card>
+          <AdminPanelUsersTab
+            usersData={usersData}
+            usersLoading={usersLoading}
+            usersFetching={usersFetching}
+            searchInput={searchInput}
+            roleFilter={roleFilter}
+            statusFilter={statusFilter}
+            debouncedSearch={debouncedSearch}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            page={page}
+            totalPages={totalPages}
+            totalUsers={totalUsers}
+            setSearchInput={setSearchInput}
+            setRoleFilter={setRoleFilter}
+            setStatusFilter={setStatusFilter}
+            setPage={setPage}
+            toggleSort={toggleSort}
+            onOpenUserDetail={(id) => {
+              setDetailUserId(id)
+              setDetailOpen(true)
+            }}
+          />
         </TabsContent>
 
-        {/* Logs Tab */}
         <TabsContent value="logs" className="space-y-4 mt-4">
           {currentUser?.is_admin && <AdminAuditLogs />}
         </TabsContent>
 
-        {/* Admin Logs Tab (Super Admin only) */}
         {currentUser?.is_super_admin && (
           <TabsContent value="admin-logs" className="space-y-4 mt-4">
             <AdminActionLogs />
           </TabsContent>
         )}
 
-        {/* System Tab */}
         <TabsContent value="system" className="space-y-4 mt-4">
           <SystemStats enabled={true} />
         </TabsContent>
 
-        {/* Tools Tab (Super Admin only) */}
         {currentUser?.is_super_admin && (
           <TabsContent value="tools" className="space-y-4 mt-4">
-            <Card className="border-purple-500 border-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-purple-500" />
-                  Super Admin Actions
-                </CardTitle>
-                <CardDescription>Advanced system controls</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={() => handleForceScheduler()}
-                  disabled={forceSchedulerMutation.isPending}
-                  variant="outline"
-                >
-                  {forceSchedulerMutation.isPending ? 'Running...' : 'Force Scheduler Run'}
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Bypass the cron schedule and run the scheduler immediately
-                </p>
-              </CardContent>
-            </Card>
-
-            {statsData?.sentryEnabled && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bug className="h-5 w-5 text-orange-500" />
-                  Test Sentry
-                </CardTitle>
-                <CardDescription>Verify that Sentry error tracking is working</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={() => setSentryConfirmOpen(true)}
-                  disabled={testSentryMutation.isPending}
-                  variant="outline"
-                >
-                  {testSentryMutation.isPending ? 'Sending...' : 'Send Test Error'}
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Sends a fake error to Sentry — check your dashboard to confirm it arrives
-                </p>
-              </CardContent>
-            </Card>
-            )}
+            <AdminPanelToolsTab
+              sentryEnabled={statsData?.sentryEnabled}
+              forceSchedulerPending={forceSchedulerMutation.isPending}
+              testSentryPending={testSentryMutation.isPending}
+              onForceScheduler={() => setSchedulerConfirmOpen(true)}
+              onOpenSentryConfirm={() => setSentryConfirmOpen(true)}
+            />
           </TabsContent>
         )}
       </Tabs>
 
-      {/* Pending User Approval/Reject Dialog */}
-      <ConfirmDialog
-        open={pendingUserDialog.open}
-        onOpenChange={(open) => setPendingUserDialog({ ...pendingUserDialog, open })}
-        title={pendingUserDialog.action === 'approve' ? 'Approve User' : 'Reject User'}
-        description={pendingUserDialog.action === 'approve'
-          ? 'This user will be able to log in and use the application.'
-          : 'This will permanently delete the user registration.'}
-        confirmText={(approveUserMutation.isPending || rejectUserMutation.isPending) ? 'Processing...' : 'Confirm'}
-        variant={pendingUserDialog.action === 'approve' ? 'default' : 'destructive'}
-        onConfirm={() => {
-          if (pendingUserDialog.userId) {
-            if (pendingUserDialog.action === 'approve') {
-              approveUserMutation.mutate(pendingUserDialog.userId)
-            } else {
-              rejectUserMutation.mutate(pendingUserDialog.userId)
-            }
-          }
-        }}
+      <AdminPanelDialogs
+        pendingUserDialog={pendingUserDialog}
+        setPendingUserDialog={setPendingUserDialog}
+        approvePending={approveUserMutation.isPending}
+        rejectPending={rejectUserMutation.isPending}
+        onApprove={(userId) => approveUserMutation.mutate(userId)}
+        onReject={(userId) => rejectUserMutation.mutate(userId)}
+        schedulerConfirmOpen={schedulerConfirmOpen}
+        setSchedulerConfirmOpen={setSchedulerConfirmOpen}
+        onConfirmScheduler={() => forceSchedulerMutation.mutate()}
+        sentryConfirmOpen={sentryConfirmOpen}
+        setSentryConfirmOpen={setSentryConfirmOpen}
+        onConfirmSentry={() => testSentryMutation.mutate()}
       />
 
-      {/* Scheduler Confirmation Dialog */}
-      <ConfirmDialog
-        open={schedulerConfirmOpen}
-        onOpenChange={setSchedulerConfirmOpen}
-        title="Run Scheduler"
-        description="Force the scheduler to run now? This will check all enabled rules immediately."
-        confirmText="Run Now"
-        variant="default"
-        onConfirm={confirmScheduler}
-      />
-
-      {/* Sentry Test Confirmation Dialog */}
-      <ConfirmDialog
-        open={sentryConfirmOpen}
-        onOpenChange={setSentryConfirmOpen}
-        title="Test Sentry"
-        description="Send a test error to Sentry? This will appear as a new issue in your Sentry dashboard."
-        confirmText="Send Test"
-        variant="default"
-        onConfirm={confirmSentryTest}
-      />
-
-      {/* User Detail Dialog (GDPR-audited) */}
       <AdminUserDetailDialog
         userId={detailUserId}
         open={detailOpen}

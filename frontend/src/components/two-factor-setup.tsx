@@ -6,21 +6,20 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { LoadingState } from '@/components/ui/loading-state'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { AlertCircle, CheckCircle, Copy, Shield } from 'lucide-react'
+import { AlertCircle, Shield } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useToast } from '@/hooks/use-toast'
 import { QUERY_KEYS } from '@/lib/constants'
+import {
+  TwoFactorQrStep,
+  TwoFactorVerifyStep,
+  TwoFactorRecoveryCodesStep,
+} from './two-factor-setup-steps'
 
 interface TwoFactorSetupProps {
   open: boolean
@@ -38,8 +37,6 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
   const [copiedSecret, setCopiedSecret] = useState(false)
   const [copiedCodes, setCopiedCodes] = useState(false)
 
-  // Fetch 2FA setup — fetch once on open, keep for entire dialog session
-  // gcTime: 0 ensures data is cleared when dialog closes so next open gets a fresh secret
   const { data: setupData, isLoading: setupLoading } = useQuery({
     queryKey: [QUERY_KEYS.TWO_FA_SETUP],
     queryFn: async () => {
@@ -55,7 +52,6 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     staleTime: Infinity,
   })
 
-  // Enable 2FA mutation
   const enableMutation = useApiMutation(
     async () => {
       const response = await apiClient.post('/api/user/2fa/enable', {
@@ -77,8 +73,8 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
           setStep('codes')
           setError('')
           toast({
-            title: "✅ 2FA enabled",
-            description: "Two-factor authentication has been enabled successfully",
+            title: '✅ 2FA enabled',
+            description: 'Two-factor authentication has been enabled successfully',
           })
         }
       },
@@ -88,16 +84,16 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
             ? error.message
             : typeof error === 'object' && error && 'error' in error && typeof (error as { error?: unknown }).error === 'string'
               ? (error as { error?: string }).error
-              : undefined;
-        const safeMessage = message || 'Invalid verification code';
+              : undefined
+        const safeMessage = message || 'Invalid verification code'
         setError(safeMessage)
         toast({
-          variant: "destructive",
-          title: "❌ Verification failed",
+          variant: 'destructive',
+          title: '❌ Verification failed',
           description: safeMessage,
         })
       },
-    }
+    },
   )
 
   const handleVerify = () => {
@@ -108,19 +104,20 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     }
   }
 
+  const resetDialogState = () => {
+    setStep('qr')
+    setVerificationCode('')
+    setSecret('')
+    setRecoveryCodes([])
+    setError('')
+    setCopiedSecret(false)
+    setCopiedCodes(false)
+  }
+
   const handleComplete = () => {
-    // Bypass the block in handleOpenChange — user explicitly clicked "Done"
     onOpenChange(false)
     queryClient.removeQueries({ queryKey: [QUERY_KEYS.TWO_FA_SETUP] })
-    setTimeout(() => {
-      setStep('qr')
-      setVerificationCode('')
-      setSecret('')
-      setRecoveryCodes([])
-      setError('')
-      setCopiedSecret(false)
-      setCopiedCodes(false)
-    }, 200)
+    setTimeout(resetDialogState, 200)
   }
 
   const copySecret = () => {
@@ -135,26 +132,15 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
     setTimeout(() => setCopiedCodes(false), 2000)
   }
 
-  // Wrap onOpenChange to reset state when dialog closes (X button, backdrop click, etc.)
   const handleOpenChange = useCallback((newOpen: boolean) => {
-    // Block closing on recovery codes step — user MUST click "Done"
     if (!newOpen && step === 'codes') return
+
     onOpenChange(newOpen)
     if (!newOpen) {
-      // Remove cached query so next open fetches a fresh secret
       queryClient.removeQueries({ queryKey: [QUERY_KEYS.TWO_FA_SETUP] })
-      // Delay state reset until after close animation
-      setTimeout(() => {
-        setStep('qr')
-        setVerificationCode('')
-        setSecret('')
-        setRecoveryCodes([])
-        setError('')
-        setCopiedSecret(false)
-        setCopiedCodes(false)
-      }, 200)
+      setTimeout(resetDialogState, 200)
     }
-  }, [onOpenChange, step, queryClient])
+  }, [onOpenChange, queryClient, step])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -183,163 +169,34 @@ export function TwoFactorSetup({ open, onOpenChange }: TwoFactorSetupProps) {
           </Alert>
         )}
 
-        {/* Step 1: QR Code */}
         {step === 'qr' && (
-          <div className="space-y-4">
-            {setupLoading ? (
-              <LoadingState variant="inline" />
-            ) : setupData ? (
-              <>
-                <div className="flex justify-center p-4 bg-card border rounded-lg">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={setupData.qrCode} 
-                    alt="2FA QR Code" 
-                    width={200} 
-                    height={200}
-                    className="rounded"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="manual-entry-key">Manual Entry Key</Label>
-                  <div className="flex gap-2">
-                    <Input id="manual-entry-key" value={secret} readOnly className="font-mono text-sm" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={copySecret}
-                      aria-label="Copy secret key"
-                    >
-                      {copiedSecret ? (
-                        <CheckCircle className="h-4 w-4 text-primary" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Use this key if you can&apos;t scan the QR code
-                  </p>
-                </div>
-
-                <Alert>
-                  <AlertDescription className="text-sm">
-                    <strong>Supported apps:</strong> Google Authenticator, Authy, 1Password, Bitwarden
-                  </AlertDescription>
-                </Alert>
-              </>
-            ) : null}
-
-            <DialogFooter>
-              <Button onClick={() => setStep('verify')} disabled={setupLoading}>
-                Next
-              </Button>
-            </DialogFooter>
-          </div>
+          <TwoFactorQrStep
+            setupLoading={setupLoading}
+            setupData={setupData}
+            secret={secret}
+            copiedSecret={copiedSecret}
+            onCopySecret={copySecret}
+            onNext={() => setStep('verify')}
+          />
         )}
 
-        {/* Step 2: Verification */}
         {step === 'verify' && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">Verification Code</Label>
-              <Input
-                id="code"
-                placeholder="000000"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && verificationCode.length === 6 && !enableMutation.isPending) {
-                    e.preventDefault()
-                    handleVerify()
-                  }
-                }}
-                maxLength={6}
-                className="text-center text-2xl tracking-widest font-mono"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground text-center">
-                Enter the 6-digit code from your authenticator app
-              </p>
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setStep('qr')}>
-                Back
-              </Button>
-              <Button
-                onClick={handleVerify}
-                disabled={enableMutation.isPending || verificationCode.length !== 6}
-              >
-                {enableMutation.isPending ? (
-                  <>
-                    <LoadingSpinner size="sm" className="mr-2" inline />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify & Enable'
-                )}
-              </Button>
-            </DialogFooter>
-          </div>
+          <TwoFactorVerifyStep
+            verificationCode={verificationCode}
+            isPending={enableMutation.isPending}
+            onBack={() => setStep('qr')}
+            onVerify={handleVerify}
+            onCodeChange={setVerificationCode}
+          />
         )}
 
-        {/* Step 3: Recovery Codes */}
         {step === 'codes' && (
-          <div className="space-y-4">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Important:</strong> Save these codes in a safe place. You&apos;ll need them to access your account if you lose your authenticator.
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Recovery Codes</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={copyRecoveryCodes}
-                >
-                  {copiedCodes ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2 text-primary" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy All
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 p-4 bg-muted rounded-lg font-mono text-sm">
-                {recoveryCodes.map((code, index) => (
-                  <div key={index} className="text-center">
-                    {code}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Alert className="border-primary/50 bg-primary/10">
-              <CheckCircle className="h-4 w-4 text-primary" />
-              <AlertDescription className="text-primary">
-                Two-factor authentication has been enabled successfully!
-              </AlertDescription>
-            </Alert>
-
-            <DialogFooter>
-              <Button onClick={handleComplete} className="w-full">
-                Done
-              </Button>
-            </DialogFooter>
-          </div>
+          <TwoFactorRecoveryCodesStep
+            recoveryCodes={recoveryCodes}
+            copiedCodes={copiedCodes}
+            onCopyRecoveryCodes={copyRecoveryCodes}
+            onDone={handleComplete}
+          />
         )}
       </DialogContent>
     </Dialog>
