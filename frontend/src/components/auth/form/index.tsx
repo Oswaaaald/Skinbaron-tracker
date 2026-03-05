@@ -36,15 +36,11 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
     <div
       className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-background px-4 py-16"
     >
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute inset-x-0 -top-24 h-80 bg-[radial-gradient(circle_at_center,oklch(0.75_0.08_235_/_20%),transparent_62%)]" />
-        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-[radial-gradient(circle,oklch(0.82_0.08_195_/_18%),transparent_66%)]" />
-      </div>
       <div className="w-full max-w-md space-y-4">
         <div className="flex items-center justify-center gap-3">
           <span
             aria-hidden="true"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/90 via-primary to-cyan-500/80 text-[11px] font-bold text-primary-foreground shadow-sm"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-card text-[11px] font-semibold text-muted-foreground"
           >
             SB
           </span>

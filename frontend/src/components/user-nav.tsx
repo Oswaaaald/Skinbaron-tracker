@@ -42,7 +42,7 @@ export function UserNav() {
                 priority
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/90 to-cyan-500/80 text-xs font-semibold text-primary-foreground">
+              <span className="flex h-full w-full items-center justify-center bg-muted text-xs font-semibold text-foreground">
                 {userInitials}
               </span>
             )}

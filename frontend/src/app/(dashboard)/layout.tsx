@@ -47,7 +47,9 @@ export default function DashboardLayout({
             <div className="flex h-16 items-center justify-between gap-4">
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/90 via-primary to-cyan-500/80 shadow-sm" />
+                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-card text-[11px] font-semibold text-muted-foreground">
+                    SB
+                  </div>
                   <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
                     SkinBaron Tracker
                   </h1>
@@ -88,7 +90,7 @@ export default function DashboardLayout({
               <h1 className="flex items-center gap-3 text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
                 <span
                   aria-hidden="true"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/90 via-primary to-cyan-500/80 text-[11px] font-bold text-primary-foreground shadow-sm"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-card text-[11px] font-semibold text-muted-foreground"
                 >
                   SB
                 </span>
