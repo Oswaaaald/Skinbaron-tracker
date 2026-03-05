@@ -34,7 +34,8 @@ function AlertCardImage({
     <>
       <div
         className={cn(
-          'absolute inset-0 animate-pulse bg-slate-700/30 transition-opacity duration-300',
+          'absolute inset-0 bg-slate-700/30',
+          !isLCP && 'animate-pulse transition-opacity duration-300',
           status === 'loaded' && 'opacity-0',
         )}
       />
@@ -44,7 +45,8 @@ function AlertCardImage({
         fill
         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
         className={cn(
-          'object-contain p-4 transition-opacity duration-500',
+          'object-contain p-4',
+          isLCP ? 'transition-none' : 'transition-opacity duration-300',
           status === 'loaded' ? 'opacity-100' : 'opacity-0',
         )}
         priority={isLCP}

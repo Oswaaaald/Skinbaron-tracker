@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertsGridSkeleton } from '@/components/ui/skeletons'
@@ -28,15 +28,6 @@ export function AlertsGrid() {
   const { syncStats } = useSyncStats()
   const { isReady, isAuthenticated } = useAuth()
   const isVisible = usePageVisible()
-
-  useEffect(() => {
-    const link = document.createElement('link')
-    link.rel = 'preconnect'
-    link.href = 'https://steamcommunity-a.akamaihd.net'
-    link.crossOrigin = 'anonymous'
-    document.head.appendChild(link)
-    return () => { document.head.removeChild(link) }
-  }, [])
 
   const clearAllMutation = useApiMutation(
     () => apiClient.clearAllAlerts(),
