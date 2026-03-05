@@ -45,22 +45,23 @@ export default function DashboardLayout({
         <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
           <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
             <div className="flex h-16 items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-card text-[11px] font-semibold text-muted-foreground">
+              <div className="flex min-w-0 flex-1 items-center gap-6">
+                <h1 className="flex items-center gap-3 text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-card text-[11px] font-semibold text-muted-foreground"
+                  >
                     SB
-                  </div>
-                  <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
-                    SkinBaron Tracker
-                  </h1>
-                </div>
-                <nav className="hidden md:flex items-center gap-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-8 w-20 rounded-lg" />
+                  </span>
+                  SkinBaron Tracker
+                </h1>
+                <nav className="hidden md:flex items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1">
+                  {['w-14', 'w-12', 'w-20', 'w-16', 'w-14'].map((w, i) => (
+                    <Skeleton key={i} className={`h-8 ${w} rounded-lg`} />
                   ))}
                 </nav>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <Skeleton className="h-9 w-9 rounded-lg" />
                 <Skeleton className="hidden sm:block h-4 w-24" />
                 <Skeleton className="h-9 w-9 rounded-full" />
@@ -86,7 +87,7 @@ export default function DashboardLayout({
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
+            <div className="flex min-w-0 flex-1 items-center gap-6">
               <h1 className="flex items-center gap-3 text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
                 <span
                   aria-hidden="true"
@@ -98,7 +99,7 @@ export default function DashboardLayout({
               </h1>
               <DashboardNav />
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <ThemeToggle />
               <UserNav />
               <MobileNavTrigger />
