@@ -4,6 +4,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployments
   output: 'standalone',
+  transpilePackages: ['@skinbaron/contracts'],
 
   // Disable browser source maps in production (security + avoids broken .map references)
   productionBrowserSourceMaps: false,
@@ -19,6 +20,7 @@ const nextConfig: NextConfig = {
   // Optimize for modern browsers — browserslist in package.json targets chrome/edge/firefox 111+, safari 16.4+
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    externalDir: true,
   },
 
   // Security headers (CSP is set dynamically in proxy.ts with per-request nonce)

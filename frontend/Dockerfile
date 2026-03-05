@@ -16,6 +16,9 @@ COPY packages/contracts ./packages/contracts
 WORKDIR /app/frontend
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --fund=false
+RUN rm -rf node_modules/@skinbaron/contracts \
+    && mkdir -p node_modules/@skinbaron \
+    && cp -R /app/packages/contracts node_modules/@skinbaron/contracts
 
 COPY frontend ./
 
