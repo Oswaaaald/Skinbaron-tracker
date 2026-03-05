@@ -10,6 +10,7 @@ import { getNotificationService } from './lib/notifier.js';
 import { getScheduler } from './lib/scheduler.js';
 import { csrfProtection } from './lib/csrf.js';
 import { initOAuthProviders, getEnabledProviders } from './lib/oauth.js';
+import { getSecurityCleanupService } from './lib/security-cleanup.js';
 import { registerSystemRoutes } from './routes/system.js';
 import { registerPlugins } from './app/plugins.js';
 import { registerRoutes } from './app/routes.js';
@@ -27,6 +28,7 @@ const fastify = Fastify({
 });
 
 getScheduler().setLogger(fastify.log);
+getSecurityCleanupService().setLogger(fastify.log);
 registerProcessHandlers(fastify);
 
 async function initializeApp() {
@@ -77,6 +79,13 @@ async function initializeApp() {
     } else {
       fastify.log.info('⏰ Scheduler disabled (SCHEDULER_ENABLED=false)');
     }
+
+    const cleanupService = getSecurityCleanupService();
+    cleanupService.start();
+    fastify.log.info(
+      { intervalMs: appConfig.SECURITY_CLEANUP_INTERVAL_MS },
+      '🧹 Security cleanup job started',
+    );
 
     fastify.log.info('✅ SkinBaron Tracker API initialized successfully!');
   } catch (error) {

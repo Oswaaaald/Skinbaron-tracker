@@ -1,5 +1,5 @@
 import { eq, and, or, ilike, desc, asc, count, sql, getTableColumns } from 'drizzle-orm';
-import { users } from '../schema.js';
+import { users, rules, alerts, userWebhooks } from '../schema.js';
 import type { AppDatabase } from '../connection.js';
 import type { User } from '../schema.js';
 import { encryptData, decryptData } from '../utils/encryption.js';
@@ -62,13 +62,51 @@ export class UsersRepository {
     return user ?? null;
   }
 
+  private buildStatsAggregates() {
+    const rulesAgg = this.db.select({
+      user_id: rules.user_id,
+      rules_count: sql<number>`COUNT(*)::int`,
+    })
+      .from(rules)
+      .groupBy(rules.user_id)
+      .as('rules_agg');
+
+    const alertsAgg = this.db.select({
+      user_id: rules.user_id,
+      alerts_count: sql<number>`COUNT(${alerts.id})::int`,
+    })
+      .from(alerts)
+      .innerJoin(rules, eq(alerts.rule_id, rules.id))
+      .groupBy(rules.user_id)
+      .as('alerts_agg');
+
+    const webhooksAgg = this.db.select({
+      user_id: userWebhooks.user_id,
+      webhooks_count: sql<number>`COUNT(*)::int`,
+    })
+      .from(userWebhooks)
+      .groupBy(userWebhooks.user_id)
+      .as('webhooks_agg');
+
+    const rulesCount = sql<number>`COALESCE(${rulesAgg.rules_count}, 0)`;
+    const alertsCount = sql<number>`COALESCE(${alertsAgg.alerts_count}, 0)`;
+    const webhooksCount = sql<number>`COALESCE(${webhooksAgg.webhooks_count}, 0)`;
+
+    return { rulesAgg, alertsAgg, webhooksAgg, rulesCount, alertsCount, webhooksCount };
+  }
+
   async findAllWithStats(): Promise<Array<typeof users.$inferSelect & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }>> {
+    const { rulesAgg, alertsAgg, webhooksAgg, rulesCount, alertsCount, webhooksCount } = this.buildStatsAggregates();
+
     const result = await this.db.select({
       ...getTableColumns(users),
-      rules_count: sql<number>`(SELECT COUNT(*)::int FROM rules WHERE rules.user_id = "users"."id")`,
-      alerts_count: sql<number>`(SELECT COUNT(*)::int FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = "users"."id")`,
-      webhooks_count: sql<number>`(SELECT COUNT(*)::int FROM user_webhooks WHERE user_webhooks.user_id = "users"."id")`,
+      rules_count: rulesCount,
+      alerts_count: alertsCount,
+      webhooks_count: webhooksCount,
     }).from(users)
+      .leftJoin(rulesAgg, eq(users.id, rulesAgg.user_id))
+      .leftJoin(alertsAgg, eq(users.id, alertsAgg.user_id))
+      .leftJoin(webhooksAgg, eq(users.id, webhooksAgg.user_id))
       .where(eq(users.is_approved, true))
       .orderBy(desc(users.created_at));
 
@@ -112,6 +150,7 @@ export class UsersRepository {
     status?: 'all' | 'sanctioned' | 'active';
   }): Promise<{ data: Array<typeof users.$inferSelect & { stats: { rules_count: number; alerts_count: number; webhooks_count: number } }>; total: number }> {
     const { limit, offset, sortBy = 'created_at', sortDir = 'desc', search, role = 'all', status = 'all' } = options;
+    const { rulesAgg, alertsAgg, webhooksAgg, rulesCount, alertsCount, webhooksCount } = this.buildStatsAggregates();
 
     // Build conditions
     const conditions = [eq(users.is_approved, true)];
@@ -136,29 +175,27 @@ export class UsersRepository {
       .where(whereClause);
     const total = countResult?.value ?? 0;
 
-    // Build sort
-    const rulesCountSql = sql<number>`(SELECT COUNT(*)::int FROM rules WHERE rules.user_id = "users"."id")`;
-    const alertsCountSql = sql<number>`(SELECT COUNT(*)::int FROM alerts a JOIN rules r ON a.rule_id = r.id WHERE r.user_id = "users"."id")`;
-    const webhooksCountSql = sql<number>`(SELECT COUNT(*)::int FROM user_webhooks WHERE user_webhooks.user_id = "users"."id")`;
-
     const orderFn = sortDir === 'asc' ? asc : desc;
     let orderBy;
     switch (sortBy) {
       case 'username': orderBy = orderFn(users.username); break;
       case 'email': orderBy = orderFn(users.email); break;
       case 'role': orderBy = orderFn(users.is_admin); break;
-      case 'rules': orderBy = orderFn(rulesCountSql); break;
-      case 'alerts': orderBy = orderFn(alertsCountSql); break;
-      case 'webhooks': orderBy = orderFn(webhooksCountSql); break;
+      case 'rules': orderBy = orderFn(rulesCount); break;
+      case 'alerts': orderBy = orderFn(alertsCount); break;
+      case 'webhooks': orderBy = orderFn(webhooksCount); break;
       default: orderBy = orderFn(users.created_at); break;
     }
 
     const result = await this.db.select({
       ...getTableColumns(users),
-      rules_count: rulesCountSql,
-      alerts_count: alertsCountSql,
-      webhooks_count: webhooksCountSql,
+      rules_count: rulesCount,
+      alerts_count: alertsCount,
+      webhooks_count: webhooksCount,
     }).from(users)
+      .leftJoin(rulesAgg, eq(users.id, rulesAgg.user_id))
+      .leftJoin(alertsAgg, eq(users.id, alertsAgg.user_id))
+      .leftJoin(webhooksAgg, eq(users.id, webhooksAgg.user_id))
       .where(whereClause)
       .orderBy(orderBy)
       .limit(limit)
@@ -218,12 +255,24 @@ export class UsersRepository {
   }
 
   async create(userData: { username: string; email: string; password_hash?: string }): Promise<typeof users.$inferSelect> {
-    const [user] = await this.db.insert(users).values({
-      username: userData.username,
-      email: userData.email.toLowerCase().trim(),
-      password_hash: userData.password_hash ?? null,
-    }).returning();
-    return user as typeof users.$inferSelect;
+    return this.db.transaction(async (tx) => {
+      // Serialize bootstrap role assignment so only the first account is auto-promoted.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(84720013)`);
+
+      const [existingUsers] = await tx.select({ value: count() }).from(users);
+      const isFirstUser = (existingUsers?.value ?? 0) === 0;
+
+      const [user] = await tx.insert(users).values({
+        username: userData.username,
+        email: userData.email.toLowerCase().trim(),
+        password_hash: userData.password_hash ?? null,
+        is_admin: isFirstUser,
+        is_super_admin: isFirstUser,
+        is_approved: isFirstUser,
+      }).returning();
+
+      return user as typeof users.$inferSelect;
+    });
   }
 
   async update(id: number, input: UserUpdate): Promise<typeof users.$inferSelect | null> {

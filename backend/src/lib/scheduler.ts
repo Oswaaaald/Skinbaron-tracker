@@ -42,7 +42,7 @@ export class AlertScheduler {
         },
         null,
         true,
-        'Europe/Brussels',
+        appConfig.SCHEDULER_TIMEZONE,
       );
 
       this.stats.isRunning = true;

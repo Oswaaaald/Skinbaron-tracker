@@ -9,8 +9,7 @@ export function isCsrfError(status: number, code?: string): boolean {
 function isAuthEndpoint(endpoint: string): boolean {
   return (
     endpoint.startsWith('/api/auth/login') ||
-    endpoint.startsWith('/api/auth/register') ||
-    endpoint.startsWith('/api/auth/logout')
+    endpoint.startsWith('/api/auth/register')
   )
 }
 

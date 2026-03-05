@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
+import { canAccessAdmin } from "@/lib/rbac"
 import { 
   ListFilter,
   Bell,
@@ -67,7 +68,7 @@ function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
         )
       })}
 
-      {user?.is_admin && (
+      {canAccessAdmin(user) && (
         <>
           <div className={cn("bg-border", mobile ? "h-px w-full my-2" : "w-px h-5 mx-1")} />
           {adminNavItems.map((item) => {

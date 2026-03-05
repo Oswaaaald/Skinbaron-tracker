@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { LoadingState } from '@/components/ui/loading-state'
 import Link from 'next/link'
 import { ShieldAlert } from 'lucide-react'
+import { canAccessAdmin } from '@/lib/rbac'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -33,7 +34,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }
 
   // Check admin requirement
-  if (requireAdmin && !user?.is_admin) {
+  if (requireAdmin && !canAccessAdmin(user)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4 p-8">

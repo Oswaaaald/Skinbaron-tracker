@@ -63,6 +63,7 @@ export declare const RATE_LIMIT_PRESETS: {
   readonly RULE_WRITE: RateLimitPreset;
   readonly BATCH_WRITE: RateLimitPreset;
   readonly WEBHOOK_WRITE: RateLimitPreset;
+  readonly ITEM_SEARCH: RateLimitPreset;
   readonly ADMIN_WRITE: RateLimitPreset;
 };
 

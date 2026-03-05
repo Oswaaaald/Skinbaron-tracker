@@ -17,6 +17,34 @@ type RegisterUserAccountExportRoutesOptions = {
   };
 };
 
+const EXPORT_PAGE_SIZE = 1000;
+const EXPORT_MAX_ROWS_PER_COLLECTION = 50_000;
+
+async function collectPaginated<T>(
+  totalCount: number,
+  fetchPage: (limit: number, offset: number) => Promise<T[]>,
+): Promise<{ rows: T[]; truncated: boolean; exportedCount: number }> {
+  const cappedTotal = Math.min(totalCount, EXPORT_MAX_ROWS_PER_COLLECTION);
+  const rows: T[] = [];
+
+  for (let offset = 0; offset < cappedTotal; offset += EXPORT_PAGE_SIZE) {
+    const batch = await fetchPage(EXPORT_PAGE_SIZE, offset);
+    if (batch.length === 0) {
+      break;
+    }
+    rows.push(...batch);
+    if (batch.length < EXPORT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return {
+    rows,
+    truncated: totalCount > EXPORT_MAX_ROWS_PER_COLLECTION,
+    exportedCount: rows.length,
+  };
+}
+
 export function registerUserAccountExportRoutes(
   fastify: FastifyInstance,
   { heavyOperationRateLimit }: RegisterUserAccountExportRoutesOptions,
@@ -42,14 +70,31 @@ export function registerUserAccountExportRoutes(
         throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
       }
 
-      // Collect all user data (no limits — full GDPR export)
+      // Collect all user data. Large collections are fetched in pages to avoid
+      // loading massive result sets in a single database query.
       const rules = await store.rules.findByUserId(userId);
       const webhooks = await store.webhooks.findByUserId(userId, false); // Don't decrypt URLs
-      const alerts = await store.alerts.findByUserId(userId, 0, 0); // limit=0 -> all alerts
-      const auditLogs = await store.audit.getLogsByUserId(userId, 0); // limit=0 -> all logs
       const oauthAccounts = await store.oauth.findByUserId(userId);
       const passkeys = await store.passkeys.findByUserId(userId);
-      const sanctionsHistory = await store.getSanctionsByUserId(userId, 0); // limit=0 -> all sanctions
+      const [alertsCount, auditLogsCount, sanctionsCount] = await Promise.all([
+        store.alerts.countByUserId(userId),
+        store.audit.countLogsByUserId(userId),
+        store.countSanctionsByUserId(userId),
+      ]);
+
+      const [{ rows: alerts, truncated: alertsTruncated, exportedCount: alertsExportedCount }, {
+        rows: auditLogs,
+        truncated: auditLogsTruncated,
+        exportedCount: auditLogsExportedCount,
+      }, {
+        rows: sanctionsHistory,
+        truncated: sanctionsTruncated,
+        exportedCount: sanctionsExportedCount,
+      }] = await Promise.all([
+        collectPaginated(alertsCount, (limit, offset) => store.alerts.findByUserId(userId, limit, offset)),
+        collectPaginated(auditLogsCount, (limit, offset) => store.audit.getLogsByUserIdPaginated(userId, limit, offset)),
+        collectPaginated(sanctionsCount, (limit, offset) => store.getSanctionsByUserId(userId, limit, offset)),
+      ]);
 
       const exportData = {
         profile: {
@@ -141,6 +186,24 @@ export function registerUserAccountExportRoutes(
           admin_username: s.admin_username,
           created_at: s.created_at,
         })),
+        export_limits: {
+          max_rows_per_collection: EXPORT_MAX_ROWS_PER_COLLECTION,
+          alerts: {
+            total_available: alertsCount,
+            exported: alertsExportedCount,
+            truncated: alertsTruncated,
+          },
+          audit_logs: {
+            total_available: auditLogsCount,
+            exported: auditLogsExportedCount,
+            truncated: auditLogsTruncated,
+          },
+          sanctions: {
+            total_available: sanctionsCount,
+            exported: sanctionsExportedCount,
+            truncated: sanctionsTruncated,
+          },
+        },
         exported_at: new Date().toISOString(),
       };
 

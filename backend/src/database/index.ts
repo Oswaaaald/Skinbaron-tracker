@@ -10,7 +10,7 @@ import { OAuthRepository } from './repositories/oauth.repository.js';
 import { PasskeysRepository } from './repositories/passkeys.repository.js';
 import { ChallengesRepository } from './repositories/challenges.repository.js';
 import { bannedEmails, sanctions } from './schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, count } from 'drizzle-orm';
 
 class Store {
   private database: AppDatabase;
@@ -86,11 +86,23 @@ class Store {
     });
   }
 
-  async getSanctionsByUserId(userId: number, limit = 50): Promise<Array<typeof sanctions.$inferSelect>> {
-    return this.database.select().from(sanctions)
+  async getSanctionsByUserId(userId: number, limit = 50, offset = 0): Promise<Array<typeof sanctions.$inferSelect>> {
+    const query = this.database.select().from(sanctions)
       .where(eq(sanctions.user_id, userId))
-      .orderBy(desc(sanctions.created_at))
-      .limit(limit > 0 ? limit : 10000);
+      .orderBy(desc(sanctions.created_at));
+
+    if (limit > 0) {
+      return query.limit(limit).offset(offset);
+    }
+
+    return query;
+  }
+
+  async countSanctionsByUserId(userId: number): Promise<number> {
+    const [result] = await this.database.select({ value: count() })
+      .from(sanctions)
+      .where(eq(sanctions.user_id, userId));
+    return result?.value ?? 0;
   }
 
   async getSanctionById(sanctionId: number): Promise<typeof sanctions.$inferSelect | null> {

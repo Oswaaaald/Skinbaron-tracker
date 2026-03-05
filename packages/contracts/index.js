@@ -148,6 +148,12 @@ export const RATE_LIMIT_PRESETS = Object.freeze({
     error: 'Too many attempts',
     message: 'Too many webhook changes. Please try again in 1 minute.',
   }),
+  ITEM_SEARCH: Object.freeze({
+    max: 30,
+    timeWindow: '1 minute',
+    error: 'Too many requests',
+    message: 'You are searching too fast. Please wait a moment.',
+  }),
   ADMIN_WRITE: Object.freeze({
     max: 10,
     timeWindow: '1 minute',

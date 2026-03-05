@@ -1,6 +1,7 @@
 import { appConfig } from '../config.js';
 import { store } from '../../database/index.js';
 import type { SchedulerLogger } from './types.js';
+import { runSecurityCleanup } from '../security-cleanup.js';
 
 const ONE_DAY_MS = 86_400_000;
 
@@ -39,23 +40,7 @@ export async function runSchedulerMaintenance(logger: SchedulerLogger, lastClean
     }
   }
 
-  try {
-    await store.auth.cleanupExpiredBlacklistTokens();
-  } catch (error) {
-    logger.error({ error }, '[Scheduler] Failed to cleanup expired blacklist tokens');
-  }
-
-  try {
-    await store.auth.cleanupRefreshTokens();
-  } catch (error) {
-    logger.error({ error }, '[Scheduler] Failed to cleanup expired refresh tokens');
-  }
-
-  try {
-    await store.challenges.cleanup();
-  } catch (error) {
-    logger.error({ error }, '[Scheduler] Failed to cleanup expired pending challenges');
-  }
+  await runSecurityCleanup(logger, '[Scheduler]');
 
   return nextCleanupTime;
 }

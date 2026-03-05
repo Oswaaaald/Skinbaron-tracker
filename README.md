@@ -97,7 +97,7 @@ docker compose up -d --build
 
 The app starts at `http://localhost:3000` (frontend) and `http://localhost:8080` (API).
 
-The first registered user is automatically approved as **super admin**.
+The first registered user (password or OAuth) is automatically approved and promoted to **super admin**.
 
 ---
 
@@ -118,7 +118,9 @@ The first registered user is automatically approved as **super admin**.
 | `DATABASE_SSL` | — | `false` | Enable PostgreSQL SSL |
 | `DATABASE_SSL_REJECT_UNAUTHORIZED` | — | `true` | Verify PostgreSQL certificate chain |
 | `POLL_CRON` | — | `*/5 * * * *` | Scheduler cron expression |
+| `SCHEDULER_TIMEZONE` | — | `Europe/Brussels` | IANA timezone used for scheduler cron |
 | `SCHEDULER_ENABLED` | — | `true` | Enables automatic polling |
+| `SECURITY_CLEANUP_INTERVAL_MS` | — | `900000` | Interval for token/challenge cleanup jobs |
 | `RATE_LIMIT_MAX` | — | `1000` | Requests per rate-limit window |
 | `RATE_LIMIT_WINDOW` | — | `60000` | Rate-limit window in ms |
 | `LOG_LEVEL` | — | `info` | `error` \| `warn` \| `info` \| `debug` |

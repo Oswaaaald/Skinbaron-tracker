@@ -6,6 +6,7 @@ import { Activity, History, Shield, Users, Wrench } from 'lucide-react'
 import { apiClient } from '@/lib/api'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL, ADMIN_USERS_PAGE_SIZE } from '@/lib/constants'
 import { extractErrorMessage } from '@/lib/utils'
+import { canAccessAdmin } from '@/lib/rbac'
 import { useAuth } from '@/contexts/auth-context'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { useDebounce } from '@/hooks/use-debounce'
@@ -229,7 +230,7 @@ export function AdminPanel() {
         </TabsContent>
 
         <TabsContent value="logs" className="mt-5 space-y-5">
-          {currentUser?.is_admin && <AdminAuditLogs />}
+          {canAccessAdmin(currentUser) && <AdminAuditLogs />}
         </TabsContent>
 
         {currentUser?.is_super_admin && (

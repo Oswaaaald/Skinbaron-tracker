@@ -9,6 +9,7 @@ export const userHeavyRateLimit = buildRateLimitConfig(RATE_LIMIT_PRESETS.USER_H
 export const rulesWriteRateLimit = buildRateLimitConfig(RATE_LIMIT_PRESETS.RULE_WRITE);
 export const batchWriteRateLimit = buildRateLimitConfig(RATE_LIMIT_PRESETS.BATCH_WRITE);
 export const webhooksWriteRateLimit = buildRateLimitConfig(RATE_LIMIT_PRESETS.WEBHOOK_WRITE);
+export const itemSearchRateLimit = buildRateLimitConfig(RATE_LIMIT_PRESETS.ITEM_SEARCH);
 export const adminWriteRateLimit = buildRateLimitConfig(RATE_LIMIT_PRESETS.ADMIN_WRITE);
 
 export type RateLimitConfig = ReturnType<typeof buildRateLimitConfig>;

@@ -122,7 +122,6 @@ export function registerSessionAuthRoutes(
   });
 
   fastify.post('/logout', {
-    preHandler: [fastify.authenticate],
     config: {
       rateLimit: authRateLimitConfig,
     },
@@ -154,30 +153,55 @@ export function registerSessionAuthRoutes(
       const body = validateWithZod(LogoutBodySchema, request.body ?? {});
       const refresh_token = body.refresh_token || (request.cookies?.[REFRESH_COOKIE]);
 
+      let userId: number | null = null;
+      const accessJtis = new Set<string>();
+      const jtiExpiry = new Map<string, number>();
+
       const accessPayload = accessToken ? AuthService.verifyToken(accessToken, 'access') : null;
-
-      // Check if user still exists (may have been deleted)
-      const userExists = accessPayload ? (await store.users.findById(accessPayload.userId)) !== null : false;
-
-      if (accessPayload?.jti && userExists) {
-        const exp = accessPayload.exp ? accessPayload.exp * 1000 : Date.now();
-        await store.auth.blacklistAccessToken(accessPayload.jti, accessPayload.userId, exp, 'logout');
+      if (accessPayload?.jti) {
+        userId = accessPayload.userId;
+        accessJtis.add(accessPayload.jti);
+        jtiExpiry.set(accessPayload.jti, accessPayload.exp ? accessPayload.exp * 1000 : Date.now() + 15 * 60 * 1000);
       }
 
-      if (refresh_token && userExists) {
-        await store.auth.revokeRefreshToken(refresh_token, 'logout');
-      } else if (accessPayload && userExists) {
-        const revokedJtis = await store.auth.revokeAllForUser(accessPayload.userId);
-        const accessExpiry = Date.now() + 15 * 60 * 1000;
-        await Promise.all(revokedJtis.map(jti => store.auth.blacklistAccessToken(jti, accessPayload.userId, accessExpiry, 'logout')));
+      if (refresh_token) {
+        const refreshPayload = AuthService.verifyToken(refresh_token, 'refresh');
+        if (refreshPayload?.userId && userId === null) {
+          userId = refreshPayload.userId;
+        }
+
+        const refreshRecord = await store.auth.getRefreshToken(refresh_token);
+        if (refreshRecord?.user_id && userId === null) {
+          userId = refreshRecord.user_id;
+        }
+
+        if (refreshRecord && !refreshRecord.revoked_at) {
+          await store.auth.revokeRefreshToken(refresh_token, 'logout');
+        }
+
+        if (refreshRecord?.access_token_jti) {
+          accessJtis.add(refreshRecord.access_token_jti);
+          jtiExpiry.set(refreshRecord.access_token_jti, Date.now() + 15 * 60 * 1000);
+        }
       }
 
-      // Clean up revoked tokens from database
-      await store.auth.cleanupRefreshTokens();
+      if (userId !== null) {
+        const revokedJtis = await store.auth.revokeAllForUser(userId);
+        for (const jti of revokedJtis) {
+          accessJtis.add(jti);
+          if (!jtiExpiry.has(jti)) {
+            jtiExpiry.set(jti, Date.now() + 15 * 60 * 1000);
+          }
+        }
 
-      if (accessPayload && userExists) {
+        await Promise.all(
+          Array.from(accessJtis).map((jti) =>
+            store.auth.blacklistAccessToken(jti, userId, jtiExpiry.get(jti) ?? Date.now() + 15 * 60 * 1000, 'logout')
+          ),
+        );
+
         await store.audit.createLog(
-          accessPayload.userId,
+          userId,
           'logout',
           JSON.stringify({ reason: 'user_logout' }),
           getClientIp(request),
@@ -185,10 +209,18 @@ export function registerSessionAuthRoutes(
         );
       }
 
+      // Best-effort hygiene even when scheduler is disabled.
+      await Promise.all([
+        store.auth.cleanupRefreshTokens(),
+        store.auth.cleanupExpiredBlacklistTokens(),
+        store.challenges.cleanup(),
+      ]);
+
       clearAuthCookies(reply);
 
       return reply.status(200).send({ success: true, message: 'Logged out' });
     } catch (error) {
+      clearAuthCookies(reply);
       return handleRouteError(error, request, reply, 'User logout');
     }
   });

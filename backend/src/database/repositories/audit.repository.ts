@@ -33,6 +33,24 @@ export class AuditRepository {
     return this.enrichLogsWithAdminUsernames(logs);
   }
 
+  async getLogsByUserIdPaginated(userId: number, limit: number, offset: number): Promise<AuditLog[]> {
+    const logs = await this.db.select()
+      .from(auditLog)
+      .where(eq(auditLog.user_id, userId))
+      .orderBy(desc(auditLog.created_at))
+      .limit(limit)
+      .offset(offset);
+
+    return this.enrichLogsWithAdminUsernames(logs);
+  }
+
+  async countLogsByUserId(userId: number): Promise<number> {
+    const [result] = await this.db.select({ value: count() })
+      .from(auditLog)
+      .where(eq(auditLog.user_id, userId));
+    return result?.value ?? 0;
+  }
+
   async getAllLogs(limit: number = 100, eventType?: string, userId?: number): Promise<AuditLog[]> {
     const conditions = [];
     if (eventType) conditions.push(eq(auditLog.event_type, eventType));

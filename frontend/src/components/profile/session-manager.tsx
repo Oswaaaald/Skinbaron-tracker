@@ -144,10 +144,10 @@ export function SessionManager() {
 
           {/* Other sessions */}
           {otherSessions.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {currentSession && (
-                <div className="border-t pt-3">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Other sessions</p>
+                <div className="border-t pt-2">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">Other sessions</p>
                 </div>
               )}
               {otherSessions.map(session => (

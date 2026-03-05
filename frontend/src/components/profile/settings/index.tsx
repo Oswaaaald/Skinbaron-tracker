@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api'
 import { QUERY_KEYS, SLOW_POLL_INTERVAL } from '@/lib/constants'
 import { PROVIDER_META } from '@/lib/oauth-icons'
 import { validateEmail, validatePasswordChange, validateSetPassword, validateUsername } from '@/lib/validation'
+import { canAccessAdmin } from '@/lib/rbac'
 import { useAuth } from '@/contexts/auth-context'
 import { useFormState } from '@/hooks/use-form-state'
 import { usePageVisible } from '@/hooks/use-page-visible'
@@ -138,12 +139,12 @@ export function ProfileSettings() {
   })
 
   const availableEmails = useMemo(() => {
-    if (user?.is_admin) return []
+    if (canAccessAdmin(user)) return []
     const emails = new Set<string>()
     if (user?.email) emails.add(user.email)
     for (const account of oauthAccounts ?? []) if (account.provider_email) emails.add(account.provider_email)
     return [...emails]
-  }, [user?.is_admin, user?.email, oauthAccounts])
+  }, [user, oauthAccounts])
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault(); clear('profile')

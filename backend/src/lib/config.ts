@@ -35,7 +35,9 @@ const ConfigSchema = z.object({
   
   // Polling
   POLL_CRON: z.string().default('*/5 * * * *'),
+  SCHEDULER_TIMEZONE: z.string().default('Europe/Brussels'),
   SCHEDULER_ENABLED: z.coerce.boolean().default(true),
+  SECURITY_CLEANUP_INTERVAL_MS: z.coerce.number().int().min(60_000).default(15 * 60 * 1000),
   
   // API
   NEXT_PUBLIC_API_URL: z.string().min(1, 'NEXT_PUBLIC_API_URL is required'),

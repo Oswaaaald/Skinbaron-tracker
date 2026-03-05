@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { captureException, flushSentry } from '../lib/sentry.js';
 import { closeDatabase } from '../database/connection.js';
 import { getScheduler } from '../lib/scheduler.js';
+import { getSecurityCleanupService } from '../lib/security-cleanup.js';
 
 export function registerProcessHandlers(fastify: FastifyInstance): void {
   const gracefulShutdown = async (signal: string) => {
@@ -10,6 +11,7 @@ export function registerProcessHandlers(fastify: FastifyInstance): void {
     try {
       const scheduler = getScheduler();
       scheduler.stop();
+      getSecurityCleanupService().stop();
 
       await closeDatabase();
       await fastify.close();

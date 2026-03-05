@@ -83,7 +83,7 @@ export function createAuthApiMethods(client: ApiClientRuntime): AuthApiMethods {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),
-      }, true); // allow CSRF auto-retry; auth refresh is skipped for logout
+      }, true); // allow CSRF auto-retry and refresh-retry when access token is stale
     },
 
     async getOAuthProviders(): Promise<ApiResponse<{ providers: string[] }>> {
