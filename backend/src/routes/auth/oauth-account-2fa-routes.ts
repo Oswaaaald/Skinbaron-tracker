@@ -9,9 +9,10 @@ import {
   decryptOAuth2FAPending,
   OAUTH_2FA_COOKIE,
 } from '../../lib/oauth.js';
-import { VerifyOAuth2FASchema } from '../../database/schemas.js';
+import { VerifyOAuth2FASchema } from '../../database/validation-schemas.js';
 import { verifyTotpOrRecoveryCode } from '../../lib/two-factor.js';
 import type { AuthRoutesContext } from './shared.js';
+import { authSessionResponseSchema } from '../../contracts/auth-contracts.js';
 
 export function registerOAuthTwoFactorRoutes(
   fastify: FastifyInstance,
@@ -33,23 +34,7 @@ export function registerOAuthTwoFactorRoutes(
           },
         },
         response: {
-          200: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              data: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number' },
-                  username: { type: 'string' },
-                  email: { type: 'string' },
-                  avatar_url: { type: 'string' },
-                  is_admin: { type: 'boolean' },
-                  is_super_admin: { type: 'boolean' },
-                },
-              },
-            },
-          },
+          200: authSessionResponseSchema,
         },
       },
     },
@@ -128,6 +113,7 @@ export function registerOAuthTwoFactorRoutes(
             is_admin: user.is_admin,
             is_super_admin: user.is_super_admin,
             has_password: !!user.password_hash,
+            token_expires_at: accessToken.expiresAt,
           },
         });
       } catch (error) {

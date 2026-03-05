@@ -13,8 +13,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "dev:docker": "docker build -f Dockerfile.dev -t skinbaron-frontend-dev . && docker run -p 3000:3000 -v $(pwd):/app skinbaron-frontend-dev",
-    "docker:build": "docker build -t skinbaron-frontend .",
+    "dev:docker": "docker build -f frontend/Dockerfile.dev -t skinbaron-frontend-dev .. && docker run -p 3000:3000 -v $(pwd)/..:/app skinbaron-frontend-dev",
+    "docker:build": "docker build -f frontend/Dockerfile -t skinbaron-frontend ..",
     "docker:run": "docker run -p 3000:3000 skinbaron-frontend"
   },
   "dependencies": {
@@ -32,6 +32,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
     "@sentry/nextjs": "^10.41.0",
+    "@skinbaron/contracts": "file:../packages/contracts",
     "@simplewebauthn/browser": "^13.2.2",
     "@tanstack/react-query": "^5.90.21",
     "class-variance-authority": "^0.7.1",
@@ -43,8 +44,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.71.2",
-    "server-only": "^0.0.1",
     "tailwind-merge": "^3.5.0",
+    "zxcvbn": "^4.4.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -53,6 +54,7 @@
     "@types/node": "^25.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/zxcvbn": "^4.4.5",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "eslint": "^9.39.2",

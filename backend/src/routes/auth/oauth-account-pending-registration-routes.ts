@@ -9,8 +9,9 @@ import {
   decryptOAuthPendingRegistration,
   OAUTH_PENDING_REG_COOKIE,
 } from '../../lib/oauth.js';
-import { FinalizeOAuthRegistrationSchema } from '../../database/schemas.js';
+import { FinalizeOAuthRegistrationSchema } from '../../database/validation-schemas.js';
 import type { AuthRoutesContext } from './shared.js';
+import { authSessionResponseSchema } from '../../contracts/auth-contracts.js';
 
 export function registerOAuthPendingRegistrationRoutes(
   fastify: FastifyInstance,
@@ -85,23 +86,7 @@ export function registerOAuthPendingRegistrationRoutes(
           },
         },
         response: {
-          201: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              data: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number' },
-                  username: { type: 'string' },
-                  email: { type: 'string' },
-                  avatar_url: { type: 'string' },
-                  is_admin: { type: 'boolean' },
-                  is_super_admin: { type: 'boolean' },
-                },
-              },
-            },
-          },
+          201: authSessionResponseSchema,
         },
       },
     },
@@ -193,6 +178,7 @@ export function registerOAuthPendingRegistrationRoutes(
             is_admin: newUser.is_admin,
             is_super_admin: newUser.is_super_admin,
             has_password: !!newUser.password_hash,
+            token_expires_at: accessToken.expiresAt,
           },
         });
       } catch (error) {

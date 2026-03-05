@@ -7,6 +7,7 @@ import { verifyTotpOrRecoveryCode } from '../../lib/two-factor.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
 import { appConfig } from '../../lib/config.js';
+import { profileResponseSchema, profileUpdateResponseSchema } from '../../contracts/auth-contracts.js';
 
 const UpdateProfileSchema = z.object({
   username: z.string()
@@ -45,24 +46,7 @@ export function registerUserProfileRoutes(
       tags: ['User'],
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number' },
-                username: { type: 'string' },
-                email: { type: 'string' },
-                avatar_url: { type: 'string' },
-                is_admin: { type: 'boolean' },
-                is_super_admin: { type: 'boolean' },
-                has_password: { type: 'boolean' },
-              },
-            },
-          },
-        },
+        200: profileResponseSchema,
       },
     },
   }, async (request, reply) => {
@@ -163,24 +147,7 @@ export function registerUserProfileRoutes(
         },
       },
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number' },
-                username: { type: 'string' },
-                email: { type: 'string' },
-                avatar_url: { type: 'string' },
-                is_admin: { type: 'boolean' },
-                is_super_admin: { type: 'boolean' },
-              },
-            },
-          },
-        },
+        200: profileUpdateResponseSchema,
       },
     },
   }, async (request, reply) => {
@@ -290,6 +257,7 @@ export function registerUserProfileRoutes(
           use_gravatar: updatedUser.use_gravatar,
           is_admin: updatedUser.is_admin,
           is_super_admin: updatedUser.is_super_admin,
+          has_password: !!updatedUser.password_hash,
         },
       });
     } catch (error) {

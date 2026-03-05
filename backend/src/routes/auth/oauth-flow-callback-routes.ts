@@ -17,7 +17,7 @@ import {
 import {
   OAuthProviderParamsSchema,
   OAuthCallbackQuerySchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 import { generateUniqueUsername } from '../../lib/username.js';
 import type { AuthRoutesContext } from './shared.js';
 

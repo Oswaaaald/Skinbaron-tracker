@@ -1,15 +1,7 @@
 import type { FastifyReply } from 'fastify';
+import type { RateLimitConfig } from '../../lib/rate-limit.js';
 
-export type AuthRateLimitConfig = {
-  max: number;
-  timeWindow: string;
-  errorResponseBuilder: () => {
-    statusCode: number;
-    success: boolean;
-    error: string;
-    message: string;
-  };
-};
+export type AuthRateLimitConfig = RateLimitConfig;
 
 export type AccessToken = {
   token: string;

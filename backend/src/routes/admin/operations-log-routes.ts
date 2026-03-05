@@ -8,7 +8,7 @@ import {
   AdminUserAuditParamsSchema,
   AdminUserAuditQuerySchema,
   AdminSearchQuerySchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 
 export function registerAdminOperationalLogRoutes(fastify: FastifyInstance): void {
   fastify.get('/audit-logs/:userId', {

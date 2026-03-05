@@ -3,7 +3,7 @@ import { store } from '../../database/index.js';
 import { getClientIp, getAuthUser } from '../../lib/middleware.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
-import { OAuthUnlinkParamsSchema } from '../../database/schemas.js';
+import { OAuthUnlinkParamsSchema } from '../../database/validation-schemas.js';
 import type { RegisterUserSecurityRoutesOptions } from './security-types.js';
 
 export function registerUserSecurityOAuthRoutes(

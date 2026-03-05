@@ -7,7 +7,7 @@ import { appConfig } from '../../lib/config.js';
 import {
   AdminUserParamsSchema,
   AdminUsersQuerySchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 
 export function registerAdminUserOverviewRoutes(fastify: FastifyInstance): void {
   fastify.get('/users', {

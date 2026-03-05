@@ -1,10 +1,14 @@
 'use client'
 
-import { createContext, useEffect, useState, useRef, useMemo, ReactNode, useCallback } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { apiClient, ApiError } from '@/lib/api'
-import { logger } from '@/lib/logger'
+import { apiClient } from '@/lib/api'
 import type { AuthContextType, InitialAuthState, User } from './auth-context.types'
+import { useAuthActions } from './auth/use-auth-actions'
+import { useFocusProfileSync } from './auth/use-focus-profile-sync'
+import { useSessionBootstrap } from './auth/use-session-bootstrap'
+import { useSessionRefresh } from './auth/use-session-refresh'
+
 export type { AuthContextType, InitialAuthState, User } from './auth-context.types'
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -18,254 +22,43 @@ export function AuthProvider({ children, initialAuth }: { children: ReactNode; i
   const isAuthenticated = !!user
   const queryClient = useQueryClient()
 
-  // Define updateUser early so it can be used in effects
   const updateUser = useCallback((userData: Partial<User>) => {
-    setUser(prev => prev ? { ...prev, ...userData } : null)
+    setUser((prev) => (prev ? { ...prev, ...userData } : null))
   }, [])
 
-  // Initialize auth state from server session or fetch /me if cookies exist
-  useEffect(() => {
-    const loadSession = async () => {
-      try {
-        if (initialAuth?.user) {
-          setUser(initialAuth.user)
-          setAccessExpiry(initialAuth.expiresAt ?? null)
-          setIsLoading(false)
-          setIsReady(true)
-          return
-        }
+  useSessionBootstrap({ initialAuth, setUser, setAccessExpiry, setIsLoading, setIsReady })
+  useFocusProfileSync({ user, updateUser })
+  useSessionRefresh({ user, accessExpiry, setUser, setAccessExpiry })
 
-        // Detect if we believe a session exists (set after a previous successful auth)
-        const hasSessionFlag = typeof window !== 'undefined' && localStorage.getItem('has_session') === 'true'
+  const { login, register, logout } = useAuthActions({
+    setUser,
+    setAccessExpiry,
+    setIsReady,
+    queryClient,
+  })
 
-        // Detect OAuth callback success (redirected back from backend with JWT cookies)
-        const isOAuthCallback = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('oauth') === 'success'
-
-        if (isOAuthCallback) {
-          // Clean the query param from the URL
-          const url = new URL(window.location.href)
-          url.searchParams.delete('oauth')
-          window.history.replaceState({}, '', url.pathname + url.search)
-          // Force session flag so we fetch the profile
-          localStorage.setItem('has_session', 'true')
-        }
-
-        // If we have no signal of an existing session, avoid the extra 401 noise
-        if (!hasSessionFlag && !isOAuthCallback) {
-          setUser(null)
-          setIsLoading(false)
-          setIsReady(true)
-          return
-        }
-
-        // Fetch profile; only attempt refresh if we believe a session exists
-        const me = await apiClient.getUserProfile({ allowRefresh: hasSessionFlag || isOAuthCallback })
-        if (me.success && me.data) {
-          setUser(me.data)
-          // Set session flag on success
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('has_session', 'true')
-          }
-        } else {
-          // If rate-limited (429), keep the session flag — user is still authenticated,
-          // the refresh endpoint just throttled us (e.g. rapid Ctrl+Shift+R).
-          const isRateLimited = (me as { status?: number }).status === 429
-          setUser(null)
-          if (typeof window !== 'undefined' && !isRateLimited) {
-            localStorage.removeItem('has_session')
-          }
-        }
-      } catch (err) {
-        setUser(null)
-        // Don't clear the flag on network errors - keep it for next reload
-        logger.error('Session load error:', err)
-      } finally {
-        setIsLoading(false)
-        setIsReady(true)
-      }
-    }
-
-    void loadSession()
-  }, [initialAuth])
-
-  // Setup logout callback for when user is deleted/invalid
-  // Just clear state, let ProtectedRoute handle navigation
+  // Register API-client callbacks once the provider is mounted
   useEffect(() => {
     apiClient.setLogoutCallback(() => {
       setUser(null)
       setAccessExpiry(null)
       queryClient.clear()
-      try { localStorage.removeItem('has_session') } catch { /* ignore */ }
+      try {
+        localStorage.removeItem('has_session')
+      } catch {
+        // ignore localStorage failures
+      }
     })
 
-    // Setup refresh callback to update expiry when token is auto-refreshed
     apiClient.setRefreshCallback((expiresAt: number) => {
       setAccessExpiry(expiresAt)
     })
-  }, [queryClient])
-
-  // Keep a lightweight profile refresh on focus when authenticated
-  const lastCheckRef = useRef(0)
-  const isCheckingRef = useRef(false)
-
-  useEffect(() => {
-    if (!user) return
-
-    const checkUserProfile = async () => {
-      const now = Date.now()
-      if (isCheckingRef.current) return
-      if (now - lastCheckRef.current < 30_000) return // throttle to once every 30s
-
-      isCheckingRef.current = true
-      try {
-        const response = await apiClient.getUserProfile({ allowRefresh: true })
-        if (response.success && response.data) {
-          updateUser({
-            username: response.data.username,
-            email: response.data.email,
-            avatar_url: response.data.avatar_url,
-            is_admin: response.data.is_admin,
-            is_super_admin: response.data.is_super_admin,
-          })
-        }
-      } catch {
-        // Ignore failures; will retry on next focus
-      } finally {
-        lastCheckRef.current = Date.now()
-        isCheckingRef.current = false
-      }
-    }
-
-    const handleFocus = () => { void checkUserProfile() }
-    window.addEventListener('focus', handleFocus)
 
     return () => {
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [user, updateUser])
-
-  const login = useCallback(async (email: string, password: string, totpCode?: string): Promise<{
-    success: boolean;
-    error?: string;
-    requires2FA?: boolean;
-    restrictionExpiresAt?: string;
-  }> => {
-    try {
-      const data = await apiClient.login(email, password, totpCode)
-
-      if (data.success && data.data) {
-        if (data.data.requires_2fa) {
-          return { success: false, requires2FA: true }
-        }
-
-        const { token_expires_at: _exp, requires_2fa: _r2fa, ...userData } = data.data
-        setUser(userData)
-        setAccessExpiry(_exp ?? null)
-        setIsReady(true)
-        // Mark that we have a session for future page loads
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('has_session', 'true')
-        }
-        return { success: true, requires2FA: false }
-      }
-
-      return {
-        success: false,
-        requires2FA: false,
-        error: data.message || data.error || 'Login failed',
-        restrictionExpiresAt: (data.details as { data?: { restriction_expires_at?: string } } | undefined)?.data?.restriction_expires_at,
-      }
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'
-      logger.error('Login error:', error)
-      return { success: false, requires2FA: false, error: message }
-    }
-  }, [])
-
-  const register = useCallback(async (username: string, email: string, password: string) => {
-    try {
-      const data = await apiClient.register(username, email, password)
-
-      if (data.success) {
-        // Backend sends tokens via HttpOnly cookies, not in JSON response.
-        // When admin approval is required, data.data has no token — show pending message.
-        // When auto-approved, cookies are already set — just refresh user state.
-        if (data.data && !data.data.token) {
-          return {
-            success: true,
-            error: data.message || 'Registration successful! Your account is awaiting admin approval.',
-          }
-        }
-
-        // Auto-approved: cookies are set, fetch user profile
-        const me = await apiClient.getUserProfile({ allowRefresh: true })
-        if (me.success && me.data) {
-          setUser(me.data)
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('has_session', 'true')
-          }
-        }
-        return { success: true }
-      }
-
-      return {
-        success: false,
-        error: data.message || data.error || 'Registration failed',
-      }
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : 'Network error. Please try again.'
-      logger.error('Registration error:', error)
-      return { success: false, error: message }
-    }
-  }, [])
-
-  const logout = useCallback(async () => {
-    try {
-      await apiClient.logout()
-    } catch {
-      // Best-effort logout
-    }
-    setUser(null)
-    setAccessExpiry(null)
-    setIsReady(true)
-    queryClient.clear()
-    // Clear session flag
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('has_session')
-      }
-    } catch {
-      // localStorage unavailable
+      apiClient.setLogoutCallback(() => {})
+      apiClient.setRefreshCallback(() => {})
     }
   }, [queryClient])
-
-  // Proactively refresh shortly before access expiry using HttpOnly cookies
-  useEffect(() => {
-    if (!user || !accessExpiry) return
-
-    const now = Date.now()
-    const msToRefresh = Math.max(accessExpiry - now - 60_000, 0)
-
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          // Use the deduplicating refresh path to avoid races with 401-triggered refreshes
-          const refreshed = await apiClient.tryRefreshToken()
-          if (refreshed.success && refreshed.expiresAt) {
-            setAccessExpiry(refreshed.expiresAt)
-          } else if (!refreshed.success) {
-            setUser(null)
-            setAccessExpiry(null)
-          }
-        } catch {
-          setUser(null)
-          setAccessExpiry(null)
-        }
-      })()
-    }, msToRefresh)
-
-    return () => clearTimeout(timer)
-  }, [user, accessExpiry])
 
   const contextValue = useMemo<AuthContextType>(() => ({
     user,

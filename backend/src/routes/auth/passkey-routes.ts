@@ -11,8 +11,9 @@ import { getClientIp, enforceRestriction } from '../../lib/middleware.js';
 import { appConfig } from '../../lib/config.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
-import { PasskeyAuthVerifySchema } from '../../database/schemas.js';
+import { PasskeyAuthVerifySchema } from '../../database/validation-schemas.js';
 import type { AuthRoutesContext } from './shared.js';
+import { authSessionResponseSchema } from '../../contracts/auth-contracts.js';
 
 const PASSKEY_CHALLENGE_TTL = 5 * 60 * 1000;
 
@@ -71,6 +72,9 @@ export function registerPasskeyAuthRoutes(
           challengeKey: { type: 'string' },
         },
         required: ['credential', 'challengeKey'],
+      },
+      response: {
+        200: authSessionResponseSchema,
       },
     },
   }, async (request, reply) => {

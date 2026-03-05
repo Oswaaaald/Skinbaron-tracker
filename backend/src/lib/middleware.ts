@@ -3,7 +3,7 @@ import '@fastify/cookie';
 import { LRUCache } from 'lru-cache';
 import { AuthService } from './auth.js';
 import { store } from '../database/index.js';
-import type { User } from '../database/schemas.js';
+import type { User } from '../database/validation-schemas.js';
 import { AppError } from './errors.js';
 import { appConfig, USER_CACHE_MAX, USER_CACHE_TTL_MS } from './config.js';
 

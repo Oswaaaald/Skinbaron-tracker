@@ -6,7 +6,7 @@ import { Errors } from '../../lib/errors.js';
 import { AuthService } from '../../lib/auth.js';
 import { appConfig } from '../../lib/config.js';
 import { deleteAvatarFile } from '../../lib/avatar.js';
-import { AdminUserParamsSchema } from '../../database/schemas.js';
+import { AdminUserParamsSchema } from '../../database/validation-schemas.js';
 import type { RegisterAdminRouteOptions } from './types.js';
 
 export function registerAdminUserAvatarRoutes(

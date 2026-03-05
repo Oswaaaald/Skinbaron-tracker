@@ -2,7 +2,7 @@ import { CronJob } from 'cron';
 import pino from 'pino';
 import { appConfig } from './config.js';
 import { store } from '../database/index.js';
-import type { Rule } from '../database/schemas.js';
+import type { Rule } from '../database/validation-schemas.js';
 import { getNotificationService } from './notifier.js';
 import { runSchedulerMaintenance } from './scheduler/maintenance.js';
 import { processRuleGroup } from './scheduler/rule-processing.js';

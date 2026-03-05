@@ -4,7 +4,7 @@ import { getClientIp, getAuthUser, invalidateUserCache } from '../../lib/middlew
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { Errors } from '../../lib/errors.js';
 import { deleteAvatarFile } from '../../lib/avatar.js';
-import { AdminUserParamsSchema } from '../../database/schemas.js';
+import { AdminUserParamsSchema } from '../../database/validation-schemas.js';
 import type { RegisterAdminRouteOptions } from './types.js';
 
 export function registerAdminUserLifecycleRoutes(

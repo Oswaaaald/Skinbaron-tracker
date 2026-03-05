@@ -7,7 +7,7 @@ import {
   AdminUserParamsSchema,
   RestrictUserSchema,
   UnrestrictUserSchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 import type { RegisterAdminRouteOptions } from './types.js';
 
 export function registerAdminRestrictionRoutes(

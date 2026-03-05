@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RuleBaseSchema } from '../../database/schemas.js';
+import { RuleBaseSchema } from '../../database/validation-schemas.js';
 
 export const CreateRuleRequestSchema = RuleBaseSchema.omit({
   id: true,

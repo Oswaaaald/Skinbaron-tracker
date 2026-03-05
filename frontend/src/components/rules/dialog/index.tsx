@@ -19,10 +19,8 @@ import {
   ruleFormSchema,
   type RuleFormData,
 } from '@/components/rules/dialog/schema'
-import {
-  RuleDialogMainFields,
-  RuleDialogWebhookAndStatus,
-} from '@/components/rules/dialog/form-sections'
+import { RuleDialogMainFields } from '@/components/rules/dialog/main-fields'
+import { RuleDialogWebhookAndStatus } from '@/components/rules/dialog/webhook-status-fields'
 
 interface RuleDialogProps {
   open: boolean

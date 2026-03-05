@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { store } from '../../database/index.js';
 import { getAuthUser } from '../../lib/middleware.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
-import { UserAuditQuerySchema } from '../../database/schemas.js';
+import { UserAuditQuerySchema } from '../../database/validation-schemas.js';
 
 export function registerUserSecurityAuditRoutes(fastify: FastifyInstance): void {
   fastify.get('/audit-logs', {

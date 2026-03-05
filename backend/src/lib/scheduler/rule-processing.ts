@@ -1,6 +1,6 @@
 import { DISCORD_DELAY_MS, API_PAGE_SIZE } from '../config.js';
 import { store } from '../../database/index.js';
-import type { Rule, CreateAlert } from '../../database/schemas.js';
+import type { Rule, CreateAlert } from '../../database/validation-schemas.js';
 import type { Alert, UserWebhook } from '../../database/schema.js';
 import { getSkinBaronClient, type SkinBaronClient, type SkinBaronItem } from '../sbclient.js';
 import { getNotificationService, type NotificationStyle } from '../notifier.js';

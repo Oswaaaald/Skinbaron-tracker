@@ -10,11 +10,14 @@ RUN apk add --no-cache ca-certificates
 FROM base AS builder
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY backend/package.json backend/package-lock.json* ./backend/
+COPY packages/contracts ./packages/contracts
+
+WORKDIR /app/backend
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --fund=false
 
-COPY . .
+COPY backend ./
 RUN npm run build && npm prune --omit=dev
 
 # ---------- runner ----------
@@ -28,11 +31,12 @@ RUN addgroup --system --gid 1001 nodejs \
     && mkdir -p /data/avatars \
     && chown skinbaron:nodejs /data/avatars
 
-COPY --from=builder --chown=skinbaron:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=skinbaron:nodejs /app/dist ./dist
-COPY --from=builder --chown=skinbaron:nodejs /app/drizzle ./drizzle
-COPY --from=builder --chown=skinbaron:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=skinbaron:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=skinbaron:nodejs /app/backend/node_modules ./node_modules
+COPY --from=builder --chown=skinbaron:nodejs /app/backend/dist ./dist
+COPY --from=builder --chown=skinbaron:nodejs /app/backend/drizzle ./drizzle
+COPY --from=builder --chown=skinbaron:nodejs /app/backend/package.json ./package.json
+COPY --from=builder --chown=skinbaron:nodejs /app/backend/scripts ./scripts
+COPY --from=builder --chown=skinbaron:nodejs /app/packages/contracts ./packages/contracts
 
 USER skinbaron
 

@@ -6,22 +6,13 @@ import { registerOAuthFlowRoutes } from './auth/oauth-flow-routes.js';
 import { registerOAuthAccountRoutes } from './auth/oauth-account-routes.js';
 import { registerPasskeyAuthRoutes } from './auth/passkey-routes.js';
 import type { AuthRoutesContext } from './auth/shared.js';
+import { authStrictRateLimit } from '../lib/rate-limit.js';
 
 /**
  * Authentication routes
  */
 export default async function authRoutes(fastify: FastifyInstance) {
-  // Stricter rate limiting for auth endpoints (anti-brute force)
-  const authRateLimitConfig = {
-    max: 5,
-    timeWindow: '1 minute',
-    errorResponseBuilder: () => ({
-      statusCode: 429,
-      success: false,
-      error: 'Too many attempts',
-      message: 'Too many authentication attempts. Please try again in 1 minute.',
-    }),
-  };
+  const authRateLimitConfig = authStrictRateLimit;
 
   const setAuthCookies = (
     reply: FastifyReply,

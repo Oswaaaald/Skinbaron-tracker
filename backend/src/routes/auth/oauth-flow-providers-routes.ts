@@ -12,7 +12,7 @@ import {
 import {
   OAuthProviderParamsSchema,
   OAuthProviderQuerySchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 import { validateWithZod } from '../../lib/validation-handler.js';
 import type { AuthRoutesContext } from './shared.js';
 

@@ -14,7 +14,7 @@ import {
   PasskeyParamsSchema,
   PasskeyRenameSchema,
   PasskeyRegisterVerifySchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 import { WEBAUTHN_CHALLENGE_TTL, type RegisterUserSecurityRoutesOptions } from './security-types.js';
 
 export function registerUserPasskeyRoutes(

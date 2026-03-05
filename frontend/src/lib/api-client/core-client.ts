@@ -1,5 +1,7 @@
 import { logger } from '../logger'
 import type { ApiResponse } from '../api-types'
+import { isCsrfError, isMutatingMethod, shouldAttemptTokenRefresh } from './request-policies'
+import { buildErrorResponse, decodeJsonResponse, normalizeSuccessResponse } from './response-decoder'
 
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] || ''
 
@@ -44,11 +46,14 @@ export class CoreApiClient {
       const response = await fetch(`${this.baseURL}/api/csrf-token`, {
         credentials: 'include',
       })
-      if (response.ok) {
-        const data = await response.json() as ApiResponse<{ csrf_token: string }>
-        if (data.success && data.data?.csrf_token) {
-          this.csrfToken = data.data.csrf_token
-        }
+
+      if (!response.ok) {
+        return
+      }
+
+      const data = await decodeJsonResponse(response, `${this.baseURL}/api/csrf-token`, 'GET') as ApiResponse<{ csrf_token: string }>
+      if (data.success && data.data?.csrf_token) {
+        this.csrfToken = data.data.csrf_token
       }
     } catch (error) {
       logger.warn('Failed to initialize CSRF token:', error)
@@ -88,11 +93,14 @@ export class CoreApiClient {
   async request<T>(endpoint: string, options: RequestInit = {}, allowRefresh: boolean = true): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`
+      const method = options.method || 'GET'
       const headers: Record<string, string> = {}
-      if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json'
 
-      const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method || 'GET')
-      if (isMutating) {
+      if (options.body && !(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json'
+      }
+
+      if (isMutatingMethod(method)) {
         if (!this.csrfToken) {
           await this.initCsrfToken()
         }
@@ -110,38 +118,19 @@ export class CoreApiClient {
         credentials: 'include',
       })
 
-      let data: unknown = null
-      try {
-        data = await response.json()
-      } catch {
-        throw new ApiError(`Invalid JSON response (status ${response.status})`, response.status, url, options.method || 'GET', null)
-      }
+      const data = await decodeJsonResponse(response, url, method)
 
       if (!response.ok) {
-        const errorPayload =
-          data && typeof data === 'object'
-            ? (data as { message?: string; error?: string; code?: string })
-            : undefined
-        const message = errorPayload?.message || errorPayload?.error || `HTTP ${response.status}`
+        const errorPayload = data && typeof data === 'object'
+          ? (data as { code?: string })
+          : undefined
 
-        const isAuthLogin = endpoint.startsWith('/api/auth/login')
-        const isAuthRegister = endpoint.startsWith('/api/auth/register')
-        const isAuthLogout = endpoint.startsWith('/api/auth/logout')
-
-        const isCsrfError = response.status === 403 && errorPayload?.code?.startsWith('CSRF_TOKEN_')
-        if (isCsrfError && allowRefresh) {
+        if (isCsrfError(response.status, errorPayload?.code) && allowRefresh) {
           await this.initCsrfToken()
           return this.request<T>(endpoint, options, false)
         }
 
-        const shouldAttemptRefresh =
-          !isAuthLogin &&
-          !isAuthRegister &&
-          !isAuthLogout &&
-          response.status === 401 &&
-          allowRefresh
-
-        if (shouldAttemptRefresh) {
+        if (shouldAttemptTokenRefresh(endpoint, response.status, allowRefresh)) {
           const refreshResult = await this.tryRefreshToken()
           if (refreshResult.success) {
             if (this.onRefresh && refreshResult.expiresAt) {
@@ -164,37 +153,10 @@ export class CoreApiClient {
           }
         }
 
-        return {
-          success: false,
-          error: message,
-          message,
-          details: data,
-          status: response.status,
-        }
+        return buildErrorResponse<T>(response.status, data)
       }
 
-      if (!data || typeof data !== 'object') {
-        return {
-          success: false,
-          error: 'Unexpected API response format',
-          message: 'Unexpected API response format',
-          details: data,
-          status: response.status,
-        }
-      }
-
-      const parsed = data as Partial<ApiResponse<T>>
-      if (typeof parsed.success !== 'boolean') {
-        return {
-          success: false,
-          error: 'Invalid API response contract: missing success flag',
-          message: 'Invalid API response contract',
-          details: data,
-          status: response.status,
-        }
-      }
-
-      return { ...(parsed as ApiResponse<T>), status: parsed.status ?? response.status }
+      return normalizeSuccessResponse<T>(data, response.status)
     } catch (error) {
       const message = (error as Error).message || 'Network error'
       if (process.env.NODE_ENV === 'development') {
@@ -218,20 +180,26 @@ export class CoreApiClient {
 
     this.refreshPromise = (async () => {
       try {
-        const result = await this.request<{ token_expires_at?: number }>('/api/auth/refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const result = await this.request<{ token_expires_at?: number }>(
+          '/api/auth/refresh',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({}),
           },
-          body: JSON.stringify({}),
-        }, false)
+          false,
+        )
+
         if (result?.success) {
           try {
             sessionStorage.setItem('_last_refresh', String(Date.now()))
           } catch {
-            // ignore
+            // ignore storage failures
           }
         }
+
         const isRateLimited = !result?.success && (result as { status?: number })?.status === 429
         return {
           success: Boolean(result?.success),

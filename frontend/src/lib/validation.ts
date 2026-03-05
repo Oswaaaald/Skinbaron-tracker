@@ -2,6 +2,8 @@
  * Centralized validation rules
  * These must match backend validation schemas exactly (backend/src/lib/auth.ts)
  */
+import { PASSWORD_RULES } from '@skinbaron/contracts'
+import zxcvbn from 'zxcvbn'
 
 export type ValidationResult = {
   valid: boolean
@@ -52,21 +54,22 @@ export function validatePassword(password: string): ValidationResult {
     return { valid: false, error: 'Password is required' }
   }
 
-  if (password.length < 8) {
-    return { valid: false, error: 'Password must be at least 8 characters' }
+  if (password.length < PASSWORD_RULES.minLength) {
+    return { valid: false, error: `Password must be at least ${PASSWORD_RULES.minLength} characters` }
+  }
+
+  if (password.length > PASSWORD_RULES.maxLength) {
+    return { valid: false, error: `Password must be at most ${PASSWORD_RULES.maxLength} characters` }
   }
 
   // Must contain at least one lowercase, one uppercase, and one digit
-  if (!/(?=.*[a-z])/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one lowercase letter' }
+  if (!PASSWORD_RULES.complexityRegex.test(password)) {
+    return { valid: false, error: PASSWORD_RULES.complexityMessage }
   }
 
-  if (!/(?=.*[A-Z])/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one uppercase letter' }
-  }
-
-  if (!/(?=.*\d)/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one number' }
+  // Match backend policy: require zxcvbn score >= 3
+  if (zxcvbn(password).score < 3) {
+    return { valid: false, error: PASSWORD_RULES.weakPasswordMessage }
   }
 
   return { valid: true }

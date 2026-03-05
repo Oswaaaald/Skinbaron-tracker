@@ -3,7 +3,7 @@ import { store } from '../../database/index.js';
 import { getClientIp, getAuthUser } from '../../lib/middleware.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { Errors } from '../../lib/errors.js';
-import { AdminUserParamsSchema } from '../../database/schemas.js';
+import { AdminUserParamsSchema } from '../../database/validation-schemas.js';
 import type { RegisterAdminRouteOptions } from './types.js';
 
 export function registerAdminOperationalPendingUserRoutes(

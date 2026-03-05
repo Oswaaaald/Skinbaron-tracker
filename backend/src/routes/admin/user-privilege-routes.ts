@@ -8,7 +8,7 @@ import {
   AdminToggleSchema,
   AdminUsernameSchema,
   AdminResetSchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 import type { RegisterAdminRouteOptions } from './types.js';
 
 export function registerAdminUserPrivilegeRoutes(

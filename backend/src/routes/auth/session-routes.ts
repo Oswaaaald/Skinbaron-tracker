@@ -7,7 +7,7 @@ import { AppError } from '../../lib/errors.js';
 import {
   RefreshBodySchema,
   LogoutBodySchema,
-} from '../../database/schemas.js';
+} from '../../database/validation-schemas.js';
 import type { AuthRoutesContext } from './shared.js';
 
 export function registerSessionAuthRoutes(

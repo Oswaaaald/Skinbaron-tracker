@@ -7,6 +7,7 @@ import { validateWithZod, handleRouteError } from '../../lib/validation-handler.
 import { AppError } from '../../lib/errors.js';
 import { verifyTotpOrRecoveryCode } from '../../lib/two-factor.js';
 import type { AuthRoutesContext } from './shared.js';
+import { loginResponseSchema, registerResponseSchema } from '../../contracts/auth-contracts.js';
 
 export function registerPasswordAuthRoutes(
   fastify: FastifyInstance,
@@ -34,25 +35,7 @@ export function registerPasswordAuthRoutes(
         },
       },
       response: {
-        201: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                pending_approval: { type: 'boolean' },
-                id: { type: 'number' },
-                username: { type: 'string' },
-                email: { type: 'string' },
-                avatar_url: { type: 'string' },
-                is_admin: { type: 'boolean' },
-                is_super_admin: { type: 'boolean' },
-              },
-            },
-          },
-        },
+        201: registerResponseSchema,
       },
     },
   }, async (request, reply) => {
@@ -126,6 +109,7 @@ export function registerPasswordAuthRoutes(
           is_admin: user.is_admin,
           is_super_admin: user.is_super_admin,
           has_password: !!user.password_hash,
+          token_expires_at: accessToken.expiresAt,
         },
       });
 
@@ -155,24 +139,7 @@ export function registerPasswordAuthRoutes(
         },
       },
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number' },
-                username: { type: 'string' },
-                email: { type: 'string' },
-                avatar_url: { type: 'string' },
-                is_admin: { type: 'boolean' },
-                is_super_admin: { type: 'boolean' },
-                requires_2fa: { type: 'boolean' },
-              },
-            },
-          },
-        },
+        200: loginResponseSchema,
       },
     },
   }, async (request, reply) => {
@@ -283,6 +250,7 @@ export function registerPasswordAuthRoutes(
           is_super_admin: user.is_super_admin,
           has_password: !!user.password_hash,
           requires_2fa: false,
+          token_expires_at: accessToken.expiresAt,
         },
       });
 

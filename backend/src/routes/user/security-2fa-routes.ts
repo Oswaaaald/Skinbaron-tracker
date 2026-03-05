@@ -10,7 +10,7 @@ import { getClientIp, getAuthUser } from '../../lib/middleware.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
 import { RECOVERY_CODE_COUNT, RECOVERY_CODE_BYTES } from '../../lib/config.js';
-import { Enable2FASchema, Disable2FASchema } from '../../database/schemas.js';
+import { Enable2FASchema, Disable2FASchema } from '../../database/validation-schemas.js';
 import { PENDING_2FA_TTL, type RegisterUserSecurityRoutesOptions } from './security-types.js';
 
 export function registerUserTwoFactorRoutes(

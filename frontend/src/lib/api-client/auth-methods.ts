@@ -11,7 +11,7 @@ import type { ApiClientRuntime } from './shared';
 export type AuthApiMethods = {
   login(email: string, password: string, totpCode?: string): Promise<ApiResponse<{ token_expires_at?: number; requires_2fa?: boolean } & UserProfile>>;
   verifyOAuth2FA(totpCode: string): Promise<ApiResponse<UserProfile>>;
-  register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number; token?: string } & Partial<UserProfile>>>;
+  register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number; pending_approval?: boolean } & Partial<UserProfile>>>;
   refresh(): Promise<ApiResponse<{ token_expires_at?: number }>>;
   logout(): Promise<ApiResponse<{ message: string }>>;
   getOAuthProviders(): Promise<ApiResponse<{ providers: string[] }>>;
@@ -53,7 +53,7 @@ export function createAuthApiMethods(client: ApiClientRuntime): AuthApiMethods {
       }, false);
     },
 
-    async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number; token?: string } & Partial<UserProfile>>> {
+    async register(username: string, email: string, password: string): Promise<ApiResponse<{ token_expires_at?: number; pending_approval?: boolean } & Partial<UserProfile>>> {
       client.resetLogoutState();
       return client.request(`/api/auth/register`, {
         method: 'POST',

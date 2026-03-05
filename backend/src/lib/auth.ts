@@ -3,6 +3,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { z } from 'zod';
 import crypto from 'crypto';
 import zxcvbn from 'zxcvbn';
+import { PASSWORD_RULES } from '@skinbaron/contracts';
 
 // Password strength validator using zxcvbn
 const strongPasswordValidator = (password: string) => {
@@ -20,40 +21,40 @@ export const UserRegistrationSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
   email: z.string().email('Please enter a valid email address'),
   password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be at most 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
+    .min(PASSWORD_RULES.minLength, `Password must be at least ${PASSWORD_RULES.minLength} characters`)
+    .max(PASSWORD_RULES.maxLength, `Password must be at most ${PASSWORD_RULES.maxLength} characters`)
+    .regex(PASSWORD_RULES.complexityRegex, PASSWORD_RULES.complexityMessage)
     .refine(strongPasswordValidator, {
-      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
+      message: PASSWORD_RULES.weakPasswordMessage,
     }),
   tos_accepted: z.literal(true, { error: 'You must accept the Terms of Service' }),
 });
 
 export const UserLoginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required').max(128),
+  password: z.string().min(1, 'Password is required').max(PASSWORD_RULES.maxLength),
   totp_code: z.string().min(6).max(8).regex(/^[0-9A-Fa-f]+$/, '2FA code must contain only digits or recovery code characters').optional(),
 });
 
 export const PasswordChangeSchema = z.object({
-  current_password: z.string().min(1, 'Current password is required').max(128),
+  current_password: z.string().min(1, 'Current password is required').max(PASSWORD_RULES.maxLength),
   new_password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be at most 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
+    .min(PASSWORD_RULES.minLength, `Password must be at least ${PASSWORD_RULES.minLength} characters`)
+    .max(PASSWORD_RULES.maxLength, `Password must be at most ${PASSWORD_RULES.maxLength} characters`)
+    .regex(PASSWORD_RULES.complexityRegex, PASSWORD_RULES.complexityMessage)
     .refine(strongPasswordValidator, {
-      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
+      message: PASSWORD_RULES.weakPasswordMessage,
     }),
 });
 
 /** Schema for OAuth users setting a password for the first time */
 export const SetPasswordSchema = z.object({
   new_password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be at most 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase and number')
+    .min(PASSWORD_RULES.minLength, `Password must be at least ${PASSWORD_RULES.minLength} characters`)
+    .max(PASSWORD_RULES.maxLength, `Password must be at most ${PASSWORD_RULES.maxLength} characters`)
+    .regex(PASSWORD_RULES.complexityRegex, PASSWORD_RULES.complexityMessage)
     .refine(strongPasswordValidator, {
-      message: 'Password is too weak. Avoid common words, keyboard patterns, or repeating characters.',
+      message: PASSWORD_RULES.weakPasswordMessage,
     }),
   totp_code: z.string().max(8).optional(),
 });

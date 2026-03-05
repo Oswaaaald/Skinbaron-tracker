@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getSkinBaronClient } from '../lib/sbclient.js';
 import { validateWithZod, handleRouteError } from '../lib/validation-handler.js';
-import { ItemSearchQuerySchema } from '../database/schemas.js';
+import { ItemSearchQuerySchema } from '../database/validation-schemas.js';
 
 export default async function itemsRoutes(fastify: FastifyInstance) {
   

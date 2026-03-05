@@ -10,11 +10,14 @@ RUN apk add --no-cache ca-certificates
 FROM base AS builder
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY frontend/package.json frontend/package-lock.json* ./frontend/
+COPY packages/contracts ./packages/contracts
+
+WORKDIR /app/frontend
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --fund=false
 
-COPY . .
+COPY frontend ./
 
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
@@ -28,7 +31,7 @@ ENV NEXT_BUILD_TURBO=1
 # Validate required build arguments
 RUN node scripts/validate-env.js
 
-RUN --mount=type=cache,target=/app/.next/cache \
+RUN --mount=type=cache,target=/app/frontend/.next/cache \
     npm run build
 
 # ---------- runner ----------
@@ -45,9 +48,10 @@ RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
 # Copy build output (READ-ONLY at runtime)
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/frontend/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/packages/contracts ./packages/contracts
 
 # Ensure Next.js image cache dir exists and is writable
 RUN mkdir -p /app/.next/cache/images && chown nextjs:nodejs /app/.next/cache/images

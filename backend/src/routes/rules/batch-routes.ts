@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { store } from '../../database/index.js';
-import { BatchRuleIdsSchema, BatchRuleDeleteSchema } from '../../database/schemas.js';
+import { BatchRuleIdsSchema, BatchRuleDeleteSchema } from '../../database/validation-schemas.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
 import { getAuthUser } from '../../lib/middleware.js';

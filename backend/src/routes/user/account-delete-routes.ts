@@ -11,7 +11,7 @@ import {
 import { deleteAvatarFile } from '../../lib/avatar.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
-import { DeleteAccountSchema } from '../../database/schemas.js';
+import { DeleteAccountSchema } from '../../database/validation-schemas.js';
 
 type RegisterUserAccountDeleteRoutesOptions = {
   sensitiveOperationRateLimit: {
