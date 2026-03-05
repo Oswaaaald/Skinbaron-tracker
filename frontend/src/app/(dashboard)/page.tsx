@@ -218,7 +218,7 @@ function LandingPage() {
 }
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading, isReady } = useAuth()
+  const { isAuthenticated, isReady } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -227,7 +227,9 @@ export default function HomePage() {
     }
   }, [isReady, isAuthenticated, router])
 
-  if (isLoading || !isReady || isAuthenticated) {
+  // Keep the landing hero server-rendered immediately for unauthenticated
+  // visitors to avoid delaying the LCP heading behind auth bootstrap.
+  if (isReady && isAuthenticated) {
     return <LoadingState variant="page" />
   }
 
