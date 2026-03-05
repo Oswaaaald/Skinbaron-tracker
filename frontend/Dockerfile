@@ -1,19 +1,18 @@
+# syntax=docker/dockerfile:1.7
+
 # ================================
 # Frontend Dockerfile (HARDENED)
 # ================================
 
-FROM node:22-alpine AS base
-
-RUN apk update && apk add --no-cache ca-certificates && \
-    npm install -g npm@11.11.0
-
-# ---------- builder ----------
-FROM base AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
+
+RUN apk add --no-cache ca-certificates && \
+    npm install -g npm@11.11.0
 
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm ci --prefer-offline --no-audit --fund=false
 
 COPY . .
 
@@ -33,7 +32,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 
 # ---------- runner ----------
-FROM base AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -42,7 +41,8 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 # Non-root user
-RUN addgroup --system --gid 1001 nodejs \
+RUN apk add --no-cache ca-certificates \
+    && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
 # Copy build output (READ-ONLY at runtime)
