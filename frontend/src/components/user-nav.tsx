@@ -1,10 +1,11 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 
 export function UserNav() {
   const { user, logout } = useAuth()
@@ -19,28 +20,35 @@ export function UserNav() {
     .slice(0, 2)
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="hidden sm:inline text-sm text-muted-foreground">
-        {user.username}
-      </span>
+    <div className="flex items-center gap-2.5">
+      <div className="hidden lg:flex flex-col text-right leading-tight">
+        <span className="text-xs text-muted-foreground">Signed in as</span>
+        <span className="text-sm font-medium">{user.username}</span>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 overflow-hidden ring-1 ring-border hover:ring-primary/50 transition-all">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 rounded-full p-0 overflow-hidden border border-border/70 bg-background/80 hover:border-primary/50 transition-all"
+          >
             {user.avatar_url ? (
               <Image 
                 src={user.avatar_url} 
                 alt={user.username}
-                width={32}
-                height={32}
+                width={36}
+                height={36}
                 className="h-full w-full object-cover"
                 priority
               />
             ) : (
-              <span className="text-xs font-medium">{userInitials}</span>
+              <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/90 to-cyan-500/80 text-xs font-semibold text-primary-foreground">
+                {userInitials}
+              </span>
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end">
+        <DropdownMenuContent className="w-60 rounded-xl border-border/70" align="end">
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{user.username}</p>
@@ -50,6 +58,12 @@ export function UserNav() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/settings" className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => { void logout() }} className="text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>

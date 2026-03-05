@@ -17,7 +17,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 import { Button } from "@/components/ui/button"
 
 const navItems = [
-  { href: "/", label: "Alerts", icon: Bell },
+  { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/rules", label: "Rules", icon: ListFilter },
   { href: "/webhooks", label: "Webhooks", icon: Webhook },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -30,7 +30,7 @@ const adminNavItems = [
 function useIsActive() {
   const pathname = usePathname()
   return (href: string) => {
-    if (href === "/") return pathname === "/"
+    if (href === "/alerts") return pathname === "/alerts" || pathname === "/"
     if (href === "/admin") return pathname === "/admin"
     return pathname.startsWith(href)
   }
@@ -43,11 +43,13 @@ function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
 
   const linkCls = (active: boolean) =>
     cn(
-      "flex items-center text-sm font-medium rounded-md transition-all duration-150",
-      mobile ? "gap-2.5 px-3 py-2.5 rounded-lg" : "gap-1.5 px-3 py-1.5",
+      "flex items-center font-medium rounded-lg transition-all duration-200",
+      mobile ? "gap-2.5 px-3.5 py-2.5 text-sm" : "h-8 gap-1.5 px-3.5 text-[13px]",
       active
-        ? "bg-primary text-primary-foreground shadow-sm"
-        : "text-muted-foreground hover:text-foreground hover:bg-accent",
+        ? mobile
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "bg-foreground text-background shadow-sm dark:bg-primary dark:text-primary-foreground"
+        : "text-muted-foreground hover:text-foreground hover:bg-accent/70",
       mobile && "w-full",
     )
 
@@ -85,7 +87,7 @@ function NavLinks({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
 
 export function DashboardNav() {
   return (
-    <nav className="hidden md:flex items-center gap-0.5">
+    <nav className="hidden md:flex items-center gap-1 rounded-xl border border-border/70 bg-muted/35 p-1">
       <NavLinks />
     </nav>
   )
@@ -102,10 +104,10 @@ export function MobileNavTrigger() {
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-64">
+        <SheetContent side="right" className="w-72 border-l border-border/70">
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <SheetDescription className="sr-only">Navigate through the application</SheetDescription>
-          <nav className="flex flex-col gap-1 mt-8">
+          <nav className="mt-8 flex flex-col gap-1 rounded-xl border border-border/70 bg-muted/25 p-1">
             <NavLinks mobile onNavigate={() => setOpen(false)} />
           </nav>
         </SheetContent>

@@ -18,10 +18,12 @@ export default function DashboardLayout({
   const { isAuthenticated, isLoading, isReady } = useAuth()
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false)
 
-  // Derive "has been authenticated at least once" during render (React-approved pattern)
-  if (isAuthenticated && !hasBeenAuthenticated) {
-    setHasBeenAuthenticated(true)
-  }
+  useEffect(() => {
+    if (isAuthenticated && !hasBeenAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Keep nav shell stable during auth bootstrap transitions
+      setHasBeenAuthenticated(true)
+    }
+  }, [isAuthenticated, hasBeenAuthenticated])
 
   // Flush any toasts queued before a hard navigation (e.g. post-login redirect)
   useEffect(() => {
@@ -40,26 +42,31 @@ export default function DashboardLayout({
   if (!isReady && !hasBeenAuthenticated) {
     return (
       <div className="min-h-[calc(100vh-56px)]">
-        <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
-          <div className="container mx-auto px-4 sm:px-6">
-            <div className="flex h-14 items-center justify-between gap-4">
+        <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+            <div className="flex h-16 items-center justify-between gap-4">
               <div className="flex items-center gap-6">
-                <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">SkinBaron Tracker</h1>
-                <nav className="hidden md:flex items-center gap-1.5">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-7 w-20 rounded-md" />
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/90 via-primary to-cyan-500/80 shadow-sm" />
+                  <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
+                    SkinBaron Tracker
+                  </h1>
+                </div>
+                <nav className="hidden md:flex items-center gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-20 rounded-lg" />
                   ))}
                 </nav>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Skeleton className="h-8 w-8 rounded-md" />
-                <Skeleton className="hidden sm:block h-4 w-20" />
-                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-9 w-9 rounded-lg" />
+                <Skeleton className="hidden sm:block h-4 w-24" />
+                <Skeleton className="h-9 w-9 rounded-full" />
               </div>
             </div>
           </div>
         </header>
-        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-5 sm:py-8">
           {children}
         </div>
       </div>
@@ -74,11 +81,19 @@ export default function DashboardLayout({
   return (
     <div className="min-h-[calc(100vh-56px)]">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex h-14 items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+          <div className="flex h-16 items-center justify-between gap-4">
             <div className="flex items-center gap-6">
-              <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">SkinBaron Tracker</h1>
+              <h1 className="flex items-center gap-3 text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/90 via-primary to-cyan-500/80 text-[11px] font-bold text-primary-foreground shadow-sm"
+                >
+                  SB
+                </span>
+                SkinBaron Tracker
+              </h1>
               <DashboardNav />
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -91,7 +106,7 @@ export default function DashboardLayout({
       </header>
       
       {/* Page content */}
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-5 sm:py-8">
         <PageTransition>{children}</PageTransition>
       </div>
     </div>

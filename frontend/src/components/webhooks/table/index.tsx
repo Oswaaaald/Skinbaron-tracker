@@ -255,7 +255,7 @@ export function WebhooksTable({ onCreateWebhook, createDialogOpen, onCreateDialo
             onDelete={handleBatchDelete}
           />
         </CardHeader>
-        <div className="overflow-x-auto">
+        <div className="md:overflow-x-auto">
           <WebhooksTableContent
             webhooks={webhooks}
             selectedWebhooks={selectedWebhooks}

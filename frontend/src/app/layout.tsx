@@ -1,19 +1,27 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import Link from "next/link";
-import { Github } from "lucide-react";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
+import { AppFooter } from "@/components/app-footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { CookieBanner } from "@/components/cookie-banner";
 import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 
-const inter = Inter({ 
+const manrope = Manrope({
   subsets: ["latin"],
+  variable: "--font-manrope",
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
+  preload: false,
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+  weight: ["500", "600", "700"],
   preload: false,
 });
 
@@ -39,7 +47,7 @@ export default async function RootLayout({
   // Skip SSR session check - cookies are cross-subdomain and client will handle auth
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${manrope.variable} ${spaceGrotesk.variable} font-sans`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -53,24 +61,7 @@ export default async function RootLayout({
                 <main className="flex-1">
                   {children}
                 </main>
-                <footer className="border-t border-border/40 bg-muted/20">
-                  <div className="container mx-auto px-4 py-4 text-[13px] text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <span>&copy; 2026 SkinBaron Tracker</span>
-                    <div className="flex items-center gap-5">
-                      <Link className="hover:text-foreground transition-colors" href="/tos">Terms</Link>
-                      <Link className="hover:text-foreground transition-colors" href="/privacy">Privacy</Link>
-                      <a 
-                        href="https://github.com/Oswaaaald" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="hover:text-foreground transition-colors flex items-center gap-1.5"
-                      >
-                        <Github className="h-3.5 w-3.5" />
-                        GitHub
-                      </a>
-                    </div>
-                  </div>
-                </footer>
+                <AppFooter />
               </div>
               <Toaster />
               <CookieBanner />

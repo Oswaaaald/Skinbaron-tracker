@@ -34,7 +34,7 @@ export default function DashboardError({
           </p>
           <div className="flex justify-center gap-3">
             <Button variant="outline" asChild>
-              <Link href="/">
+              <Link href="/alerts">
                 <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
                 Dashboard
               </Link>

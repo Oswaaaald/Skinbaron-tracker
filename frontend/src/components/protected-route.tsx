@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { LoadingState } from '@/components/ui/loading-state'
 import Link from 'next/link'
+import { ShieldAlert } from 'lucide-react'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -36,13 +37,15 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4 p-8">
-          <div className="text-6xl mb-4">🔒</div>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-destructive/25 bg-destructive/10 text-destructive">
+            <ShieldAlert className="h-7 w-7" />
+          </div>
           <h1 className="text-3xl font-bold text-foreground">Access Denied</h1>
           <p className="text-muted-foreground max-w-md">
             You don&apos;t have permission to access this page. Admin privileges are required.
           </p>
-          <Link 
-            href="/" 
+          <Link
+            href="/alerts"
             className="inline-block mt-4 px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             Go to Dashboard

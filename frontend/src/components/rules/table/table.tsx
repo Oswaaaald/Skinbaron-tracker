@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -50,32 +51,32 @@ function RuleConditions({ rule }: { rule: Rule }) {
       )}
       {rule.stattrak_filter === 'only' && (
         <Badge variant="outline" className="text-xs">
-          ⭐ StatTrak Only
+          StatTrak only
         </Badge>
       )}
       {rule.stattrak_filter === 'exclude' && (
         <Badge variant="secondary" className="text-xs">
-          🚫 No StatTrak
+          Exclude StatTrak
         </Badge>
       )}
       {rule.souvenir_filter === 'only' && (
         <Badge variant="outline" className="text-xs">
-          🏆 Souvenir Only
+          Souvenir only
         </Badge>
       )}
       {rule.souvenir_filter === 'exclude' && (
         <Badge variant="secondary" className="text-xs">
-          🚫 No Souvenir
+          Exclude Souvenir
         </Badge>
       )}
       {rule.sticker_filter === 'only' && (
         <Badge variant="outline" className="text-xs">
-          🏷️ Stickers Only
+          Stickers only
         </Badge>
       )}
       {rule.sticker_filter === 'exclude' && (
         <Badge variant="secondary" className="text-xs">
-          🚫 No Stickers
+          Exclude stickers
         </Badge>
       )}
     </div>
@@ -175,6 +176,74 @@ function RuleRow({
   )
 }
 
+function RuleMobileCard({
+  rule,
+  selected,
+  onSelect,
+  onEdit,
+  onToggleEnabled,
+  onDelete,
+  renderWebhookDisplay,
+}: {
+  rule: Rule
+  selected: boolean
+  onSelect: () => void
+  onEdit: () => void
+  onToggleEnabled: () => void
+  onDelete: () => void
+  renderWebhookDisplay: (rule: Rule) => ReactNode
+}) {
+  return (
+    <Card className="border-border/70 bg-card/85 py-0">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="truncate text-sm font-semibold">{rule.search_item}</p>
+            <p className="text-xs text-muted-foreground">
+              {rule.created_at ? formatDateOnly(rule.created_at) : 'N/A'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={onSelect}
+              className="cursor-pointer"
+              aria-label={`Select rule ${rule.search_item}`}
+            />
+            <Badge variant={rule.enabled ? 'default' : 'secondary'}>
+              {rule.enabled ? 'Enabled' : 'Disabled'}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border/65 bg-background/60 p-3 text-xs">
+          <p className="mb-1 text-muted-foreground">Price range</p>
+          <RulePriceRange rule={rule} />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Conditions</p>
+          <RuleConditions rule={rule} />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Webhooks</p>
+          {renderWebhookDisplay(rule)}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>
+          <Button size="sm" variant="outline" onClick={onToggleEnabled}>
+            {rule.enabled ? 'Disable' : 'Enable'}
+          </Button>
+          <Button size="sm" variant="destructive" onClick={onDelete}>Delete</Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function RulesTableTable({
   rules,
   selectedRules,
@@ -186,10 +255,49 @@ export function RulesTableTable({
   renderWebhookDisplay,
 }: RulesTableTableProps) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
+    <>
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <input
+                  type="checkbox"
+                  checked={selectedRules.size === rules.length && rules.length > 0}
+                  onChange={onSelectAll}
+                  className="cursor-pointer"
+                  aria-label="Select all rules"
+                />
+              </TableHead>
+              <TableHead>Item</TableHead>
+              <TableHead>Price Range</TableHead>
+              <TableHead>Conditions</TableHead>
+              <TableHead>Webhook</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rules.map((rule) => (
+              <RuleRow
+                key={rule.id}
+                rule={rule}
+                selected={rule.id != null && selectedRules.has(rule.id)}
+                onSelect={() => rule.id != null && onSelectRule(rule.id)}
+                onEdit={() => onEdit(rule)}
+                onToggleEnabled={() => onToggleEnabled(rule)}
+                onDelete={() => onDelete(rule)}
+                renderWebhookDisplay={renderWebhookDisplay}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="space-y-3 p-4 md:hidden">
+        <div className="flex items-center justify-between rounded-lg border border-border/65 bg-background/60 px-3 py-2">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"
               checked={selectedRules.size === rules.length && rules.length > 0}
@@ -197,19 +305,13 @@ export function RulesTableTable({
               className="cursor-pointer"
               aria-label="Select all rules"
             />
-          </TableHead>
-          <TableHead>Item</TableHead>
-          <TableHead>Price Range</TableHead>
-          <TableHead>Conditions</TableHead>
-          <TableHead>Webhook</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+            Select all
+          </label>
+          <span className="text-xs text-muted-foreground">{selectedRules.size}/{rules.length}</span>
+        </div>
+
         {rules.map((rule) => (
-          <RuleRow
+          <RuleMobileCard
             key={rule.id}
             rule={rule}
             selected={rule.id != null && selectedRules.has(rule.id)}
@@ -220,7 +322,7 @@ export function RulesTableTable({
             renderWebhookDisplay={renderWebhookDisplay}
           />
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    </>
   )
 }

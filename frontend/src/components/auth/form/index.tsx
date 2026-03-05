@@ -34,60 +34,74 @@ export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
 
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative"
-      style={{ minHeight: '100vh', paddingTop: '4rem', paddingBottom: '4rem' }}
+      className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-background px-4 py-16"
     >
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.5_0_0/0.06),transparent)]" />
-      <Card className="w-full max-w-md border-border/50 shadow-lg">
-        <CardHeader className="space-y-1.5 text-center pb-2">
-          <CardTitle className="text-2xl font-bold tracking-tight">{title}</CardTitle>
-          <CardDescription className="text-sm">{description}</CardDescription>
-        </CardHeader>
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute inset-x-0 -top-24 h-80 bg-[radial-gradient(circle_at_center,oklch(0.75_0.08_235_/_20%),transparent_62%)]" />
+        <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-[radial-gradient(circle,oklch(0.82_0.08_195_/_18%),transparent_66%)]" />
+      </div>
+      <div className="w-full max-w-md space-y-4">
+        <div className="flex items-center justify-center gap-3">
+          <span
+            aria-hidden="true"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/90 via-primary to-cyan-500/80 text-[11px] font-bold text-primary-foreground shadow-sm"
+          >
+            SB
+          </span>
+          <p className="text-sm font-semibold tracking-[0.04em] text-muted-foreground">SKINBARON TRACKER</p>
+        </div>
 
-        <CardContent>
-          <AuthFormContent
-            mode={mode}
-            onToggleMode={onToggleMode}
-            isLoading={controller.isLoading}
-            error={controller.error}
-            showPassword={controller.showPassword}
-            requires2FA={controller.requires2FA}
-            oauthPending2FA={controller.oauthPending2FA}
-            oauthPendingRegistration={controller.oauthPendingRegistration}
-            oauthPendingData={controller.oauthPendingData}
-            totpCode={controller.totpCode}
-            oauthProviders={controller.oauthProviders}
-            formData={controller.formData}
-            isLogin={controller.isLogin}
-            onSubmit={(e) => { void controller.handleSubmit(e) }}
-            onKeyDownSubmit={controller.handleKeyDownSubmit}
-            onToggleShowPassword={() => controller.setShowPassword((prev) => !prev)}
-            onSetField={controller.setField}
-            onSetTosAccepted={controller.setTosAccepted}
-            onSetTotpCode={(value) => {
-              controller.setTotpCode(value)
-              if (controller.error) controller.setError('')
-            }}
-            onPasskeyLogin={() => void controller.handlePasskeyLogin()}
-            onCancelOAuthRegistration={() => {
-              controller.setOauthPendingRegistration(false)
-              controller.setOauthPendingData(null)
-              controller.setError('')
-              controller.setFormData((prev) => ({ ...prev, username: '', email: '', tosAccepted: false }))
-            }}
-            onBackFrom2FA={() => {
-              controller.setRequires2FA(false)
-              controller.setTotpCode('')
-              controller.setError('')
-            }}
-            onCancelOAuth2FA={() => {
-              controller.setOauthPending2FA(false)
-              controller.setTotpCode('')
-              controller.setError('')
-            }}
-          />
-        </CardContent>
-      </Card>
+        <Card className="w-full border-border/70 bg-card/85 shadow-xl">
+          <CardHeader className="space-y-1.5 pb-2 text-center">
+            <CardTitle className="text-2xl font-semibold tracking-tight">{title}</CardTitle>
+          <CardDescription className="text-sm">{description}</CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <AuthFormContent
+              mode={mode}
+              onToggleMode={onToggleMode}
+              isLoading={controller.isLoading}
+              error={controller.error}
+              showPassword={controller.showPassword}
+              requires2FA={controller.requires2FA}
+              oauthPending2FA={controller.oauthPending2FA}
+              oauthPendingRegistration={controller.oauthPendingRegistration}
+              oauthPendingData={controller.oauthPendingData}
+              totpCode={controller.totpCode}
+              oauthProviders={controller.oauthProviders}
+              formData={controller.formData}
+              isLogin={controller.isLogin}
+              onSubmit={(e) => { void controller.handleSubmit(e) }}
+              onKeyDownSubmit={controller.handleKeyDownSubmit}
+              onToggleShowPassword={() => controller.setShowPassword((prev) => !prev)}
+              onSetField={controller.setField}
+              onSetTosAccepted={controller.setTosAccepted}
+              onSetTotpCode={(value) => {
+                controller.setTotpCode(value)
+                if (controller.error) controller.setError('')
+              }}
+              onPasskeyLogin={() => void controller.handlePasskeyLogin()}
+              onCancelOAuthRegistration={() => {
+                controller.setOauthPendingRegistration(false)
+                controller.setOauthPendingData(null)
+                controller.setError('')
+                controller.setFormData((prev) => ({ ...prev, username: '', email: '', tosAccepted: false }))
+              }}
+              onBackFrom2FA={() => {
+                controller.setRequires2FA(false)
+                controller.setTotpCode('')
+                controller.setError('')
+              }}
+              onCancelOAuth2FA={() => {
+                controller.setOauthPending2FA(false)
+                controller.setTotpCode('')
+                controller.setError('')
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

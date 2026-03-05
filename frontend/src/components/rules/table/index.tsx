@@ -202,7 +202,7 @@ export function RulesTable({ onCreateRule }: { onCreateRule?: () => void }) {
             onDelete={handleBatchDelete}
           />
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0 md:overflow-x-auto">
           <RulesTableTable
             rules={rules}
             selectedRules={selectedRules}
