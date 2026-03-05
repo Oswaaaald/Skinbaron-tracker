@@ -219,20 +219,22 @@ export function ProfileTab({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Label>Role:</Label>
-              {user?.is_super_admin ? (
-                <Badge variant="default" className="gap-1 !border-transparent !bg-gradient-to-r !from-purple-600 !to-pink-600 !text-white">
-                  <Shield className="h-3 w-3" /> Super Admin
-                </Badge>
-              ) : user?.is_admin ? (
-                <Badge variant="default" className="gap-1">
-                  <Shield className="h-3 w-3" /> Admin
-                </Badge>
-              ) : (
-                <Badge variant="outline">User</Badge>
-              )}
-              <Button type="submit" disabled={profilePending}>
+            <div className="flex flex-col gap-3 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <Label className="text-muted-foreground">Role:</Label>
+                {user?.is_super_admin ? (
+                  <Badge variant="default" className="gap-1 !border-transparent !bg-gradient-to-r !from-purple-600 !to-pink-600 !text-white">
+                    <Shield className="h-3 w-3" /> Super Admin
+                  </Badge>
+                ) : user?.is_admin ? (
+                  <Badge variant="default" className="gap-1">
+                    <Shield className="h-3 w-3" /> Admin
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">User</Badge>
+                )}
+              </div>
+              <Button type="submit" disabled={profilePending} className="w-full sm:w-auto">
                 {profilePending ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" inline /> Updating...
