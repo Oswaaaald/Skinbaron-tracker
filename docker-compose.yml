@@ -72,7 +72,6 @@ services:
         max-file: "3"
 
     networks:
-      - skinbaron_network
       - dokploy-network
 
   frontend:
@@ -120,14 +119,11 @@ services:
         max-file: "3"
 
     networks:
-      - skinbaron_network
       - dokploy-network
 
 volumes:
   skinbaron_avatar_data:
 
 networks:
-  skinbaron_network:
-    driver: bridge
   dokploy-network:
     external: true
