@@ -6,6 +6,7 @@ import {
   getAuthUser,
   ACCESS_COOKIE,
   clearAuthCookies,
+  invalidateUserCache,
 } from '../../lib/middleware.js';
 import { deleteAvatarFile } from '../../lib/avatar.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
@@ -118,6 +119,7 @@ export function registerUserAccountDeleteRoutes(
         }
       }
 
+      invalidateUserCache(userId);
       await store.users.delete(userId);
       clearAuthCookies(reply);
 

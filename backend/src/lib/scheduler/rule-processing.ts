@@ -260,7 +260,7 @@ async function sendAndMarkNotifications(
           anySent = true;
         } else {
           deps.logger.warn({
-            webhookUrl: webhook.webhook_url.substring(0, 50) + '...',
+            webhookId: webhook.id,
             item: alert.item_name,
           }, '[Scheduler] Webhook notification failed to send');
         }
