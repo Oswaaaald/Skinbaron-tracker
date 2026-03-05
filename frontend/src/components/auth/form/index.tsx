@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AuthFormSkeleton } from '@/components/ui/skeletons'
 import { AuthFormContent } from '@/components/auth/form/content'
 import { useAuthFormController } from '@/components/auth/form/controller'
 import type { AuthMode } from '@/components/auth/form/types'
@@ -13,10 +12,6 @@ interface AuthFormProps {
 
 export function AuthForm({ mode, onToggleMode }: AuthFormProps) {
   const controller = useAuthFormController(mode, onToggleMode)
-
-  if (!controller.oauthReady) {
-    return <AuthFormSkeleton />
-  }
 
   const title = controller.oauthPendingRegistration
     ? 'Finalize Registration'

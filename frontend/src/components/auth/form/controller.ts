@@ -28,7 +28,6 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
   const [oauthPendingData, setOauthPendingData] = useState<OAuthPendingData | null>(null)
   const [totpCode, setTotpCode] = useState('')
   const [oauthProviders, setOAuthProviders] = useState<string[]>([])
-  const [oauthReady, setOauthReady] = useState(false)
   const [formData, setFormData] = useState<AuthFormData>({
     username: '',
     email: '',
@@ -44,8 +43,6 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
         if (res.success && res.data?.providers) setOAuthProviders(res.data.providers)
       } catch {
         // OAuth unavailable: buttons hidden silently
-      } finally {
-        setOauthReady(true)
       }
     })()
   }, [])
@@ -287,7 +284,6 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
     oauthPendingData,
     totpCode,
     oauthProviders,
-    oauthReady,
     formData,
     isLogin,
     setShowPassword,

@@ -1,33 +1,24 @@
 'use client'
 
-import { lazy, Suspense } from 'react'
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useEffect } from "react"
 import { AuthFormSkeleton } from "@/components/ui/skeletons"
-
-const AuthForm = lazy(() => import('@/components/auth/form').then(m => ({ default: m.AuthForm })))
+import { AuthForm } from "@/components/auth/form"
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading, isReady } = useAuth()
+  const { isAuthenticated, isReady } = useAuth()
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isReady && isAuthenticated) {
       router.replace('/alerts')
     }
-  }, [isAuthenticated, router])
+  }, [isReady, isAuthenticated, router])
 
-  if (isLoading || !isReady || isAuthenticated) {
+  if (isReady && isAuthenticated) {
     return <AuthFormSkeleton />
   }
 
-  return (
-    <Suspense fallback={<AuthFormSkeleton />}>
-      <AuthForm 
-        mode="register" 
-        onToggleMode={() => router.push('/login')} 
-      />
-    </Suspense>
-  )
+  return <AuthForm mode="register" onToggleMode={() => router.push('/login')} />
 }
