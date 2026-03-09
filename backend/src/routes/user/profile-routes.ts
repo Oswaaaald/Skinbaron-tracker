@@ -142,8 +142,7 @@ export function registerUserProfileRoutes(
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
-          password: { type: 'string', maxLength: 128, description: 'Required for email change re-authentication (if user has a password)' },
-          totp_code: { type: 'string', maxLength: 8, description: 'Required for email change re-authentication (if 2FA is enabled)' },
+          totp_code: { type: 'string', maxLength: 8, description: 'Required for email change when 2FA is enabled' },
         },
       },
       response: {
@@ -193,18 +192,10 @@ export function registerUserProfileRoutes(
       }
 
       // Additional security check for email changes
-      // Users with password must provide password. OAuth-only users with 2FA must provide totp_code.
+      // If 2FA is enabled, require a TOTP/recovery code confirmation.
       if (updates.email) {
-        const body = request.body as { password?: string; totp_code?: string };
-        if (currentUser.password_hash) {
-          if (!body.password) {
-            throw new AppError(400, 'Password is required to change your email', 'PASSWORD_REQUIRED');
-          }
-          const isValid = await AuthService.verifyPassword(body.password, currentUser.password_hash);
-          if (!isValid) {
-            throw new AppError(401, 'Invalid password', 'INVALID_PASSWORD');
-          }
-        } else if (currentUser.totp_enabled) {
+        const body = request.body as { totp_code?: string };
+        if (currentUser.totp_enabled) {
           if (!body.totp_code) {
             throw new AppError(400, '2FA code is required to change your email', 'TOTP_REQUIRED');
           }
