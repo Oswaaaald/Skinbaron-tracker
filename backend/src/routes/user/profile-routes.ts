@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { store } from '../../database/index.js';
 import { AuthService } from '../../lib/auth.js';
 import { getClientIp, getAuthUser } from '../../lib/middleware.js';
-import { verifyTotpOrRecoveryCode } from '../../lib/two-factor.js';
 import { validateWithZod, handleRouteError } from '../../lib/validation-handler.js';
 import { AppError } from '../../lib/errors.js';
 import { appConfig } from '../../lib/config.js';
@@ -142,7 +141,6 @@ export function registerUserProfileRoutes(
         properties: {
           username: { type: 'string', minLength: 3, maxLength: 20 },
           email: { type: 'string', format: 'email' },
-          totp_code: { type: 'string', maxLength: 8, description: 'Required for email change when 2FA is enabled' },
         },
       },
       response: {
@@ -188,22 +186,6 @@ export function registerUserProfileRoutes(
         const oauthWithEmail = await store.oauth.findByProviderEmail(updates.email, userId);
         if (oauthWithEmail) {
           throw new AppError(400, 'Email already in use', 'EMAIL_IN_USE');
-        }
-      }
-
-      // Additional security check for email changes
-      // If 2FA is enabled, require a TOTP/recovery code confirmation.
-      if (updates.email) {
-        const body = request.body as { totp_code?: string };
-        if (currentUser.totp_enabled) {
-          if (!body.totp_code) {
-            throw new AppError(400, '2FA code is required to change your email', 'TOTP_REQUIRED');
-          }
-          const userWith2FA = await store.users.findById(userId, true);
-          if (!userWith2FA) {
-            throw new AppError(404, 'User not found', 'USER_NOT_FOUND');
-          }
-          await verifyTotpOrRecoveryCode(userWith2FA, body.totp_code, request, 'email_change');
         }
       }
 
