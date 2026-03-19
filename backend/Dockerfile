@@ -12,7 +12,7 @@ RUN apk add --no-cache ca-certificates \
 FROM base AS builder
 WORKDIR /app
 
-COPY backend/package.json backend/package-lock.json* ./backend/
+COPY backend/package.json backend/package-lock.json* backend/.npmrc ./backend/
 COPY packages/contracts ./packages/contracts
 
 WORKDIR /app/backend
