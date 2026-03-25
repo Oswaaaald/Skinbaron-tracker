@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ExternalLink } from 'lucide-react'
+import { Code2 } from 'lucide-react'
 
 const HIDDEN_FOOTER_ROUTES = new Set(['/login', '/register'])
 
@@ -26,7 +26,7 @@ export function AppFooter() {
             rel="noopener noreferrer"
             className="hover:text-foreground transition-colors flex items-center gap-1.5"
           >
-            <ExternalLink className="h-3.5 w-3.5" />
+            <Code2 className="h-3.5 w-3.5" />
             GitHub
           </a>
         </div>
