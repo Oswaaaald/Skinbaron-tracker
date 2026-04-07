@@ -5,7 +5,7 @@
 # ================================
 
 FROM node:22-alpine AS base
-ARG NPM_VERSION=11.11.0
+ARG NPM_VERSION=11.12.1
 RUN apk add --no-cache ca-certificates \
     && npm install -g "npm@${NPM_VERSION}"
 
