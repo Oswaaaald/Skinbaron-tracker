@@ -74,11 +74,29 @@ export function ProfileSettings() {
     setTwoFactorPassword,
   })
 
+  const { data: oauthProviders, isLoading: isLoadingOauthProviders } = useQuery({
+    queryKey: ['oauth-providers'],
+    queryFn: async () => {
+      const res = await apiClient.getOAuthProviders()
+      return res.success ? (res.data?.providers ?? []) : []
+    },
+    enabled: isReady && isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  })
+  const hasOauthProviders = (oauthProviders?.length ?? 0) > 0
+
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (isLoadingOauthProviders) return
     const params = new URLSearchParams(window.location.search)
-    if (params.has('linked') || params.has('link_error')) setActiveTab('oauth')
-  }, [])
+    if ((params.has('linked') || params.has('link_error')) && hasOauthProviders) setActiveTab('oauth')
+  }, [hasOauthProviders, isLoadingOauthProviders])
+
+  useEffect(() => {
+    if (!isLoadingOauthProviders && !hasOauthProviders && activeTab === 'oauth') {
+      setActiveTab('profile')
+    }
+  }, [activeTab, hasOauthProviders, isLoadingOauthProviders])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -202,7 +220,7 @@ export function ProfileSettings() {
         <TabsList className="h-auto w-full gap-1 p-1">
           <TabsTrigger value="profile" className="flex items-center gap-1.5"><User className="h-4 w-4" /><span className="hidden sm:inline">Profile</span></TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-1.5"><Shield className="h-4 w-4" /><span className="hidden sm:inline">Security</span></TabsTrigger>
-          <TabsTrigger value="oauth" className="flex items-center gap-1.5"><Link2 className="h-4 w-4" /><span className="hidden sm:inline">Accounts</span></TabsTrigger>
+          {hasOauthProviders ? <TabsTrigger value="oauth" className="flex items-center gap-1.5"><Link2 className="h-4 w-4" /><span className="hidden sm:inline">Accounts</span></TabsTrigger> : null}
           <TabsTrigger value="logs" className="flex items-center gap-1.5"><History className="h-4 w-4" /><span className="hidden sm:inline">Logs</span></TabsTrigger>
         </TabsList>
 
@@ -247,7 +265,7 @@ export function ProfileSettings() {
           />
         </TabsContent>
 
-        <TabsContent value="oauth" className="mt-5 space-y-5"><LinkedAccounts /></TabsContent>
+        {hasOauthProviders ? <TabsContent value="oauth" className="mt-5 space-y-5"><LinkedAccounts enabledProviders={oauthProviders ?? []} providersLoading={isLoadingOauthProviders} /></TabsContent> : null}
         <TabsContent value="logs" className="mt-5 space-y-5"><LogsTab onOpenExport={() => setExportDialog(true)} /></TabsContent>
       </Tabs>
 

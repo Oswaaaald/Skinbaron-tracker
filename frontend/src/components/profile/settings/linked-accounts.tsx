@@ -13,7 +13,12 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { LinkedAccountsSkeleton } from '@/components/ui/skeletons'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
-export function LinkedAccounts() {
+interface LinkedAccountsProps {
+  enabledProviders: string[]
+  providersLoading?: boolean
+}
+
+export function LinkedAccounts({ enabledProviders, providersLoading = false }: LinkedAccountsProps) {
   const { toast } = useToast()
   const [unlinking, setUnlinking] = useState<string | null>(null)
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
@@ -26,15 +31,6 @@ export function LinkedAccounts() {
 
   const unlinkLabel = PROVIDER_META[lastUnlinkProvider.current]?.label ?? lastUnlinkProvider.current
   const linkLabel = PROVIDER_META[lastLinkProvider.current]?.label ?? lastLinkProvider.current
-
-  const { data: enabledProviders, isLoading: isLoadingProviders } = useQuery({
-    queryKey: ['oauth-providers'],
-    queryFn: async () => {
-      const res = await apiClient.getOAuthProviders()
-      return res.success ? (res.data?.providers ?? []) : []
-    },
-    staleTime: 5 * 60 * 1000,
-  })
 
   const { data: accounts, refetch } = useQuery({
     queryKey: ['oauth-accounts'],
@@ -82,7 +78,7 @@ export function LinkedAccounts() {
     [accounts]
   )
 
-  if (isLoadingProviders) return <LinkedAccountsSkeleton />
+  if (providersLoading) return <LinkedAccountsSkeleton />
   if (!enabledProviders || enabledProviders.length === 0) return null
 
   return (
