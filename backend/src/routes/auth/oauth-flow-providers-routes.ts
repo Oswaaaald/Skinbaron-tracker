@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { AuthService } from '../../lib/auth.js';
-import { ACCESS_COOKIE, baseCookieOptions } from '../../lib/middleware.js';
+import { baseCookieOptions } from '../../lib/middleware.js';
 import { AppError } from '../../lib/errors.js';
 import {
   getEnabledProviders,
@@ -71,11 +70,8 @@ export function registerOAuthProviderFlowRoutes(
 
     let linkUserId: number | undefined;
     try {
-      const token = request.cookies?.[ACCESS_COOKIE] || AuthService.extractTokenFromHeader(request.headers.authorization ?? '');
-      if (token) {
-        const payload = AuthService.verifyToken(token, 'access');
-        if (payload?.userId) linkUserId = payload.userId;
-      }
+      await fastify.authenticate(request, reply);
+      linkUserId = request.user?.id;
     } catch {
       // not logged in — normal login flow
     }
