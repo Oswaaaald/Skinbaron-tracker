@@ -115,7 +115,6 @@ export function RuleDialog({ open, onOpenChange, rule }: RuleDialogProps) {
   useEffect(() => {
     if (open && !rule && webhooks.length > 0 && !hasPreselectedWebhooks.current) {
       const allIds = webhooks.map((webhook) => webhook.id).filter((id): id is number => id != null)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- One-time preset from loaded webhooks
       setSelectedWebhooks(allIds)
       hasPreselectedWebhooks.current = true
     }

@@ -65,6 +65,7 @@
     "typescript": "^6.0.2"
   },
   "overrides": {
-    "serialize-javascript": ">=7.0.3"
+    "serialize-javascript": ">=7.0.3",
+    "postcss": "^8.5.15"
   }
 }

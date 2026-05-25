@@ -22,14 +22,11 @@ export function initSentry(): void {
       const error = hint.originalException;
 
       // Skip expected operational errors (4xx)
-      if (
-        error &&
-        typeof error === 'object' &&
-        'statusCode' in error &&
-        typeof (error as { statusCode: unknown }).statusCode === 'number' &&
-        (error as { statusCode: number }).statusCode < 500
-      ) {
-        return null;
+      if (error && typeof error === 'object' && 'statusCode' in error) {
+        const { statusCode } = error;
+        if (typeof statusCode === 'number' && statusCode < 500) {
+          return null;
+        }
       }
 
       return event;

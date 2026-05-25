@@ -115,7 +115,7 @@ export function createDataApiMethods(client: ApiClientRuntime): DataApiMethods {
       if (params.sort_by) searchParams.append('sort_by', params.sort_by);
 
       const endpoint = `/api/alerts${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-      return client.request<Alert[]>(endpoint) as Promise<PaginatedResponse<Alert>>;
+      return client.request<Alert[]>(endpoint);
     },
 
     async getAlertItemNames(): Promise<ApiResponse<string[]>> {

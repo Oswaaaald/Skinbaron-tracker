@@ -56,7 +56,7 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
     const params = new URLSearchParams(window.location.search)
     const oauth2fa = params.get('oauth_2fa')
     if (oauth2fa === 'pending') {
-      setOauthPending2FA(true)
+      queueMicrotask(() => setOauthPending2FA(true))
       const url = new URL(window.location.href)
       url.searchParams.delete('oauth_2fa')
       window.history.replaceState({}, '', url.pathname + url.search)
@@ -93,7 +93,7 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
 
     const oauthError = params.get('error')
     if (oauthError) {
-      setError(OAUTH_ERROR_MESSAGES[oauthError] || 'OAuth sign-in failed. Please try again.')
+      queueMicrotask(() => setError(OAUTH_ERROR_MESSAGES[oauthError] || 'OAuth sign-in failed. Please try again.'))
       const url = new URL(window.location.href)
       url.searchParams.delete('error')
       window.history.replaceState({}, '', url.pathname + url.search)
@@ -274,7 +274,7 @@ export function useAuthFormController(mode: AuthMode, onToggleMode: () => void) 
     if (isLoading) return
     if (!requires2FA && !oauthPending2FA && !isLogin && !formData.tosAccepted) return
     if ((requires2FA || oauthPending2FA) && !isValidTotpOrRecoveryCode(totpCode)) return
-    void handleSubmit(e as unknown as FormEvent)
+    void handleSubmit(e)
   }
 
   return {

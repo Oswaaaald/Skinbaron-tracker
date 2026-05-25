@@ -3,7 +3,7 @@ import { store } from '../../database/index.js';
 import type { Rule, CreateAlert } from '../../database/validation-schemas.js';
 import type { Alert, UserWebhook } from '../../database/schema.js';
 import { getSkinBaronClient, type SkinBaronClient, type SkinBaronItem } from '../sbclient.js';
-import { getNotificationService, type NotificationStyle } from '../notifier.js';
+import { getNotificationService } from '../notifier.js';
 import type { SchedulerLogger } from './types.js';
 
 function filterItemsByRule(items: SkinBaronItem[], rule: Rule): SkinBaronItem[] {
@@ -259,7 +259,7 @@ async function sendAndMarkNotifications(
         const success = await deps.notificationService.sendNotification(webhook.webhook_url, {
           item,
           skinUrl: offerUrl,
-          style: (webhook.notification_style as NotificationStyle) || 'compact',
+          style: webhook.notification_style || 'compact',
         });
         if (success) {
           anySent = true;

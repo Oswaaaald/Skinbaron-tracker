@@ -112,7 +112,7 @@ export function createAdminApiMethods(client: ApiClientRuntime): AdminApiMethods
       if (params?.role && params.role !== 'all') query.append('role', params.role);
       if (params?.status && params.status !== 'all') query.append('status', params.status);
       const qs = query.toString();
-      return client.get(`/api/admin/users${qs ? `?${qs}` : ''}`) as Promise<PaginatedResponse<AdminUser>>;
+      return client.get<AdminUser[]>(`/api/admin/users${qs ? `?${qs}` : ''}`);
     },
 
     async getAdminUserDetail(userId: number): Promise<ApiResponse<AdminUserDetail>> {

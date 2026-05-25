@@ -158,11 +158,11 @@ export class CoreApiClient {
 
       return normalizeSuccessResponse<T>(data, response.status)
     } catch (error) {
-      const message = (error as Error).message || 'Network error'
+      const message = error instanceof Error ? error.message : 'Network error'
       if (process.env.NODE_ENV === 'development') {
         logger.warn('API request failed:', message)
       }
-      return { success: false, error: message, message } as ApiResponse<T>
+      return { success: false, error: message, message }
     }
   }
 

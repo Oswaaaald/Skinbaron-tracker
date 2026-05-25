@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { startRegistration } from '@simplewebauthn/browser'
 import { QUERY_KEYS } from '@/lib/constants'
@@ -60,8 +60,7 @@ export function PasskeyManager() {
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<PasskeyInfo | null>(null)
-  const lastDeleteTargetName = useRef('')
-  if (deleteTarget?.name) lastDeleteTargetName.current = deleteTarget.name
+  const deleteTargetName = deleteTarget?.name || 'this passkey'
 
   const { data: passkeys, isLoading } = useQuery({
     queryKey: [QUERY_KEYS.PASSKEYS],
@@ -253,7 +252,7 @@ export function PasskeyManager() {
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
         title="Delete passkey?"
-        description={`Are you sure you want to delete "${lastDeleteTargetName.current || 'this passkey'}"? You won't be able to log in with it anymore.`}
+        description={`Are you sure you want to delete "${deleteTargetName}"? You won't be able to log in with it anymore.`}
         confirmText="Delete"
         variant="destructive"
         onConfirm={() => void handleDelete()}

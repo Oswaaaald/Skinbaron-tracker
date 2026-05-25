@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ShieldCheck } from 'lucide-react'
 import { apiClient } from '@/lib/api'
@@ -24,13 +24,8 @@ export function LinkedAccounts({ enabledProviders, providersLoading = false }: L
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null)
   const [confirmLink, setConfirmLink] = useState<string | null>(null)
 
-  const lastUnlinkProvider = useRef<string>('')
-  const lastLinkProvider = useRef<string>('')
-  if (confirmUnlink) lastUnlinkProvider.current = confirmUnlink
-  if (confirmLink) lastLinkProvider.current = confirmLink
-
-  const unlinkLabel = PROVIDER_META[lastUnlinkProvider.current]?.label ?? lastUnlinkProvider.current
-  const linkLabel = PROVIDER_META[lastLinkProvider.current]?.label ?? lastLinkProvider.current
+  const unlinkLabel = confirmUnlink ? PROVIDER_META[confirmUnlink]?.label ?? confirmUnlink : ''
+  const linkLabel = confirmLink ? PROVIDER_META[confirmLink]?.label ?? confirmLink : ''
 
   const { data: accounts, refetch } = useQuery({
     queryKey: ['oauth-accounts'],

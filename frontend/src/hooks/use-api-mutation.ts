@@ -83,7 +83,7 @@ export function useApiMutation<TData = unknown, TVariables = void, TError = Erro
   };
 
   return useMutation<TData, TError, TVariables>({
-    mutationFn: wrappedMutationFn as unknown as (variables: TVariables) => Promise<TData>,
+    mutationFn: wrappedMutationFn,
     onSuccess: (data, variables) => {
       // Invalidate queries
       const keysArray = Array.isArray(invalidateKeys[0]) 

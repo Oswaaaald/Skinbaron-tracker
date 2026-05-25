@@ -89,12 +89,14 @@ export function ProfileSettings() {
     if (typeof window === 'undefined') return
     if (isLoadingOauthProviders) return
     const params = new URLSearchParams(window.location.search)
-    if ((params.has('linked') || params.has('link_error')) && hasOauthProviders) setActiveTab('oauth')
+    if ((params.has('linked') || params.has('link_error')) && hasOauthProviders) {
+      queueMicrotask(() => setActiveTab('oauth'))
+    }
   }, [hasOauthProviders, isLoadingOauthProviders])
 
   useEffect(() => {
     if (!isLoadingOauthProviders && !hasOauthProviders && activeTab === 'oauth') {
-      setActiveTab('profile')
+      queueMicrotask(() => setActiveTab('profile'))
     }
   }, [activeTab, hasOauthProviders, isLoadingOauthProviders])
 
@@ -127,8 +129,10 @@ export function ProfileSettings() {
 
   useEffect(() => {
     if (!user) return
-    setUsername(user.username)
-    setEmail(user.email)
+    queueMicrotask(() => {
+      setUsername(user.username)
+      setEmail(user.email)
+    })
   }, [user])
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({

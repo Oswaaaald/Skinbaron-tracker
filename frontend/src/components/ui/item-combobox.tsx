@@ -94,7 +94,7 @@ export function ItemCombobox({
   // Update search query when value prop changes
   React.useEffect(() => {
     if (value !== undefined) {
-      setSearchQuery(value)
+      queueMicrotask(() => setSearchQuery(value))
     }
   }, [value])
 
@@ -134,7 +134,7 @@ export function ItemCombobox({
             className="h-11"
           />
           <CommandList 
-            ref={listRef as React.RefObject<HTMLDivElement>}
+            ref={listRef}
             className="max-h-[300px] overflow-y-auto overflow-x-hidden"
           >
             {isLoading ? (

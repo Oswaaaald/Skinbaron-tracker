@@ -22,18 +22,18 @@ export function extractErrorMessage(error: unknown, fallback: string = "An unexp
   // Handle API response objects with 'error' field
   if (typeof error === 'object' && error !== null) {
     // Check for 'error' property (common API pattern)
-    if ('error' in error && typeof (error as { error: unknown }).error === 'string') {
-      return (error as { error: string }).error;
+    if ('error' in error && typeof error.error === 'string') {
+      return error.error;
     }
     
     // Check for 'message' property
-    if ('message' in error && typeof (error as { message: unknown }).message === 'string') {
-      return (error as { message: string }).message;
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message;
     }
     
     // Check for nested error object (e.g., { error: { message: '...' } })
-    if ('error' in error && typeof (error as { error: unknown }).error === 'object' && (error as { error: { message?: unknown } }).error !== null) {
-      const nestedError = (error as { error: { message?: unknown } }).error;
+    if ('error' in error && typeof error.error === 'object' && error.error !== null) {
+      const nestedError = error.error;
       if ('message' in nestedError && typeof nestedError.message === 'string') {
         return nestedError.message;
       }
